@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Naija Streets: Lagos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Full-bleed 3D view. GTA-style HUD: brand + location top-left, time-of-day top-right, round minimap bottom-left, speedo bottom-right, action prompt bottom-centre. Single dark game look, set on purpose. */
+:root{
+  --ink:#0E1014; --glass:rgba(12,14,18,.66); --line:rgba(255,255,255,.16);
+  --cream:#F7EFDF; --muted:#BDB5A6; --danfo:#F2B705; --flag:#16A06B; --rust:#D0573E;
+  --fd:'Bungee',Impact,'Arial Black',sans-serif;
+  --fb:'Barlow Semi Condensed','Arial Narrow',system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--cream);font-family:var(--fb);-webkit-user-select:none;user-select:none}
+#view{position:fixed;inset:0}
+#view canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
+#fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:40}
+#fade.on{opacity:1}
+
+/* Loading */
+.loading{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px 16px;background:radial-gradient(90% 70% at 70% 100%,#3a2412 0%,transparent 60%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink);transition:opacity .6s ease}
+.loading.gone{opacity:0;pointer-events:none}
+.ld{width:min(560px,100%);display:flex;flex-direction:column;gap:18px}
+.ld h1{font-family:var(--fd);font-weight:400;margin:0;line-height:.86;font-size:clamp(48px,13vw,96px)}
+.ld h1 span{display:block}.ld h1 .a{color:var(--danfo)}.ld h1 .b{color:var(--cream)}.ld h1 .c{color:var(--flag);font-size:.42em;letter-spacing:.06em;margin-top:.25em}
+.ld p{margin:0;color:var(--muted);font-size:18px;line-height:1.45;max-width:46ch}
+.lbar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.lbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--flag),var(--danfo));transition:width .3s}
+.ltxt{font-size:15px;color:var(--muted);letter-spacing:.04em;min-height:1.3em}
+.lerr{color:#ffb4a6;font-size:15px}
+.enter{font-family:var(--fd);font-size:20px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:16px 22px;align-self:flex-start}
+.enter:hover{filter:brightness(1.08)}
+.lnote{font-size:13px;color:var(--muted);margin:0}
+
+/* HUD */
+.hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+.tl{position:absolute;left:18px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px}
+.brand{font-family:var(--fd);font-size:15px;color:var(--danfo);text-shadow:0 2px 0 #000}
+.loc{font-weight:700;font-size:22px;letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+.tr{position:absolute;right:18px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;gap:8px;align-items:center;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+.tod{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:3px;backdrop-filter:blur(8px)}
+.tod button{background:none;border:none;padding:6px 12px;border-radius:999px;font-weight:600;font-size:14px;color:var(--muted)}
+.tod button[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
+.hb{background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px;backdrop-filter:blur(8px)}
+#mm{position:absolute;left:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));width:210px;height:210px;border-radius:50%;border:3px solid rgba(0,0,0,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.5)}
+.prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(34px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:8px 16px 8px 8px;font-weight:700;font-size:19px;backdrop-filter:blur(8px);white-space:nowrap}
+.prompt kbd{font-family:var(--fd);font-size:15px;background:var(--danfo);color:var(--ink);border-radius:6px;padding:4px 9px 3px}
+.speedo{position:absolute;right:22px;bottom:calc(22px + env(safe-area-inset-bottom,0px));text-align:right;text-shadow:0 3px 10px rgba(0,0,0,.7)}
+.speedo b{display:block;font-family:var(--fd);font-weight:400;font-size:64px;line-height:.9;font-variant-numeric:tabular-nums}
+.speedo small{font-weight:700;letter-spacing:.2em;color:var(--danfo);font-size:14px}
+.toast{position:absolute;left:50%;top:calc(70px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--cream);color:var(--ink);font-weight:700;font-size:17px;padding:8px 16px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap}
+.help{position:absolute;right:18px;top:calc(62px + env(safe-area-inset-top,0px));width:min(300px,calc(100% - 36px));background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:14px 16px;backdrop-filter:blur(10px);pointer-events:auto}
+.help h2{font-family:var(--fd);font-weight:400;font-size:15px;margin:0 0 8px;color:var(--danfo)}
+.help dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:15px}
+.help dt{font-weight:700;white-space:nowrap}.help dd{margin:0;color:var(--muted)}
+.lookhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:600;font-size:15px;backdrop-filter:blur(8px)}
+
+/* Touch */
+.touch{position:absolute;inset:0;pointer-events:none}
+.zone{position:absolute;top:0;bottom:0;pointer-events:auto;touch-action:none}
+.zone.l{left:0;width:45%}.zone.r{right:0;width:55%}
+.joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.2)}
+.joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(247,239,223,.85)}
+.tbtns{position:absolute;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,64px);gap:10px;pointer-events:auto}
+.tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
+.tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
+.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
+
+@media (max-width:760px){
+  #mm{width:120px;height:120px;left:auto;right:14px;top:calc(56px + env(safe-area-inset-top,0px));bottom:auto}
+  .loc{font-size:17px}
+  .tod button{padding:5px 9px;font-size:12px}
+  .hb{display:none}
+  .speedo{right:auto;left:18px;bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  .speedo b{font-size:44px}
+  .prompt{bottom:calc(170px + env(safe-area-inset-bottom,0px));font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div id="fade"></div>
+
+<div class="hud" id="hud" hidden>
+  <div class="tl"><div class="brand">NAIJA STREETS</div><div class="loc" id="loc">Lagos</div></div>
+  <div class="tr">
+    <div class="tod" role="group" aria-label="Time of day">
+      <button type="button" data-t="day" aria-pressed="false">Day</button>
+      <button type="button" data-t="golden" aria-pressed="true">Golden hour</button>
+      <button type="button" data-t="night" aria-pressed="false">Night</button>
+    </div>
+    <div class="tod" role="group" aria-label="Graphics quality" id="qual">
+      <button type="button" data-q="low" aria-pressed="false">Low</button>
+      <button type="button" data-q="medium" aria-pressed="false">Medium</button>
+      <button type="button" data-q="high" aria-pressed="false">High</button>
+    </div>
+    <button type="button" class="hb" id="helpBtn">Controls</button>
+  </div>
+  <canvas id="mm" width="420" height="420" aria-label="Minimap"></canvas>
+  <div class="prompt" id="prompt" hidden><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
+  <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
+  <div class="toast" id="toast" hidden></div>
+  <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
+  <div class="help" id="help" hidden>
+    <h2>CONTROLS</h2>
+    <dl>
+      <dt>W A S D</dt><dd>Walk, or drive when in a car</dd>
+      <dt>Shift</dt><dd>Run</dd>
+      <dt>Mouse</dt><dd>Look around (click the city first)</dd>
+      <dt>E</dt><dd>Enter or leave a car, enter a building</dd>
+      <dt>Space</dt><dd>Handbrake</dd>
+      <dt>H</dt><dd>Horn</dd>
+      <dt>T</dt><dd>Change time of day</dd>
+      <dt>Wheel</dt><dd>Camera distance</dd>
+      <dt>C</dt><dd>Show or hide this panel</dd>
+    </dl>
+  </div>
+  <div class="touch" id="touch" hidden>
+    <div class="zone l" id="zoneL"></div>
+    <div class="zone r" id="zoneR"></div>
+    <div class="joy" id="joy" hidden><i id="joyK"></i></div>
+    <div class="tbtns">
+      <button type="button" id="tHorn">HORN</button>
+      <button type="button" id="tRun">RUN</button>
+      <button type="button" id="tBrake">BRAKE</button>
+      <button type="button" class="act" id="tE">E</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="ld">
+    <h1><span class="a">NAIJA</span><span class="b">STREETS</span><span class="c">LAGOS ISLAND · IKOYI</span></h1>
+    <p>Walk the Marina, drive a danfo across the Link Bridge, and step inside your Ikoyi apartment.</p>
+    <div class="lbar"><i id="loadBar"></i></div>
+    <div class="ltxt" id="loadTxt">Starting the engine…</div>
+    <div class="lerr" id="loadErr" hidden></div>
+    <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
+    <p class="lnote">Prototype build. Best on a computer with a good graphics card.</p>
+  </div>
+</div>
+
+<script>
+window.__nsFail=function(m){var e=document.getElementById('loadErr');if(e){e.textContent=m;e.hidden=false}var t=document.getElementById('loadTxt');if(t)t.textContent='Something went wrong.'};
+window.addEventListener('error',function(ev){if(!window.__nsReady)window.__nsFail('Error: '+(ev.message||'a script failed to load'))});
+window.addEventListener('unhandledrejection',function(ev){if(!window.__nsReady)window.__nsFail('Error: '+((ev.reason&&ev.reason.message)||ev.reason))});
+setTimeout(function(){if(!window.__nsOK)window.__nsFail('The 3D engine could not load. Check your connection and reload the page.')},25000);
+</script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
+</script>
+<script type="module" src="src/game.js"></script>
+
+</body>
+</html>
