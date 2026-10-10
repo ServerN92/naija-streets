@@ -2,22 +2,32 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
+<meta name="theme-color" content="#0E1014">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Naija Streets">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
 [hidden]{display:none!important}
-/* Full-bleed 3D view. GTA-style HUD: brand + location top-left, time-of-day top-right, round minimap bottom-left, speedo bottom-right, action prompt bottom-centre. Single dark game look, set on purpose. */
+/* Full-bleed 3D view. GTA-style HUD: brand + location top-left, clock + weather top-right, round minimap (tap for the big map), speedo, action prompt bottom-centre. One dark game look on purpose. */
 :root{
-  --ink:#0E1014; --glass:rgba(12,14,18,.66); --line:rgba(255,255,255,.16);
+  --ink:#0E1014; --glass:rgba(12,14,18,.68); --line:rgba(255,255,255,.16);
   --cream:#F7EFDF; --muted:#BDB5A6; --danfo:#F2B705; --flag:#16A06B; --rust:#D0573E;
   --fd:'Bungee',Impact,'Arial Black',sans-serif;
   --fb:'Barlow Semi Condensed','Arial Narrow',system-ui,sans-serif;
+  --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px); --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
   color-scheme:dark;
 }
-html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--cream);font-family:var(--fb);-webkit-user-select:none;user-select:none}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--cream);font-family:var(--fb);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 #view{position:fixed;inset:0}
 #view canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -26,62 +36,117 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 #fade.on{opacity:1}
 
 /* Loading */
-.loading{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px 16px;background:radial-gradient(90% 70% at 70% 100%,#3a2412 0%,transparent 60%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink);transition:opacity .6s ease}
+.loading{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:calc(20px + var(--st)) calc(16px + var(--sr)) calc(20px + var(--sb)) calc(16px + var(--sl));overflow:auto;background:radial-gradient(90% 70% at 70% 100%,#3a2412 0%,transparent 60%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink);transition:opacity .6s ease}
 .loading.gone{opacity:0;pointer-events:none}
 .ld{width:min(560px,100%);display:flex;flex-direction:column;gap:18px}
-.ld h1{font-family:var(--fd);font-weight:400;margin:0;line-height:.86;font-size:clamp(48px,13vw,96px)}
+.ld h1{font-family:var(--fd);font-weight:400;margin:0;line-height:.86;font-size:clamp(44px,12vw,96px)}
 .ld h1 span{display:block}.ld h1 .a{color:var(--danfo)}.ld h1 .b{color:var(--cream)}.ld h1 .c{color:var(--flag);font-size:.42em;letter-spacing:.06em;margin-top:.25em}
 .ld p{margin:0;color:var(--muted);font-size:18px;line-height:1.45;max-width:46ch}
 .lbar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
 .lbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--flag),var(--danfo));transition:width .3s}
-.ltxt{font-size:15px;color:var(--muted);letter-spacing:.04em;min-height:1.3em}
+.ltxt{font-size:15px;color:var(--muted);letter-spacing:.04em;min-height:1.3em;font-variant-numeric:tabular-nums}
 .lerr{color:#ffb4a6;font-size:15px}
-.enter{font-family:var(--fd);font-size:20px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:16px 22px;align-self:flex-start}
+.enter{font-family:var(--fd);font-size:20px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:16px 26px;align-self:flex-start;min-height:56px}
 .enter:hover{filter:brightness(1.08)}
 .lnote{font-size:13px;color:var(--muted);margin:0}
+@media (max-height:520px){
+  .ld{gap:10px;width:min(720px,100%)}
+  .ld h1{font-size:clamp(30px,11vh,60px)}
+  .ld p{display:none}
+  .lnote{display:none}
+  .enter{padding:12px 22px;min-height:48px;font-size:18px}
+}
 
 /* HUD */
 .hud{position:fixed;inset:0;pointer-events:none;z-index:10}
-.tl{position:absolute;left:18px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px}
+.hud > *{z-index:3}
+.tl{position:absolute;left:calc(18px + var(--sl));top:calc(14px + var(--st));display:flex;flex-direction:column;gap:2px;max-width:46vw}
 .brand{font-family:var(--fd);font-size:15px;color:var(--danfo);text-shadow:0 2px 0 #000}
-.loc{font-weight:700;font-size:22px;letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.8)}
-.tr{position:absolute;right:18px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;gap:8px;align-items:center;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
-.tod{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:3px;backdrop-filter:blur(8px)}
-.tod button{background:none;border:none;padding:6px 12px;border-radius:999px;font-weight:600;font-size:14px;color:var(--muted)}
-.tod button[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
-.hb{background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px;backdrop-filter:blur(8px)}
-#mm{position:absolute;left:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));width:210px;height:210px;border-radius:50%;border:3px solid rgba(0,0,0,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.5)}
-.prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(34px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:8px 16px 8px 8px;font-weight:700;font-size:19px;backdrop-filter:blur(8px);white-space:nowrap}
+.loc{font-weight:700;font-size:22px;letter-spacing:.02em;text-shadow:0 2px 6px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr{position:absolute;right:calc(18px + var(--sr));top:calc(14px + var(--st));display:flex;gap:8px;align-items:center;pointer-events:auto}
+.chip{display:flex;align-items:center;gap:8px;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 10px;font-weight:700;font-size:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap}
+.chip svg{width:22px;height:22px;flex:none}
+.chip .t{font-family:var(--fd);font-weight:400;font-size:16px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.chip .w{color:var(--muted);font-weight:600}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;background:var(--glass);border:1px solid var(--line);border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:0}
+.iconbtn svg{width:22px;height:22px}
+#mmWrap{position:absolute;left:calc(18px + var(--sl));bottom:calc(18px + var(--sb));width:210px;height:210px;pointer-events:auto;cursor:pointer;border:none;background:none;padding:0}
+#mm{width:100%;height:100%;border-radius:50%;border:3px solid rgba(0,0,0,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.5);display:block}
+#mmWrap .mmtag{position:absolute;right:-2px;bottom:6px;font-family:var(--fd);font-size:12px;background:var(--danfo);color:var(--ink);border-radius:999px;padding:4px 9px 3px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(34px + var(--sb));display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:8px 16px 8px 8px;font-weight:700;font-size:19px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap;pointer-events:auto;min-height:44px;box-sizing:border-box}
 .prompt kbd{font-family:var(--fd);font-size:15px;background:var(--danfo);color:var(--ink);border-radius:6px;padding:4px 9px 3px}
-.speedo{position:absolute;right:22px;bottom:calc(22px + env(safe-area-inset-bottom,0px));text-align:right;text-shadow:0 3px 10px rgba(0,0,0,.7)}
+.speedo{position:absolute;right:calc(22px + var(--sr));bottom:calc(22px + var(--sb));text-align:right;text-shadow:0 3px 10px rgba(0,0,0,.7)}
 .speedo b{display:block;font-family:var(--fd);font-weight:400;font-size:64px;line-height:.9;font-variant-numeric:tabular-nums}
 .speedo small{font-weight:700;letter-spacing:.2em;color:var(--danfo);font-size:14px}
-.toast{position:absolute;left:50%;top:calc(70px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--cream);color:var(--ink);font-weight:700;font-size:17px;padding:8px 16px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap}
-.help{position:absolute;right:18px;top:calc(62px + env(safe-area-inset-top,0px));width:min(300px,calc(100% - 36px));background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:14px 16px;backdrop-filter:blur(10px);pointer-events:auto}
-.help h2{font-family:var(--fd);font-weight:400;font-size:15px;margin:0 0 8px;color:var(--danfo)}
-.help dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:15px}
-.help dt{font-weight:700;white-space:nowrap}.help dd{margin:0;color:var(--muted)}
+.toast{position:absolute;left:50%;top:calc(70px + var(--st));transform:translateX(-50%);background:var(--cream);color:var(--ink);font-weight:700;font-size:17px;line-height:1.25;padding:8px 16px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:calc(100vw - 32px - var(--sl) - var(--sr));box-sizing:border-box;text-align:center;width:max-content}
+.panel{position:absolute;right:calc(18px + var(--sr));top:calc(68px + var(--st));width:min(320px,calc(100vw - 36px));background:rgba(12,14,18,.86);border:1px solid var(--line);border-radius:14px;padding:14px 16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:auto;box-sizing:border-box;max-height:calc(100vh - 90px - var(--st));overflow:auto}
+.panel h2{font-family:var(--fd);font-weight:400;font-size:15px;margin:0 0 10px;color:var(--danfo)}
+.panel h3{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
+.seg{display:flex;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{flex:1;background:none;border:none;padding:9px 6px;border-radius:999px;font-weight:700;font-size:15px;color:var(--muted);min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
+.panel .note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.panel dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:15px}
+.panel dt{font-weight:700;white-space:nowrap}.panel dd{margin:0;color:var(--muted)}
 .lookhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:600;font-size:15px;backdrop-filter:blur(8px)}
 
 /* Touch */
-.touch{position:absolute;inset:0;pointer-events:none}
+.touch{position:absolute;inset:0;pointer-events:none;z-index:1!important}
 .zone{position:absolute;top:0;bottom:0;pointer-events:auto;touch-action:none}
 .zone.l{left:0;width:45%}.zone.r{right:0;width:55%}
 .joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.2)}
 .joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(247,239,223,.85)}
-.tbtns{position:absolute;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(2,64px);gap:10px;pointer-events:auto}
+.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(2,64px);grid-template-rows:repeat(2,64px);gap:10px;pointer-events:auto;z-index:4}
 .tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
-.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
+.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:2;grid-row:2}
+#tRun,#tBrake{grid-column:1;grid-row:2}
+#tHorn{grid-column:2;grid-row:1}
+body.touchui .speedo{right:calc(22px + var(--sr));bottom:calc(170px + var(--sb))}
+body.touchui .prompt{bottom:calc(24px + var(--sb))}
+body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:128px;height:128px}
+body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
+.rotate{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(10,11,14,.82);pointer-events:auto;padding:24px;text-align:center}
+.rotate div{max-width:300px;display:flex;flex-direction:column;gap:14px;align-items:center;font-size:18px;font-weight:600}
+.rotate svg{width:64px;height:64px}
+.rotate button{background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:12px 22px;font-family:var(--fd);font-size:16px;min-height:48px}
+
+/* Big map */
+.bigmap{position:fixed;inset:0;z-index:20;background:#0b1820;pointer-events:auto;touch-action:none}
+.bigmap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.bm-top{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;padding:calc(12px + var(--st)) calc(14px + var(--sr)) 10px calc(14px + var(--sl));background:linear-gradient(#0b1820,rgba(11,24,32,0));flex-wrap:wrap}
+.bm-top h2{font-family:var(--fd);font-weight:400;font-size:18px;margin:0 8px 0 0;color:var(--danfo)}
+.bm-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.bm-chips button{background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-weight:700;font-size:14px;color:var(--muted);min-height:36px;display:flex;align-items:center;gap:6px}
+.bm-chips button i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.bm-chips button[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
+.bm-side{position:absolute;right:calc(14px + var(--sr));bottom:calc(16px + var(--sb));display:flex;flex-direction:column;gap:8px}
+.bm-card{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sb));width:min(420px,calc(100vw - 110px));background:rgba(12,14,18,.92);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-sizing:border-box}
+.bm-card .ic{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--fd);color:var(--ink);font-size:16px}
+.bm-card .tx{flex:1;min-width:0}
+.bm-card b{display:block;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bm-card small{color:var(--muted);font-size:14px;font-weight:600}
+.bm-card button{background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:10px 14px;font-family:var(--fd);font-size:14px;min-height:44px;white-space:nowrap}
+.bm-card button.off{background:rgba(255,255,255,.12);color:var(--cream)}
 
 @media (max-width:760px){
-  #mm{width:120px;height:120px;left:auto;right:14px;top:calc(56px + env(safe-area-inset-top,0px));bottom:auto}
+  #mmWrap{width:118px;height:118px;left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));bottom:auto}
   .loc{font-size:17px}
-  .tod button{padding:5px 9px;font-size:12px}
-  .hb{display:none}
-  .speedo{right:auto;left:18px;bottom:calc(150px + env(safe-area-inset-bottom,0px))}
-  .speedo b{font-size:44px}
-  .prompt{bottom:calc(170px + env(safe-area-inset-bottom,0px));font-size:16px}
+  .chip{font-size:14px;padding:5px 12px 5px 8px}.chip .w{display:none}
+  .speedo b{font-size:46px}
+}
+@media (orientation:portrait) and (max-width:760px){
+  body.touchui #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:118px;height:118px}
+  body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
+  body.touchui .prompt{bottom:calc(172px + var(--sb))}
+  body.touchui .toast{top:calc(196px + var(--st));max-width:calc(100vw - 32px)}
+}
+@media (max-height:520px){
+  #mmWrap{width:132px;height:132px}
+  body.touchui #mmWrap{width:112px;height:112px;top:calc(60px + var(--st))}
+  .loc{font-size:17px}
+  .speedo b{font-size:46px}
+  body.touchui .speedo{bottom:calc(162px + var(--sb))}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -93,67 +158,96 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 <div class="hud" id="hud" hidden>
   <div class="tl"><div class="brand">NAIJA STREETS</div><div class="loc" id="loc">Lagos</div></div>
   <div class="tr">
-    <div class="tod" role="group" aria-label="Time of day">
-      <button type="button" data-t="day" aria-pressed="false">Day</button>
-      <button type="button" data-t="golden" aria-pressed="true">Golden hour</button>
-      <button type="button" data-t="night" aria-pressed="false">Night</button>
-    </div>
-    <div class="tod" role="group" aria-label="Graphics quality" id="qual">
+    <div class="chip" id="clock" aria-live="off"><svg id="wIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="t" id="clockT">--:--</span><span class="w" id="clockW"></span></div>
+    <button type="button" class="iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+  <button type="button" id="mmWrap" aria-label="Open the map"><canvas id="mm" width="420" height="420"></canvas><span class="mmtag">MAP</span></button>
+  <div class="prompt" id="prompt" hidden role="button" tabindex="-1"><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
+  <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
+  <div class="toast" id="toast" hidden></div>
+  <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
+  <div class="panel" id="settings" hidden>
+    <h2>SETTINGS</h2>
+    <h3>Graphics</h3>
+    <div class="seg" id="qual" role="group" aria-label="Graphics quality">
       <button type="button" data-q="low" aria-pressed="false">Low</button>
       <button type="button" data-q="medium" aria-pressed="false">Medium</button>
       <button type="button" data-q="high" aria-pressed="false">High</button>
     </div>
-    <button type="button" class="hb" id="helpBtn">Controls</button>
-  </div>
-  <canvas id="mm" width="420" height="420" aria-label="Minimap"></canvas>
-  <div class="prompt" id="prompt" hidden><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
-  <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
-  <div class="toast" id="toast" hidden></div>
-  <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
-  <div class="help" id="help" hidden>
-    <h2>CONTROLS</h2>
-    <dl>
-      <dt>W A S D</dt><dd>Walk, or drive when in a car</dd>
-      <dt>Shift</dt><dd>Run</dd>
-      <dt>Mouse</dt><dd>Look around (click the city first)</dd>
-      <dt>E</dt><dd>Enter or leave a car, enter a building</dd>
-      <dt>Space</dt><dd>Handbrake</dd>
-      <dt>H</dt><dd>Horn</dd>
-      <dt>T</dt><dd>Change time of day</dd>
-      <dt>Wheel</dt><dd>Camera distance</dd>
-      <dt>C</dt><dd>Show or hide this panel</dd>
-    </dl>
+    <p class="note" id="qualNote">Low is smoothest on older phones. The game restarts to apply a change.</p>
+    <h3>Sound</h3>
+    <div class="seg" id="snd" role="group" aria-label="Sound">
+      <button type="button" data-s="on" aria-pressed="true">On</button>
+      <button type="button" data-s="off" aria-pressed="false">Off</button>
+    </div>
+    <h3>Time and weather</h3>
+    <p class="note" style="margin-top:0">Day, night, rain and harmattan change by themselves, at the same moment for every player in Lagos. One game day lasts 48 minutes.</p>
+    <div id="keys">
+      <h3>Keyboard</h3>
+      <dl>
+        <dt>W A S D</dt><dd>Walk, or drive</dd>
+        <dt>Shift</dt><dd>Run</dd>
+        <dt>Mouse</dt><dd>Look around (click the city first)</dd>
+        <dt>E</dt><dd>Enter or leave a vehicle or house</dd>
+        <dt>Space</dt><dd>Brake</dd>
+        <dt>H</dt><dd>Horn</dd>
+        <dt>M</dt><dd>Big map</dd>
+        <dt>Wheel</dt><dd>Camera distance</dd>
+      </dl>
+    </div>
   </div>
   <div class="touch" id="touch" hidden>
     <div class="zone l" id="zoneL"></div>
     <div class="zone r" id="zoneR"></div>
     <div class="joy" id="joy" hidden><i id="joyK"></i></div>
     <div class="tbtns">
-      <button type="button" id="tHorn">HORN</button>
+      <button type="button" id="tHorn" hidden>HORN</button>
       <button type="button" id="tRun">RUN</button>
-      <button type="button" id="tBrake">BRAKE</button>
+      <button type="button" id="tBrake" hidden>BRAKE</button>
       <button type="button" class="act" id="tE">E</button>
     </div>
   </div>
 </div>
 
+<div class="bigmap" id="bigmap" hidden>
+  <canvas id="bmCanvas"></canvas>
+  <div class="bm-top">
+    <h2>MAP</h2>
+    <div class="bm-chips" id="bmChips"></div>
+    <button type="button" class="iconbtn" id="bmClose" aria-label="Close the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="bm-side">
+    <button type="button" class="iconbtn" id="bmIn" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button type="button" class="iconbtn" id="bmOut" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <button type="button" class="iconbtn" id="bmMe" aria-label="Show where I am"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  </div>
+  <div class="bm-card" id="bmCard" hidden><div class="ic" id="bmIc"></div><div class="tx"><b id="bmName"></b><small id="bmSub"></small></div><button type="button" id="bmGo">SET GPS</button></div>
+</div>
+
+<div class="rotate" id="rotate" hidden><div>
+  <svg viewBox="0 0 64 64" fill="none" stroke="#F2B705" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="22" y="8" width="20" height="36" rx="3"/><path d="M14 50a20 20 0 0 0 36 0M44 50h6v-6"/></svg>
+  <span>Turn your phone sideways for the full Lagos view.</span>
+  <button type="button" id="rotateOk">PLAY ANYWAY</button>
+</div></div>
+
 <div class="loading" id="loading">
   <div class="ld">
-    <h1><span class="a">NAIJA</span><span class="b">STREETS</span><span class="c">LAGOS ISLAND · IKOYI</span></h1>
-    <p>Walk the Marina, drive a danfo across the Link Bridge, and step inside your Ikoyi apartment.</p>
+    <h1><span class="a">NAIJA</span><span class="b">STREETS</span><span class="c">LAGOS · ISALE EKO · OBALENDE</span></h1>
+    <p>Ride okada, jump inside danfo, dodge the potholes and run your hustle on the streets of Lagos.</p>
     <div class="lbar"><i id="loadBar"></i></div>
     <div class="ltxt" id="loadTxt">Starting the engine…</div>
     <div class="lerr" id="loadErr" hidden></div>
     <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
-    <p class="lnote">Prototype build. Best on a computer with a good graphics card.</p>
+    <p class="lnote">Works on phones, tablets and computers. On a phone, turn it sideways.</p>
   </div>
 </div>
 
 <script>
 window.__nsFail=function(m){var e=document.getElementById('loadErr');if(e){e.textContent=m;e.hidden=false}var t=document.getElementById('loadTxt');if(t)t.textContent='Something went wrong.'};
-window.addEventListener('error',function(ev){if(!window.__nsReady)window.__nsFail('Error: '+(ev.message||'a script failed to load'))});
+window.addEventListener('error',function(ev){if(!window.__nsReady&&ev.message)window.__nsFail('Error: '+ev.message)});
 window.addEventListener('unhandledrejection',function(ev){if(!window.__nsReady)window.__nsFail('Error: '+((ev.reason&&ev.reason.message)||ev.reason))});
-setTimeout(function(){if(!window.__nsOK)window.__nsFail('The 3D engine could not load. Check your connection and reload the page.')},25000);
+setTimeout(function(){if(!window.__nsOK)window.__nsFail('The 3D engine is taking long to download. Check your connection; it will keep trying.')},30000);
+if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
 </script>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}

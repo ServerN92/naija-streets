@@ -1,0 +1,15 @@
+{
+  "name": "Naija Streets: Lagos",
+  "short_name": "Naija Streets",
+  "description": "Open-world Lagos street game: okada, danfo, keke, potholes and all.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0E1014",
+  "theme_color": "#0E1014",
+  "icons": [
+    {"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
