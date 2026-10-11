@@ -11,16 +11,17 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import * as CLOCK from './clock.js?v=10f060b3c8';
-import { MapView } from './mapview.js?v=10f060b3c8';
+import * as CLOCK from './clock.js?v=746d05aca6';
+import { MapView } from './mapview.js?v=746d05aca6';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='10f060b3c8';
+const BUILD='746d05aca6';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
 { const e=document.getElementById('loadErr'); if(e){ e.hidden=true; e.textContent=''; } }
 
+const PERF=/[?&]perf=1/.test(location.search);   // ?perf=1 shows a speed panel (fps, draw calls) for testing on real phones
 const $ = s => document.querySelector(s);
 const loadTxt = $('#loadTxt'), loadBar = $('#loadBar');
 let lastT = performance.now();
@@ -628,7 +629,7 @@ class CullSet{ // levels: [{geo,mat,dist,shadow}] sorted by dist ; items: {x,y,z
     for(const it of items){ if(it.wx===undefined){ it.wx=it.x; it.wz=it.z; } }
     const cells=new Map(); for(const it of items){ const k=Math.floor(it.wx/48)+','+Math.floor(it.wz/48); if(!cells.has(k)) cells.set(k,[]); cells.get(k).push(it); }
     this.cells=[...cells.values()].map(list=>{ let x=0,z=0,y=0; for(const it of list){ x+=it.wx; z+=it.wz; y+=it.cy??it.y??0; } x/=list.length; z/=list.length; y/=list.length; let r=0; for(const it of list) r=Math.max(r,Math.hypot(it.wx-x,it.wz-z)+it.r); return {x,y,z,r,list}; }); }
-  update(cx,cz){ const ms=this.meshes, cnt=this._c||(this._c=ms.map(()=>0)), L=this.levels, n=L.length, sd=this.shadowDist, maxD=this.maxD; cnt.fill(0);
+  update(cx,cz){ if(this.off){ for(const m of this.meshes) m.visible=false; return; } const ms=this.meshes, cnt=this._c||(this._c=ms.map(()=>0)), L=this.levels, n=L.length, sd=this.shadowDist, maxD=this.maxD; cnt.fill(0);
     for(const C of this.cells){ const cdx=C.x-cx, cdz=C.z-cz, cd=Math.sqrt(cdx*cdx+cdz*cdz); if(cd-C.r>maxD) continue;
       if(cd-C.r>sd){ _sph.center.set(C.x,C.y,C.z); _sph.radius=C.r+4; if(!_fr.intersectsSphere(_sph)) continue; }
       const inner=cd+C.r<sd;
@@ -1177,7 +1178,8 @@ if(Q.post){ const rtMain=new THREE.WebGLRenderTarget(innerWidth,innerHeight,{typ
 function onResize(){ renderer.setSize(innerWidth,innerHeight); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize',onResize); addEventListener('orientationchange',()=>setTimeout(onResize,250));
 function setScene(sc){ curScene=sc; if(renderPass) renderPass.scene=sc; }
-function renderFrame(dt){ if(composer) composer.render(dt); else renderer.render(curScene,camera); }
+let usePost=true;
+function renderFrame(dt){ if(PERF) renderer.info.reset(); if(composer&&usePost) composer.render(dt); else renderer.render(curScene,camera); }
 
 /* ================= world clock: sun, sky and weather (the same for every player) ================= */
 const C3=h=>new THREE.Color(h);
@@ -1600,6 +1602,23 @@ function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-last
   try{ if(mode!=='interior') updateCulls(); renderFrame(dt); }catch(e){ reportErr(e); }
   if(started&&!ctxLost&&!document.hidden){ if(raw>250){ perfAcc=perfN=0; perfIv.length=0; return; }   // back from another app: don't count that gap
     perfAcc+=raw; perfN++; perfIv.push(raw); if(perfN>=40){ const avg=perfAcc/perfN; perfAcc=perfN=0; prCool-=.7; tuneResolution(avg,perfIv); perfIv.length=0; } } }
+if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
+  document.body.appendChild(el); let fr=[], tLast=performance.now();
+  const gpu=(()=>{ try{ const gl=renderer.getContext(), e=gl.getExtension('WEBGL_debug_renderer_info'); return e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):''; }catch(e){ return ''; } })();
+  (function tick(t){ fr.push(t-tLast); tLast=t; if(fr.length>=30){ const a=fr.slice().sort((x,y)=>x-y), avg=a.reduce((s,x)=>s+x,0)/a.length, i=renderer.info.render;
+      el.textContent=`${(1000/avg).toFixed(0)} fps  avg ${avg.toFixed(1)} ms  p95 ${a[Math.floor(a.length*.95)].toFixed(1)} ms\ncalls ${i.calls}  tris ${(i.triangles/1000).toFixed(0)}k  px ${renderer.domElement.width}x${renderer.domElement.height} (x${PR.toFixed(2)})\n${qKey} ${gpu.replace(/ANGLE \(|, D3D11\)|Direct3D11 vs_5_0 ps_5_0/g,'').slice(0,60)}`; window.__nsPerf={fps:1000/avg,avg,p95:a[Math.floor(a.length*.95)],calls:i.calls,tris:i.triangles,pr:PR}; fr=[]; }
+    requestAnimationFrame(tick); })(performance.now());
+  // test switches for profiling on a real device (only with ?perf=1)
+  window.__ns={ renderer, Q, get PR(){ return PR; },
+    setPR(v){ PR=v; applyPR(); }, lockPR(v){ Q.prMin=Q.pr=v; PR=v; applyPR(); },
+    shadows(b){ renderer.shadowMap.enabled=b; sun.castShadow=b; scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); },
+    post(b){ usePost=b; }, bloom(b){ if(bloom) bloom.enabled=b; },
+    show(name,b){ const m={clouds,veil,rain,stars,water,sky}; if(m[name]) m[name].visible=b; },
+    peds(b){ for(const p of peds) p.h.root.visible=b; }, cars(b){ for(const v of vehicles) v.c.g.visible=b; },
+    culls(b){ for(const c of CULLS) c.off=!b; }, cullNames:()=>CULLS.map(c=>c.name||'?'),
+    cullOne(name,b){ for(const c of CULLS) if(c.name===name) c.off=!b; },
+    hideStatic(b){ scene.children.forEach(o=>{ if(o.isMesh&&!o.isInstancedMesh&&o.geometry&&o.geometry.attributes.position&&o.geometry.attributes.position.count>20000) o.visible=!b; }); },
+    stats(){ return {...window.__nsPerf}; } }; }
 renderer.setAnimationLoop(loop);
 window.__nsReady=true;
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
