@@ -40,6 +40,10 @@
 "assets/people/mama.glb": 451384,
 "assets/people/moves.glb": 674604,
 "assets/people/schoolboy.glb": 292804,
+"assets/maps/ajegunle.json": 1693533,
+"assets/maps/mushin.json": 1986175,
+"assets/maps/mushin_world.json": 1228911,
+"assets/maps/oshodi.json": 1264924,
 "_v": {
 "assets/models/beigehouse.glb": "91da9e58",
 "assets/models/beigehouse_lod1.glb": "f6fec07d",
@@ -81,6 +85,10 @@
 "assets/people/lady_red.glb": "e0c38f75",
 "assets/people/mama.glb": "0f3a989b",
 "assets/people/moves.glb": "f116cd76",
-"assets/people/schoolboy.glb": "0793d531"
+"assets/people/schoolboy.glb": "0793d531",
+"assets/maps/ajegunle.json": "42706bd6",
+"assets/maps/mushin.json": "3ec98bdb",
+"assets/maps/mushin_world.json": "f4f9c52c",
+"assets/maps/oshodi.json": "d08630d5"
 }
 }
