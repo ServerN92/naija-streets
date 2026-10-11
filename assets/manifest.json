@@ -28,6 +28,14 @@
 "assets/characters/idle.fbx": 524256,
 "assets/characters/run.fbx": 192032,
 "assets/characters/walk.fbx": 230272,
+"assets/people/areaboy.glb": 295292,
+"assets/people/baba.glb": 284760,
+"assets/people/hawker.glb": 381912,
+"assets/people/lady_black.glb": 405200,
+"assets/people/lady_red.glb": 381416,
+"assets/people/mama.glb": 451384,
+"assets/people/moves.glb": 428792,
+"assets/people/schoolboy.glb": 292804,
 "_v": {
 "assets/models/beigehouse.glb": "91da9e58",
 "assets/models/beigehouse_lod1.glb": "f6fec07d",
@@ -57,6 +65,14 @@
 "assets/characters/hero.glb": "62dd9c71",
 "assets/characters/idle.fbx": "1b500725",
 "assets/characters/run.fbx": "cfe8c04a",
-"assets/characters/walk.fbx": "2a2a1f24"
+"assets/characters/walk.fbx": "2a2a1f24",
+"assets/people/areaboy.glb": "c4ff4a16",
+"assets/people/baba.glb": "398a2f24",
+"assets/people/hawker.glb": "f5a8d054",
+"assets/people/lady_black.glb": "585d72a2",
+"assets/people/lady_red.glb": "e0c38f75",
+"assets/people/mama.glb": "0f3a989b",
+"assets/people/moves.glb": "bd9c7af6",
+"assets/people/schoolboy.glb": "0793d531"
 }
 }

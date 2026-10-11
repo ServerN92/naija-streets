@@ -3,7 +3,7 @@ under "_v", a short content hash used as its cache key, so a changed file always
 import json, os, hashlib
 root = os.path.join(os.path.dirname(__file__), '..')
 out, ver = {}, {}
-for d in ['assets/models', 'assets/characters']:
+for d in ['assets/models', 'assets/characters', 'assets/people']:
     for f in sorted(os.listdir(os.path.join(root, d))):
         p = os.path.join(root, d, f)
         out[f'{d}/{f}'] = os.path.getsize(p)
