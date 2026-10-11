@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="b1064be2f2">
+<meta name="ns-build" content="6e70ba846e">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -129,7 +129,8 @@ body.touchui .ward .kb{display:none}
 body.touchui .speedo{right:calc(22px + var(--sr));bottom:calc(170px + var(--sb))}
 body.touchui .prompt{bottom:calc(24px + var(--sb))}
 body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:128px;height:128px}
-body.touchui.vit #mmWrap{top:calc(100px + var(--st))}
+body.touchui.vit #mmWrap{top:calc(112px + var(--st))}
+@media (orientation:landscape){ body.touchui.vit .toast{left:calc(50% + 50px);max-width:calc(100vw - 360px)} }   /* keep messages clear of the health bars */
 body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 .ctxlost{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(10,11,14,.9);padding:24px;text-align:center}
 .ctxlost div{max-width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;font-size:18px;font-weight:600}
@@ -168,6 +169,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
   body.touchui .prompt{bottom:calc(172px + var(--sb))}
   body.touchui .toast{top:calc(196px + var(--st));max-width:calc(100vw - 32px)}
+  body.touchui.vit .toast{top:calc(242px + var(--st))}
 }
 @media (max-height:520px){
   #mmWrap{width:132px;height:132px}
@@ -296,7 +298,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=b1064be2f2"></script>
+<script type="module" src="src/game.js?v=6e70ba846e"></script>
 
 </body>
 </html>

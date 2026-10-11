@@ -21,8 +21,22 @@ Then commit and push. GitHub Pages serves the `main` branch.
 - `assets/models/` – vehicles and buildings (.glb with meshopt geometry and KTX2 textures, plus `_lod1` far versions)
 - `assets/characters/` – the player (`hero.glb`; the original Mixamo .fbx files are a fallback)
 - `assets/people/` – the city's people (one .glb each) and `moves.glb` (every move, shared by all of them)
-- `assets/maps/` – real street maps of Mushin, Oshodi and Ajegunle from OpenStreetMap (.json)
-- `tools/` – model shrinking (`lod.py`, `bake.py`), OpenStreetMap conversion (`convert.py`), `manifest.py`, `stamp.py`
+- `assets/maps/` – real street maps from OpenStreetMap (.json); `mushin_world.json` is the city you play in
+- `tools/` – model shrinking (`lod.py`, `bake.py`), OpenStreetMap conversion (`osm_world.py`, `convert.py`), `manifest.py`, `stamp.py`
+
+## The city: Mushin
+The streets, buildings, markets, schools, railway and footpaths are the real Mushin (Lagos) from OpenStreetMap:
+about 4,800 street pieces and 24,000 buildings over 3.3 × 3.3 km, with Ladipo, Mushin and Idi-Oro markets, Papa Ajao,
+Fadeyi, Onipanu and Idi-Araba. Rebuilding it from a fresh OpenStreetMap export (.osm from openstreetmap.org → Export):
+```
+python3 tools/osm_world.py Mushin.osm assets/maps/mushin_world.json
+```
+The same command works for another area (Oshodi, Ajegunle); the game loads `mushin_world.json`.
+
+Life on the streets: people cross the big roads by footbridge; hawkers walk out between the cars when the light turns
+red and run back on green; at the motor park conductors call out, the queue climbs into a danfo and it leaves full,
+then another rolls in; pupils stand at the school gates in school hours; in the markets the mallams and market women
+sell from their stalls and people stop to buy.
 
 ## Shared time and weather
 Every player computes the same game time and weather from the server clock (the HTTP Date header), so day, night,
@@ -47,10 +61,11 @@ and add the character to `CAST` in `src/game.js` (height, how common, what it do
 ## Fighting
 On foot: J or click to punch, K or right click to kick, Space to jump; running turns a punch into a takedown and a kick
 into a drop kick (phones: the red buttons). Area boys fight back in a group; other people run or quarrel. Hitting
-people raises your wanted stars, and a police van comes for you; get caught and you are taken to the station.
+people raises your wanted stars, and a police van comes for you along the streets; get caught and you are taken to
+Mushin police station.
 
 ## Eko Grand Hotel
-The office tower nearest your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
+The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
 bar (`assets/models/hotel_bar.glb`, downloaded only when you come near).
 
 ## Wardrobe

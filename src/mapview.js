@@ -14,7 +14,7 @@ const FILTERS = [['all', 'All'], ['food', 'Food'], ['shop', 'Shops'], ['service'
 
 export class MapView {
   constructor(o) {
-    Object.assign(this, o); // {root, canvas, image, bounds:{x0,z0,x1,z1,ppm}, places, streets, getPlayer, routeTo, onRoute, fmtDist}
+    Object.assign(this, o); // {root, canvas, image, bounds:{x0,z0,x1,z1,ppm}, places, streets, getPlayer, routeTo, onRoute, fmtDist, detail?}
     this.g = this.canvas.getContext('2d');
     this.open_ = false; this.filter = 'all'; this.sel = null; this.route = null; this.dest = null;
     this.view = { cx: 0, cz: 0, s: 1.2 };
@@ -64,8 +64,8 @@ export class MapView {
     v.s = Math.min(9, Math.max(.25, v.s * k)); v.cx = wx - (sx - innerWidth / 2) / v.s; v.cz = wz - (sy - innerHeight / 2) / v.s; this.draw();
   }
   toScreen(x, z) { const v = this.view; return [(x - v.cx) * v.s + innerWidth / 2, (z - v.cz) * v.s + innerHeight / 2]; }
-  visiblePlaces() { const major = k => k === 'home' || k === 'police' || k === 'place' || k === 'office';
-    return this.places.filter(p => this.filter === 'all' ? (major(p.kind) || this.view.s >= 1.7) : (p.kind === this.filter || (this.filter === 'police' && p.kind === 'home'))); }
+  visiblePlaces() { const major = p => (p.kind === 'home' || p.kind === 'police' || p.kind === 'place' || p.kind === 'office') && !p.minor;
+    return this.places.filter(p => this.filter === 'all' ? (major(p) || this.view.s >= 1.7) : (p.kind === this.filter || (this.filter === 'police' && p.kind === 'home'))); }
   tap(sx, sy) {
     let best = null, bd = 26;
     for (const p of this.visiblePlaces()) { const [x, y] = this.toScreen(p.x, p.z); const d = Math.hypot(x - sx, y - sy); if (d < bd) { bd = d; best = p; } }
@@ -87,6 +87,8 @@ export class MapView {
     g.setTransform(d, 0, 0, d, 0, 0); g.fillStyle = '#0b1820'; g.fillRect(0, 0, W, H);
     g.save(); g.translate(W / 2, H / 2); g.scale(v.s, v.s); g.translate(-v.cx, -v.cz);
     g.imageSmoothingEnabled = v.s < 2.5; g.drawImage(this.image, B.x0, B.z0, B.x1 - B.x0, B.z1 - B.z0);
+    // zoomed in: draw the streets and buildings in view sharply over the picture
+    if (this.detail && W / v.s < 900) { const hw = W / 2 / v.s, hh = H / 2 / v.s; this.detail(g, v.cx - hw, v.cz - hh, v.cx + hw, v.cz + hh); }
     if (this.route && this.route.length > 1) {
       g.lineJoin = 'round'; g.lineCap = 'round';
       g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 10 / v.s + 3; g.beginPath(); this.route.forEach(([x, z], i) => i ? g.lineTo(x, z) : g.moveTo(x, z)); g.stroke();
@@ -99,7 +101,7 @@ export class MapView {
       g.font = `600 ${Math.round(12 + Math.min(4, v.s * 1.2))}px "Barlow Semi Condensed", "Arial Narrow", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
       for (const st of this.streets) {
         const [x, y] = this.toScreen(st.x, st.z); if (x < -80 || y < -20 || x > W + 80 || y > H + 20) continue;
-        g.save(); g.translate(x, y); if (st.vertical) g.rotate(-Math.PI / 2);
+        g.save(); g.translate(x, y); if (st.vertical) g.rotate(-Math.PI / 2); else if (st.ang) g.rotate(st.ang);
         g.lineWidth = 4; g.strokeStyle = 'rgba(11,24,32,.85)'; g.strokeText(st.name, 0, 0); g.fillStyle = '#d8dde4'; g.fillText(st.name, 0, 0); g.restore();
       }
     }
@@ -114,7 +116,7 @@ export class MapView {
       g.beginPath(); g.arc(x, y, rad + (sel ? 4 : 0), 0, 7); g.fillStyle = sel ? '#ffffff' : 'rgba(11,24,32,.9)'; g.fill();
       g.beginPath(); g.arc(x, y, rad - 1.5, 0, 7); g.fillStyle = k.color; g.fill();
       g.fillStyle = '#0E1014'; g.fillText(k.glyph, x, y + 1);
-      if (v.s > 2.2 || sel || p.kind === 'home' || p.kind === 'police' || p.kind === 'place') {
+      if (v.s > 2.2 || sel || p.kind === 'home' || p.kind === 'police' || (p.kind === 'place' && !p.minor)) {
         g.font = `700 13px "Barlow Semi Condensed", "Arial Narrow", sans-serif`; g.lineWidth = 4; g.strokeStyle = 'rgba(11,24,32,.9)'; g.strokeText(p.name, x, y + rad + 11); g.fillStyle = '#f7efdf'; g.fillText(p.name, x, y + rad + 11);
         g.font = `400 ${Math.round(rad * 1.05)}px Bungee, Impact, sans-serif`;
       }
