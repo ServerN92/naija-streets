@@ -26,8 +26,9 @@ Then commit and push. GitHub Pages serves the `main` branch.
 
 ## Shared time and weather
 Every player computes the same game time and weather from the server clock (the HTTP Date header), so day, night,
-rain and harmattan change for everyone at the same moment. One game day lasts 48 minutes; weather can change every
-16 minutes and follows the Lagos seasons (rain April–October, harmattan December–February).
+rain and harmattan change for everyone at the same moment. One game day lasts 48 minutes, and the night (20:00 to 05:00)
+flies past in about 3 of them, bright and moonlit; weather can change every 16 minutes and follows the Lagos seasons (rain April–October,
+harmattan December–February).
 
 ## People
 Seven characters from Mixamo live in the city: mama, lady_red, lady_black, hawker, baba, areaboy and schoolboy.
@@ -42,6 +43,25 @@ sh tools/npc_pack.sh /tmp/npc /path/to/gltfpack  # shrink (gltfpack built with t
 cp /tmp/npc/out/*.glb assets/people/
 ```
 and add the character to `CAST` in `src/game.js` (height, how common, what it does, far look-alike colours).
+
+## Fighting
+On foot: J or click to punch, K or right click to kick, Space to jump; running turns a punch into a takedown and a kick
+into a drop kick (phones: the red buttons). Area boys fight back in a group; other people run or quarrel. Hitting
+people raises your wanted stars, and a police van comes for you; get caught and you are taken to the station.
+
+## Eko Grand Hotel
+The office tower nearest your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
+bar (`assets/models/hotel_bar.glb`, downloaded only when you come near).
+
+## Wardrobe
+At home, walk to the wardrobe and press E to change your look: your usual character or any of the city's people.
+Extra full looks (`outfit_suit`, `outfit_thobe`, `outfit_tracksuit`, `outfit_dress_pink`, `outfit_casual`) show up by
+themselves once `assets/people/<id>.glb` exists: rig the model in Mixamo, download FBX *with skin*, convert and pack it
+like a character (above), name it after its id, and run `tools/manifest.py`. `tools/mixamo_prep.py` turns a Tripo/Meshy
+FBX into a Mixamo upload (`name:casual` repaints a revealing outfit as a top and jeans).
+
+## Trees
+Street trees and palms are 8-view pictures of real tree models (`tools/impostor.py`), drawn in one batch per kind.
 
 ## Adding a new model
 Export from Tripo or Meshy as GLB, then make a light near version and a far version, for example:

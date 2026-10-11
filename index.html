@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="d6a58e6af9">
+<meta name="ns-build" content="b1064be2f2">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -89,6 +89,16 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .panel .note{font-size:13px;color:var(--muted);margin:8px 0 0}
 .panel dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:15px}
 .panel dt{font-weight:700;white-space:nowrap}.panel dd{margin:0;color:var(--muted)}
+.ward{right:auto;left:calc(18px + var(--sl));width:min(300px,calc(100vw - 36px));z-index:6}
+.ward h3{margin:12px 0 6px}
+body.touchui .ward .kb{display:none}
+.lookb{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;margin:0 0 6px;padding:6px 12px 6px 8px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;color:var(--cream);font-weight:700;font-size:16px;text-align:left}
+.lookb i{flex:none;width:22px;height:34px;border-radius:7px 7px 4px 4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.lookb span{flex:1}
+.lookb small{font-weight:600;font-size:12px;color:var(--muted)}
+.lookb[aria-pressed="true"]{background:var(--cream);color:var(--ink);border-color:var(--cream)}
+.lookb:disabled{opacity:.5}
+.ward .done{width:100%;margin-top:8px;min-height:48px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;font-family:var(--fd);font-size:16px}
 .lookhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:600;font-size:15px;backdrop-filter:blur(8px)}
 
 /* Touch */
@@ -97,15 +107,29 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .zone.l{left:0;width:45%}.zone.r{right:0;width:55%}
 .joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.2)}
 .joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(247,239,223,.85)}
-.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(2,64px);grid-template-rows:repeat(2,64px);gap:10px;pointer-events:auto;z-index:4}
+.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,64px);gap:10px;pointer-events:auto;z-index:4}
 .tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
-.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:2;grid-row:2}
+.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:2}
 #tRun,#tBrake{grid-column:1;grid-row:2}
-#tHorn{grid-column:2;grid-row:1}
+#tHorn{grid-column:3;grid-row:1}
+#tKick{grid-column:2;grid-row:1}#tJump{grid-column:3;grid-row:1}#tPunch{grid-column:2;grid-row:2}
+.tbtns .fightb{background:rgba(208,87,62,.78);border-color:rgba(255,220,200,.55);font-size:12px}
+.tbtns .fightb:active{background:var(--rust)}
+.vitals{display:flex;align-items:center;gap:8px;margin-top:4px}
+.hpbar{width:132px;height:8px;border-radius:4px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.3);overflow:hidden}
+.hpbar i{display:block;height:100%;width:100%;background:var(--flag);transition:width .2s}
+.hpbar i.low{background:var(--rust)}
+.stars{color:var(--danfo);font-size:17px;letter-spacing:2px;text-shadow:0 1px 2px #000}
+.stars.chase{animation:siren .5s steps(2) infinite}
+@keyframes siren{0%{color:#ff4d4d}100%{color:#5d8bff}}
+.foe{display:flex;align-items:center;gap:6px;margin-top:4px;font-family:var(--fd);font-size:11px;color:var(--cream);text-shadow:0 1px 2px #000}
+.foe .hpbar{width:90px;height:6px}
+.foe .hpbar i{background:var(--rust)}
 body.touchui .speedo{right:calc(22px + var(--sr));bottom:calc(170px + var(--sb))}
 body.touchui .prompt{bottom:calc(24px + var(--sb))}
 body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:128px;height:128px}
+body.touchui.vit #mmWrap{top:calc(100px + var(--st))}
 body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 .ctxlost{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(10,11,14,.9);padding:24px;text-align:center}
 .ctxlost div{max-width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;font-size:18px;font-weight:600}
@@ -152,7 +176,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   .speedo b{font-size:46px}
   body.touchui .speedo{bottom:calc(162px + var(--sb))}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.stars.chase{animation:none;color:#ff4d4d}}
 </style>
 </head>
 <body>
@@ -160,7 +184,9 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 <div id="fade"></div>
 
 <div class="hud" id="hud" hidden>
-  <div class="tl"><div class="brand">NAIJA STREETS</div><div class="loc" id="loc">Lagos</div></div>
+  <div class="tl"><div class="brand">NAIJA STREETS</div><div class="loc" id="loc">Lagos</div>
+    <div class="vitals" id="vitals" hidden><div class="hpbar" aria-label="Your health"><i id="hpFill"></i></div><span class="stars" id="stars" hidden aria-label="Police wanted level"></span></div>
+    <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>
   <div class="tr">
     <div class="chip" id="clock" aria-live="off"><svg id="wIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="t" id="clockT">--:--</span><span class="w" id="clockW"></span></div>
     <button type="button" class="iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -170,6 +196,12 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
+  <div class="panel ward" id="ward" hidden role="dialog" aria-label="Wardrobe">
+    <h2>WARDROBE</h2>
+    <p class="note" style="margin:0">Pick a look. You keep it on everywhere until you change again. <span class="kb">E or Esc closes.</span></p>
+    <div id="looks"></div>
+    <button type="button" class="done" id="wardDone">Done</button>
+  </div>
   <div class="panel" id="settings" hidden>
     <h2>SETTINGS</h2>
     <h3>Graphics</h3>
@@ -185,7 +217,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" data-s="off" aria-pressed="false">Off</button>
     </div>
     <h3>Time and weather</h3>
-    <p class="note" style="margin-top:0">Day, night, rain and harmattan change by themselves, at the same moment for every player in Lagos. One game day lasts 48 minutes.</p>
+    <p class="note" style="margin-top:0">Day, night, rain and harmattan change by themselves, at the same moment for every player in Lagos. One game day lasts 48 minutes, and the night only a few of them.</p>
     <div id="keys">
       <h3>Keyboard</h3>
       <dl>
@@ -193,7 +225,9 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>Shift</dt><dd>Run</dd>
         <dt>Mouse</dt><dd>Look around (click the city first)</dd>
         <dt>E</dt><dd>Enter or leave a vehicle or house</dd>
-        <dt>Space</dt><dd>Brake</dd>
+        <dt>Space</dt><dd>Jump on foot, brake when driving</dd>
+        <dt>J or click</dt><dd>Punch (while running: takedown)</dd>
+        <dt>K or right click</dt><dd>Kick (while running: drop kick)</dd>
         <dt>H</dt><dd>Horn</dd>
         <dt>M</dt><dd>Big map</dd>
         <dt>Wheel</dt><dd>Camera distance</dd>
@@ -206,8 +240,11 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="joy" id="joy" hidden><i id="joyK"></i></div>
     <div class="tbtns">
       <button type="button" id="tHorn" hidden>HORN</button>
+      <button type="button" id="tKick" class="fightb" hidden aria-label="Kick">KICK</button>
+      <button type="button" id="tJump" hidden aria-label="Jump">JUMP</button>
       <button type="button" id="tRun">RUN</button>
       <button type="button" id="tBrake" hidden>BRAKE</button>
+      <button type="button" id="tPunch" class="fightb" hidden aria-label="Punch">PUNCH</button>
       <button type="button" class="act" id="tE">E</button>
     </div>
   </div>
@@ -259,7 +296,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=d6a58e6af9"></script>
+<script type="module" src="src/game.js?v=b1064be2f2"></script>
 
 </body>
 </html>

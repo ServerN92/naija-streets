@@ -48,11 +48,14 @@ export function keepSynced(everyMin = 5) { setInterval(() => { if (!document.hid
 export const isSynced = () => synced;
 export const now = () => Date.now() + offset;
 
-// game hour 0..24 ; epoch starts at 06:00
+// game hour 0..24 ; each cycle starts at 06:00. Days are long and nights are very short:
+// real minutes spent on each part of the day (they add up to DAY_MINUTES)
+const PARTS = [[6, 18, 36], [18, 20, 5], [20, 29, 3], [29, 30, 4]];   // [from hour, to hour (past midnight = +24), real minutes]
 export function gameHour(t = now()) {
   if (devHour !== null && isFinite(devHour)) return ((devHour % 24) + 24) % 24;
-  const day = DAY_MINUTES * 60000;
-  return (((t % day) / day) * 24 + 6) % 24;
+  const day = DAY_MINUTES * 60000; let m = ((((t % day) + day) % day) / day) * DAY_MINUTES;   // real minutes into this cycle
+  for (const [a, b, len] of PARTS) { if (m < len) return (a + (b - a) * m / len) % 24; m -= len; }
+  return 6;
 }
 export function fmtHour(h) { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); }
 

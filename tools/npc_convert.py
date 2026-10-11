@@ -34,6 +34,16 @@ MOVES = {
     'argue': '912c0023-Standing_Arguing.fbx', 'no': 'f857bc66-No.fbx', 'hail': '0c331530-Hand_Raising.fbx', 'text': '2a3ff53b-Texting.fbx',
     'text_walk': '5d678b39-Texting_And_Walking.fbx', 'phone': '2053a253-Pacing_And_Talking_On_A_Phone.fbx',
     'fight_idle': 'deb24a60-Fighting_Idle.fbx', 'start_walk': 'e7dd8595-Start_Walking.fbx',
+    # fighting and other moves (one areaboy rig; its standing hips height is 1.0, so lying moves keep their low hips)
+    'punch': ('0ab3578a-Punching.fbx', {'ref': 1.0}), 'kick': ('0ca35c48-Mma_Kick_1.fbx', {'ref': 1.0}),
+    'drop_kick': ('bf1c69f3-Drop_Kick.fbx', {'ref': 1.0}), 'hit_head': ('5ae4ad2d-Medium_Hit_To_Head.fbx', {'ref': 1.0}),
+    'hit_body': ('59807b18-Kidney_Hit.fbx', {'ref': 1.0}), 'hit_side': ('1058b71b-Big_Side_Hit.fbx', {'ref': 1.0}),
+    'uppercut': ('c9d06f30-Receiving_An_Uppercut.fbx', {'ref': 1.0}),
+    'takedown_a': ('c85ac27a-Double_Leg_Takedown_-_Attacker.fbx', {'ref': 1.0, 'root': True}),
+    'takedown_v': ('b5fd3be9-Double_Leg_Takedown_-_Victim.fbx', {'ref': 1.0, 'root': True}),
+    'kip_up': ('73e56ecf-Kip_Up.fbx', {'ref': 1.0}), 'stand_up': ('d8cefe39-Standing_Up.fbx', {'ref': 1.0}),
+    'jump': ('6aaadc30-Jump.fbx', {'ref': 1.0}), 'situps': ('7d17ce49-Situps.fbx', {'ref': 1.0}),
+    'pushups': ('4e78b3e7-Push_Up_To_Idle.fbx', {'ref': 1.0, 'cut': 'rise'}),
 }
 SKELETON_FROM = 'mama'   # a rig with every bone (65, fingers included) to carry the moves
 
@@ -58,9 +68,14 @@ window.character=async(file)=>{ const o=await load(file); o.animations=[];
 window.moves=async(skelFile,list)=>{ const sk=await load(skelFile); const bones=[]; sk.traverse(b=>{ if(b.isBone) bones.push(b); });
   const root=bones[0]; let top=root; while(top.parent&&top.parent.isBone) top=top.parent;
   const holder=new THREE.Group(); holder.name='moves'; holder.add(top); const clips=[], info=[];
-  for(const [name,file] of list){ const o=await load(file); const k=o.animations[0].clone(); k.name=name; const y0=hipsY(o);
+  for(const [name,file,opt] of list){ const o=await load(file); let k=o.animations[0].clone(); k.name=name; const y0=hipsY(o);
     k.tracks=k.tracks.filter(t=>!/\\.scale$/.test(t.name));
-    for(const t of k.tracks){ if(/Hips\\.position$/.test(t.name)){ const v=t.values; const ry=v[1]||y0||1; for(let i=0;i<v.length;i+=3){ v[i]=0; v[i+1]=v[i+1]/ry; v[i+2]=0; } } }
+    // hips height as a fraction of standing height (opt.ref: the rig's standing height, for moves that start on the ground);
+    // sideways travel removed, unless the move needs it (opt.root: two people moving together)
+    for(const t of k.tracks){ if(/Hips\\.position$/.test(t.name)){ const v=t.values; const ry=opt.ref||v[1]||y0||1, x0=v[0], z0=v[2];
+      for(let i=0;i<v.length;i+=3){ v[i]=opt.root?(v[i]-x0)/ry:0; v[i+1]=v[i+1]/ry; v[i+2]=opt.root?(v[i+2]-z0)/ry:0; } } }
+    if(opt.cut==='rise'){ const t=k.tracks.find(t=>/Hips\\.position$/.test(t.name)), v=t.values, n=v.length/3; let e=n; for(let i=1;i<n;i++) if(v[i*3+1]>.6){ e=i; break; }
+      k=THREE.AnimationUtils.subclip(k,name,0,Math.max(2,e-4),30); }   // only the part before the person stands up
     clips.push(k); info.push([name,+k.duration.toFixed(2),k.tracks.length]); }
   const glb=await new GLTFExporter().parseAsync(holder,{binary:true,animations:clips,onlyVisible:false});
   return {b64:b64(glb),info}; };
@@ -83,7 +98,8 @@ with sync_playwright() as pw:
     for cid, f in ([] if ONLY_MOVES else CAST.items()):
         r = pg.evaluate(f'window.character({json.dumps(f)})', None)
         (OUT / 'raw' / f'{cid}.glb').write_bytes(base64.b64decode(r.pop('b64'))); meta[cid] = r; print(cid, r, flush=True)
-    r = pg.evaluate(f'window.moves({json.dumps(CAST[SKELETON_FROM])},{json.dumps(list(MOVES.items()))})')
+    mv = [[n, f, {}] if isinstance(f, str) else [n, f[0], f[1]] for n, f in MOVES.items()]
+    r = pg.evaluate(f'window.moves({json.dumps(CAST[SKELETON_FROM])},{json.dumps(mv)})')
     (OUT / 'raw' / 'moves.glb').write_bytes(base64.b64decode(r['b64'])); print('moves', r['info'], flush=True)
     if meta: json.dump(meta, open(OUT / 'raw' / 'meta.json', 'w'), indent=1)
     print('errors', errs[:5]); b.close()
