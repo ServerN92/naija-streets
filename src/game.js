@@ -11,11 +11,11 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import * as CLOCK from './clock.js?v=746d05aca6';
-import { MapView } from './mapview.js?v=746d05aca6';
+import * as CLOCK from './clock.js?v=0bf31100b4';
+import { MapView } from './mapview.js?v=0bf31100b4';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='746d05aca6';
+const BUILD='0bf31100b4';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -25,7 +25,8 @@ const PERF=/[?&]perf=1/.test(location.search);   // ?perf=1 shows a speed panel 
 const $ = s => document.querySelector(s);
 const loadTxt = $('#loadTxt'), loadBar = $('#loadBar');
 let lastT = performance.now();
-const frameWait = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+// wait for the screen to update; if the tab is in the background (no frames), carry on anyway so loading never stalls
+const frameWait = () => new Promise(r => { let done=false; const f=()=>{ if(!done){ done=true; r(); } }; requestAnimationFrame(() => requestAnimationFrame(f)); setTimeout(f, 150); });
 
 /* ================= helpers ================= */
 function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -1618,7 +1619,14 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     culls(b){ for(const c of CULLS) c.off=!b; }, cullNames:()=>CULLS.map(c=>c.name||'?'),
     cullOne(name,b){ for(const c of CULLS) if(c.name===name) c.off=!b; },
     hideStatic(b){ scene.children.forEach(o=>{ if(o.isMesh&&!o.isInstancedMesh&&o.geometry&&o.geometry.attributes.position&&o.geometry.attributes.position.count>20000) o.visible=!b; }); },
-    stats(){ return {...window.__nsPerf}; } }; }
+    stats(){ return {...window.__nsPerf}; },
+    // measures the real cost of drawing one frame (CPU + graphics card), even when the tab is in the background
+    bench(n=30){ const gl=renderer.getContext(), px=new Uint8Array(4); const one=()=>{ if(mode!=='interior') updateCulls(); renderFrame(1/60); gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,px); };
+      for(let i=0;i<5;i++) one(); const t=[]; for(let i=0;i<n;i++){ const a=performance.now(); one(); t.push(performance.now()-a); } t.sort((x,y)=>x-y);
+      return {med:+t[n>>1].toFixed(2), p90:+t[Math.floor(n*.9)].toFixed(2), calls:renderer.info.render.calls, tris:renderer.info.render.triangles, px:[renderer.domElement.width,renderer.domElement.height]}; },
+    sim(sec=1){ for(let i=0;i<sec*60;i++){ T0+=1/60; simulate(1/60); } },
+    start(){ if(!started) $('#enterBtn').click(); },
+    cpu(n=60){ const t=performance.now(); for(let i=0;i<n;i++){ T0+=1/60; simulate(1/60); updateCulls(); } return +((performance.now()-t)/n).toFixed(3); } }; }
 renderer.setAnimationLoop(loop);
 window.__nsReady=true;
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
