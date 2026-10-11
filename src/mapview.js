@@ -93,7 +93,8 @@ export class MapView {
       g.strokeStyle = '#F2B705'; g.lineWidth = 6 / v.s + 2; g.stroke();
     }
     g.restore();
-    // street names
+    // street names (round joins: no spikes on letters like M and A)
+    g.lineJoin = 'round'; g.miterLimit = 2;
     if (v.s > .8) {
       g.font = `600 ${Math.round(12 + Math.min(4, v.s * 1.2))}px "Barlow Semi Condensed", "Arial Narrow", sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
       for (const st of this.streets) {

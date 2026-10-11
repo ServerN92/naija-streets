@@ -8,26 +8,43 @@ export const WEATHER_SLOT_MIN = 16;     // weather can change every 16 real minu
 const BLEND_MS = 100 * 1000;            // weather changes fade in over 100 seconds
 const LAT = 6.5 * Math.PI / 180;        // Lagos
 
-let offset = 0, synced = false;
+let offset = 0, synced = false, bestRtt = Infinity, lastSync = 0;
 const qs = new URLSearchParams(location.search);
-const dev = qs.get('dev') === '1';                                     // testing only: ?dev=1&hour=21&weather=rain
+// testing only (?dev=1&hour=21&weather=rain), and only on a developer's own machine, so a shared link can't show
+// a player a different time or weather from everyone else
+const localHost = /^(localhost|127\.0\.0\.1|\[::1\])$|\.local$/.test(location.hostname);
+const dev = localHost && qs.get('dev') === '1';
 const devHour = dev && qs.has('hour') ? parseFloat(qs.get('hour')) : null;
 const devWeather = dev ? qs.get('weather') : null;
 
-export async function syncClock() {
-  const tryOnce = async url => {
-    const t0 = performance.now();
-    const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-    const t1 = performance.now();
-    const d = r.headers.get('date');
-    if (!d) return false;
-    const server = Date.parse(d) + 500 + (t1 - t0) / 2;   // header has 1 s resolution
-    if (!isFinite(server)) return false;
-    offset = server - Date.now(); synced = true; return true;
-  };
-  try { if (await tryOnce(location.href.split('#')[0])) return true; } catch (e) {}
-  return false;
+// One sample: server time = Date header (1 s resolution, +0.5 s) + Age (if a CDN served a cached copy) + half the round trip.
+async function sample(url) {
+  const t0 = performance.now();
+  const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+  const t1 = performance.now();
+  const d = r.headers.get('date'); if (!d) return null;
+  const age = parseFloat(r.headers.get('age') || '0') || 0;
+  const server = Date.parse(d) + 500 + age * 1000 + (t1 - t0) / 2;
+  if (!isFinite(server)) return null;
+  return { off: server - Date.now(), rtt: t1 - t0 };
 }
+// Several quick samples; keep the one with the shortest round trip (least network delay error).
+export async function syncClock(n = 3) {
+  const base = location.href.split('#')[0].split('?')[0] + '?clock=' + Date.now();
+  let got = false;
+  for (let i = 0; i < n; i++) {
+    try {
+      const s = await sample(base + '-' + i);   // a new address each time, so no cache can answer
+      if (s && (s.rtt <= bestRtt * 1.5 || Date.now() - lastSync > 10 * 60000)) {
+        if (s.rtt < bestRtt || !synced) { offset = s.off; bestRtt = s.rtt; }
+        synced = true; got = true; lastSync = Date.now();
+      }
+    } catch (e) { break; }
+  }
+  return got;
+}
+// re-check every few minutes (phones drift, sleep, change networks)
+export function keepSynced(everyMin = 5) { setInterval(() => { if (!document.hidden) { bestRtt = Infinity; syncClock(2); } }, everyMin * 60000); }
 export const isSynced = () => synced;
 export const now = () => Date.now() + offset;
 
@@ -79,7 +96,8 @@ export function weatherAt(t = now()) {
   const A = WEATHERS[prev], B = WEATHERS[cur], mix = f => A[f] + (B[f] - A[f]) * s;
   // roads stay wet for a while after rain (two slots back counts too)
   const prev2 = WEATHERS[weatherForSlot(slot - 2)];
-  const wetFromPast = Math.max(A.rain * Math.max(0, 1 - into / (slotMs * .7)), prev2.rain * Math.max(0, .35 - into / slotMs));
+  // roads dry over ~1.7 slots after the rain stops: one smooth decay across slot boundaries
+  const wetFromPast = Math.max(A.rain * Math.max(0, 1 - into / (slotMs * 1.7)), prev2.rain * Math.max(0, 1 - (into + slotMs) / (slotMs * 1.7)));
   const rain = mix('rain');
   return { key: s > .5 ? cur : prev, label: WEATHERS[s > .5 ? cur : prev].label, icon: WEATHERS[s > .5 ? cur : prev].icon,
     cloud: mix('cloud'), rain, haze: mix('haze'), dim: mix('dim'), wet: Math.min(1, Math.max(rain * 1.4, wetFromPast)),
