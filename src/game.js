@@ -11,11 +11,11 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import * as CLOCK from './clock.js?v=4171ce7efc';
-import { MapView } from './mapview.js?v=4171ce7efc';
+import * as CLOCK from './clock.js?v=f75410eca9';
+import { MapView } from './mapview.js?v=f75410eca9';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='4171ce7efc';
+const BUILD='f75410eca9';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -43,7 +43,7 @@ const DPR = Math.min(window.devicePixelRatio||1, 3);
 // quality presets. pr = target pixel ratio (dynamic resolution may lower it to keep 60 fps)
 const QUAL={
   // shadows: real-time sun shadows (Low uses soft blob shadows instead); px: most pixels the screen may draw (keeps big screens smooth)
-  low:   {pr:Math.min(DPR,1.25),prMin:.6, px:1.0e6,shadows:false,sh:1024,shR:46, soft:false,msaa:0,bloom:false,post:false,mirror:false,water:0,  draw:210,lod0:55, peds:16,cars:14,fog:1.3, aniso:2,tex:512, aa:true, sky:96},
+  low:   {pr:Math.min(DPR,1.25),prMin:.6, px:1.3e6,shadows:false,sh:1024,shR:46, soft:false,msaa:0,bloom:false,post:false,mirror:false,water:0,  draw:210,lod0:55, peds:16,cars:14,fog:1.3, aniso:2,tex:512, aa:true, sky:96},
   medium:{pr:Math.min(DPR,1.5), prMin:.7, px:1.7e6,shadows:true, sh:1024,shR:55, soft:false,msaa:0,bloom:false,post:false,mirror:false,water:0,  draw:300,lod0:80, peds:26,cars:20,fog:1.1, aniso:4,tex:1024,aa:true, sky:128},
   high:  {pr:Math.min(DPR,2),   prMin:.85,px:4.2e6,shadows:true, sh:2048,shR:85, soft:true, msaa:4,bloom:true, post:true, mirror:true, water:512,draw:430,lod0:120,peds:40,cars:28,fog:1,   aniso:8,tex:1024,aa:false,sky:256}};
 // pick a starting quality from the graphics chip: weak chips (most phones, Intel HD/UHD laptops) start on Low, strong ones on High
