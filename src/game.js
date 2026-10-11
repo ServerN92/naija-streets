@@ -11,11 +11,11 @@ import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import * as CLOCK from './clock.js?v=0bf31100b4';
-import { MapView } from './mapview.js?v=0bf31100b4';
+import * as CLOCK from './clock.js?v=cd83ba2d82';
+import { MapView } from './mapview.js?v=cd83ba2d82';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='0bf31100b4';
+const BUILD='cd83ba2d82';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1626,6 +1626,13 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {med:+t[n>>1].toFixed(2), p90:+t[Math.floor(n*.9)].toFixed(2), calls:renderer.info.render.calls, tris:renderer.info.render.triangles, px:[renderer.domElement.width,renderer.domElement.height]}; },
     sim(sec=1){ for(let i=0;i<sec*60;i++){ T0+=1/60; simulate(1/60); } },
     start(){ if(!started) $('#enterBtn').click(); },
+    scene, camera, sun, hemi, fillLight, headSpot,
+    env(b){ scene.environment=b?envRT.texture:null; }, fog(b){ scene.fog.density=b?.0017:0; },
+    light(name,b){ const L={sun,hemi,fill:fillLight,spot:headSpot}[name]; if(L) L.visible=b; },
+    shadowType(t){ renderer.shadowMap.type=THREE[t]; scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); sun.shadow.map&&sun.shadow.map.dispose(); sun.shadow.map=null; },
+    shadowSize(n){ sun.shadow.mapSize.set(n,n); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; } },
+    swapMat(kind){ // test cheaper shading: 'lambert' turns every standard material into a Lambert one (cannot be undone without reload)
+      const cache=new Map(); scene.traverse(o=>{ if(!o.material||Array.isArray(o.material)) return; const m=o.material; if(!m.isMeshStandardMaterial) return; if(!cache.has(m)){ const n=kind==='basic'?new THREE.MeshBasicMaterial({map:m.map,color:m.color,vertexColors:m.vertexColors,side:m.side,transparent:m.transparent,opacity:m.opacity}):new THREE.MeshLambertMaterial({map:m.map,color:m.color,vertexColors:m.vertexColors,side:m.side,transparent:m.transparent,opacity:m.opacity,emissive:m.emissive,emissiveMap:m.emissiveMap,emissiveIntensity:m.emissiveIntensity}); cache.set(m,n); } o.material=cache.get(m); }); return cache.size; },
     cpu(n=60){ const t=performance.now(); for(let i=0;i<n;i++){ T0+=1/60; simulate(1/60); updateCulls(); } return +((performance.now()-t)/n).toFixed(3); } }; }
 renderer.setAnimationLoop(loop);
 window.__nsReady=true;
