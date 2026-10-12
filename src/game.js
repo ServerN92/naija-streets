@@ -1472,7 +1472,7 @@ function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','run','tex
   if(a.fight_idle) a.fight_idle.setEffectiveWeight(0); hero.w.fight=0; if(hero.ov){ hero.ov.a.stop(); hero.ov=null; } FIGHT.cx=FIGHT.cz=0; }
 function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   // stand still for a while and you take out your phone (moves arrive with the people files)
-  if(speed<.08){ ti=1; hero.still+=dt; if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
+  if(speed<.08){ ti=1; hero.still+=dt; if(PHONE.open&&a.text&&hero.fid!=='text'&&!hero.ov){ hero.fid='text'; a.text.reset().play(); } else if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
   else { hero.still=0; hero.fid=null; if(speed<=WALK_V){ const k=speed/WALK_V; ti=1-k; tw=k; } else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
   const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
@@ -1487,7 +1487,7 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2);
   if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+(O.walk||0)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
     hero.cObj.position.y=L.y0+y; }
-  hero.mixer.update(hd); }
+  hero.mixer.update(hd); phoneInHand(); }
 const HERO_RIDE={okada:{x:0,y:.08,z:0,ry:0},keke:{x:0,y:.08,z:0,ry:0},danfo:{x:0,y:.04,z:0,ry:0},bus:{x:0,y:.04,z:0,ry:0},police:{x:0,y:.04,z:0,ry:0},sedan:{x:0,y:.02,z:0,ry:0}};
 function updateEnter(dt){ hero.carT+=dt; hero.mixer.update(dt); const [f]=inputVec(); const dur=hero.act.car.getClip().duration/hero.act.car.timeScale;
   if(hero.carT>dur*.86||(hero.carT>.7&&(Math.abs(f)>.5||K[' ']))) finishEnter(); }
@@ -1680,7 +1680,7 @@ function drawMinimap(){ const S=mm.width, R0=S/2, sc=R0/150, px=mode==='drive'?d
   const c=Math.cos(th), s=Math.sin(th);
   const mark=(wx,wz,col,label)=>{ let dx=(wx-px)*sc, dz=(wz-pz)*sc, sx=dx*c-dz*s, sy=dx*s+dz*c; const d=Math.hypot(sx,sy), lim=R0-18; if(d>lim){ sx*=lim/d; sy*=lim/d; }
     mg.fillStyle=col; mg.beginPath(); mg.arc(R0+sx,R0+sy,15,0,7); mg.fill(); mg.fillStyle='#0E1014'; mg.font='20px Bungee, Impact, sans-serif'; mg.textAlign='center'; mg.textBaseline='middle'; mg.fillText(label,R0+sx,R0+sy+1); };
-  mark(APT.front.x,APT.front.z,'#F2B705','H'); mark(STATION.x,STATION.z,'#4c7dff','P'); if(mapView.dest) mark(mapView.dest.x,mapView.dest.z,'#ffffff','•');
+  mark(APT.front.x,APT.front.z,'#F2B705','H'); mark(STATION.x,STATION.z,'#4c7dff','P'); if(RIDE.v&&RIDE.state!=='riding') mark(RIDE.v.x,RIDE.v.z,'#F2B705','T'); if(mapView.dest) mark(mapView.dest.x,mapView.dest.z,'#ffffff','•');
   mg.fillStyle='#F7EFDF'; mg.font='22px Bungee, Impact, sans-serif'; mg.textAlign='center'; mg.textBaseline='middle'; mg.fillText('N',R0+s*(R0-24),R0-c*(R0-24));
   const hd=mode==='drive'?Math.atan2(-Math.sin(drive.v.h),Math.cos(drive.v.h)):Math.atan2(Math.cos(player.yaw),Math.sin(player.yaw));
   mg.save(); mg.translate(R0,R0); mg.rotate(hd+th); mg.fillStyle='#F7EFDF'; mg.strokeStyle='#0E1014'; mg.lineWidth=4; mg.beginPath(); mg.moveTo(20,0); mg.lineTo(-13,-13); mg.lineTo(-6,0); mg.lineTo(-13,13); mg.closePath(); mg.stroke(); mg.fill(); mg.restore(); }
@@ -1692,12 +1692,12 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(Math.abs(drive.speed)<3) txt='Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(rideHere()) txt='Enter your ride'; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':`Drive the ${nm}`); } } }
+    else if(mode==='drive'){ if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':'Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
-  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#tRun').hidden=dv||mode==='enter'; const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tKick','#tJump','#tGrab','#tDodge']) $(id).hidden=!fb; $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
+  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); $('#tRun').hidden=dv||mode==='enter'; const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tKick','#tJump','#tGrab','#tDodge']) $(id).hidden=!fb; $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ mapView.clearRoute(); toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
@@ -1730,10 +1730,10 @@ const CODE={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arr
 const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
 addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;   // typing your name
   const k=keyOf(e); if(k===' '||k.startsWith('arrow')) e.preventDefault(); if(!started||e.repeat) return;
-  if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); return; }
+  if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j') playerAttack('punch'); else if(k==='k') playerAttack('kick'); else if(k==='l'||k==='q') playerDodge(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j') playerAttack('punch'); else if(k==='k') playerAttack('kick'); else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
 addEventListener('keyup',e=>{ K[keyOf(e)]=false; });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
@@ -1747,7 +1747,8 @@ cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') re
 addEventListener('pointerup',()=>{ dragging=false; });
 document.addEventListener('mousemove',e=>{ if(!started||mapView.isOpen) return; if(document.pointerLockElement===cvs||(dragging&&e.buttons)) look(e.movementX,e.movementY); });
 cvs.addEventListener('wheel',e=>{ e.preventDefault(); camState.zoom=clamp(camState.zoom+(e.deltaY>0?.08:-.08),.55,1.8); },{passive:false});
-$('#setBtn').addEventListener('click',()=>{ $('#settings').hidden=!$('#settings').hidden; });
+$('#setBtn').addEventListener('click',()=>{ $('#settings').hidden=!$('#settings').hidden; if(!$('#settings').hidden) closePhone(); });
+$('#phoneBtn').addEventListener('click',()=>togglePhone()); $('#phClose').addEventListener('click',()=>closePhone());
 $('#mmWrap').addEventListener('click',()=>{ if(started) openMap(); });
 $('#prompt').addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); action(); });
 document.querySelectorAll('#qual button').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.q===qKey?'true':'false');
@@ -1778,8 +1779,8 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started) return;
-  if(mode==='walk'){ if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v) return v.ai?carjack(v):enterCar(v); }
-  else if(mode==='drive'){ if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
+  if(mode==='walk'){ if(rideHere()) return rideEnter(); if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v) return v.ai?carjack(v):enterCar(v); }
+  else if(mode==='drive'){ if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(WARD.open) closeWard(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); } }
 const OPEN_RIDE={okada:1,keke:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
@@ -1829,7 +1830,7 @@ function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let pl
       if(clear){ player.x=c.x; player.z=c.z; placed=true; break; } } if(placed) break; }
   if(!placed){ for(const s of [1,-1]){ const c={x:v.x+hx*(v.c.def.L/2+1)*s,z:v.z+hz*(v.c.def.L/2+1)*s}; if(onLand(c.x,c.z)&&!resolveCircle({...c},.34)){ player.x=c.x; player.z=c.z; placed=true; break; } } }
   if(!placed){ player.x=v.x; player.z=v.z; }
-  unseatHero(); player.y=groundY(player.x,player.z); player.yaw=Math.atan2(hx,hz); player.speed=0; v.speed=0; v.parked=true; drive.v=null; drive.speed=0; mode='walk'; rig.root.visible=true; headSpot.intensity=0; BEAM.visible=false; }
+  unseatHero(); player.y=groundY(player.x,player.z); player.yaw=Math.atan2(hx,hz); player.speed=0; v.speed=0; v.parked=true; drive.v=null; drive.speed=0; drive.ride=false; mode='walk'; rig.root.visible=true; headSpot.intensity=0; BEAM.visible=false; }
 function enterApt(){ fadeSwap(()=>{ ROOM=INT; mode='interior'; enteredAt=T0; INT.scene.add(rig.root); Object.assign(player,{x:0,z:3.3,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.22,dist:2.7}); setScene(INT.scene); toast('Home sweet home'); }); }
 function exitApt(){ closeWard(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
 function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thud(); }
@@ -1860,6 +1861,7 @@ function updateWalk(dt,inside){
   rig.root.position.set(player.x,player.y,player.z); rig.root.rotation.y=player.yaw;
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
 function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
+  if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
   const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40]})[v.type]||[1,38];
   if(f>.1) sp+=(sp<-.2?18:9.5*DT[0]*Math.max(0,1-sp/DT[1]))*dt*f; else if(f<-.1){ sp+=(sp>.4?-20:-6)*dt*(-f); if(sp<-9) sp=-9; } else { const dec=(1.6+Math.abs(sp)*.1)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
   if(hb){ const dec=24*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
@@ -1895,6 +1897,8 @@ function updateTraffic(dt){
         let stop=nb.occ&&nb.occ!==v&&nb.occ.ai&&T0-nb.occT<5;
         if(!stop&&nb.big!==undefined&&ai.ec>nb.big+1) for(const o of vehicles){ const oa=o.ai; if(o===v||!oa||oa.b!==nb.i||oa.seg.k!==0||oa.ec>nb.big+1||Math.abs(o.speed)<1.5) continue; if(oa.seg.len-oa.s<22){ stop=true; break; } }
         if(stop){ const lim=Math.max(0,(dist-2)*.8); if(lim<target){ target=lim; waiting=true; } } } }
+    if(ai.goal){ const G=ai.goal, dx=G.x-v.x, dz=G.z-v.z, ah=dx*fx+dz*fz, lat=Math.abs(-dx*fz+dz*fx);   // a booked ride pulls up level with you (or your stop)
+      if(lat<11&&ah>-3&&ah<40) target=Math.min(target,Math.max(0,ah*.7)); G.near=lat<11&&Math.abs(ah)<4; }
     if(ai.chase){ const G=ai.raid?RAID:player, dx=G.x-v.x, dz=G.z-v.z, ah=dx*fx+dz*fz, lat=Math.abs(-dx*fz+dz*fx), at=ai.raid?RAID.node:CHASE.at, mine=ai.a===at||ai.b===at;   // police pull up beside you
       if((mine||lat<22)&&ah>-3&&ah<45) target=Math.min(target,Math.max(0,ah*.8)); ai.near=mine&&lat<45&&Math.abs(ah)<6; }   // (on the street nearest you they stop level with you and wait, even if you are back from the road)
     if(ai.ghost>0) ai.ghost-=dt; else {
@@ -1912,10 +1916,10 @@ function updateTraffic(dt){
     while(ai.s>=ai.seg.len&&guard++<4){ ai.s-=ai.seg.len;
       if(ai.seg.k===0){ const out=nodes[ai.b].out; let opts=out.filter(n=>n!==ai.a); if(v.type==='bus') { const big=opts.filter(n=>{ const e=edgeOf(ai.b,n); return e&&e.c<=4; }); if(big.length) opts=big; }
         if(!opts.length){ if(out.includes(ai.a)) opts=[ai.a]; else { placeCar(v,120,250); break; } }
-        ai.na=ai.chase?chaseTurn(v,opts):pickTurn(ai,opts); ai.seg=turnSeg(ai.a,ai.b,ai.na); const nd=nodes[ai.b]; if(nd.deg>=3){ nd.occ=v; nd.occT=T0; } }
+        ai.na=ai.chase||ai.goal?chaseTurn(v,opts):pickTurn(ai,opts); ai.seg=turnSeg(ai.a,ai.b,ai.na); const nd=nodes[ai.b]; if(nd.deg>=3){ nd.occ=v; nd.occT=T0; } }
       else { const passed=nodes[ai.b]; if(passed.occ===v) passed.occ=null; ai.a=ai.b; ai.b=ai.na; ai.seg=lineSeg(ai.a,ai.b); const e=edgeOf(ai.a,ai.b); ai.cond=e?e.cond:'good'; ai.ec=e?e.c:6; ai.stopAt=(v.type==='danfo'&&MR()<.35&&ai.ec<=6)?ai.seg.len*mrr(.3,.65):-1; } }
     segPos(ai.seg,ai.s,_sp); v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx);
-    if((v.x-player.x)**2+(v.z-player.z)**2>340*340) placeCar(v,120,250); } }
+    if(!v.taxi&&(v.x-player.x)**2+(v.z-player.z)**2>340*340) placeCar(v,120,250); } }
 const HI_D=Q===QUAL.low?34:Q===QUAL.medium?50:70, OCC_D=Q===QUAL.low?30:Q===QUAL.medium?45:60;
 function bumpPothole(v,fx,fz,sp,isPlayer){ if(v.phCool>0||sp<1.5) return null; const L=v.c.def.L*.32;
   for(const s of [1,-1]){ const p=potholeAt(v.x+fx*L*s,v.z+fz*L*s); if(p){ v.phCool=.32; v.bobV-=p.depth*Math.min(sp,14)*(v.type==='okada'?.13:.085)*(isPlayer?1.6:1); v.pitchV=(v.pitchV||0)+s*p.depth*Math.min(sp,12)*.012; return p; } } return null; }
@@ -2331,7 +2335,7 @@ function updateShoppers(dt){ if((SHOP.t-=dt)>0) return; SHOP.t=.8; const f=mode=
 // ---- the motor park: danfos wait in their bays, the conductors call, the queue climbs in and the bus leaves full; another rolls in
 const PARK={t:12,ready:false,made:0};
 // a danfo for a bay: one that drove off earlier and is now far from you comes back round, so the number of vehicles stays fixed
-function parkVehicle(bay){ const f=mode==='drive'&&drive.v?drive.v:player; let v=vehicles.find(o=>o.fromPark&&o.ai&&!o.ai.chase&&o!==drive.v&&!o.jacked&&Math.hypot(o.x-f.x,o.z-f.z)>130);
+function parkVehicle(bay){ const f=mode==='drive'&&drive.v?drive.v:player; let v=vehicles.find(o=>o.fromPark&&o.ai&&!o.ai.chase&&!o.taxi&&o!==drive.v&&!o.jacked&&Math.hypot(o.x-f.x,o.z-f.z)>130);
   if(!v){ if(PARK.made>=10) return null; v=newVehicle('danfo','#f2b705'); v.fromPark=true; PARK.made++; }   // seated driver and passengers show once it drives off
   Object.assign(v,{x:bay.x,z:bay.z,h:bay.h,y:0,keep:1,bay,ai:null,speed:0,loading:false,leaving:null}); bay.v=v; return v; }
 function updatePark(dt){ const pk=SITES.park; if(!pk) return; if(!PARK.ready){ PARK.ready=true; pk.bays.forEach((b,i)=>{ if(i!==3) parkVehicle(b); }); }
@@ -2560,7 +2564,10 @@ function driveNode(x,z){ let best=-1, bd=1e18; const ci=Math.floor(x/RGC), cj=Ma
 function chaseField(){ const f=mode==='drive'&&drive.v?drive.v:player, s=driveNode(f.x,f.z); if(CHASE.dist&&(s===CHASE.at||Math.abs(T0-CHASE.t)<.5)) return CHASE.dist;
   if(!CHASE.inn){ CHASE.inn=nodes.map(()=>[]); for(const n of nodes) for(const w of n.out) CHASE.inn[w].push(n.i); }
   CHASE.dist=dijkstra(s,u=>CHASE.inn[u]).dist; CHASE.at=s; CHASE.t=T0; return CHASE.dist; }
-function chaseTurn(v,opts){ const G=v.ai.raid?RAID:player, D=v.ai.raid?fieldTo(RAID.node):chaseField(), b=nodes[v.ai.b]; let best=opts[0], bd=1e18;
+function chaseTurn(v,opts){ const g=v.ai.goal;
+  if(g){ const at=v.ai.b, D=goalField(g); if(at===g.a&&opts.includes(g.b)) return g.b; if(at===g.b&&!g.ow&&opts.includes(g.a)) return g.a;   // into the street where you wait
+    let best=opts[0], bd=1e19; for(const n of opts){ const d=D[n]+Math.hypot(nodes[n].x-nodes[at].x,nodes[n].z-nodes[at].z); if(d<bd){ bd=d; best=n; } } return best; }
+  const G=v.ai.raid?RAID:player, D=v.ai.raid?fieldTo(RAID.node):chaseField(), b=nodes[v.ai.b]; let best=opts[0], bd=1e18;
   for(const n of opts){ const d=D[n]+Math.hypot(nodes[n].x-b.x,nodes[n].z-b.z)+(D[n]>=1e17?(nodes[n].x-G.x)**2+(nodes[n].z-G.z)**2:0); if(d<bd){ bd=d; best=n; } } return best; }
 // driving distance from every junction to one fixed junction (a crime scene); a few are kept
 const FIELDS=new Map();
@@ -2837,6 +2844,105 @@ function openWard(){ if(WARD.open||!hero||busy) return; WARD.open=true; $('#sett
 function closeWard(){ if(!WARD.open) return; WARD.open=false; $('#ward').hidden=true; lastPrompt=null; }
 $('#wardDone').addEventListener('click',closeWard);
 
+/* ================= your phone: OYA RIDE =================
+   P (or the phone button) takes out your phone. Pick where you are going: a car comes to the street nearest you, its OYA RIDE
+   sign on the roof; walk to it and press E. It drives you there through the traffic (or skip the ride), and you pay the driver.
+   While you use the phone you hold it in your right hand. */
+const PHONE={open:false,mesh:null,loading:null,body:null,q:''};
+const PHONE_POSE={x:0,y:.08,z:0,rx:0,ry:1.5708,rz:0};   // in the right hand: flat in the palm along the fingers, screen up to your face (metres, radians)
+const RIDE={v:null,state:null,dest:null,goal:null,t:0,fare:0,who:'',car:'',plate:'',sign:null};
+const RIDE_WHO=['Tunde','Emeka','Musa','Chinedu','Bayo','Ibrahim','Segun','Kelechi','Femi','Yusuf'], RIDE_CAR=['Toyota Corolla','Honda Accord','Toyota Camry','Kia Rio','Hyundai Elantra'];
+function loadPhone(){ if(PHONE.loading) return PHONE.loading;
+  return PHONE.loading=fetchBuf(murl('phone')).then(b=>GLL.parseAsync(b,'')).then(g=>{ const o=g.scene; o.traverse(m=>{ if(m.isMesh){ const x=m.material; if(x.map) x.map.colorSpace=THREE.SRGBColorSpace; m.material=new THREE.MeshStandardMaterial({map:x.map||null,roughness:.35,metalness:.2,emissive:0xffffff,emissiveMap:x.map||null,emissiveIntensity:.12}); m.castShadow=false; m.layers.set(1); m.frustumCulled=false; } });
+    const w=new THREE.Group(); w.add(o); w.visible=false; PHONE.mesh=w; }).catch(e=>console.warn('phone',e)); }
+// the phone shows in your hand while it is open, or when you stand texting
+function phoneInHand(){ const m=PHONE.mesh; if(!m||!hero) return; const w=hero.w, want=mode==='walk'||mode==='interior'?(PHONE.open||w.text>.35):false;
+  if(want&&PHONE.body!==hero.cObj){ let hb=null; hero.cObj.traverse(o=>{ if(!hb&&o.isBone&&/RightHand$/.test(o.name)) hb=o; }); if(!hb) return; hero.cObj.updateMatrixWorld(true);
+    const s=new THREE.Vector3(); hb.matrixWorld.decompose(_p,_q,s); m.scale.setScalar(1/s.x); m.position.set(PHONE_POSE.x/s.x,PHONE_POSE.y/s.x,PHONE_POSE.z/s.x); m.rotation.set(PHONE_POSE.rx,PHONE_POSE.ry,PHONE_POSE.rz); hb.add(m); PHONE.body=hero.cObj; }
+  if(m.visible!==want) m.visible=want; }
+function togglePhone(){ if(PHONE.open) closePhone(); else openPhone(); }
+function openPhone(){ if(!started||busy||PHONE.open||mode==='interior'||mode==='enter'||(mode==='drive'&&!drive.ride)) return; loadPhone(); PHONE.open=true; closeWard(); $('#settings').hidden=true;
+  if(document.pointerLockElement) document.exitPointerLock(); phoneUI(); $('#phone').hidden=false; $('#phoneBtn').setAttribute('aria-pressed','true'); }
+function closePhone(){ if(!PHONE.open) return; PHONE.open=false; $('#phone').hidden=true; $('#phoneBtn').setAttribute('aria-pressed','false'); if(hero&&hero.fid==='text') hero.fid=null; }
+const fareOf=pl=>Math.max(500,Math.round((500+Math.hypot(pl.x-player.x,pl.z-player.z)*1.3/1000*350)/50)*50);
+const naira=n=>'₦'+n.toLocaleString('en-NG');
+const kmOf=d=>d<950?Math.round(d/10)*10+' m':(d/1000).toFixed(1)+' km';
+const POPULAR=/^(Your house|Eko Grand Hotel|Mushin Motor Park|Mushin Police Station|Mushin Station|LUTH gate)$|Market$/;
+function phoneUI(){ const b=$('#phBody'); if(!b) return; b.textContent=''; const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
+  const btn=(c,x,fn)=>{ const e=el('button','ph-btn '+c,x); e.type='button'; e.addEventListener('click',fn); return e; };
+  $('#phTime').textContent=$('#clockT').textContent;
+  if(!RIDE.state){
+    b.append(el('h3','ph-h','Where you dey go?'));
+    const q=el('input','phq'); q.type='search'; q.placeholder='Search a place'; q.value=PHONE.q; q.setAttribute('aria-label','Search a place'); b.append(q);
+    const list=el('div','ph-list'); b.append(list);
+    const fill=()=>{ list.textContent=''; const s=PHONE.q.trim().toLowerCase(), seen=new Set();
+      const ok=pl=>pl.name&&pl.name!=='Footbridge'&&!seen.has(pl.name)&&Math.hypot(pl.x-player.x,pl.z-player.z)>60&&(!pl.minor||pl.sub==='Neighbourhood'||pl.name==='LUTH gate');
+      const row=pl=>{ seen.add(pl.name); const d=Math.hypot(pl.x-player.x,pl.z-player.z), r=el('button','ph-row'); r.type='button'; const t=el('span'); t.append(el('b',null,pl.name),el('small',null,(pl.sub||'')+' · '+kmOf(d*1.3)));
+        r.append(t,el('span','fare',naira(fareOf(pl)))); r.addEventListener('click',()=>bookRide(pl)); list.append(r); };
+      const all=PLACES.filter(ok);
+      if(s){ all.filter(pl=>(pl.name+' '+(pl.sub||'')).toLowerCase().includes(s)).sort((a,c)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(c.x-player.x,c.z-player.z)).slice(0,30).forEach(row); }
+      else { list.append(el('h4','ph-k','Popular')); all.filter(pl=>POPULAR.test(pl.name)).slice(0,10).forEach(row);
+        list.append(el('h4','ph-k','Near you')); all.filter(pl=>!seen.has(pl.name)).sort((a,c)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(c.x-player.x,c.z-player.z)).slice(0,25).forEach(row); }
+      if(!list.children.length) list.append(el('p','ph-note','No place like that. Try another name.')); };
+    q.addEventListener('input',()=>{ PHONE.q=q.value; fill(); }); q.addEventListener('keydown',e=>e.stopPropagation()); fill(); return; }
+  const d=RIDE.dest, card=el('div','ph-card'); card.append(el('b',null,RIDE.who),el('span',null,`${RIDE.car} · ${RIDE.plate}`),el('span',null,`To ${d.name} · ${naira(RIDE.fare)}, cash`)); b.append(card);
+  const live=el('p','ph-live'); live.id='phLive'; b.append(live);
+  if(RIDE.state==='waiting') b.append(btn('go','Get in',()=>{ if(rideHere()) rideEnter(); else toast('Walk to the car first, then get in.',2); }));
+  if(RIDE.state==='coming'||RIDE.state==='waiting') b.append(btn('no','Cancel ride',()=>cancelRide('You cancelled the ride.')));
+  if(RIDE.state==='riding'){ b.append(btn('go','Skip the ride',skipRide),btn('no','Get down here',()=>rideExit(true))); }
+  phoneLive(); }
+function phoneLive(){ const e=$('#phLive'); if(!e||!RIDE.v) return; const v=RIDE.v, G=RIDE.goal;
+  const t=RIDE.state==='coming'?`${RIDE.who} dey come · ${(()=>{ const D=goalField(G), d=Math.min(D[v.ai?v.ai.b:0]||1e9,3000), m=Math.round(d/7/60); return m<1?'less than a minute':m+' min'; })()} away`:RIDE.state==='waiting'?`${RIDE.who} don reach. Walk to the car with the OYA RIDE sign and press E.`:`On the way · ${kmOf(Math.min(goalField(G)[v.ai?v.ai.b:0]||0,9e4))} left`;
+  if(e.textContent!==t) e.textContent=t; }
+// the street point nearest a place, where a car can stop: the street (its two ends) and how far along it
+function goalAt(x,z){ const [e]=nearestRoad(x,z,e=>e.drive);
+  if(!e){ const n=driveNode(x,z); return {x:nodes[n].x,z:nodes[n].z,a:n,b:n,ta:0,tb:0,ow:false,near:false,D:null}; }
+  const A0=nodes[e.a], t=clamp((x-A0.x)*e.fx+(z-A0.z)*e.fz,0,e.len); return {x:A0.x+e.fx*t,z:A0.z+e.fz*t,a:e.a,b:e.b,ta:t,tb:e.len-t,ow:!!e.ow,near:false,D:null}; }
+const kerbPoint=(x,z)=>{ const g=goalAt(x,z); return {x:g.x,z:g.z}; };
+// driving distance from every junction to that point (into the street from either end, or only the right end of a one-way)
+function goalField(g){ if(g.D) return g.D; const Da=fieldTo(g.a), Db=g.ow||g.a===g.b?null:fieldTo(g.b), D=new Float64Array(Da.length); for(let i=0;i<D.length;i++) D[i]=Math.min(Da[i]+g.ta,Db?Db[i]+g.tb:1e18); return g.D=D; }
+// a free car, put on a street one or two minutes' drive from you (by the real streets, one-ways and all), heading your way
+function pickCab(g){ const ok=v=>v.ai&&(v.type==='sedan'||v.type==='suv')&&!v.ai.chase&&!v.ai.goal&&v!==drive.v&&!v.jacked&&!v.raid&&v!==RAID.v;
+  const c=vehicles.filter(ok).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z)); if(!c.length) return null;
+  const D=goalField(g), opts=[];
+  for(let tries=0;tries<2&&!opts.length;tries++){ const lo=tries?40:90, hi=tries?400:240;
+    for(const n of nodes){ const dn=D[n.i]; if(dn<lo||dn>hi||Math.hypot(n.x-player.x,n.z-player.z)<55) continue;
+      for(const m of n.out){ if(D[m]>=dn) continue; const e=edgeOf(n.i,m); if(e&&e.drive&&e.len>12) opts.push([n.i,m]); } } }
+  for(let t=0;t<20&&opts.length;t++){ const [a,b]=mpick(opts), seg=lineSeg(a,b), sp=mrr(.2,.6)*seg.len; segPos(seg,sp,_sp);
+    if(vehicles.some(o=>Math.hypot(o.x-_sp.x,o.z-_sp.z)<11)) continue; const v=c[0], e=edgeOf(a,b), DF=v.c.def;
+    v.ai={a,b,s:sp,seg,na:-1,maxV:mrr(DF.maxV[0],DF.maxV[1])*1.2,wait:0,ghost:0,stuck:0,cond:e.cond,ec:e.c}; v.parked=false; v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx); v.speed=v.ai.maxV*.6; v.y=groundY(v.x,v.z); return v; }
+  return placeCar(c[0],110,190,true)?c[0]:null; }
+function rideSign(v,on){ if(RIDE.sign){ RIDE.sign.parent&&RIDE.sign.parent.remove(RIDE.sign); RIDE.sign.material.map.dispose(); RIDE.sign.material.dispose(); RIDE.sign=null; }
+  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('OYA RIDE','#F2B705','#0E1014'),fog:false})); sp.scale.set(1.6,.3,1); sp.position.set(0,((v.c.def.roof&&v.c.def.roof[2])||1.45)+.32,0); sp.layers.set(1); v.c.g.add(sp); RIDE.sign=sp; } }
+function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book your ride when you are on foot.'); return; }
+  const g=goalAt(player.x,player.z), dk=kerbPoint(pl.x,pl.z), v=pickCab(g); if(!v){ toast('"No driver dey around now. Try again small time."',2.6); return; }
+  Object.assign(RIDE,{v,state:'coming',dest:{...pl,rx:dk.x,rz:dk.z},goal:g,t:0,hint:false,fare:fareOf(pl),who:mpick(RIDE_WHO),car:mpick(RIDE_CAR),plate:mpick(['LND','KJA','AAA','EKY','MUS','APP'])+' '+(100+Math.floor(MR()*899))+' '+mpick(['XA','GH','KT','BD','FE'])});
+  v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); }
+function cancelRide(msg){ const v=RIDE.v; if(!v) return; if(RIDE.state==='riding'){ rideExit(true); return; }
+  if(v.ai){ v.ai.goal=null; v.ai.wait=0; } v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
+const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<4.4;
+function rideEnter(){ const v=RIDE.v, d=RIDE.dest; if(!v||!v.ai) return; closeWard(); RIDE.state='riding'; RIDE.t=0; RIDE.goal=goalAt(d.rx,d.rz); v.ai.goal=RIDE.goal; v.ai.wait=1.2;
+  drive.v=v; drive.ride=true; drive.speed=0; drive.steer=0; mode='drive'; rig.root.visible=false; carryDrop(true); player.speed=0; camState.last=-10; lastMode=null;
+  mapView.setDest(d.x,d.z,d); toast(`Oya, we dey go ${d.name}. Sit back, relax.`,2.6); if(PHONE.open) phoneUI(); }
+function rideExit(early){ const v=RIDE.v; if(!v) return; drive.ride=false; if(mode==='drive'&&drive.v===v) exitCar();
+  v.parked=false; if(v.ai){ v.ai.goal=null; v.ai.wait=2.5; } v.taxi=false; rideSign(v,false); if(early) mapView.clearRoute();
+  Object.assign(RIDE,{v:null,state:null,dest:null,goal:null}); lastMode=null; if(PHONE.open) phoneUI(); }
+function arriveRide(){ const d=RIDE.dest, f=RIDE.fare, w=RIDE.who; rideExit(false); mapView.clearRoute(); toast(`You don reach ${d.name}! ${w} collect ${naira(f)}. "Thank you o, safe journey!"`,3.6); }
+function skipRide(){ const v=RIDE.v, G=RIDE.goal; if(!v||RIDE.state!=='riding') return;
+  fadeSwap(()=>{ if(!placeCar(v,12,45,true,{x:G.x,z:G.z})){ v.x=G.x; v.z=G.z; } v.ai.goal=G; G.near=false; v.ai.wait=0; player.x=v.x; player.z=v.z; camState.last=-10; }); }
+function updateRide(dt){ const R=RIDE, v=R.v; if(!v) return; R.t+=dt;
+  if(R.state!=='riding'&&!v.ai){ cancelRide('Your driver had to go. Book again.'); return; }   // someone took the car
+  if(v.ai&&v.ai.goal!==R.goal) v.ai.goal=R.goal;   // keep the destination if the car was moved
+  if(R.state==='coming'){ const G=R.goal;
+    if((G.near||Math.hypot(v.x-player.x,v.z-player.z)<9)&&Math.abs(v.speed)<.5){ R.state='waiting'; R.t=0; toast(`${R.who} don reach! The car with the OYA RIDE sign. Press E to enter.`,3.2); if(PHONE.open) phoneUI(); }
+    else if(R.t>100){ placeCar(v,35,70,true); v.ai.goal=G; R.t=50; }   // stuck somewhere: he takes a shorter way
+    else if(Math.hypot(player.x-G.x,player.z-G.z)>30){ Object.assign(G,goalAt(player.x,player.z)); } }   // you walked off: he comes to where you are now
+  else if(R.state==='waiting'){ v.speed=0; if(v.ai) v.ai.wait=1; if(R.t>80) cancelRide(`${R.who} don wait tire. He don go.`); else if(Math.hypot(player.x-v.x,player.z-v.z)>60){ R.state='coming'; v.ai.wait=0; Object.assign(R.goal,goalAt(player.x,player.z)); } }
+  else if(R.state==='riding'){ if(mode!=='drive'||drive.v!==v){ rideExit(true); return; } player.x=v.x; player.z=v.z;
+    if(R.goal.near&&Math.abs(v.speed)<.5&&R.t>2) arriveRide(); else if(R.t>300) skipRide();
+    else if(R.t>18&&!R.hint&&!PHONE.open){ R.hint=true; toast(`Long ride? Open your phone (${touchUI?'phone button':'P'}) to skip it.`,3); } }
+  if(PHONE.open) phoneLive(); }
+
 /* ================= Eko Grand Hotel: walk in to the lounge bar =================
    The office tower nearest your house is the hotel. Its lounge (assets/models/hotel_bar.glb) loads the first time you come
    near, so nobody downloads it unless they visit. Inside: tables, a stage and the bar, with a few guests. */
@@ -2977,7 +3083,7 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior') updateWalk(dt,true); else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateRaid(dt); updateCarry(dt); updatePeds(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
+  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updatePeds(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); updateBlobs(); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
