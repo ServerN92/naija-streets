@@ -852,16 +852,45 @@ function walkY(x,z,y=0){ for(const fb of FOOTB){ const ox=x-fb.cx, oz=z-fb.cz; i
     for(const st of fb.stairs){ if(Math.abs(l-st.l)>1.1) continue; const tt=t*st.sg; if(tt>-.2&&tt<1.2+fb.Ls+.3){ const k=clamp((tt-1.2)/fb.Ls,0,1); const h=fb.H*(1-k); if(h<y+1.4||k>=1) return Math.max(0,h); } } }
   return 0; }
 
-/* ================= billboards ================= */
+/* ================= billboards =================
+   Big roadside billboards (assets/models/billboard.glb) along the main roads, angled to the traffic, each with an ad of
+   the city; they light up at night. One drawing for all the frames and one per ad. (If the model can't load, simple boards.) */
 const billboardMats=[];
-{ const bbs=[texBillboard('LAGOS NO DEY CARRY LAST','Eko o ni baje · Since forever','#0f6e78','#16a06b','#ffffff'),texBillboard('NAIJA STREETS','The city is yours · Coming soon','#111111','#3a2412','#F2B705'),texBillboard('JOLLOF FRIDAY','Mama Put · Agege Motor Road · Open till late','#c0392b','#e8590c','#fff3bf'),texBillboard('MUSHIN NO DEY SLEEP','Ojuwoye market · Open every day','#5f3dc4','#e64980','#fff3bf')];
-  const legM=new THREE.MeshStandardMaterial({color:0x40444a,metalness:.7,roughness:.4}); let n=0;
-  const main=ROADS.filter(e=>e.c<=3&&e.len>60); for(let tries=0;tries<200&&n<10;tries++){ const e=pick(main), A0=nodes[e.a], t=rr(20,e.len-20), sd=R()<.5?-1:1, o=e.hw+3, x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
-    if(resolveCircle({x,z},1.2)||roadAt(x,z,1)) continue; const y=9;
-    const m=new THREE.MeshStandardMaterial({map:bbs[n%bbs.length],emissiveMap:bbs[n%bbs.length],emissive:0xffffff,emissiveIntensity:0,roughness:.55}); const g=new THREE.Group();
-    const face=new THREE.Mesh(new THREE.PlaneGeometry(14,5.25),m); face.position.y=y; const back=new THREE.Mesh(new THREE.BoxGeometry(14.3,5.5,.3),legM); back.position.set(0,y,-.18);
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.35,.45,y-2.6,10),legM); leg.position.y=(y-2.6)/2; g.add(face,back,leg); g.traverse(o2=>{if(o2.isMesh){o2.castShadow=true;}});
-    g.position.set(x,0,z); g.lookAt(x+e.fz*sd,0,z-e.fx*sd); scene.add(g); billboardMats.push(m); addCol({x0:x-.5,x1:x+.5,z0:z-.5,z1:z+.5,h:y+3}); n++; } }
+{ const ADS=[texBillboard('LAGOS NO DEY CARRY LAST','Eko o ni baje · Since forever','#0f6e78','#16a06b','#ffffff'),texBillboard('NAIJA STREETS','The city is yours · Coming soon','#111111','#3a2412','#F2B705'),
+    texBillboard('JOLLOF FRIDAY','Mama Put · Agege Motor Road · Open till late','#c0392b','#e8590c','#fff3bf'),texBillboard('MUSHIN NO DEY SLEEP','Ojuwoye market · Open every day','#5f3dc4','#e64980','#fff3bf'),
+    texBillboard('OYA RIDE','Book am for your phone · Lagos rides, sharp sharp','#F2B705','#e8590c','#0E1014'),texBillboard('SHARP SHARP BANK','Send money, no wahala · Open your account today','#1c3d8f','#0b7285','#ffffff')];
+  const sites=[], main=ROADS.filter(e=>e.c<=3&&e.len>60), _yA=new THREE.Vector3(0,1,0);
+  for(let tries=0;tries<500&&sites.length<18;tries++){ const e=pick(main), A0=nodes[e.a], t=rr(20,e.len-20), sd=R()<.5?-1:1, o=e.hw+3.2, x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
+    if(resolveCircle({x,z},1.4)||roadAt(x,z,1.2)||sites.some(q=>Math.hypot(q.x-x,q.z-z)<130)) continue;
+    const nx=e.fz*sd, nz=-e.fx*sd, tw=(R()<.5?-1:1)*.5, cx=nx*Math.cos(tw)-nz*Math.sin(tw), cz=nx*Math.sin(tw)+nz*Math.cos(tw);   // facing the road, turned toward one way of the traffic
+    sites.push({x,z,cx,cz,ad:sites.length%ADS.length}); }
+  let done=false;
+  try{ const g=await GLL.parseAsync(await fetchBuf(murl('billboard')),''); g.scene.updateMatrixWorld(true);
+    const tris=[]; let map=null; const a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3();
+    g.scene.traverse(m=>{ if(!m.isMesh) return; map=map||m.material.map; const G=m.geometry.index?m.geometry.toNonIndexed():m.geometry, P=G.attributes.position, U=G.attributes.uv;
+      for(let i=0;i<P.count;i+=3){ a.fromBufferAttribute(P,i).applyMatrix4(m.matrixWorld); b.fromBufferAttribute(P,i+1).applyMatrix4(m.matrixWorld); c.fromBufferAttribute(P,i+2).applyMatrix4(m.matrixWorld);
+        const n=new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)); tris.push({p:[a.x,a.y,a.z,b.x,b.y,b.z,c.x,c.y,c.z],uv:[0,1,2].map(k=>[U.getX(i+k),U.getY(i+k)]).flat(),ar:n.length()/2,nx:n.normalize().x}); } });
+    let y0=1e9,y1=-1e9; for(const t of tris) for(let k=1;k<9;k+=3){ y0=Math.min(y0,t.p[k]); y1=Math.max(y1,t.p[k]); }
+    const face=tris.filter(t=>t.nx<-.9).sort((p,q)=>q.ar-p.ar).slice(0,2);
+    const fx0=face[0].p[0], low=tris.filter(t=>(t.p[1]+t.p[4]+t.p[7])/3<y0+(y1-y0)*.35); let px=0,pz=0; for(const t of low){ px+=(t.p[0]+t.p[3]+t.p[6])/3; pz+=(t.p[2]+t.p[5]+t.p[8])/3; } px/=low.length||1; pz/=low.length||1;
+    let fz0=1e9,fz1=-1e9,uu0=1e9,uu1=-1e9,vv0=1e9,vv1=-1e9; for(const t of face){ for(let k=2;k<9;k+=3){ fz0=Math.min(fz0,t.p[k]); fz1=Math.max(fz1,t.p[k]); } for(let k=0;k<6;k+=2){ uu0=Math.min(uu0,t.uv[k]); uu1=Math.max(uu1,t.uv[k]); vv0=Math.min(vv0,t.uv[k+1]); vv1=Math.max(vv1,t.uv[k+1]); } }
+    const K=11.5/(y1-y0), cz=(fz0+fz1)/2;   // 11.5 m tall; the board's face on the local x=0 plane, centred; base on the ground
+    const geo=list=>{ const pos=[], uv=[]; for(const t of list){ for(let k=0;k<9;k+=3) pos.push((t.p[k]-fx0)*K,(t.p[k+1]-y0)*K,(t.p[k+2]-cz)*K); uv.push(...t.uv); }
+      const G=new THREE.BufferGeometry(); G.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); G.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); G.computeVertexNormals(); return G; };
+    const frameG=geo(tris.filter(t=>!face.includes(t))), faceG=geo(face);
+    if(map) map.colorSpace=THREE.SRGBColorSpace;
+    const frameM=new THREE.MeshStandardMaterial({map,roughness:.6,metalness:.35}), place=(it,M)=>{ const th=Math.atan2(it.cz,-it.cx); _q.setFromAxisAngle(_yA,th); _p.set(it.x,0,it.z); _s.set(1,1,1); M.compose(_p,_q,_s); };
+    const fr=new THREE.InstancedMesh(frameG,frameM,sites.length); fr.castShadow=true; fr.receiveShadow=true; sites.forEach((it,i)=>{ place(it,_m); fr.setMatrixAt(i,_m); }); fr.computeBoundingSphere(); scene.add(fr);
+    ADS.forEach((t,k)=>{ const its=sites.filter(it=>it.ad===k); if(!its.length) return; t.repeat.set(1/(uu1-uu0),1/(vv1-vv0)); t.offset.set(-uu0/(uu1-uu0),-vv0/(vv1-vv0));
+      const m=new THREE.MeshStandardMaterial({map:t,emissiveMap:t,emissive:0xffffff,emissiveIntensity:0,roughness:.5}); billboardMats.push(m);
+      const im=new THREE.InstancedMesh(faceG,m,its.length); im.castShadow=true; its.forEach((it,i)=>{ place(it,_m); im.setMatrixAt(i,_m); }); im.computeBoundingSphere(); scene.add(im); });
+    for(const it of sites){ const th=Math.atan2(it.cz,-it.cx), lx=(px-fx0)*K, lz=(pz-cz)*K, wx=it.x+lx*Math.cos(th)+lz*Math.sin(th), wz=it.z-lx*Math.sin(th)+lz*Math.cos(th); addCol({x0:wx-.6,x1:wx+.6,z0:wz-.6,z1:wz+.6,h:12}); }
+    done=true; }catch(e){ console.warn('billboard model could not load, using simple boards',e); }
+  if(!done){ const legM=new THREE.MeshStandardMaterial({color:0x40444a,metalness:.7,roughness:.4});
+    for(const it of sites){ const y=9, t=ADS[it.ad], m=new THREE.MeshStandardMaterial({map:t,emissiveMap:t,emissive:0xffffff,emissiveIntensity:0,roughness:.55}); const g=new THREE.Group();
+      const face=new THREE.Mesh(new THREE.PlaneGeometry(14,5.25),m); face.position.y=y; const back=new THREE.Mesh(new THREE.BoxGeometry(14.3,5.5,.3),legM); back.position.set(0,y,-.18);
+      const leg=new THREE.Mesh(new THREE.CylinderGeometry(.35,.45,y-2.6,10),legM); leg.position.y=(y-2.6)/2; g.add(face,back,leg); g.traverse(o2=>{if(o2.isMesh){o2.castShadow=true;}});
+      g.position.set(it.x,0,it.z); g.lookAt(it.x+it.cx,0,it.z+it.cz); scene.add(g); billboardMats.push(m); addCol({x0:it.x-.5,x1:it.x+.5,z0:it.z-.5,z1:it.z+.5,h:y+3}); } } }
 
 /* ================= props ================= */
 await step('Planting trees and stringing wires…', 64);

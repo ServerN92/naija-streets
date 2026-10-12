@@ -1,6 +1,7 @@
 {
 "assets/models/beigehouse.glb": 354844,
 "assets/models/beigehouse_lod1.glb": 114636,
+"assets/models/billboard.glb": 20500,
 "assets/models/citybus.glb": 447596,
 "assets/models/citybus_lod1.glb": 120196,
 "assets/models/hotel_bar.glb": 3529416,
@@ -50,6 +51,7 @@
 "_v": {
 "assets/models/beigehouse.glb": "91da9e58",
 "assets/models/beigehouse_lod1.glb": "f6fec07d",
+"assets/models/billboard.glb": "36c0c402",
 "assets/models/citybus.glb": "75360633",
 "assets/models/citybus_lod1.glb": "8d76c52c",
 "assets/models/hotel_bar.glb": "e30a084c",
