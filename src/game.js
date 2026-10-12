@@ -12,11 +12,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=fd3d4e9f51';
-import { MapView } from './mapview.js?v=fd3d4e9f51';
+import * as CLOCK from './clock.js?v=a77819cf0c';
+import { MapView } from './mapview.js?v=a77819cf0c';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='fd3d4e9f51';
+const BUILD='a77819cf0c';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1506,7 +1506,7 @@ function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','run','tex
 function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   // stand still for a while and you take out your phone (moves arrive with the people files)
   if(speed<.08){ ti=1; hero.still+=dt; if(PHONE.open&&a.text&&hero.fid!=='text'&&!hero.ov){ hero.fid='text'; a.text.reset().play(); } else if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
-  else { hero.still=0; hero.fid=null; if(speed<=WALK_V){ const k=speed/WALK_V; ti=1-k; tw=k; } else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
+  else { hero.still=0; hero.fid=null; if(speed<=WALK_V){ const k=speed/WALK_V; ti=1-k; tw=k; } else if(CARRY.p) tw=1; else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
   const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
   { const o=hero.ov, b=FIGHT.buf; if(b&&(T0-b.t>.5)) FIGHT.buf=null; else if(b&&(!o||(o.atk&&o.t>=o.cancel*o.dur))){ FIGHT.buf=null; playerAttack(b.kind); } }   // a press made during a blow comes out as soon as it can
@@ -1517,10 +1517,10 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   const idleW=w.idle*(1-Math.min(1,f)), fw=a.fight_idle?w.fight:0;
   a.idle.setEffectiveWeight(idleW*(1-fw)*base); if(a.fight_idle) a.fight_idle.setEffectiveWeight(idleW*fw*base);
   a.walk.setEffectiveWeight(w.walk*base); a.run.setEffectiveWeight(w.run*base);
-  a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2);
+  a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,CARRY.p?2.5:1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2);
   if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+(O.walk||0)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
     hero.cObj.position.y=L.y0+y; }
-  hero.mixer.update(hd); phoneInHand(); heroWeapon(); }
+  hero.mixer.update(hd); phoneInHand(); heroWeapon(); carryArms(); }
 const HERO_RIDE={okada:{x:0,y:.08,z:0,ry:0},keke:{x:0,y:.08,z:0,ry:0},danfo:{x:0,y:.04,z:0,ry:0},bus:{x:0,y:.04,z:0,ry:0},police:{x:0,y:.04,z:0,ry:0},sedan:{x:0,y:.02,z:0,ry:0}};
 function updateEnter(dt){ hero.carT+=dt; hero.mixer.update(dt); const [f]=inputVec(); const dur=hero.act.car.getClip().duration/hero.act.car.timeScale;
   if(hero.carT>dur*.86||(hero.carT>.7&&(Math.abs(f)>.5||K[' ']))) finishEnter(); }
@@ -2049,7 +2049,7 @@ function updatePeds(dt){ NPCF++; if(NPCF%30===0){ NWALK=0; for(const p of peds) 
     // walk into someone and they answer you
     if(mode==='walk'&&started&&d2<1.8*1.8&&!(p.cool>0)&&!p.dealer&&(p.state==='walk'||p.state==='idle'||p.state==='spot')) bumped(p);
     if(p.state!=='xbr'&&!p.carried){ const gy=groundY(p.x,p.z); p.y+=(gy-p.y)*Math.min(1,dt*12); }
-    if(p.body){ p.h.root.visible=false; poseBody(p,dt); if(p.cop) pedWeapon(p); continue; }
+    if(p.body){ p.h.root.visible=false; poseBody(p,dt); if(p.cop) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); pedPhone(p); continue; }
     const vis=d2<150*150; p.h.root.visible=vis; if(!vis) continue;
     const lod=d2<45*45?1:0; if(lod!==p.lod){ p.lod=lod; p.h.root.traverse(o=>{ if(o.isMesh) o.castShadow=!!lod; }); }
     p.h.root.position.set(p.x,p.y+p.fall*.12,p.z); p.h.root.rotation.y=p.yaw; p.h.root.rotation.x=-p.fall*1.45;
@@ -2245,7 +2245,7 @@ async function loadPeople(){
       if(id===mine) applySavedLook();   // you get your own body as soon as it is in
       await new Promise(r=>setTimeout(r,30)); }
   }catch(e){ console.warn('people files could not load; the city keeps its simple walkers',e); }
-  PEOPLE.done=true; addGuests(); applySavedLook(); }   // the texture decoder stays ready for the hotel and outfits, which load later
+  PEOPLE.done=true; addGuests(); applySavedLook(); loadPhone(); }   // the texture decoder stays ready for the hotel and outfits, which load later
 
 // ---- bodies: only the people nearest the camera get a real body (Low 8 within 30 m, Medium 14 / 45 m, High 24 / 65 m)
 const BODY_POOL={}, BODIES=[]; let bodySlot=0;
@@ -2285,7 +2285,7 @@ function poseBody(p,dt){ const b=p.body, C=PEOPLE.casts[b.id], cl=C.clips, st=p.
   if(p.jolt>0){ b.root.position.y+=p.jolt*.06; b.root.rotation.z=p.jolt*.05; p.jolt=Math.max(0,p.jolt-dt*7); }   // a blow on the floor shakes the body
   if(st==='shop'&&p.speed<=.12&&p.act&&cl[p.act]&&b.clip!==p.act) bodyPlay(b,p.act,.3);
   b.oy+=((C.off[b.clip]||0)-b.oy)*Math.min(1,dt*6); b.inner.position.y=C.y0+b.oy;
-  if(p.stopT>0){ p.stopT-=dt; b.acc+=dt*.1; } else b.acc+=dt; const k=p.cop||p.dc<14?1:p.dc<30?2:3; if((NPCF+b.slot)%k===0){ b.mixer.update(b.acc); b.acc=0; } }   // far bodies move at a lower rate
+  if(p.stopT>0){ p.stopT-=dt; b.acc+=dt*.1; } else b.acc+=dt; const k=p.cop||p.carried||p.dc<14?1:p.dc<30?2:3; if((NPCF+b.slot)%k===0){ b.mixer.update(b.acc); b.acc=0; } }   // far bodies move at a lower rate
 const _cd=new THREE.Vector3();
 function assignBodies(){ if(!PEOPLE.n) return; const R=Q.npcR, cx=camera.position.x, cz=camera.position.z; camera.getWorldDirection(_cd); const list=[];
   for(const p of peds){ if(p.state==='off'){ if(p.body) freeBody(p); continue; } const dx=p.x-cx, dz=p.z-cz; p.dc=Math.hypot(dx,dz);
@@ -2699,6 +2699,25 @@ function carryDrop(quiet){ const p=CARRY.p; if(!p) return; CARRY.p=null; p.carri
   const c={x:player.x+fx*.9,z:player.z+fz*.9}; resolveCircle(c,.3); Object.assign(p,{x:c.x,z:c.z,y:0,state:'down',timer:mrr(1.6,2.6),downT:1,got:0,fall:1,vx:fx*.5,vz:fz*.5,kx:player.x,kz:player.z}); p.seq=(p.seq||0)+1;
   if(!quiet&&sayT<=0){ sayT=4; toast(mpick(['"God punish you! I go report you!"','"Ah! Thank God!"']),2.2); } }
 function carriedPed(p){ if(CARRY.p!==p){ p.carried=false; p.state='down'; p.timer=1.5; p.y=0; } }
+// a fireman's carry: their middle on your right shoulder, their back hanging down behind you, legs down your front
+const _cv=()=>new THREE.Vector3(), _cq=new THREE.Quaternion(), _cm=new THREE.Matrix4();
+function carryFrame(){ const f=new THREE.Vector3(Math.sin(player.yaw),0,Math.cos(player.yaw)), u=new THREE.Vector3(0,1,0); return {f,u,r:new THREE.Vector3().crossVectors(f,u)}; }
+function carryPose(p){ const b=p.body; if(!b||!hero||!b.hips) return; const C=b.bc||(b.bc={}), sh=boneOf(hero.cObj,/RightArm$/,ARMS.bones||(ARMS.bones={}),'ru'); if(!sh) return;
+  const {f,u,r}=carryFrame(), S=sh.getWorldPosition(_cv());
+  const H=S.clone().addScaledVector(u,.17).addScaledVector(r,-.11).addScaledVector(f,.03);
+  const Y=u.clone().multiplyScalar(-.8).addScaledVector(f,-.6).normalize(), Z=f.clone().addScaledVector(Y,-f.dot(Y)).normalize(), X=new THREE.Vector3().crossVectors(Y,Z);
+  const hips=b.hips; hips.parent.updateWorldMatrix(true,false); _cq.setFromRotationMatrix(_cm.makeBasis(X,Y,Z));
+  hips.quaternion.copy(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(_cq)); hips.position.copy(hips.parent.worldToLocal(H.clone())); hips.updateMatrixWorld(true);
+  const aim=(n,cn,dir)=>{ const bn=boneOf(b.inner,new RegExp(n+'$'),C,n), ch=boneOf(b.inner,new RegExp(cn+'$'),C,cn); if(!bn||!ch) return; const a=bn.getWorldPosition(_cv()), c=ch.getWorldPosition(_cv()); turnBone(bn,c,a.clone().addScaledVector(dir,a.distanceTo(c))); };
+  const L=u.clone().multiplyScalar(-.8).addScaledVector(f,.6).normalize(), L2=u.clone().multiplyScalar(-1).addScaledVector(f,.12).normalize(), A=u.clone().multiplyScalar(-1).addScaledVector(f,-.12).normalize();
+  for(const s of ['Left','Right']){ aim(s+'UpLeg',s+'Leg',L); aim(s+'Leg',s+'Foot',L2); aim(s+'Arm',s+'ForeArm',A); aim(s+'ForeArm',s+'Hand',A); } }
+// your right arm holds their legs; you lean into the weight
+function carryArms(){ if(!CARRY.p||!hero||mode!=='walk') return; const B=ARMS.bones||(ARMS.bones={}), c=hero.cObj;
+  const ru=boneOf(c,/RightArm$/,B,'ru'), rl=boneOf(c,/RightForeArm$/,B,'rl'), rh=boneOf(c,/RightHand$/,B,'rh'), sp=boneOf(c,/Spine1$/,B,'sp1'); if(!ru||!rl||!rh) return;
+  const {f,u,r}=carryFrame();
+  if(sp){ sp.getWorldQuaternion(_iq2); _iq.setFromAxisAngle(r,-.16-Math.min(.1,player.speed*.025)); _iq.multiply(_iq2); sp.parent.getWorldQuaternion(_iq2); sp.quaternion.copy(_iq2.invert().multiply(_iq)); sp.updateMatrixWorld(true); }
+  const S=ru.getWorldPosition(_cv()), T=S.clone().addScaledVector(f,.2).addScaledVector(u,-.1).addScaledVector(r,.02);
+  ik2(ru,rl,rh,T,S.clone().addScaledVector(r,.3).addScaledVector(u,-.45).addScaledVector(f,.15)); }
 // over your shoulder, every frame after you move
 function updateCarry(dt){ const p=CARRY.p; if(!p) return; CARRY.t+=dt;
   if(p.state!=='carried'||mode!=='walk'){ carryDrop(true); return; }
@@ -2958,8 +2977,15 @@ const RIDE_WHO=['Tunde','Emeka','Musa','Chinedu','Bayo','Ibrahim','Segun','Kelec
 function loadPhone(){ if(PHONE.loading) return PHONE.loading;
   return PHONE.loading=fetchBuf(murl('phone')).then(b=>GLL.parseAsync(b,'')).then(g=>{ const o=g.scene; o.traverse(m=>{ if(m.isMesh){ const x=m.material; if(x.map) x.map.colorSpace=THREE.SRGBColorSpace; m.material=new THREE.MeshStandardMaterial({map:x.map||null,roughness:.35,metalness:.2,emissive:0xffffff,emissiveMap:x.map||null,emissiveIntensity:.12}); m.castShadow=false; m.layers.set(1); m.frustumCulled=false; } });
     const w=new THREE.Group(); w.add(o); w.visible=false; PHONE.mesh=w; }).catch(e=>console.warn('phone',e)); }
-// the phone shows in your hand while it is open, or when you stand texting
-function phoneInHand(){ const m=PHONE.mesh; if(!m||!hero) return; const w=hero.w, want=mode==='walk'||mode==='interior'?(PHONE.open||w.text>.35):false;
+// people texting or on a call hold a phone too (the nearest few)
+const PHONE_POOL=[];
+function pedPhone(p){ const b=p.body, want=!!b&&!!PHONE.mesh&&p.dc<26&&(b.clip==='text'||b.clip==='phone'||b.clip==='text_walk');
+  if(p.phm&&(!want||p.phmB!==b)){ if(p.phm.parent) p.phm.parent.remove(p.phm); PHONE_POOL.push(p.phm); p.phm=null; }
+  if(!want||p.phm) return; const hand=boneOf(b.inner,/RightHand$/,b.bc||(b.bc={}),'RightHand'); if(!hand) return;
+  let m=PHONE_POOL.pop(); if(!m){ m=new THREE.Group(); m.add(PHONE.mesh.children[0].clone()); }
+  hand.updateWorldMatrix(true,false); const sc=new THREE.Vector3(); hand.matrixWorld.decompose(_p,_q,sc); m.scale.setScalar(1/sc.x); m.position.set(PHONE_POSE.x/sc.x,PHONE_POSE.y/sc.x,PHONE_POSE.z/sc.x); m.rotation.set(PHONE_POSE.rx,PHONE_POSE.ry,PHONE_POSE.rz); hand.add(m); p.phm=m; p.phmB=b; }
+// the phone shows in your hand while it is open, or when you stand texting or calling
+function phoneInHand(){ const m=PHONE.mesh; if(!hero) return; const w=hero.w, want=mode==='walk'||mode==='interior'?(PHONE.open||w.text>.35||w.phone>.35):false; if(!m){ if(want) loadPhone(); return; }
   if(want&&PHONE.body!==hero.cObj){ let hb=null; hero.cObj.traverse(o=>{ if(!hb&&o.isBone&&/RightHand$/.test(o.name)) hb=o; }); if(!hb) return; hero.cObj.updateMatrixWorld(true);
     const s=new THREE.Vector3(); hb.matrixWorld.decompose(_p,_q,s); m.scale.setScalar(1/s.x); m.position.set(PHONE_POSE.x/s.x,PHONE_POSE.y/s.x,PHONE_POSE.z/s.x); m.rotation.set(PHONE_POSE.rx,PHONE_POSE.ry,PHONE_POSE.rz); hb.add(m); PHONE.body=hero.cObj; }
   if(m.visible!==want) m.visible=want; }
@@ -3562,7 +3588,7 @@ function pedWeapon(p){ const b=p.body, id=(p.state==='cop'||p.state==='copguard'
   if(id!=='ak'){ const hand=boneOf(b.inner,/RightHand$/,p.wc,'hand'); if(hand) attachTo(p.wm,hand,holdOf(id)); return; }
   if(p.wm.parent!==scene){ if(p.wm.parent) p.wm.parent.remove(p.wm); scene.add(p.wm); p.wm.scale.setScalar(1); }
   if(p.aimOn) aimArms(b.inner,p.wc,p.wm,p.aimDir,p.recoil||0); else slingOn(p.wm,b.inner,p.wc,p.yaw); }
-function dropPedWeapon(p){ if(p.wm){ if(p.wm.parent) p.wm.parent.remove(p.wm); p.wm=null; } }
+function dropPedWeapon(p){ if(p.wm){ if(p.wm.parent) p.wm.parent.remove(p.wm); p.wm=null; } if(p.phm){ if(p.phm.parent) p.phm.parent.remove(p.phm); PHONE_POOL.push(p.phm); p.phm=null; } }
 // weapons on the ground: walk over them to take them
 const PICKS=[];
 function dropWeapon(x,z,id){ if(!ARMS.lib[id]||mode==='interior') return; const w=cloneWeapon(id); w.rotation.order='YXZ'; w.rotation.set(0,MR()*6.28,Math.PI/2); w.position.set(x,groundY(x,z)+.035,z); scene.add(w);
