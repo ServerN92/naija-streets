@@ -12,11 +12,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=b8c914a5f8';
-import { MapView } from './mapview.js?v=b8c914a5f8';
+import * as CLOCK from './clock.js?v=b8fdedf800';
+import { MapView } from './mapview.js?v=b8fdedf800';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='b8c914a5f8';
+const BUILD='b8fdedf800';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -852,16 +852,45 @@ function walkY(x,z,y=0){ for(const fb of FOOTB){ const ox=x-fb.cx, oz=z-fb.cz; i
     for(const st of fb.stairs){ if(Math.abs(l-st.l)>1.1) continue; const tt=t*st.sg; if(tt>-.2&&tt<1.2+fb.Ls+.3){ const k=clamp((tt-1.2)/fb.Ls,0,1); const h=fb.H*(1-k); if(h<y+1.4||k>=1) return Math.max(0,h); } } }
   return 0; }
 
-/* ================= billboards ================= */
+/* ================= billboards =================
+   Big roadside billboards (assets/models/billboard.glb) along the main roads, angled to the traffic, each with an ad of
+   the city; they light up at night. One drawing for all the frames and one per ad. (If the model can't load, simple boards.) */
 const billboardMats=[];
-{ const bbs=[texBillboard('LAGOS NO DEY CARRY LAST','Eko o ni baje · Since forever','#0f6e78','#16a06b','#ffffff'),texBillboard('NAIJA STREETS','The city is yours · Coming soon','#111111','#3a2412','#F2B705'),texBillboard('JOLLOF FRIDAY','Mama Put · Agege Motor Road · Open till late','#c0392b','#e8590c','#fff3bf'),texBillboard('MUSHIN NO DEY SLEEP','Ojuwoye market · Open every day','#5f3dc4','#e64980','#fff3bf')];
-  const legM=new THREE.MeshStandardMaterial({color:0x40444a,metalness:.7,roughness:.4}); let n=0;
-  const main=ROADS.filter(e=>e.c<=3&&e.len>60); for(let tries=0;tries<200&&n<10;tries++){ const e=pick(main), A0=nodes[e.a], t=rr(20,e.len-20), sd=R()<.5?-1:1, o=e.hw+3, x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
-    if(resolveCircle({x,z},1.2)||roadAt(x,z,1)) continue; const y=9;
-    const m=new THREE.MeshStandardMaterial({map:bbs[n%bbs.length],emissiveMap:bbs[n%bbs.length],emissive:0xffffff,emissiveIntensity:0,roughness:.55}); const g=new THREE.Group();
-    const face=new THREE.Mesh(new THREE.PlaneGeometry(14,5.25),m); face.position.y=y; const back=new THREE.Mesh(new THREE.BoxGeometry(14.3,5.5,.3),legM); back.position.set(0,y,-.18);
-    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.35,.45,y-2.6,10),legM); leg.position.y=(y-2.6)/2; g.add(face,back,leg); g.traverse(o2=>{if(o2.isMesh){o2.castShadow=true;}});
-    g.position.set(x,0,z); g.lookAt(x+e.fz*sd,0,z-e.fx*sd); scene.add(g); billboardMats.push(m); addCol({x0:x-.5,x1:x+.5,z0:z-.5,z1:z+.5,h:y+3}); n++; } }
+{ const ADS=[texBillboard('LAGOS NO DEY CARRY LAST','Eko o ni baje · Since forever','#0f6e78','#16a06b','#ffffff'),texBillboard('NAIJA STREETS','The city is yours · Coming soon','#111111','#3a2412','#F2B705'),
+    texBillboard('JOLLOF FRIDAY','Mama Put · Agege Motor Road · Open till late','#c0392b','#e8590c','#fff3bf'),texBillboard('MUSHIN NO DEY SLEEP','Ojuwoye market · Open every day','#5f3dc4','#e64980','#fff3bf'),
+    texBillboard('OYA RIDE','Book am for your phone · Lagos rides, sharp sharp','#F2B705','#e8590c','#0E1014'),texBillboard('SHARP SHARP BANK','Send money, no wahala · Open your account today','#1c3d8f','#0b7285','#ffffff')];
+  const sites=[], main=ROADS.filter(e=>e.c<=3&&e.len>60), _yA=new THREE.Vector3(0,1,0);
+  for(let tries=0;tries<500&&sites.length<18;tries++){ const e=pick(main), A0=nodes[e.a], t=rr(20,e.len-20), sd=R()<.5?-1:1, o=e.hw+3.2, x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
+    if(resolveCircle({x,z},1.4)||roadAt(x,z,1.2)||sites.some(q=>Math.hypot(q.x-x,q.z-z)<130)) continue;
+    const nx=e.fz*sd, nz=-e.fx*sd, tw=(R()<.5?-1:1)*.5, cx=nx*Math.cos(tw)-nz*Math.sin(tw), cz=nx*Math.sin(tw)+nz*Math.cos(tw);   // facing the road, turned toward one way of the traffic
+    sites.push({x,z,cx,cz,ad:sites.length%ADS.length}); }
+  let done=false;
+  try{ const g=await GLL.parseAsync(await fetchBuf(murl('billboard')),''); g.scene.updateMatrixWorld(true);
+    const tris=[]; let map=null; const a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3();
+    g.scene.traverse(m=>{ if(!m.isMesh) return; map=map||m.material.map; const G=m.geometry.index?m.geometry.toNonIndexed():m.geometry, P=G.attributes.position, U=G.attributes.uv;
+      for(let i=0;i<P.count;i+=3){ a.fromBufferAttribute(P,i).applyMatrix4(m.matrixWorld); b.fromBufferAttribute(P,i+1).applyMatrix4(m.matrixWorld); c.fromBufferAttribute(P,i+2).applyMatrix4(m.matrixWorld);
+        const n=new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)); tris.push({p:[a.x,a.y,a.z,b.x,b.y,b.z,c.x,c.y,c.z],uv:[0,1,2].map(k=>[U.getX(i+k),U.getY(i+k)]).flat(),ar:n.length()/2,nx:n.normalize().x}); } });
+    let y0=1e9,y1=-1e9; for(const t of tris) for(let k=1;k<9;k+=3){ y0=Math.min(y0,t.p[k]); y1=Math.max(y1,t.p[k]); }
+    const face=tris.filter(t=>t.nx<-.9).sort((p,q)=>q.ar-p.ar).slice(0,2);
+    const fx0=face[0].p[0], low=tris.filter(t=>(t.p[1]+t.p[4]+t.p[7])/3<y0+(y1-y0)*.35); let px=0,pz=0; for(const t of low){ px+=(t.p[0]+t.p[3]+t.p[6])/3; pz+=(t.p[2]+t.p[5]+t.p[8])/3; } px/=low.length||1; pz/=low.length||1;
+    let fz0=1e9,fz1=-1e9,uu0=1e9,uu1=-1e9,vv0=1e9,vv1=-1e9; for(const t of face){ for(let k=2;k<9;k+=3){ fz0=Math.min(fz0,t.p[k]); fz1=Math.max(fz1,t.p[k]); } for(let k=0;k<6;k+=2){ uu0=Math.min(uu0,t.uv[k]); uu1=Math.max(uu1,t.uv[k]); vv0=Math.min(vv0,t.uv[k+1]); vv1=Math.max(vv1,t.uv[k+1]); } }
+    const K=11.5/(y1-y0), cz=(fz0+fz1)/2;   // 11.5 m tall; the board's face on the local x=0 plane, centred; base on the ground
+    const geo=list=>{ const pos=[], uv=[]; for(const t of list){ for(let k=0;k<9;k+=3) pos.push((t.p[k]-fx0)*K,(t.p[k+1]-y0)*K,(t.p[k+2]-cz)*K); uv.push(...t.uv); }
+      const G=new THREE.BufferGeometry(); G.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); G.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); G.computeVertexNormals(); return G; };
+    const frameG=geo(tris.filter(t=>!face.includes(t))), faceG=geo(face);
+    if(map) map.colorSpace=THREE.SRGBColorSpace;
+    const frameM=new THREE.MeshStandardMaterial({map,roughness:.6,metalness:.35}), place=(it,M)=>{ const th=Math.atan2(it.cz,-it.cx); _q.setFromAxisAngle(_yA,th); _p.set(it.x,0,it.z); _s.set(1,1,1); M.compose(_p,_q,_s); };
+    const fr=new THREE.InstancedMesh(frameG,frameM,sites.length); fr.castShadow=true; fr.receiveShadow=true; sites.forEach((it,i)=>{ place(it,_m); fr.setMatrixAt(i,_m); }); fr.computeBoundingSphere(); scene.add(fr);
+    ADS.forEach((t,k)=>{ const its=sites.filter(it=>it.ad===k); if(!its.length) return; t.repeat.set(1/(uu1-uu0),1/(vv1-vv0)); t.offset.set(-uu0/(uu1-uu0),-vv0/(vv1-vv0));
+      const m=new THREE.MeshStandardMaterial({map:t,emissiveMap:t,emissive:0xffffff,emissiveIntensity:0,roughness:.5}); billboardMats.push(m);
+      const im=new THREE.InstancedMesh(faceG,m,its.length); im.castShadow=true; its.forEach((it,i)=>{ place(it,_m); im.setMatrixAt(i,_m); }); im.computeBoundingSphere(); scene.add(im); });
+    for(const it of sites){ const th=Math.atan2(it.cz,-it.cx), lx=(px-fx0)*K, lz=(pz-cz)*K, wx=it.x+lx*Math.cos(th)+lz*Math.sin(th), wz=it.z-lx*Math.sin(th)+lz*Math.cos(th); addCol({x0:wx-.6,x1:wx+.6,z0:wz-.6,z1:wz+.6,h:12}); }
+    done=true; }catch(e){ console.warn('billboard model could not load, using simple boards',e); }
+  if(!done){ const legM=new THREE.MeshStandardMaterial({color:0x40444a,metalness:.7,roughness:.4});
+    for(const it of sites){ const y=9, t=ADS[it.ad], m=new THREE.MeshStandardMaterial({map:t,emissiveMap:t,emissive:0xffffff,emissiveIntensity:0,roughness:.55}); const g=new THREE.Group();
+      const face=new THREE.Mesh(new THREE.PlaneGeometry(14,5.25),m); face.position.y=y; const back=new THREE.Mesh(new THREE.BoxGeometry(14.3,5.5,.3),legM); back.position.set(0,y,-.18);
+      const leg=new THREE.Mesh(new THREE.CylinderGeometry(.35,.45,y-2.6,10),legM); leg.position.y=(y-2.6)/2; g.add(face,back,leg); g.traverse(o2=>{if(o2.isMesh){o2.castShadow=true;}});
+      g.position.set(it.x,0,it.z); g.lookAt(it.x+it.cx,0,it.z+it.cz); scene.add(g); billboardMats.push(m); addCol({x0:it.x-.5,x1:it.x+.5,z0:it.z-.5,z1:it.z+.5,h:y+3}); } } }
 
 /* ================= props ================= */
 await step('Planting trees and stringing wires…', 64);
@@ -1472,10 +1501,12 @@ function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','run','tex
   if(a.fight_idle) a.fight_idle.setEffectiveWeight(0); hero.w.fight=0; if(hero.ov){ hero.ov.a.stop(); hero.ov=null; } FIGHT.cx=FIGHT.cz=0; }
 function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   // stand still for a while and you take out your phone (moves arrive with the people files)
-  if(speed<.08){ ti=1; hero.still+=dt; if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
+  if(speed<.08){ ti=1; hero.still+=dt; if(PHONE.open&&a.text&&hero.fid!=='text'&&!hero.ov){ hero.fid='text'; a.text.reset().play(); } else if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
   else { hero.still=0; hero.fid=null; if(speed<=WALK_V){ const k=speed/WALK_V; ti=1-k; tw=k; } else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
-  const ow=heroOverlay(dt), base=1-ow;   // a punch, kick, jump or hit plays over the walk
+  const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
+  { const o=hero.ov, b=FIGHT.buf; if(b&&(T0-b.t>.5)) FIGHT.buf=null; else if(b&&(!o||(o.atk&&o.t>=o.cancel*o.dur))){ FIGHT.buf=null; playerAttack(b.kind); } }   // a press made during a blow comes out as soon as it can
+  const ow=heroOverlay(hd), base=1-ow;   // a punch, kick, jump or hit plays over the walk
   // fists up while a fight is on
   w.fight+=((((FIGHT.near||T0-FIGHT.lastAtk<4)&&!FIGHT.ko&&a.fight_idle&&mode==='walk')?1:0)-w.fight)*(1-Math.exp(-6*dt)); if(w.fight>.05) hero.fid=null;
   let f=0; for(const n of ['text','phone']) if(a[n]){ w[n]+=((hero.fid===n?1:0)-w[n])*(1-Math.exp(-4*dt)); a[n].setEffectiveWeight(w[n]*base); f+=w[n]; }
@@ -1485,7 +1516,7 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2);
   if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+(O.walk||0)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
     hero.cObj.position.y=L.y0+y; }
-  hero.mixer.update(dt); }
+  hero.mixer.update(hd); phoneInHand(); }
 const HERO_RIDE={okada:{x:0,y:.08,z:0,ry:0},keke:{x:0,y:.08,z:0,ry:0},danfo:{x:0,y:.04,z:0,ry:0},bus:{x:0,y:.04,z:0,ry:0},police:{x:0,y:.04,z:0,ry:0},sedan:{x:0,y:.02,z:0,ry:0}};
 function updateEnter(dt){ hero.carT+=dt; hero.mixer.update(dt); const [f]=inputVec(); const dur=hero.act.car.getClip().duration/hero.act.car.timeScale;
   if(hero.carT>dur*.86||(hero.carT>.7&&(Math.abs(f)>.5||K[' ']))) finishEnter(); }
@@ -1678,7 +1709,7 @@ function drawMinimap(){ const S=mm.width, R0=S/2, sc=R0/150, px=mode==='drive'?d
   const c=Math.cos(th), s=Math.sin(th);
   const mark=(wx,wz,col,label)=>{ let dx=(wx-px)*sc, dz=(wz-pz)*sc, sx=dx*c-dz*s, sy=dx*s+dz*c; const d=Math.hypot(sx,sy), lim=R0-18; if(d>lim){ sx*=lim/d; sy*=lim/d; }
     mg.fillStyle=col; mg.beginPath(); mg.arc(R0+sx,R0+sy,15,0,7); mg.fill(); mg.fillStyle='#0E1014'; mg.font='20px Bungee, Impact, sans-serif'; mg.textAlign='center'; mg.textBaseline='middle'; mg.fillText(label,R0+sx,R0+sy+1); };
-  mark(APT.front.x,APT.front.z,'#F2B705','H'); mark(STATION.x,STATION.z,'#4c7dff','P'); if(mapView.dest) mark(mapView.dest.x,mapView.dest.z,'#ffffff','•');
+  mark(APT.front.x,APT.front.z,'#F2B705','H'); mark(STATION.x,STATION.z,'#4c7dff','P'); if(RIDE.v&&RIDE.state!=='riding') mark(RIDE.v.x,RIDE.v.z,'#F2B705','T'); if(mapView.dest) mark(mapView.dest.x,mapView.dest.z,'#ffffff','•');
   mg.fillStyle='#F7EFDF'; mg.font='22px Bungee, Impact, sans-serif'; mg.textAlign='center'; mg.textBaseline='middle'; mg.fillText('N',R0+s*(R0-24),R0-c*(R0-24));
   const hd=mode==='drive'?Math.atan2(-Math.sin(drive.v.h),Math.cos(drive.v.h)):Math.atan2(Math.cos(player.yaw),Math.sin(player.yaw));
   mg.save(); mg.translate(R0,R0); mg.rotate(hd+th); mg.fillStyle='#F7EFDF'; mg.strokeStyle='#0E1014'; mg.lineWidth=4; mg.beginPath(); mg.moveTo(20,0); mg.lineTo(-13,-13); mg.lineTo(-6,0); mg.lineTo(-13,13); mg.closePath(); mg.stroke(); mg.fill(); mg.restore(); }
@@ -1690,12 +1721,12 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(Math.abs(drive.speed)<3) txt='Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(rideHere()) txt='Enter your ride'; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':`Drive the ${nm}`); } } }
+    else if(mode==='drive'){ if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':'Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
-  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#tRun').hidden=dv||mode==='enter'; const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tKick','#tJump','#tGrab']) $(id).hidden=!fb; $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
+  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); $('#tRun').hidden=dv||mode==='enter'; const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tKick','#tJump','#tGrab','#tDodge']) $(id).hidden=!fb; $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ mapView.clearRoute(); toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
@@ -1728,10 +1759,10 @@ const CODE={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arr
 const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
 addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;   // typing your name
   const k=keyOf(e); if(k===' '||k.startsWith('arrow')) e.preventDefault(); if(!started||e.repeat) return;
-  if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); return; }
+  if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j') playerAttack('punch'); else if(k==='k') playerAttack('kick'); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j') playerAttack('punch'); else if(k==='k') playerAttack('kick'); else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
 addEventListener('keyup',e=>{ K[keyOf(e)]=false; });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
@@ -1745,7 +1776,8 @@ cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') re
 addEventListener('pointerup',()=>{ dragging=false; });
 document.addEventListener('mousemove',e=>{ if(!started||mapView.isOpen) return; if(document.pointerLockElement===cvs||(dragging&&e.buttons)) look(e.movementX,e.movementY); });
 cvs.addEventListener('wheel',e=>{ e.preventDefault(); camState.zoom=clamp(camState.zoom+(e.deltaY>0?.08:-.08),.55,1.8); },{passive:false});
-$('#setBtn').addEventListener('click',()=>{ $('#settings').hidden=!$('#settings').hidden; });
+$('#setBtn').addEventListener('click',()=>{ $('#settings').hidden=!$('#settings').hidden; if(!$('#settings').hidden) closePhone(); });
+$('#phoneBtn').addEventListener('click',()=>togglePhone()); $('#phClose').addEventListener('click',()=>closePhone());
 $('#mmWrap').addEventListener('click',()=>{ if(started) openMap(); });
 $('#prompt').addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); action(); });
 document.querySelectorAll('#qual button').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.q===qKey?'true':'false');
@@ -1766,7 +1798,8 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   $('#tRun').addEventListener('pointerdown',e=>{ e.preventDefault(); touchRun=!touchRun; $('#tRun').classList.toggle('on',touchRun); });
   const tb=$('#tBrake'); tb.addEventListener('pointerdown',e=>{ e.preventDefault(); touchBrake=true; tb.classList.add('on'); }); for(const ev of ['pointerup','pointercancel','pointerleave']) tb.addEventListener(ev,()=>{ touchBrake=false; tb.classList.remove('on'); });
   $('#tHorn').addEventListener('pointerdown',e=>{ e.preventDefault(); horn(); hornHeard(); });
-  $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('punch'); }); $('#tKick').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('kick'); }); $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); playerJump(); }); }
+  $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('punch'); }); $('#tKick').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('kick'); }); $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); playerJump(); });
+  $('#tDodge').addEventListener('pointerdown',e=>{ e.preventDefault(); playerDodge(); }); }
 if(isTouch) enableTouchUI(); else addEventListener('touchstart',()=>enableTouchUI(),{once:true,passive:true});
 let rotateSeen=false; function checkRotate(){ if(started&&innerWidth>innerHeight) rotateSeen=true; const show=touchUI&&started&&!rotateSeen&&innerHeight>innerWidth&&innerWidth<700; $('#rotate').hidden=!show; }
 $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); }); addEventListener('resize',checkRotate);
@@ -1775,8 +1808,8 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started) return;
-  if(mode==='walk'){ if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); const v=nearestVehicle(); if(v) return enterCar(v); }
-  else if(mode==='drive'){ if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
+  if(mode==='walk'){ if(rideHere()) return rideEnter(); if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v) return v.ai?carjack(v):enterCar(v); }
+  else if(mode==='drive'){ if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(WARD.open) closeWard(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); } }
 const OPEN_RIDE={okada:1,keke:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
@@ -1795,6 +1828,22 @@ function enterCar(v){
     Object.assign(player,{x:sx,z:sz,yaw:Math.atan2(-lx,-lz),speed:0}); player.y=groundY(sx,sz); rig.root.position.set(player.x,player.y,player.z); rig.root.rotation.y=player.yaw;
     const a=hero.act; heroQuiet(); a.car.reset(); a.car.paused=false; a.car.timeScale=1.7; a.car.setEffectiveWeight(1); a.car.play(); hero.carT=0; mode='enter'; return; }
   mode='drive'; rig.root.visible=false; }
+/* ---- carjack: you walk to the driver's door, threaten, and the driver climbs out with hands up and runs (an area boy may fight you for it) */
+const JACK={go:null};
+const doorOf=(v,out)=>{ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx, o=OPEN_RIDE[v.type], ow=v.c.def.W/2+(o?.75:out), fw=o?0:.35; return {x:v.x+lx*ow+hx*fw,z:v.z+lz*ow+hz*fw,lx,lz,hx,hz}; };
+function carjack(v){ if(mode!=='walk'||FIGHT.ko||(hero&&hero.ov&&hero.ov.lock)) return; if(CARRY.p) carryDrop();
+  if(!hero||!hero.act.threaten){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); return enterCar(v); }   // no threatening move yet: the driver just runs
+  v.ai=null; v.speed=0; v.jacked=true; v.parked=false; const d=doorOf(v,1.15), c={x:d.x,z:d.z}; resolveCircle(c,.34); JACK.go={x:c.x,z:c.z,v,t:0}; player.speed=Math.max(player.speed,1); }
+function jackThreaten(v){ if(mode!=='walk'||FIGHT.ko){ return; } const d=doorOf(v,1.15); player.yaw=Math.atan2(-d.lx,-d.lz); player.speed=0;
+  FIGHT.heat=Math.min(3.4,FIGHT.heat+(v.type==='police'?1.4:.5)); FIGHT.crimeT=0; incident(v.x,v.z,'carjack');
+  toast(v.type==='police'?'"Officer, come down! This van na my own now!"':mpick(['"Comot for the motor! Now now!"','"Oya come down! Come down sharp sharp!"','"Driver! Commot before I vex!"']),2.2);
+  if(!heroDo('threaten',{force:true,ts:1.6,from:.05,to:.6,hits:[[.38,()=>jackOut(v)]],onEnd:()=>{ if(mode==='walk'&&!FIGHT.ko&&!drive.v&&Math.hypot(player.x-v.x,player.z-v.z)<6) enterCar(v); }})){ jackOut(v); enterCar(v); } }
+function jackOut(v){ if(v.out) return; v.out=true; const p=freePed(); fleeFrom(v,Math.max(0,Math.min(5,(v.c.seats||[]).length-1)));
+  if(!p) return; const d=doorOf(v,.5); wakePed(p,v.type==='police'?'areaboy':MR()<.4?'areaboy':mpick(['baba','areaboy','schoolboy','mama','lady_black']));
+  const c={x:d.x+d.hx*.9,z:d.z+d.hz*.9}; resolveCircle(c,.3);
+  Object.assign(p,{x:c.x,z:c.z,y:0,speed:0,atk:null,hp:HP0(p.cast),fall:0,phone:false}); react(p,'hands_up',player.x,player.z,mrr(1,1.4)); p.seq=(p.seq||0)+1;
+  if(p.cast==='areaboy'&&MR()<.35) p.fightAfter=true; else p.fleeAfter=true;
+  setTimeout(()=>toast(p.fightAfter?'"Ehen? You wan take my motor? I go show you!"':v.type==='okada'?'"Take am! Na only okada I get o!"':v.type==='danfo'?'"Everybody come down! Run!"':mpick(['"Take am! Take am! No wahala!"','"Oga abeg, no kill me!"','"Ah! Na my daily bread o!"']),2.2),450); }
 // the player sits on okada / in keke and is seen riding
 function seatHero(v){ const st=(SEATS[v.type]||[])[0]; if(!st||!v.c.hi){ rig.root.visible=false; return; }
   if(hero){ const a=hero.act; heroQuiet(); a.car.reset(); a.car.setEffectiveWeight(1); a.car.play(); a.car.time=a.car.getClip().duration-.02; a.car.paused=true; hero.mixer.update(0);
@@ -1811,7 +1860,7 @@ function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let pl
       if(clear){ player.x=c.x; player.z=c.z; placed=true; break; } } if(placed) break; }
   if(!placed){ for(const s of [1,-1]){ const c={x:v.x+hx*(v.c.def.L/2+1)*s,z:v.z+hz*(v.c.def.L/2+1)*s}; if(onLand(c.x,c.z)&&!resolveCircle({...c},.34)){ player.x=c.x; player.z=c.z; placed=true; break; } } }
   if(!placed){ player.x=v.x; player.z=v.z; }
-  unseatHero(); player.y=groundY(player.x,player.z); player.yaw=Math.atan2(hx,hz); player.speed=0; v.speed=0; v.parked=true; drive.v=null; drive.speed=0; mode='walk'; rig.root.visible=true; headSpot.intensity=0; BEAM.visible=false; }
+  unseatHero(); player.y=groundY(player.x,player.z); player.yaw=Math.atan2(hx,hz); player.speed=0; v.speed=0; v.parked=true; drive.v=null; drive.speed=0; drive.ride=false; mode='walk'; rig.root.visible=true; headSpot.intensity=0; BEAM.visible=false; }
 function enterApt(){ fadeSwap(()=>{ ROOM=INT; mode='interior'; enteredAt=T0; INT.scene.add(rig.root); Object.assign(player,{x:0,z:3.3,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.22,dist:2.7}); setScene(INT.scene); toast('Home sweet home'); }); }
 function exitApt(){ closeWard(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
 function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thud(); }
@@ -1819,13 +1868,19 @@ function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thu
 /* ================= simulation ================= */
 function updateWalk(dt,inside){
   const [f,s]=inputVec(), cy=camState.yaw, fx=Math.sin(cy), fz=Math.cos(cy), rx=-Math.cos(cy), rz=Math.sin(cy);
-  let mx=fx*f+rx*s, mz=fz*f+rz*s; const len=Math.hypot(mx,mz), run=K.shift||touchRun; let target=len>.12?(run?RUN_V:WALK_V)*Math.min(1,len):0; if(CARRY.p) target=Math.min(target,RUN_V*.55);
+  let mx=fx*f+rx*s, mz=fz*f+rz*s, jd=0;
+  const jg=JACK.go; if(jg&&!inside){ jg.t+=dt; const dx=jg.x-player.x, dz=jg.z-player.z; jd=Math.hypot(dx,dz); if(jd<.2||jg.t>1.6||FIGHT.ko){ JACK.go=null; jackThreaten(jg.v); jd=0; } else { mx=dx/jd; mz=dz/jd; } }   // walking up to the driver's door
+  const len=Math.hypot(mx,mz), run=K.shift||touchRun; let target=len>.12?(run?RUN_V:WALK_V)*Math.min(1,len):0; if(CARRY.p) target=Math.min(target,RUN_V*.55); if(jd) target=Math.min(RUN_V*.75,jd*6);
   const ov=hero&&hero.ov, held=FIGHT.ko||(ov&&ov.lock);
-  if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1) target=v; } }
-  player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:10));
+  if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1){ target=v; player.speed=v; } }
+    else if(ov&&ov.foe&&ov.foe.state!=='off'){ const q=ov.foe, k=ov.t/ov.dur, dx=q.x-player.x, dz=q.z-player.z, d=Math.hypot(dx,dz);   // a blow carries you onto your man, turning with him
+      if(k<ov.until+.1) player.yaw=lerpA(player.yaw,Math.atan2(dx,dz),1-Math.exp(-20*dt));
+      if(k<ov.until){ const v=clamp((d-ov.stand)/Math.max(.05,(ov.until-k)*ov.dur),0,7); target=v; player.speed=v; } } }
+  player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:(held?16:10)));
   if(len>.12&&!held) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
   else if(!held&&!inside&&(FIGHT.near||T0-FIGHT.lastAtk<3)){ const t=lockFoe(); if(t) player.yaw=lerpA(player.yaw,Math.atan2(t.x-player.x,t.z-player.z),1-Math.exp(-10*dt)); }   // in a fight you keep facing your man
-  const nx=player.x+Math.sin(player.yaw)*player.speed*dt, nz=player.z+Math.cos(player.yaw)*player.speed*dt;
+  let ex=0, ez=0; const DS=FIGHT.dash; if(DS){ DS.t+=dt; const k=Math.max(0,1-DS.t/DS.dur)*1.6; ex=DS.vx*k*dt; ez=DS.vz*k*dt; if(DS.t>=DS.dur) FIGHT.dash=null; }   // a dodge slides you aside
+  const nx=player.x+Math.sin(player.yaw)*player.speed*dt+ex, nz=player.z+Math.cos(player.yaw)*player.speed*dt+ez;
   if(inside){ if(ROOM.move) ROOM.move(nx,nz); else { const b=ROOM.bounds, c={x:clamp(nx,b.x0,b.x1),z:clamp(nz,b.z0,b.z1)}; resolveCircle(c,.32,ROOM.cols); player.x=c.x; player.z=c.z; player.y=0; } }
   else { let x=nx, z=nz; if(!onLand(x,player.z)) x=player.x; if(!onLand(x,z)) z=player.z; const c={x,z}; resolveCircle(c,.34,null,player.y); player.x=c.x; player.z=c.z;
     if(player.y<2) for(const v of vehicles){ const dx=player.x-v.x, dz=player.z-v.z; if(Math.abs(dx)>4||Math.abs(dz)>4) continue; const hx=Math.cos(v.h), hz=-Math.sin(v.h), al=dx*hx+dz*hz, lat=-dx*hz+dz*hx, ex=v.c.def.L/2+.3-Math.abs(al), ey=v.c.def.W/2+.3-Math.abs(lat);
@@ -1836,6 +1891,7 @@ function updateWalk(dt,inside){
   rig.root.position.set(player.x,player.y,player.z); rig.root.rotation.y=player.yaw;
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
 function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
+  if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
   const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40]})[v.type]||[1,38];
   if(f>.1) sp+=(sp<-.2?18:9.5*DT[0]*Math.max(0,1-sp/DT[1]))*dt*f; else if(f<-.1){ sp+=(sp>.4?-20:-6)*dt*(-f); if(sp<-9) sp=-9; } else { const dec=(1.6+Math.abs(sp)*.1)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
   if(hb){ const dec=24*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
@@ -1871,6 +1927,8 @@ function updateTraffic(dt){
         let stop=nb.occ&&nb.occ!==v&&nb.occ.ai&&T0-nb.occT<5;
         if(!stop&&nb.big!==undefined&&ai.ec>nb.big+1) for(const o of vehicles){ const oa=o.ai; if(o===v||!oa||oa.b!==nb.i||oa.seg.k!==0||oa.ec>nb.big+1||Math.abs(o.speed)<1.5) continue; if(oa.seg.len-oa.s<22){ stop=true; break; } }
         if(stop){ const lim=Math.max(0,(dist-2)*.8); if(lim<target){ target=lim; waiting=true; } } } }
+    if(ai.goal){ const G=ai.goal, dx=G.x-v.x, dz=G.z-v.z, ah=dx*fx+dz*fz, lat=Math.abs(-dx*fz+dz*fx);   // a booked ride pulls up level with you (or your stop)
+      if(lat<11&&ah>-3&&ah<40) target=Math.min(target,Math.max(0,ah*.7)); G.near=lat<11&&Math.abs(ah)<4; }
     if(ai.chase){ const G=ai.raid?RAID:player, dx=G.x-v.x, dz=G.z-v.z, ah=dx*fx+dz*fz, lat=Math.abs(-dx*fz+dz*fx), at=ai.raid?RAID.node:CHASE.at, mine=ai.a===at||ai.b===at;   // police pull up beside you
       if((mine||lat<22)&&ah>-3&&ah<45) target=Math.min(target,Math.max(0,ah*.8)); ai.near=mine&&lat<45&&Math.abs(ah)<6; }   // (on the street nearest you they stop level with you and wait, even if you are back from the road)
     if(ai.ghost>0) ai.ghost-=dt; else {
@@ -1888,10 +1946,10 @@ function updateTraffic(dt){
     while(ai.s>=ai.seg.len&&guard++<4){ ai.s-=ai.seg.len;
       if(ai.seg.k===0){ const out=nodes[ai.b].out; let opts=out.filter(n=>n!==ai.a); if(v.type==='bus') { const big=opts.filter(n=>{ const e=edgeOf(ai.b,n); return e&&e.c<=4; }); if(big.length) opts=big; }
         if(!opts.length){ if(out.includes(ai.a)) opts=[ai.a]; else { placeCar(v,120,250); break; } }
-        ai.na=ai.chase?chaseTurn(v,opts):pickTurn(ai,opts); ai.seg=turnSeg(ai.a,ai.b,ai.na); const nd=nodes[ai.b]; if(nd.deg>=3){ nd.occ=v; nd.occT=T0; } }
+        ai.na=ai.chase||ai.goal?chaseTurn(v,opts):pickTurn(ai,opts); ai.seg=turnSeg(ai.a,ai.b,ai.na); const nd=nodes[ai.b]; if(nd.deg>=3){ nd.occ=v; nd.occT=T0; } }
       else { const passed=nodes[ai.b]; if(passed.occ===v) passed.occ=null; ai.a=ai.b; ai.b=ai.na; ai.seg=lineSeg(ai.a,ai.b); const e=edgeOf(ai.a,ai.b); ai.cond=e?e.cond:'good'; ai.ec=e?e.c:6; ai.stopAt=(v.type==='danfo'&&MR()<.35&&ai.ec<=6)?ai.seg.len*mrr(.3,.65):-1; } }
     segPos(ai.seg,ai.s,_sp); v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx);
-    if((v.x-player.x)**2+(v.z-player.z)**2>340*340) placeCar(v,120,250); } }
+    if(!v.taxi&&(v.x-player.x)**2+(v.z-player.z)**2>340*340) placeCar(v,120,250); } }
 const HI_D=Q===QUAL.low?34:Q===QUAL.medium?50:70, OCC_D=Q===QUAL.low?30:Q===QUAL.medium?45:60;
 function bumpPothole(v,fx,fz,sp,isPlayer){ if(v.phCool>0||sp<1.5) return null; const L=v.c.def.L*.32;
   for(const s of [1,-1]){ const p=potholeAt(v.x+fx*L*s,v.z+fz*L*s); if(p){ v.phCool=.32; v.bobV-=p.depth*Math.min(sp,14)*(v.type==='okada'?.13:.085)*(isPlayer?1.6:1); v.pitchV=(v.pitchV||0)+s*p.depth*Math.min(sp,12)*.012; return p; } } return null; }
@@ -2118,15 +2176,17 @@ function setupCast(id,g,c=CAST[id]){ const tpl=g.scene; let mesh=null, hips=null
   PEOPLE.casts[id]={tpl,clips,off,y0:-bb.min.y,sc:c.h/Math.max(.5,bb.max.y-bb.min.y),f:!!c.f,idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>clips[n]&&c.idle.includes(n))||'idle_1'};
   if(CAST[id]) PEOPLE.n++; if(map) renderer.initTexture(map); }
 function heroMoves(){ if(!hero||!hero.cObj||!hero.hipsRest) return; const names=new Set(); hero.cObj.traverse(o=>{ if(o.isBone) names.add(o.name); }); const own=hero.look&&hero.look.clips;
-  for(const n of ['text','phone','fight_idle','punch','kick','drop_kick','hit_head','hit_body','hit_side','uppercut','stand_up','kip_up','jump','takedown_a','lie']){ let k=null;
+  for(const n of ['text','phone','fight_idle','punch','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','jump','takedown_a','lie','threaten','gp','rise']){ let k=null;
     if(own) k=own[n]; else if(PEOPLE.clips[n]) k=fitClip(PEOPLE.clips[n],names,hero.hipsRest); if(!k||k.tracks.length<10) continue; const a=hero.mixer.clipAction(k); hero.act[n]=a;
     if(n==='text'||n==='phone'||n==='fight_idle'){ a.play(); a.setEffectiveWeight(0); } }
+  for(const [n,src] of [['punch_b','punch'],['gp_b','gp']]) if(hero.act[src]){ const k=hero.act[src].getClip().clone(); k.name=n; hero.act[n]=hero.mixer.clipAction(k); }
   lastMode=null; }   // show the fight buttons
 async function loadPeople(){
   try{ const mv=await GLL.parseAsync(await fetchBuf(purl('moves')),''); for(const k of mv.animations) PEOPLE.clips[k.name]=k;
     if(HERO_RUN){ const k=HERO_RUN.clone(); k.name='run'; k.tracks=k.tracks.filter(t=>!/\.scale$/.test(t.name));
       for(const t of k.tracks) if(/Hips\.position$/.test(t.name)){ const v=t.values, y0=v[1]||1; for(let i=0;i<v.length;i+=3){ v[i]=0; v[i+1]/=y0; v[i+2]=0; } } PEOPLE.clips.run=k; }
     if(PEOPLE.clips.stand_up) PEOPLE.clips.lie=THREE.AnimationUtils.subclip(PEOPLE.clips.stand_up,'lie',0,3,30);   // the first moment of getting up = lying on the ground
+    try{ synthMoves(); }catch(e){ console.warn('moves',e); }
     try{ heroMoves(); }catch(e){ console.warn(e); }
     let mine=null; try{ mine=localStorage.getItem('naija-look'); }catch(e){} if(isF()&&!(mine&&LOOK_LIST.some(l=>l.id===mine&&l.f===1&&!l.file))) mine='girl';
     for(const id of Object.keys(CAST).sort((a,b)=>(b===mine)-(a===mine)||CAST[b].w-CAST[a].w)){
@@ -2158,18 +2218,19 @@ function poseBody(p,dt){ const b=p.body, C=PEOPLE.casts[b.id], cl=C.clips, st=p.
   else if(st==='idle') name=p.stand||C.idle0;
   else if(st==='spot'||st==='react') name=p.act||C.idle0;
   else if(st==='flee'){ if(cl.run){ name='run'; ts=clamp(p.speed/2.4,1.3,2.2); } else { name='walk'; ts=1.8; } }
-  else if(st==='fight'){ if(p.atk){ name=p.atk; ts=MOVE_INFO[p.atk].ts; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=cl.fight_idle?'fight_idle':C.idle0; }
-  else if(st==='hurt'){ name=p.react||'hit_head'; ts=1.2; }
+  else if(st==='fight'){ if(p.dodgeT>0&&cl[p.dclip]){ name=p.dclip; ts=2.4; } else if(p.atk){ name=p.atk; ts=AI_INFO[p.atk].ts; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=cl.fight_idle?'fight_idle':C.idle0; }
+  else if(st==='hurt'){ name=p.react||'hit_head'; ts=1.6; }
   else if(st==='down'){ name=(p.downT||0)<.45&&cl.uppercut?'uppercut':cl.lie?'lie':C.idle0; ts=name==='uppercut'?1.4:1; }   // knocked back, then lying
   else if(st==='dead'){ name=p.deadT<.4&&cl.uppercut?'uppercut':cl.lie?'lie':C.idle0; ts=1.4; }
   else if(st==='carried'){ name=cl.lie?'lie':C.idle0; }
   else if(st==='getup'){ name=p.gu; ts=p.gu==='stand_up'?1.7:1.1; }
-  else if(st==='takedown'){ name='takedown_v'; ts=1.6; }
+  else if(st==='takedown'){ name='takedown_v'; ts=1.7; }
   const again=b.seq!==p.seq&&ONCE.has(name); b.seq=p.seq; const a=bodyPlay(b,name,name==='lie'?.5:.25,again); if(a) a.timeScale=ts;
   b.root.position.set(p.x,p.y,p.z); b.root.rotation.set(0,p.yaw,0);
+  if(p.jolt>0){ b.root.position.y+=p.jolt*.06; b.root.rotation.z=p.jolt*.05; p.jolt=Math.max(0,p.jolt-dt*7); }   // a blow on the floor shakes the body
   if(st==='shop'&&p.speed<=.12&&p.act&&cl[p.act]&&b.clip!==p.act) bodyPlay(b,p.act,.3);
   b.oy+=((C.off[b.clip]||0)-b.oy)*Math.min(1,dt*6); b.inner.position.y=C.y0+b.oy;
-  b.acc+=dt; const k=p.dc<14?1:p.dc<30?2:3; if((NPCF+b.slot)%k===0){ b.mixer.update(b.acc); b.acc=0; } }   // far bodies move at a lower rate
+  if(p.stopT>0){ p.stopT-=dt; b.acc+=dt*.1; } else b.acc+=dt; const k=p.dc<14?1:p.dc<30?2:3; if((NPCF+b.slot)%k===0){ b.mixer.update(b.acc); b.acc=0; } }   // far bodies move at a lower rate
 const _cd=new THREE.Vector3();
 function assignBodies(){ if(!PEOPLE.n) return; const R=Q.npcR, cx=camera.position.x, cz=camera.position.z; camera.getWorldDirection(_cd); const list=[];
   for(const p of peds){ if(p.state==='off'){ if(p.body) freeBody(p); continue; } const dx=p.x-cx, dz=p.z-cz; p.dc=Math.hypot(dx,dz);
@@ -2189,7 +2250,8 @@ const SAY={areaboy:['"Oga, anything for the boys?"','"How far, my guy!"','"Boss,
 const BUMP=['"Ah ah! You no dey look road?"','"Oga, calm down o!"','"Wetin be this one now?"','"Abeg, mind yourself!"'];
 function react(p,act,tx,tz,dur){ if(p.state!=='react') p.prev=p.state; p.state='react'; if(CAST[p.cast].tray&&(act==='text'||act==='phone')) act='no';
   p.act=act; p.ry=Math.atan2(tx-p.x,tz-p.z); p.timer=dur; p.cool=12; p.replan=false; }
-function endReact(p){ if(p.fleeAfter){ p.fleeAfter=false; p.state='flee'; p.timer=mrr(3,5); p.yaw=Math.atan2(p.x-player.x,p.z-player.z); return; }
+function endReact(p){ if(p.fightAfter){ p.fightAfter=false; p.state='fight'; p.atk=null; p.atkT=.3; return; }
+  if(p.fleeAfter){ p.fleeAfter=false; p.state='flee'; p.timer=mrr(3,5); p.yaw=Math.atan2(p.x-player.x,p.z-player.z); return; }
   if(p.spot){ p.state='spot'; p.act=null; nextAct(p); return; }
   if(p.prev==='idle'){ p.state='idle'; p.timer=mrr(1,3); return; }
   if(p.replan||!p.q.length) replanPed(p); p.state='walk'; p.startT=1.6; }
@@ -2303,7 +2365,7 @@ function updateShoppers(dt){ if((SHOP.t-=dt)>0) return; SHOP.t=.8; const f=mode=
 // ---- the motor park: danfos wait in their bays, the conductors call, the queue climbs in and the bus leaves full; another rolls in
 const PARK={t:12,ready:false,made:0};
 // a danfo for a bay: one that drove off earlier and is now far from you comes back round, so the number of vehicles stays fixed
-function parkVehicle(bay){ const f=mode==='drive'&&drive.v?drive.v:player; let v=vehicles.find(o=>o.fromPark&&o.ai&&!o.ai.chase&&o!==drive.v&&!o.jacked&&Math.hypot(o.x-f.x,o.z-f.z)>130);
+function parkVehicle(bay){ const f=mode==='drive'&&drive.v?drive.v:player; let v=vehicles.find(o=>o.fromPark&&o.ai&&!o.ai.chase&&!o.taxi&&o!==drive.v&&!o.jacked&&Math.hypot(o.x-f.x,o.z-f.z)>130);
   if(!v){ if(PARK.made>=10) return null; v=newVehicle('danfo','#f2b705'); v.fromPark=true; PARK.made++; }   // seated driver and passengers show once it drives off
   Object.assign(v,{x:bay.x,z:bay.z,h:bay.h,y:0,keep:1,bay,ai:null,speed:0,loading:false,leaving:null}); bay.v=v; return v; }
 function updatePark(dt){ const pk=SITES.park; if(!pk) return; if(!PARK.ready){ PARK.ready=true; pk.bays.forEach((b,i)=>{ if(i!==3) parkVehicle(b); }); }
@@ -2326,23 +2388,52 @@ function updatePark(dt){ const pk=SITES.park; if(!pk) return; if(!PARK.ready){ P
 }
 
 /* ================= fighting =================
-   On foot: J or left click = punch, K or right click = kick, Space = jump. Punch while running into someone = takedown,
-   kick while running = drop kick. Area boys fight back (their friends join); other people run or quarrel.
+   On foot: J or left click = punch (jab, cross, jab…), K or right click = kick (after two punches: the finisher that floors him),
+   L or Q = dodge, G next to the man you fight = slam him down, Space = jump. Punch while running into someone = takedown,
+   kick while running = drop kick. Hit someone lying on the floor and you go down and keep hitting until he stops moving. Area boys fight back (their friends join); other people run or quarrel.
    Hitting ordinary people brings the police: stars go up, a police van comes for you, and if it catches you
    you are taken to Mushin police station. Get far away and keep quiet and the stars fade. */
-const FIGHT={hp:100,calmT:99,heat:0,crimeT:99,lastAtk:-99,near:false,ko:false,dead:false,koT:0,arrestT:0,cop:null,foe:null,foeT:0,cx:0,cz:0,warned:0,combo:0,lastHit:-9,carT:0};
-// when each move lands (fraction of the move), how far it reaches, how hard it hits (measured from the moves themselves)
-const MOVE_INFO={punch:{ts:1.25,hits:[.33,.53],reach:1.5,dmg:13},kick:{ts:1.45,hits:[.47],reach:1.95,dmg:24},drop_kick:{ts:1.3,hits:[.48],reach:2.6,dmg:38,lunge:[.15,.5,5.2]}};
-const ONCE=new Set(['punch','kick','drop_kick','hit_head','hit_body','hit_side','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump']);
+const FIGHT={hp:100,calmT:99,heat:0,crimeT:99,lastAtk:-99,near:false,ko:false,dead:false,koT:0,arrestT:0,cop:null,foe:null,foeT:0,cx:0,cz:0,warned:0,combo:0,lastHit:-9,carT:0,
+  chain:0,swingT:-9,buf:null,stop:0,dash:null,inv:0,dodgeCool:0,counter:0};
+// your blows: which move (and which part of it), how fast, when it lands (fraction of the part), reach, damage, when the next blow can cut in,
+// how close you stand to land it. Punches alternate jab and cross; a kick after two punches is the finisher that puts them down.
+const MOVE_INFO={
+  jab:{act:'punch',from:0,to:.44,ts:1.75,hits:[.75],reach:1.45,dmg:10,cancel:.8,stand:.95,how:'punch'},
+  cross:{act:'punch_b',from:.4,to:.82,ts:1.7,hits:[.33],reach:1.5,dmg:13,cancel:.6,stand:.95,how:'punch'},
+  kick:{act:'kick',from:0,to:.8,ts:2,hits:[.59],reach:1.95,dmg:20,cancel:.72,stand:1.3,how:'kick'},
+  heavy:{act:'kick',from:0,to:.85,ts:1.75,hits:[.55],reach:2,dmg:26,cancel:.9,stand:1.3,how:'kick',knock:3.2},
+  drop_kick:{act:'drop_kick',ts:1.5,hits:[.48],reach:2.6,dmg:38,cancel:1,lunge:[.15,.5,6],how:'drop_kick',knock:4},
+  gp:{act:'gp',from:0,to:.44,ts:1.6,hits:[.75],dmg:13,cancel:.8},
+  gp2:{act:'gp_b',from:.4,to:.82,ts:1.6,hits:[.33],dmg:15,cancel:.6}};
+// the street's blows (area boys)
+const AI_INFO={punch:{ts:1.55,hits:[.33,.53],reach:1.5},kick:{ts:1.6,hits:[.47],reach:1.95}};
+const ONCE=new Set(['punch','punch_b','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump','threaten','gp','gp_b','rise']);
 const HP0=c=>c==='areaboy'?110:70;
 const durOf=(p,n)=>{ const C=PEOPLE.casts[p.cast], k=C&&C.clips[n]; return k?k.duration:1.2; };
 const fightReady=()=>!!(hero&&hero.act.punch);
-// ---- the player's moves (played over walking/standing)
+function whoosh(){ burst(.16,1500,.16,1.4); }
+function smack(k=1){ burst(.06,2600,.32*k,6); burst(.22,320,.5*k,3); }
+// moves made from other moves: hands up (the raised hand of a taxi hail, mirrored onto the other arm), punching down at someone on
+// the floor (crouched legs and back from getting up, arms from the punch), rising from that crouch, and a dodge to the other side
+function mirrorClip(k,name){ return new THREE.AnimationClip(name,k.duration,k.tracks.map(t=>{ const [b,pr]=t.name.split('.'), nb=/Left/.test(b)?b.replace('Left','Right'):/Right/.test(b)?b.replace('Right','Left'):b, v=t.values.slice();
+  if(pr==='quaternion') for(let i=0;i<v.length;i+=4){ v[i+1]=-v[i+1]; v[i+2]=-v[i+2]; } else if(pr==='position') for(let i=0;i<v.length;i+=3) v[i]=-v[i];
+  return new t.constructor(nb+'.'+pr,t.times.slice(),v); })); }
+function synthMoves(){ const C=PEOPLE.clips, at=(tr,t)=>Array.from(tr.createInterpolant().evaluate(t)), held=(tr,v,d)=>new tr.constructor(tr.name,[0,d],[...v,...v]);
+  if(C.hail&&!C.hands_up){ const t=1.6, by=new Map(C.hail.tracks.map(k=>[k.name,k]));
+    C.hands_up=new THREE.AnimationClip('hands_up',1,C.hail.tracks.map(k=>{ const [b,pr]=k.name.split('.'); let v=at(k,t);
+      if(/Left(Shoulder|Arm|ForeArm|Hand)/.test(b)&&pr==='quaternion'){ const r=by.get(k.name.replace('Left','Right')); if(r){ const q=at(r,t); v=[q[0],-q[1],-q[2],q[3]]; } } return held(k,v,1); })); }
+  if(C.punch&&C.stand_up&&!C.gp){ const t=2.6, LOW=/(Hips|UpLeg|Leg|Foot|ToeBase|Toe_End|Spine\d?|Neck|Head)\./, d=C.punch.duration;
+    C.gp=new THREE.AnimationClip('gp',d,[...C.stand_up.tracks.filter(k=>LOW.test(k.name)).map(k=>held(k,at(k,t),d)),...C.punch.tracks.filter(k=>!LOW.test(k.name)).map(k=>k.clone())]); }
+  if(C.stand_up&&!C.rise) C.rise=THREE.AnimationUtils.subclip(C.stand_up,'rise',Math.round(2.6*30),Math.round(4.3*30),30);
+  if(C.hit_side&&!C.hit_side_m) C.hit_side_m=mirrorClip(C.hit_side,'hit_side_m'); }
+// ---- the player's moves (played over walking/standing); from/to play only part of a move
 function heroDo(name,o={}){ if(!hero) return false; const a=hero.act[name]; if(!a) return false; const cur=hero.ov;
   if(cur&&cur.lock&&!o.force) return false;
-  if(cur&&cur.a!==a) cur.a.fadeOut(.15);
-  a.reset(); if(ONCE.has(name)){ a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; } a.timeScale=o.ts||1; a.setEffectiveWeight(0); a.play();
-  hero.ov={name,a,t:0,dur:a.getClip().duration/(o.ts||1),hits:(o.hits||[]).map(([at,fn])=>({at,fn,done:false})),lock:o.lock!==false,pause:!!o.pause,lunge:o.lunge||null,root:!!o.root,onEnd:o.onEnd||null};
+  if(cur&&cur.a!==a) cur.a.fadeOut(o.atk&&cur.atk?.08:.15);
+  const cd=a.getClip().duration, f0=o.from||0, f1=o.to||1, ts=o.ts||1;
+  a.reset(); if(ONCE.has(name)){ a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; } a.timeScale=ts; a.time=f0*cd; a.setEffectiveWeight(0); a.play();
+  hero.ov={name,a,t:0,dur:(f1-f0)*cd/ts,hits:(o.hits||[]).map(([at,fn])=>({at,fn,done:false})),lock:o.lock!==false,pause:!!o.pause,lunge:o.lunge||null,root:!!o.root,onEnd:o.onEnd||null,
+    atk:o.atk||null,cancel:o.cancel??1,heavy:!!o.heavy,inW:o.atk&&cur&&cur.atk?.05:.1,foe:o.foe||null,stand:o.stand||1,until:o.until||0};
   return true; }
 function heroEnd(){ const o=hero.ov; if(!o) return; hero.ov=null;
   if(o.root){ const p=hero.hips.getWorldPosition(_fv); player.x=p.x; player.z=p.z; FIGHT.cx=FIGHT.cz=0; }   // the move travelled: keep where it ended
@@ -2351,19 +2442,60 @@ function heroOverlay(dt){ const o=hero.ov; if(!o) return 0; o.t+=dt;
   if(o.root){ const p=hero.hips.getWorldPosition(_fv); FIGHT.cx=p.x-player.x; FIGHT.cz=p.z-player.z; }
   if(o.pause){ const w=Math.min(1,o.t/.35); o.a.setEffectiveWeight(w); return w; }
   for(const h of o.hits) if(!h.done&&o.t>=h.at*o.dur){ h.done=true; h.fn(); }
-  const w=Math.min(1,o.t/.1)*(o.root?1:Math.min(1,Math.max(0,(o.dur-o.t)/.2))); o.a.setEffectiveWeight(w);   // a travelling move ends at full strength, then you stand where it left you
+  if(hero.ov!==o) return 1;   // a hit can start another move (a knock-down, a death)
+  const w=Math.min(1,o.t/o.inW)*(o.root?1:clamp((o.dur-o.t)/Math.min(.18,o.dur*.3),0,1)); o.a.setEffectiveWeight(w);   // a travelling move ends at full strength, then you stand where it left you
   if(o.t>=o.dur){ heroEnd(); return 0; } return w; }
 // pick who the player is hitting: the nearest person in front, within reach (a little help with aiming)
 function pickFoe(reach,cone=1.2){ let best=null, bs=1e9; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
   for(const p of peds){ if(p.state==='off'||p.state==='down'||p.state==='dead'||p.state==='getup'||p.state==='takedown'||p.state==='arrest'||p.carried) continue; const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz); if(d>reach||d<.05) continue;
-    const ang=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1)); if(ang>cone) continue; const s=d+ang*1.2; if(s<bs){ bs=s; best=p; } } return best; }
-function playerAttack(kind){ if(mode!=='walk'||!fightReady()||FIGHT.ko||busy||mapView.isOpen) return; if(CARRY.p){ carryDrop(); return; } if(hero.ov&&hero.ov.lock) return;
-  const running=player.speed>WALK_V*1.3; let foe=pickFoe(running?3.4:2.6,1.5);
-  if(foe) player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z);
-  if(kind==='punch'&&running&&foe&&foe.body&&hero.act.takedown_a&&Math.hypot(foe.x-player.x,foe.z-player.z)<2.4&&!(foe.cast==='areaboy'&&foe.atk)) return takedown(foe);
-  const name=kind==='kick'&&running&&hero.act.drop_kick?'drop_kick':kind, mi=MOVE_INFO[name];
-  heroDo(name,{ts:mi.ts,hits:mi.hits.map(at=>[at,()=>landHit(name)]),lunge:mi.lunge}); FIGHT.lastAtk=T0; }
-// you hit harder than anyone on the street, and quick blows in a row hit harder still
+    const ang=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1)); if(ang>cone) continue; const s=d+ang*1.2+(FIGHT.attackers&&FIGHT.attackers.includes(p)?-.6:0); if(s<bs){ bs=s; best=p; } } return best; }
+const segDur=mi=>{ const a=hero.act[mi.act]; return a?((mi.to||1)-(mi.from||0))*a.getClip().duration/mi.ts:.5; };
+function playerAttack(kind){ if(mode!=='walk'||!fightReady()||FIGHT.ko||busy||mapView.isOpen||JACK.go) return; if(CARRY.p){ carryDrop(); return; }
+  const o=hero.ov; if(o&&o.lock&&!(o.atk&&o.t>=o.cancel*o.dur)){ FIGHT.buf={kind,t:T0}; return; } FIGHT.buf=null;   // too early: it comes out when this blow allows
+  const low=groundFoe(), up=low&&pickFoe(1.8,1); if(low&&hero.act.gp&&!(up&&(up.state==='fight'||up.state==='hurt'))) return groundPound(low,kind);   // someone on the floor beside you (and nobody standing in your face): you go down on them
+  const running=player.speed>WALK_V*1.3&&!(o&&o.atk); let foe=pickFoe(running?3.6:3.3,running?1.2:2.5);
+  if(kind==='punch'&&running&&foe&&foe.body&&hero.act.takedown_a&&Math.hypot(foe.x-player.x,foe.z-player.z)<2.6&&!(foe.cast==='areaboy'&&foe.atk)) return takedown(foe);
+  FIGHT.chain=T0-FIGHT.swingT<1.05?FIGHT.chain+1:0; FIGHT.swingT=T0;
+  const name=kind==='kick'?(running&&hero.act.drop_kick?'drop_kick':FIGHT.chain>=2?'heavy':'kick'):(FIGHT.chain%2?'cross':'jab'); if(name==='heavy'||name==='drop_kick') FIGHT.chain=-1;
+  swing(name,foe); }
+function swing(name,foe){ const mi=MOVE_INFO[name];
+  if(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); aiDodge(foe); }
+  heroDo(mi.act,{force:true,from:mi.from,to:mi.to,ts:mi.ts,atk:name,cancel:mi.cancel,heavy:!!mi.knock,lunge:mi.lunge||null,foe:mi.lunge?null:foe,stand:mi.stand,until:mi.hits[0],hits:mi.hits.map(at=>[at,()=>landHit(name,foe)])});
+  FIGHT.lastAtk=T0; whoosh(); }
+// you hit harder than anyone on the street; blows in a row hit harder still, and a blow right after a dodge hits hardest
+function landHit(name,foe){ const mi=MOVE_INFO[name]; let p=foe&&foe.state!=='off'&&foe.state!=='dead'&&foe.state!=='down'&&!foe.carried?foe:null;
+  if(p){ const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz), fwd=(dx*Math.sin(player.yaw)+dz*Math.cos(player.yaw))/(d||1); if(d>mi.reach+.5||fwd<.3) p=null; }
+  if(!p) p=pickFoe(mi.reach,.95);
+  if(!p) return;
+  if(p.dodgeT>0){ if(sayT<=0&&MR()<.5){ sayT=3; toast(mpick(['"You no fit touch me!"','"Too slow!"','"Ehen? Na so?"']),1.3); } return; }   // he slipped it
+  FIGHT.combo=T0-FIGHT.lastHit<1.1?Math.min(5,FIGHT.combo+1):1; FIGHT.lastHit=T0;
+  const counter=T0<FIGHT.counter, dmg=mi.dmg*mrr(.9,1.1)*1.3*(1+.15*(FIGHT.combo-1))*(counter?1.6:1); if(counter) FIGHT.counter=0;
+  const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw);
+  bleed(p.x,mi.how==='punch'?1.55:1.25,p.z,ux,uz,(mi.knock?10:mi.how==='kick'?6:4)+(FIGHT.combo>2?3:0),1.8);
+  FIGHT.stop=mi.knock?.11:.07; p.stopT=FIGHT.stop;
+  hurtPed(p,dmg,mi.how,mi.knock||(counter&&mi.how==='kick'?3:0)); camState.shake=Math.min(1,camState.shake+(mi.knock?.5:.28)); smack(mi.knock?1.3:1); }
+// somebody lying on the floor near you
+function groundFoe(){ let best=null, bd=2.3; for(const p of peds){ if(p.state!=='down'||p.carried||p.y>.5) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
+function groundPound(p,kind){ FIGHT.chain=T0-FIGHT.swingT<1.1?FIGHT.chain+1:0; FIGHT.swingT=T0;
+  const name=FIGHT.chain%2?'gp2':'gp', mi=MOVE_INFO[name], d=Math.hypot(p.x-player.x,p.z-player.z), ts=kind==='kick'?mi.ts*.85:mi.ts; player.yaw=Math.atan2(p.x-player.x,p.z-player.z);
+  heroDo(mi.act,{force:true,from:mi.from,to:mi.to,ts,atk:name,cancel:mi.cancel,foe:p,stand:.8,until:mi.hits[0],hits:mi.hits.map(at=>[at,()=>groundHit(p,mi.dmg*(kind==='kick'?1.35:1))])}); FIGHT.lastAtk=T0; whoosh(); }
+// each blow on the floor: blood, the body jolts, and after enough of them the person dies there
+function groundHit(p,dmg){ if(p.state!=='down'||Math.hypot(p.x-player.x,p.z-player.z)>2.5) return; p.hp=(p.hp??0)-dmg*mrr(.9,1.15); p.timer=Math.max(p.timer,2.4); p.jolt=1; p.stopT=.08; FIGHT.stop=.08; FIGHT.lastHit=T0; FIGHT.foe=p; FIGHT.foeT=4;
+  const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw); bleed(p.x,.35,p.z,ux*.3,uz*.3,7,1.2); if(p.pool&&BLOOD.p.includes(p.pool)) p.pool.size=Math.min(1.9,p.pool.size+.22); else p.pool=bloodPool(p.x,p.z,.6,2);
+  crime(p,1); incident(p.x,p.z,'fight'); camState.shake=Math.min(1,camState.shake+.3); smack(1.1);
+  if(p.hp<=-55){ sayT=0; killPed(p,ux,uz,0,'fight'); }
+  else if(sayT<=0&&MR()<.35){ sayT=3; toast(mpick(['"Abeg! Abeg!"','"I don hear! I don hear!"','"Ahh! Leave me!"','"Help! Dem wan kill me!"']),1.6); } }
+// GTA-style dodge: a quick slip to the side (or back) that blows can't touch; hit them straight after for a harder blow
+function playerDodge(){ if(mode!=='walk'||!hero||!hero.act.hit_side||FIGHT.ko||busy||mapView.isOpen||CARRY.p||JACK.go||T0<FIGHT.dodgeCool) return;
+  const o=hero.ov; if(o&&o.lock&&!o.atk&&!/^hit_(head|body)$/.test(o.name)) return;
+  const [f,s]=inputVec(), cy=camState.yaw; let dx=Math.sin(cy)*f-Math.cos(cy)*s, dz=Math.cos(cy)*f+Math.sin(cy)*s, l=Math.hypot(dx,dz);
+  if(l<.2){ dx=-Math.sin(player.yaw); dz=-Math.cos(player.yaw); l=1; } dx/=l; dz/=l;   // no direction: a step back
+  const side=dx*-Math.cos(player.yaw)+dz*Math.sin(player.yaw);
+  FIGHT.dash={vx:dx*7.5,vz:dz*7.5,t:0,dur:.3}; FIGHT.inv=T0+.42; FIGHT.dodgeCool=T0+.55; FIGHT.buf=null;
+  heroDo(side<0&&hero.act.hit_side_m?'hit_side_m':'hit_side',{force:true,ts:2.3,from:0,to:.55}); whoosh(); }
+// an area boy sees your blow coming and slips it, now and then
+function aiDodge(p){ if(p.state!=='fight'||p.atk||!p.body||p.dodgeT>0||MR()>.2) return; const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, s=MR()<.5?1:-1;
+  p.dodgeT=.38; p.dvx=(-dz/d*s*.8+dx/d*.6)*4.2; p.dvz=(dx/d*s*.8+dz/d*.6)*4.2; p.dclip=s>0?'hit_side':'hit_side_m'; p.seq=(p.seq||0)+1; }
 // who you are fighting: the nearest attacker, or the last person you hit
 function lockFoe(){ let best=null, bd=5; for(const p of FIGHT.attackers||[]){ const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } }
   if(!best&&FIGHT.foe&&FIGHT.foeT>0&&FIGHT.foe.state!=='off'&&FIGHT.foe.state!=='dead'&&Math.hypot(FIGHT.foe.x-player.x,FIGHT.foe.z-player.z)<4) best=FIGHT.foe; return best; }
@@ -2373,20 +2505,19 @@ function carHitPlayer(v,sp){ FIGHT.carT=1.5; const fx=Math.cos(v.h), fz=-Math.si
   hitPlayer((sp-4)*9,v,'car'); if(FIGHT.dead) return;
   FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})});
   if(sayT<=0){ sayT=5; toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"']),2.4); } }
-function landHit(name){ const mi=MOVE_INFO[name], p=pickFoe(mi.reach,.95); if(!p) return; FIGHT.combo=T0-FIGHT.lastHit<1.3?Math.min(4,FIGHT.combo+1):1; FIGHT.lastHit=T0;
-  const dmg=mi.dmg*mrr(.85,1.15)*1.3*(1+.2*(FIGHT.combo-1)); const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw);
-  bleed(p.x,name==='kick'?1.2:1.5,p.z,ux,uz,name==='punch'?3:name==='kick'?5:9,1.6); hurtPed(p,dmg,FIGHT.combo>=3&&name==='punch'?'kick':name); camState.shake=Math.min(1,camState.shake+.25); thud(); }
 function playerJump(){ if(mode!=='walk'||!hero||!hero.act.jump||FIGHT.ko||busy) return; if(hero.ov) return; heroDo('jump',{ts:1.35,lock:false}); }
-// paired move: you run in, grab them by the legs and put them on the floor
-function takedown(foe){ const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
-  Object.assign(foe,{x:player.x+fx*1.5,z:player.z+fz*1.5,yaw:player.yaw+Math.PI,state:'takedown',speed:0,timer:durOf(foe,'takedown_v')/1.6,atk:null}); foe.seq=(foe.seq||0)+1;
-  player.speed=0; heroDo('takedown_a',{ts:1.6,root:true}); FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); }
+// paired move ("jack" him): you grab them by the legs and slam them on the floor, and you are down there with them to keep hitting
+const TK=.34;   // the part of the takedown up to the slam
+function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
+  Object.assign(foe,{x:player.x+fx*1.5,z:player.z+fz*1.5,yaw:player.yaw+Math.PI,state:'takedown',speed:0,timer:TK*durOf(foe,'takedown_v')/1.7,atk:null,dodgeT:0}); foe.seq=(foe.seq||0)+1;
+  player.speed=0; FIGHT.buf=null; FIGHT.chain=0; heroDo('takedown_a',{force:true,ts:1.7,to:TK,root:true,onEnd:()=>{ if(!FIGHT.ko) heroDo('rise',{force:true,ts:1.5,lock:false}); }});
+  FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); camState.shake=Math.min(1,camState.shake+.2); setTimeout(()=>smack(1.4),TK*7250/1.7*.8); }
 // ---- people getting hit
-function hurtPed(p,dmg,how){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); crime(p,how==='drop_kick'?1.5:1);
+function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); crime(p,how==='drop_kick'?1.5:1);
   const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d; FIGHT.foe=p; FIGHT.foeT=4;
-  if(p.hp<=0||(how==='drop_kick'&&p.hp<45)) koPed(p,ux,uz,how==='drop_kick'?4:2.4);
-  else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?'hit_side':'uppercut';
-    p.timer=durOf(p,p.react)/1.2; p.vx=ux*(how==='punch'?.9:1.8); p.vz=uz*(how==='punch'?.9:1.8); p.speed=0; p.atk=null; p.seq=(p.seq||0)+1; p.yaw=Math.atan2(-ux,-uz); }
+  if(p.hp<=0||knock) koPed(p,ux,uz,knock||2.4);
+  else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?mpick(['hit_side','hit_body']):'uppercut';
+    p.timer=durOf(p,p.react)/1.6*.85; p.vx=ux*(how==='punch'?1:2); p.vz=uz*(how==='punch'?1:2); p.speed=0; p.atk=null; p.dodgeT=0; p.seq=(p.seq||0)+1; p.yaw=Math.atan2(-ux,-uz); }
   provoke(p); }
 function koPed(p,ux,uz,push){ p.kos=(p.kos||0)+1; if(p.kos>=3||p.hp<-45) return killPed(p,ux,uz,push,'fight');   // beaten again and again: they don't get up
   bloodPool(p.x+ux*push*.3,p.z+uz*push*.3,.55,2);
@@ -2413,23 +2544,29 @@ function afterDown(p){ p.hp=Math.max(p.hp||0,35);
 // an area boy in a fight: close in, keep a little space, swing when ready (two at a time; the rest wait their turn)
 function fightPed(p,dt){ const dx=player.x-p.x, dz=player.z-p.z, d=Math.hypot(dx,dz);
   if(mode!=='walk'||FIGHT.ko||d>30){ p.giveUp=(p.giveUp||0)+dt; if(p.giveUp>4){ calmPed(p); return; } } else p.giveUp=0;
-  p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); p.atkT=(p.atkT||0)-dt;
-  if(p.atk){ p.speed=0; p.atkTime+=dt; const mi=MOVE_INFO[p.atk], dur=durOf(p,p.atk)/mi.ts;
-    for(let i=0;i<mi.hits.length;i++) if(!p.fired[i]&&p.atkTime>=mi.hits[i]*dur){ p.fired[i]=1; const fwd=(dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))/(d||1); if(d<mi.reach+.15&&fwd>.5) hitPlayer(p.atk==='kick'?9:5,p); }
-    if(p.atkTime>=dur){ p.atk=null; p.atkT=mrr(1.3,2.6); } return; }
-  const front=FIGHT.attackers.indexOf(p)<2, want=front?1.2:2.8;
+  if(p.dodgeT>0){ p.dodgeT-=dt; const c={x:p.x+p.dvx*dt,z:p.z+p.dvz*dt}; resolveCircle(c,.32); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*6)); if(p.dodgeT<=0) p.atkT=Math.min(p.atkT,.25); return; }   // slipped your blow: straight back at you
+  p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*10)); p.atkT=(p.atkT||0)-dt;
+  if(p.atk){ p.speed=0; p.atkTime+=dt; const mi=AI_INFO[p.atk], dur=durOf(p,p.atk)/mi.ts;
+    if(p.atkTime<dur*.3&&d>1){ const c={x:p.x+dx/d*2.2*dt,z:p.z+dz/d*2.2*dt}; resolveCircle(c,.32); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } }   // stepping into the blow
+    for(let i=0;i<mi.hits.length;i++) if(!p.fired[i]&&p.atkTime>=mi.hits[i]*dur){ p.fired[i]=1; const fwd=(dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))/(d||1); if(d<mi.reach+.2&&fwd>.5) hitPlayer(p.atk==='kick'?9:5,p); else whoosh(); }
+    if(p.atkTime>=dur){ p.atk=null; p.atkT=mrr(.7,1.6); } return; }
+  const front=FIGHT.attackers.indexOf(p)<2, want=front?1.25:2.8;
   let mvx=0, mvz=0;
-  if(d>want+.3){ const sp=d>7?3.6:front?1.7:1.2; p.speed+=(sp-p.speed)*Math.min(1,dt*4); mvx=dx/d; mvz=dz/d; }
-  else if(d<want-.4){ p.speed=.8; mvx=-dx/d; mvz=-dz/d; }
-  else { p.speed=Math.max(0,p.speed-dt*6); if(front&&p.atkT<=0&&!FIGHT.ko&&!(hero&&hero.ov&&hero.ov.name==='takedown_a')){ p.atk=MR()<.65?'punch':'kick'; p.atkTime=0; p.fired=[]; p.seq=(p.seq||0)+1; } }
+  if(d>want+.3){ const sp=d>7?3.8:front?2.3:1.5; p.speed+=(sp-p.speed)*Math.min(1,dt*5); mvx=dx/d; mvz=dz/d; }
+  else if(d<want-.4){ p.speed=1; mvx=-dx/d; mvz=-dz/d; }
+  else { if(front&&p.atkT>0){ if(!p.sd||MR()<dt*.6) p.sd=MR()<.5?1:-1; p.speed=.9; mvx=-dz/d*p.sd; mvz=dx/d*p.sd; }   // circling you, looking for an opening
+    else p.speed=Math.max(0,p.speed-dt*6);
+    if(front&&p.atkT<=0&&!FIGHT.ko&&!(hero&&hero.ov&&(hero.ov.name==='takedown_a'||hero.ov.name==='threaten'))){ p.atk=MR()<.65?'punch':'kick'; p.atkTime=0; p.fired=[]; p.seq=(p.seq||0)+1; } }
   for(const q of FIGHT.attackers){ if(q===p) continue; const ex=p.x-q.x, ez=p.z-q.z, e=Math.hypot(ex,ez); if(e<.9&&e>.01){ mvx+=ex/e*.8; mvz+=ez/e*.8; } }   // don't stand inside each other
   if(p.speed>0&&(mvx||mvz)){ const l=Math.hypot(mvx,mvz)||1, c={x:p.x+mvx/l*p.speed*dt,z:p.z+mvz/l*p.speed*dt}; resolveCircle(c,.32); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } } }
 function calmPed(p){ p.atk=null; p.giveUp=0; if(p.spot){ p.state='spot'; p.act=null; nextAct(p); } else { replanPed(p); p.startT=1.6; } }
 // you are tougher than the people on the street, but a gang of area boys can still beat you to death
-function hitPlayer(dmg,from,how){ if(FIGHT.ko||FIGHT.dead||busy||mode==='interior'||(hero&&hero.ov&&hero.ov.name==='takedown_a')) return; FIGHT.hp-=dmg/1.5; FIGHT.calmT=0; camState.shake=Math.min(1.2,camState.shake+.45); thud();
+function hitPlayer(dmg,from,how){ if(FIGHT.ko||FIGHT.dead||busy||mode==='interior'||(hero&&hero.ov&&hero.ov.name==='takedown_a')) return;
+  if(T0<FIGHT.inv&&how!=='car'){ FIGHT.counter=T0+1.2; whoosh(); return; }   // dodged: your next blow lands harder
+  FIGHT.hp-=dmg/1.5; FIGHT.calmT=0; camState.shake=Math.min(1.2,camState.shake+.45); thud();
   { const ux=from?player.x-from.x:0, uz=from?player.z-from.z:0, l=Math.hypot(ux,uz)||1; bleed(player.x,1.5,player.z,ux/l,uz/l,how==='car'?10:3,1.4); } if(CARRY.p) carryDrop(true);
   if(FIGHT.hp<=0){ playerDie(how||'beaten'); return; }
-  if(!(hero&&hero.ov&&hero.ov.lock)) heroDo(MR()<.6?'hit_head':'hit_body',{ts:1.3}); }
+  const o=hero&&hero.ov; if(!o||!o.lock||(o.atk&&!o.heavy)) heroDo(MR()<.6?'hit_head':'hit_body',{force:true,ts:1.8}); FIGHT.chain=0; FIGHT.buf=null; }
 // dead: you fall, the screen goes dark, and you wake up at LUTH with your stars gone
 function playerDie(how){ if(FIGHT.dead) return; FIGHT.hp=0; FIGHT.ko=true; FIGHT.dead=true; FIGHT.koT=0; player.speed=0; carryDrop(true);
   if(mode==='drive'&&drive.v){ drive.speed=0; drive.v.speed=0; }
@@ -2457,7 +2594,10 @@ function driveNode(x,z){ let best=-1, bd=1e18; const ci=Math.floor(x/RGC), cj=Ma
 function chaseField(){ const f=mode==='drive'&&drive.v?drive.v:player, s=driveNode(f.x,f.z); if(CHASE.dist&&(s===CHASE.at||Math.abs(T0-CHASE.t)<.5)) return CHASE.dist;
   if(!CHASE.inn){ CHASE.inn=nodes.map(()=>[]); for(const n of nodes) for(const w of n.out) CHASE.inn[w].push(n.i); }
   CHASE.dist=dijkstra(s,u=>CHASE.inn[u]).dist; CHASE.at=s; CHASE.t=T0; return CHASE.dist; }
-function chaseTurn(v,opts){ const G=v.ai.raid?RAID:player, D=v.ai.raid?fieldTo(RAID.node):chaseField(), b=nodes[v.ai.b]; let best=opts[0], bd=1e18;
+function chaseTurn(v,opts){ const g=v.ai.goal;
+  if(g){ const at=v.ai.b, D=goalField(g); if(at===g.a&&opts.includes(g.b)) return g.b; if(at===g.b&&!g.ow&&opts.includes(g.a)) return g.a;   // into the street where you wait
+    let best=opts[0], bd=1e19; for(const n of opts){ const d=D[n]+Math.hypot(nodes[n].x-nodes[at].x,nodes[n].z-nodes[at].z); if(d<bd){ bd=d; best=n; } } return best; }
+  const G=v.ai.raid?RAID:player, D=v.ai.raid?fieldTo(RAID.node):chaseField(), b=nodes[v.ai.b]; let best=opts[0], bd=1e18;
   for(const n of opts){ const d=D[n]+Math.hypot(nodes[n].x-b.x,nodes[n].z-b.z)+(D[n]>=1e17?(nodes[n].x-G.x)**2+(nodes[n].z-G.z)**2:0); if(d<bd){ bd=d; best=n; } } return best; }
 // driving distance from every junction to one fixed junction (a crime scene); a few are kept
 const FIELDS=new Map();
@@ -2472,7 +2612,8 @@ function arrest(){ releaseCop(); FIGHT.heat=0; carryDrop(true);
    G (or GRAB on a phone) next to someone picks them up over your shoulder; G again puts them down.
    Area boys who see it come for you; everyone else runs, and the police are called. */
 const CARRY={p:null,t:0,cry:0};
-function carryGrab(){ if(CARRY.p){ carryDrop(); return; } if(mode!=='walk'||busy||FIGHT.ko||!hero||(hero.ov&&hero.ov.lock)) return;
+function carryGrab(){ if(CARRY.p){ carryDrop(); return; } if(mode!=='walk'||busy||FIGHT.ko||!hero||(hero.ov&&hero.ov.lock&&!(hero.ov.atk&&hero.ov.t>=hero.ov.cancel*hero.ov.dur))||JACK.go) return;
+  { const f=pickFoe(2.6,1.6); if(f&&f.body&&hero.act.takedown_a&&(f.state==='fight'||f.state==='hurt'||f===FIGHT.foe)&&!(f.atk&&f.cast==='areaboy')) return takedown(f); }   // in a fight, GRAB slams him down
   let best=null, bd=1.9; for(const p of peds){ if(!(p.state==='walk'||p.state==='idle'||p.state==='spot'||p.state==='react'||p.state==='flee'||p.state==='down'||p.state==='hurt'||p.state==='shop')) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } }
   if(!best){ toast('Nobody close enough to carry.',1.6); return; }
   const p=best; if(p.spot){ const s=p.spot; s.peds=s.peds.filter(q=>q!==p); p.spot=null; }
@@ -2561,26 +2702,120 @@ function updateFightHUD(){ const show=started&&mode!=='interior';   // your life
   const f=FIGHT.foe, fs=f&&FIGHT.foeT>0&&f.state!=='off'; if($('#foe').hidden===!!fs) $('#foe').hidden=!fs;
   if(fs){ const nm=({areaboy:'AREA BOY',mama:'MAMA',baba:'BABA',hawker:'HAWKER',schoolboy:'SCHOOLBOY'})[f.cast]||'LADY'; if($('#foeName').textContent!==nm) $('#foeName').textContent=nm; $('#foeFill').style.width=Math.max(0,Math.round((f.hp??HP0(f.cast))/HP0(f.cast)*100))+'%'; } }
 
-/* ================= wardrobe: change into another full look at home =================
-   A look is a whole person: body, face and clothes. "Your usual" is the starting character; the others are people of the
-   city, plus outfits made in Mixamo (assets/people/outfit_*.glb), which show up here once their files are in the game.
-   The choice is kept on this device. */
+/* ================= wardrobe: change your clothes at home =================
+   Each look lends you its clothes: the body of one of the city's people (or an outfit made in Mixamo, assets/people/outfit_*.glb,
+   once its file is in the game) with its head cut away and yours put on, so you keep your face. Men pick from the men's clothes,
+   women from the women's. Shirt and trousers can be dyed. The choice is kept on this device. */
 const LOOK_LIST=[
   {id:'me',name:'Your usual',f:0,sw:['#55633f','#1d1d20']},
   {id:'areaboy',name:'Street green',f:0},
-  {id:'baba',name:'White kaftan',f:0},
+  {id:'baba',name:'White kaftan',f:0,robe:1},
   {id:'outfit_suit',name:'Gold print suit',f:0,h:1.84,idle:['idle_1'],sw:['#8a6a3a','#2a2218'],file:1},
-  {id:'outfit_thobe',name:'White thobe',f:0,h:1.82,idle:['idle_1'],sw:['#f2f0ea','#f2f0ea'],file:1},
+  {id:'outfit_thobe',name:'White thobe',f:0,robe:1,h:1.82,idle:['idle_1'],sw:['#f2f0ea','#f2f0ea'],file:1},
   {id:'outfit_tracksuit',name:'Black tracksuit',f:0,h:1.8,idle:['idle_1'],sw:['#2a2a2e','#141416'],file:1},
   {id:'girl',name:'Your usual',f:1},
   {id:'suit_lady',name:'Grey trouser suit',f:1},
-  {id:'mama',name:'Ankara mama',f:1},
-  {id:'lady_red',name:'Red dress',f:1},
+  {id:'mama',name:'Ankara mama',f:1,robe:1,hair:'Neck'},
+  {id:'lady_red',name:'Red dress',f:1,robe:1},
   {id:'lady_black',name:'All black',f:1},
-  {id:'outfit_dress_pink',name:'Pink dress',f:1,h:1.72,idle:['idle_3'],sw:['#ead3d8','#ead3d8'],file:1},
+  {id:'outfit_dress_pink',name:'Pink dress',f:1,robe:1,h:1.72,idle:['idle_3'],sw:['#ead3d8','#ead3d8'],file:1},
   {id:'outfit_casual',name:'Mustard and jeans',f:1,h:1.72,idle:['idle_4'],sw:['#cc9438','#2b3b5e'],file:1}];
 const WARD={open:false,cur:'me',busy:false,base:null,body:null,px:0};
 addEventListener('resize',()=>{ if(WARD.open) WARD.px=$('#ward').getBoundingClientRect().right; });
+/* ================= clothes only: you keep your own head; the wardrobe changes what you wear, and its colours =================
+   Every look is a Mixamo body on the same skeleton. Your head (the man you start as, or the girl) is cut from your own body by
+   its skin weights and fixed to the outfit's head bone; the outfit's own head is cut away. Shirts and trousers are recoloured
+   in the shader: each vertex knows if it belongs to the upper body (shirt) or the hips and legs (trousers), and skin is left alone. */
+const HEADB=/(Neck|Head|HeadTop_End|LeftEye|RightEye)$/, bname=n=>n.replace(/^.*mixamorig\d*:?/,'');
+const skinW=(mesh,test)=>{ const sk=mesh.skeleton, g=mesh.geometry, si=g.attributes.skinIndex, sw=g.attributes.skinWeight, n=si.count, out=new Float32Array(n), hit=sk.bones.map(b=>test(b.name));
+  const gi=[a=>si.getX(a),a=>si.getY(a),a=>si.getZ(a),a=>si.getW(a)], gw=[a=>sw.getX(a),a=>sw.getY(a),a=>sw.getZ(a),a=>sw.getW(a)];
+  for(let i=0;i<n;i++){ let w=0; for(let k=0;k<4;k++){ const wi=gw[k](i); if(wi>0&&hit[gi[k](i)]) w+=wi; } out[i]=w; } return out; };
+// which part of the clothes each vertex is: 0 skin/hands/feet/head, 1 shirt (body and arms), 2 trousers (hips and legs)
+function partAttr(mesh){ const up=skinW(mesh,n=>/(Spine\d?|Shoulder|Arm)$/.test(n)), lo=skinW(mesh,n=>/(Hips|Leg)$/.test(n)), n=up.length, a=new Float32Array(n);
+  for(let i=0;i<n;i++){ const o=1-up[i]-lo[i]; a[i]=up[i]>=lo[i]&&up[i]>o?1:lo[i]>o?2:0; } return new THREE.BufferAttribute(a,1); }
+const skinnedOf=o=>{ let m=null; o.traverse(x=>{ if(!m&&x.isSkinnedMesh) m=x; }); return m; };
+// a cast's body without its head and neck (shared by everyone who wears it)
+// a texture's colours on the CPU (the GPU draws it once into a small target), for telling hair from cloth
+function texPixels(map,W=256){ if(map.pix) return map.pix; const rt=new THREE.WebGLRenderTarget(W,W), sc=new THREE.Scene(), cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  sc.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({uniforms:{map:{value:map}},vertexShader:'varying vec2 u; void main(){ u=uv; gl_Position=vec4(position.xy,0.,1.); }',fragmentShader:'uniform sampler2D map; varying vec2 u; void main(){ gl_FragColor=vec4(texture2D(map,u).rgb,1.); }'})));
+  const was=renderer.getRenderTarget(), data=new Uint8Array(W*W*4); renderer.setRenderTarget(rt); renderer.render(sc,cam); renderer.readRenderTargetPixels(rt,0,0,W,W,data); renderer.setRenderTarget(was);
+  rt.dispose(); sc.children[0].geometry.dispose(); sc.children[0].material.dispose(); return map.pix={W,data}; }
+// hair: dark, greyish texels (braids), only above a given bone's height
+function hairVerts(m,below){ const map=m.material.map, g=m.geometry; if(!map||!g.attributes.uv) return null; let px; try{ px=texPixels(map); }catch(e){ return null; }
+  map.updateMatrix(); const UV=g.attributes.uv, P=g.attributes.position, n=UV.count, out=new Uint8Array(n), u=new THREE.Vector2(), v=new THREE.Vector3(), {W,data}=px;
+  const bb=m.skeleton.bones.findIndex(b=>new RegExp(below+'$').test(b.name)), y0=bb<0?-1e9:new THREE.Vector3().setFromMatrixPosition(_m.copy(m.skeleton.boneInverses[bb]).invert()).y;
+  for(let i=0;i<n;i++){ v.fromBufferAttribute(P,i).applyMatrix4(m.bindMatrix); if(v.y<y0) continue;
+    u.fromBufferAttribute(UV,i).applyMatrix3(map.matrix); const x=Math.floor((u.x-Math.floor(u.x))*W), y=Math.floor((u.y-Math.floor(u.y))*W), k=(y*W+x)*4;
+    const r=Math.pow(data[k]/255,1/2.2), gg=Math.pow(data[k+1]/255,1/2.2), b=Math.pow(data[k+2]/255,1/2.2), mx=Math.max(r,gg,b), mn=Math.min(r,gg,b);
+    if(mx<.42&&mx-mn<.13) out[i]=1; } return out; }
+function headless(C,L){ if(C.headless) return C.headless; const m=skinnedOf(C.tpl), g=m.geometry, hw=skinW(m,n=>HEADB.test(n)), I=g.index, P=g.attributes.position, n=P.count, keep=[];
+  const hair=L&&L.hair?hairVerts(m,L.hair):null;
+  // loose pieces hanging from the head (braids, long hair, earrings) go too: join vertices that touch, then drop small pieces tied to the head
+  const up=new Int32Array(n).map((_,i)=>i), find=i=>{ while(up[i]!==i){ up[i]=up[up[i]]; i=up[i]; } return i; }, join=(a,b)=>{ a=find(a); b=find(b); if(a!==b) up[a]=b; };
+  const at=new Map(); for(let i=0;i<n;i++){ const k=Math.round(P.getX(i)*1e4)+','+Math.round(P.getY(i)*1e4)+','+Math.round(P.getZ(i)*1e4), j=at.get(k); if(j===undefined) at.set(k,i); else join(i,j); }
+  const cut=[]; for(let t=0;t<I.count;t+=3){ const a=I.getX(t), b=I.getX(t+1), c=I.getX(t+2); if((hw[a]+hw[b]+hw[c])/3<.5&&!(hair&&hair[a]+hair[b]+hair[c]>=2)){ cut.push(a,b,c); join(a,b); join(a,c); } }   // pieces as they are once head and hair are off
+  const size=new Map(), head=new Map(); for(let i=0;i<n;i++){ const r=find(i); size.set(r,(size.get(r)||0)+1); if(hw[i]>(head.get(r)||0)) head.set(r,hw[i]); }
+  let big=0; for(const k of size.values()) big=Math.max(big,k);
+  const drop=r=>size.get(r)<big*.25&&((head.get(r)||0)>=.25||(hair&&size.get(r)<n*.03));   // bits of braid left hanging go too
+  for(let t=0;t<cut.length;t+=3) if(!drop(find(cut[t]))) keep.push(cut[t],cut[t+1],cut[t+2]);
+  const h=new THREE.BufferGeometry(); for(const k in g.attributes) h.setAttribute(k,g.attributes[k]); h.setIndex(keep); h.setAttribute('part',partAttr(m));
+  h.boundingSphere=g.boundingSphere; h.boundingBox=g.boundingBox; return C.headless=h; }
+// your head and neck, cut once from your own body: each vertex in the head bone's rest frame, with its bone names and weights,
+// so it can be skinned onto any outfit's skeleton and bend with that body's neck
+let MY_HEAD=null;
+function myHead(){ if(MY_HEAD&&MY_HEAD.f===isF()) return MY_HEAD; const G=PEOPLE.casts.girl, src=isF()?(G&&G.tpl):(WARD.base?WARD.base.body:hero.cObj), xs=isF()?(G?G.sc:1):1; if(!src) return null;
+  src.updateMatrixWorld(true); const m=skinnedOf(src); if(!m) return null; const sk=m.skeleton, hi=sk.bones.findIndex(b=>/Head$/.test(b.name)); if(hi<0) return null;
+  const g=m.geometry, hw=skinW(m,n=>HEADB.test(n)), hh=skinW(m,n=>/(Head|HeadTop_End|LeftEye|RightEye)$/.test(n)), I=g.index, P=g.attributes.position, UV=g.attributes.uv, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight;
+  const toLocal=new THREE.Matrix4().multiplyMatrices(sk.boneInverses[hi],m.bindMatrix), map=new Map(), pos=[], uv=[], nk=[], bones=[], wts=[], idx=[], v=new THREE.Vector3();
+  const vert=i=>{ let j=map.get(i); if(j!==undefined) return j; v.fromBufferAttribute(P,i).applyMatrix4(toLocal); j=pos.length/3; pos.push(v.x,v.y,v.z); if(UV) uv.push(UV.getX(i),UV.getY(i)); nk.push(1-hh[i]);
+    bones.push(bname(sk.bones[SI.getX(i)].name),bname(sk.bones[SI.getY(i)].name),bname(sk.bones[SI.getZ(i)].name),bname(sk.bones[SI.getW(i)].name)); wts.push(SW.getX(i),SW.getY(i),SW.getZ(i),SW.getW(i)); map.set(i,j); return j; };
+  for(let t=0;t<I.count;t+=3){ const a=I.getX(t), b=I.getX(t+1), c=I.getX(t+2); if((hw[a]+hw[b]+hw[c])/3>=.3) idx.push(vert(a),vert(b),vert(c)); }
+  const s=new THREE.Vector3(); sk.bones[hi].matrixWorld.decompose(_p,_q,s);
+  const mat=(m.material.dressOrig||m.material).clone(); HERO_MATS.push(mat);   // on the neck, only skin comes along: your old collar stays behind
+  mat.onBeforeCompile=sh=>{ sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float nk;\nvarying float vNk;').replace('#include <begin_vertex>','#include <begin_vertex>\nvNk=nk;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vNk;\n'+SKIN_GLSL).replace('#include <map_fragment>','#include <map_fragment>\nif(vNk>.45&&skinLike(diffuseColor.rgb)<.5) discard;'); };
+  mat.customProgramCacheKey=()=>'myhead';
+  return MY_HEAD={pos,uv,nk,bones,wts,idx,mat,s:s.x*xs,f:isF()}; }
+// put your head on an outfit: a skinned mesh on the outfit's own bones, sized like yours
+function putHead(inner){ const H=myHead(), om=skinnedOf(inner); if(!H||!om) return null; const sk=om.skeleton, hi=sk.bones.findIndex(b=>/Head$/.test(b.name)); if(hi<0) return null;
+  inner.updateMatrixWorld(true); const s=new THREE.Vector3(); sk.bones[hi].matrixWorld.decompose(_p,_q,s); const k=H.s/s.x;
+  const back=new THREE.Matrix4().multiplyMatrices(sk.boneInverses[hi],om.bindMatrix).invert(), byName=new Map(sk.bones.map((b,i)=>[bname(b.name),i])), n=H.pos.length/3;
+  const pos=new Float32Array(n*3), si=new Uint16Array(n*4), sw=new Float32Array(n*4), v=new THREE.Vector3();
+  for(let i=0;i<n;i++){ v.set(H.pos[i*3]*k,H.pos[i*3+1]*k,H.pos[i*3+2]*k).applyMatrix4(back); pos[i*3]=v.x; pos[i*3+1]=v.y; pos[i*3+2]=v.z;
+    let left=0; for(let q=0;q<4;q++){ const bi=byName.get(H.bones[i*4+q]), w=H.wts[i*4+q]; if(bi===undefined){ left+=w; continue; } si[i*4+q]=bi; sw[i*4+q]=w; }
+    if(left>0){ si[i*4+3]=hi; sw[i*4+3]+=left; } }   // a bone the outfit lacks: that share follows the head
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); if(H.uv.length) geo.setAttribute('uv',new THREE.Float32BufferAttribute(H.uv,2));
+  geo.setAttribute('nk',new THREE.Float32BufferAttribute(H.nk,1)); geo.setAttribute('skinIndex',new THREE.BufferAttribute(si,4)); geo.setAttribute('skinWeight',new THREE.BufferAttribute(sw,4)); geo.setIndex(H.idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
+  const m=new THREE.SkinnedMesh(geo,H.mat); m.name='myHead'; m.position.copy(om.position); m.quaternion.copy(om.quaternion); m.scale.copy(om.scale);
+  m.castShadow=true; m.receiveShadow=true; m.frustumCulled=false; m.layers.mask=om.layers.mask; om.parent.add(m); m.bind(sk,om.bindMatrix); return m; }
+const SKIN_GLSL=`float skinLike(vec3 c){ vec3 s=pow(max(c,vec3(0.)),vec3(1./2.2)); float mx=max(s.r,max(s.g,s.b)), mn=min(s.r,min(s.g,s.b)), sat=mx>0.?(mx-mn)/mx:0.;
+  return (s.r>=s.g&&s.g>=s.b&&s.r-s.b>.07&&sat>.18&&sat<.78&&mx>.1&&mx<.92)?1.:0.; }`;
+// recolouring: a copy of the body's material that tints shirt and trousers (texture detail kept, skin untouched)
+function dressMat(base){ const m=base.clone(), u={sCol:{value:new THREE.Color(1,1,1)},pCol:{value:new THREE.Color(1,1,1)},sOn:{value:0},pOn:{value:0}}; m.dress=u; m.dressOrig=base;
+  m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,u);
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float part;\nvarying float vPart;').replace('#include <begin_vertex>','#include <begin_vertex>\nvPart=part;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+varying float vPart; uniform vec3 sCol; uniform vec3 pCol; uniform float sOn; uniform float pOn;
+${SKIN_GLSL}
+vec3 dye(vec3 c,vec3 a,vec3 t){ vec3 Y=vec3(.2126,.7152,.0722); return t*clamp(dot(c,Y)/max(dot(a,Y),.03),.4,1.6); }`)
+      .replace('#include <map_fragment>',`#include <map_fragment>
+if(vPart>.5&&skinLike(diffuseColor.rgb)<.5&&(vPart<1.5?sOn:pOn)>.5){
+#ifdef USE_MAP
+  vec3 avg=texture2D(map,vMapUv,5.).rgb;
+#else
+  vec3 avg=diffuseColor.rgb;
+#endif
+  diffuseColor.rgb=dye(diffuseColor.rgb,avg,vPart<1.5?sCol:pCol); }`)
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance=emissive*diffuseColor.rgb;'); };
+  m.customProgramCacheKey=()=>'dress'; return m; }
+const SHIRTS=[['orig','As it comes',null],['white','White','#f2f0ea'],['black','Black','#1d1d20'],['red','Red','#b3201e'],['blue','Royal blue','#2347a8'],['yellow','Yellow','#e9b81c'],['green','Green','#2f7a3f'],['purple','Purple','#6a3591'],['orange','Orange','#d9692a'],['pink','Pink','#e58cb0']];
+const TROUSERS=[['orig','As it comes',null],['black','Black','#1b1b1e'],['jeans','Blue jeans','#3b5a86'],['khaki','Khaki','#a99068'],['white','White','#ecebe6'],['grey','Grey','#6e7075'],['brown','Brown','#5b3b24'],['navy','Navy','#1f2a4a']];
+WARD.colors={s:'orig',p:'orig'}; try{ const c=JSON.parse(localStorage.getItem('naija-colours')||'null'); if(c&&c.s&&c.p) WARD.colors=c; }catch(e){}
+// the body you have on right now gets its colours
+const isRobe=()=>{ const L=LOOK_LIST.find(l=>l.id===WARD.cur); return !!(L&&L.robe); };
+function applyColours(){ if(!hero) return; const S=SHIRTS.find(x=>x[0]===WARD.colors.s)||SHIRTS[0], T=isRobe()?S:(TROUSERS.find(x=>x[0]===WARD.colors.p)||TROUSERS[0]);
+  hero.cObj.traverse(o=>{ if(!o.isSkinnedMesh||o.name==='myHead') return; let m=o.material; if(!m.dress){ const b=m; m=b.dressed||(b.dressed=dressMat(b)); o.material=m; if(!HERO_MATS.includes(m)) HERO_MATS.push(m); if(!o.geometry.attributes.part) o.geometry.setAttribute('part',partAttr(o)); }
+    const u=m.dress; u.sOn.value=S[2]?1:0; u.pOn.value=T[2]?1:0; if(S[2]) u.sCol.value.set(S[2]).convertSRGBToLinear(); if(T[2]) u.pCol.value.set(T[2]).convertSRGBToLinear(); }); }
 const lookFile=L=>!!(L.file&&(MANIFEST[`assets/people/${L.id}.glb`]||AV[`assets/people/${L.id}.glb`]));
 // men see the men's looks, women the women's (the moves always follow who you are)
 const lookShown=L=>L.f===(isF()?1:0)&&(L.id==='me'||(L.file?lookFile(L):!!CAST[L.id]));
@@ -2594,6 +2829,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
     if(!C&&lookFile(L)&&PEOPLE.done){ WARD.busy=true; try{ setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),''),L); }catch(e){ console.warn('look '+id+' could not load',e); } WARD.busy=false; C=PEOPLE.casts[id]; }
     if(!C||!C.clips.walk||!C.clips[C.idle0]) return false; }
   if(mode==='drive'||mode==='enter'||hero.ov) return false;
+  if(C&&id!==baseLook()) myHead();   // your own head, cut before your body comes off
   if(!WARD.base) WARD.base={body:hero.cObj,mixer:hero.mixer,act:hero.act,hips:hero.hips,hipsRest:hero.hipsRest};
   heroQuiet(); hero.act.car.stop();
   if(WARD.body){ hero.root.remove(WARD.body); hero.mixer.stopAllAction(); hero.mixer.uncacheRoot(hero.cObj); hero.cObj.traverse(o=>{ if(o.isSkinnedMesh) o.skeleton.dispose(); }); WARD.body=null; }
@@ -2601,34 +2837,141 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,look:null}); }
   else { const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(); wrap.scale.setScalar(C.sc); inner.position.y=C.y0; wrap.add(inner); hero.root.add(wrap); WARD.body=wrap;
     let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
+    if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
     const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())};
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
     Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0}}); }
   const a=hero.act; for(const k of ['idle','walk','run']){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0});
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);
   WARD.cur=id; if(save) try{ localStorage.setItem('naija-look',id); }catch(e){}
-  lastMode=null; return true; }
+  applyColours(); lastMode=null; return true; }
 // the look you chose last time comes back once the people files are in
 function applySavedLook(){ if(!PROFILE) return; let id=null; try{ id=localStorage.getItem('naija-look'); }catch(e){} const L=LOOK_LIST.find(l=>l.id===id);
-  if(!L||L.f!==(isF()?1:0)) id=baseLook(); if(id==='me'||id===WARD.cur) return;
+  if(!L||L.f!==(isF()?1:0)) id=baseLook(); if(id==='me'||id===WARD.cur){ applyColours(); return; }
   let n=0; const go=()=>{ if(n++>60||id===WARD.cur) return; const L2=LOOK_LIST.find(l=>l.id===id); if(!hero||busy||mode==='drive'||mode==='enter'||(hero&&hero.ov)||!(PEOPLE.casts[id]||(L2&&L2.file&&PEOPLE.done))){ setTimeout(go,400); return; }
     wearLook(id,false).then(ok=>{ if(!ok&&L2&&L2.file&&id!==baseLook()){ id=baseLook(); setTimeout(go,400); } else if(ok) bodyReady(); }); }; go(); }
 // a woman never shows up as the man you start with: her body has to be on first
 const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; } };
-function wardUI(){ const box=$('#looks'); box.textContent='';
-  for(const f of [0,1]){ const h=document.createElement('h3'); h.textContent=f?'Women':'Men'; box.appendChild(h);
-    for(const L of LOOK_LIST){ if(L.f!==f||!lookShown(L)) continue;
-      const b=document.createElement('button'); b.type='button'; b.className='lookb'; const c=CAST[L.id], sw=L.sw||(c?[c.look[1],c.look[2]]:['#888','#666']);
-      const i=document.createElement('i'); i.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=L.name; b.append(i,sp);
-      const ok=lookOk(L); b.disabled=!ok; if(!ok){ const sm=document.createElement('small'); sm.textContent='still arriving'; b.appendChild(sm); }
-      b.setAttribute('aria-pressed',L.id===WARD.cur?'true':'false');
-      b.addEventListener('click',async()=>{ if(WARD.busy||L.id===WARD.cur) return; if(L.id!=='me'&&!PEOPLE.casts[L.id]) toast('Getting dressed…',4);
-        const done=await wearLook(L.id); toast(done?(L.id==='me'?'Back to your usual look':mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])):'That look is not ready yet. Try again soon.'); wardUI(); });
-      box.appendChild(b); } } }
+function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0, h=t=>{ const e=document.createElement('h3'); e.textContent=t; box.appendChild(e); };
+  h('Clothes');
+  for(const L of LOOK_LIST){ if(L.f!==f||!lookShown(L)) continue;
+    const b=document.createElement('button'); b.type='button'; b.className='lookb'; const c=CAST[L.id], sw=L.sw||(c?[c.look[1],c.look[2]]:['#888','#666']);
+    const i=document.createElement('i'); i.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=L.name; b.append(i,sp);
+    const ok=lookOk(L); b.disabled=!ok; if(!ok){ const sm=document.createElement('small'); sm.textContent='still arriving'; b.appendChild(sm); }
+    b.setAttribute('aria-pressed',L.id===WARD.cur?'true':'false');
+    b.addEventListener('click',async()=>{ if(WARD.busy||L.id===WARD.cur) return; if(L.id!=='me'&&!PEOPLE.casts[L.id]) toast('Getting dressed…',4);
+      const done=await wearLook(L.id); toast(done?(L.id===baseLook()?'Back to your usual clothes':mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])):'That look is not ready yet. Try again soon.'); wardUI(); });
+    box.appendChild(b); }
+  // colours: shirt and trousers (a dress, kaftan or thobe takes one colour)
+  const row=(title,list,key)=>{ h(title); const r=document.createElement('div'); r.className='swatches';
+    for(const [k,name,hex] of list){ const b=document.createElement('button'); b.type='button'; b.className='sw'+(hex?'':' orig'); b.title=name; b.setAttribute('aria-label',title+': '+name);
+      if(hex) b.style.background=hex; b.setAttribute('aria-pressed',WARD.colors[key]===k?'true':'false');
+      b.addEventListener('click',()=>{ WARD.colors[key]=k; try{ localStorage.setItem('naija-colours',JSON.stringify(WARD.colors)); }catch(e){} applyColours(); wardUI(); });
+      r.appendChild(b); } box.appendChild(r); };
+  const robe=isRobe(); row(robe?(f?'Dress colour':'Robe colour'):'Shirt colour',SHIRTS,'s'); if(!robe) row(f?'Trousers / skirt colour':'Trousers colour',TROUSERS,'p'); }
 function openWard(){ if(WARD.open||!hero||busy) return; WARD.open=true; $('#settings').hidden=true; if(document.pointerLockElement) document.exitPointerLock(); wardUI(); $('#ward').hidden=false; $('#lookhint').hidden=true; WARD.px=$('#ward').getBoundingClientRect().right; lastPrompt=null;
   player.speed=0; player.yaw=0; camState.yaw=Math.PI; camState.pitch=.08; camState.last=T0; }   // turn round to face the room, camera in front: a mirror view
 function closeWard(){ if(!WARD.open) return; WARD.open=false; $('#ward').hidden=true; lastPrompt=null; }
 $('#wardDone').addEventListener('click',closeWard);
+
+/* ================= your phone: OYA RIDE =================
+   P (or the phone button) takes out your phone. Pick where you are going: a car comes to the street nearest you, its OYA RIDE
+   sign on the roof; walk to it and press E. It drives you there through the traffic (or skip the ride), and you pay the driver.
+   While you use the phone you hold it in your right hand. */
+const PHONE={open:false,mesh:null,loading:null,body:null,q:''};
+const PHONE_POSE={x:0,y:.08,z:0,rx:0,ry:1.5708,rz:0};   // in the right hand: flat in the palm along the fingers, screen up to your face (metres, radians)
+const RIDE={v:null,state:null,dest:null,goal:null,t:0,fare:0,who:'',car:'',plate:'',sign:null};
+const RIDE_WHO=['Tunde','Emeka','Musa','Chinedu','Bayo','Ibrahim','Segun','Kelechi','Femi','Yusuf'], RIDE_CAR=['Toyota Corolla','Honda Accord','Toyota Camry','Kia Rio','Hyundai Elantra'];
+function loadPhone(){ if(PHONE.loading) return PHONE.loading;
+  return PHONE.loading=fetchBuf(murl('phone')).then(b=>GLL.parseAsync(b,'')).then(g=>{ const o=g.scene; o.traverse(m=>{ if(m.isMesh){ const x=m.material; if(x.map) x.map.colorSpace=THREE.SRGBColorSpace; m.material=new THREE.MeshStandardMaterial({map:x.map||null,roughness:.35,metalness:.2,emissive:0xffffff,emissiveMap:x.map||null,emissiveIntensity:.12}); m.castShadow=false; m.layers.set(1); m.frustumCulled=false; } });
+    const w=new THREE.Group(); w.add(o); w.visible=false; PHONE.mesh=w; }).catch(e=>console.warn('phone',e)); }
+// the phone shows in your hand while it is open, or when you stand texting
+function phoneInHand(){ const m=PHONE.mesh; if(!m||!hero) return; const w=hero.w, want=mode==='walk'||mode==='interior'?(PHONE.open||w.text>.35):false;
+  if(want&&PHONE.body!==hero.cObj){ let hb=null; hero.cObj.traverse(o=>{ if(!hb&&o.isBone&&/RightHand$/.test(o.name)) hb=o; }); if(!hb) return; hero.cObj.updateMatrixWorld(true);
+    const s=new THREE.Vector3(); hb.matrixWorld.decompose(_p,_q,s); m.scale.setScalar(1/s.x); m.position.set(PHONE_POSE.x/s.x,PHONE_POSE.y/s.x,PHONE_POSE.z/s.x); m.rotation.set(PHONE_POSE.rx,PHONE_POSE.ry,PHONE_POSE.rz); hb.add(m); PHONE.body=hero.cObj; }
+  if(m.visible!==want) m.visible=want; }
+function togglePhone(){ if(PHONE.open) closePhone(); else openPhone(); }
+function openPhone(){ if(!started||busy||PHONE.open||mode==='interior'||mode==='enter'||(mode==='drive'&&!drive.ride)) return; loadPhone(); PHONE.open=true; closeWard(); $('#settings').hidden=true;
+  if(document.pointerLockElement) document.exitPointerLock(); phoneUI(); $('#phone').hidden=false; $('#phoneBtn').setAttribute('aria-pressed','true'); }
+function closePhone(){ if(!PHONE.open) return; PHONE.open=false; $('#phone').hidden=true; $('#phoneBtn').setAttribute('aria-pressed','false'); if(hero&&hero.fid==='text') hero.fid=null; }
+const fareOf=pl=>Math.max(500,Math.round((500+Math.hypot(pl.x-player.x,pl.z-player.z)*1.3/1000*350)/50)*50);
+const naira=n=>'₦'+n.toLocaleString('en-NG');
+const kmOf=d=>d<950?Math.round(d/10)*10+' m':(d/1000).toFixed(1)+' km';
+const POPULAR=/^(Your house|Eko Grand Hotel|Mushin Motor Park|Mushin Police Station|Mushin Station|LUTH gate)$|Market$/;
+function phoneUI(){ const b=$('#phBody'); if(!b) return; b.textContent=''; const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
+  const btn=(c,x,fn)=>{ const e=el('button','ph-btn '+c,x); e.type='button'; e.addEventListener('click',fn); return e; };
+  $('#phTime').textContent=$('#clockT').textContent;
+  if(!RIDE.state){
+    b.append(el('h3','ph-h','Where you dey go?'));
+    const q=el('input','phq'); q.type='search'; q.placeholder='Search a place'; q.value=PHONE.q; q.setAttribute('aria-label','Search a place'); b.append(q);
+    const list=el('div','ph-list'); b.append(list);
+    const fill=()=>{ list.textContent=''; const s=PHONE.q.trim().toLowerCase(), seen=new Set();
+      const ok=pl=>pl.name&&pl.name!=='Footbridge'&&!seen.has(pl.name)&&Math.hypot(pl.x-player.x,pl.z-player.z)>60&&(!pl.minor||pl.sub==='Neighbourhood'||pl.name==='LUTH gate');
+      const row=pl=>{ seen.add(pl.name); const d=Math.hypot(pl.x-player.x,pl.z-player.z), r=el('button','ph-row'); r.type='button'; const t=el('span'); t.append(el('b',null,pl.name),el('small',null,(pl.sub||'')+' · '+kmOf(d*1.3)));
+        r.append(t,el('span','fare',naira(fareOf(pl)))); r.addEventListener('click',()=>bookRide(pl)); list.append(r); };
+      const all=PLACES.filter(ok);
+      if(s){ all.filter(pl=>(pl.name+' '+(pl.sub||'')).toLowerCase().includes(s)).sort((a,c)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(c.x-player.x,c.z-player.z)).slice(0,30).forEach(row); }
+      else { list.append(el('h4','ph-k','Popular')); all.filter(pl=>POPULAR.test(pl.name)).slice(0,10).forEach(row);
+        list.append(el('h4','ph-k','Near you')); all.filter(pl=>!seen.has(pl.name)).sort((a,c)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(c.x-player.x,c.z-player.z)).slice(0,25).forEach(row); }
+      if(!list.children.length) list.append(el('p','ph-note','No place like that. Try another name.')); };
+    q.addEventListener('input',()=>{ PHONE.q=q.value; fill(); }); q.addEventListener('keydown',e=>e.stopPropagation()); fill(); return; }
+  const d=RIDE.dest, card=el('div','ph-card'); card.append(el('b',null,RIDE.who),el('span',null,`${RIDE.car} · ${RIDE.plate}`),el('span',null,`To ${d.name} · ${naira(RIDE.fare)}, cash`)); b.append(card);
+  const live=el('p','ph-live'); live.id='phLive'; b.append(live);
+  if(RIDE.state==='waiting') b.append(btn('go','Get in',()=>{ if(rideHere()) rideEnter(); else toast('Walk to the car first, then get in.',2); }));
+  if(RIDE.state==='coming'||RIDE.state==='waiting') b.append(btn('no','Cancel ride',()=>cancelRide('You cancelled the ride.')));
+  if(RIDE.state==='riding'){ b.append(btn('go','Skip the ride',skipRide),btn('no','Get down here',()=>rideExit(true))); }
+  phoneLive(); }
+function phoneLive(){ const e=$('#phLive'); if(!e||!RIDE.v) return; const v=RIDE.v, G=RIDE.goal;
+  const t=RIDE.state==='coming'?`${RIDE.who} dey come · ${(()=>{ const D=goalField(G), d=Math.min(D[v.ai?v.ai.b:0]||1e9,3000), m=Math.round(d/7/60); return m<1?'less than a minute':m+' min'; })()} away`:RIDE.state==='waiting'?`${RIDE.who} don reach. Walk to the car with the OYA RIDE sign and press E.`:`On the way · ${kmOf(Math.min(goalField(G)[v.ai?v.ai.b:0]||0,9e4))} left`;
+  if(e.textContent!==t) e.textContent=t; }
+// the street point nearest a place, where a car can stop: the street (its two ends) and how far along it
+function goalAt(x,z){ const [e]=nearestRoad(x,z,e=>e.drive);
+  if(!e){ const n=driveNode(x,z); return {x:nodes[n].x,z:nodes[n].z,a:n,b:n,ta:0,tb:0,ow:false,near:false,D:null}; }
+  const A0=nodes[e.a], t=clamp((x-A0.x)*e.fx+(z-A0.z)*e.fz,0,e.len); return {x:A0.x+e.fx*t,z:A0.z+e.fz*t,a:e.a,b:e.b,ta:t,tb:e.len-t,ow:!!e.ow,near:false,D:null}; }
+const kerbPoint=(x,z)=>{ const g=goalAt(x,z); return {x:g.x,z:g.z}; };
+// driving distance from every junction to that point (into the street from either end, or only the right end of a one-way)
+function goalField(g){ if(g.D) return g.D; const Da=fieldTo(g.a), Db=g.ow||g.a===g.b?null:fieldTo(g.b), D=new Float64Array(Da.length); for(let i=0;i<D.length;i++) D[i]=Math.min(Da[i]+g.ta,Db?Db[i]+g.tb:1e18); return g.D=D; }
+// a free car, put on a street one or two minutes' drive from you (by the real streets, one-ways and all), heading your way
+function pickCab(g){ const ok=v=>v.ai&&(v.type==='sedan'||v.type==='suv')&&!v.ai.chase&&!v.ai.goal&&v!==drive.v&&!v.jacked&&!v.raid&&v!==RAID.v;
+  const c=vehicles.filter(ok).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z)); if(!c.length) return null;
+  const D=goalField(g), opts=[];
+  for(let tries=0;tries<2&&!opts.length;tries++){ const lo=tries?40:90, hi=tries?400:240;
+    for(const n of nodes){ const dn=D[n.i]; if(dn<lo||dn>hi||Math.hypot(n.x-player.x,n.z-player.z)<55) continue;
+      for(const m of n.out){ if(D[m]>=dn) continue; const e=edgeOf(n.i,m); if(e&&e.drive&&e.len>12) opts.push([n.i,m]); } } }
+  for(let t=0;t<20&&opts.length;t++){ const [a,b]=mpick(opts), seg=lineSeg(a,b), sp=mrr(.2,.6)*seg.len; segPos(seg,sp,_sp);
+    if(vehicles.some(o=>Math.hypot(o.x-_sp.x,o.z-_sp.z)<11)) continue; const v=c[0], e=edgeOf(a,b), DF=v.c.def;
+    v.ai={a,b,s:sp,seg,na:-1,maxV:mrr(DF.maxV[0],DF.maxV[1])*1.2,wait:0,ghost:0,stuck:0,cond:e.cond,ec:e.c}; v.parked=false; v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx); v.speed=v.ai.maxV*.6; v.y=groundY(v.x,v.z); return v; }
+  return placeCar(c[0],110,190,true)?c[0]:null; }
+function rideSign(v,on){ if(RIDE.sign){ RIDE.sign.parent&&RIDE.sign.parent.remove(RIDE.sign); RIDE.sign.material.map.dispose(); RIDE.sign.material.dispose(); RIDE.sign=null; }
+  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('OYA RIDE','#F2B705','#0E1014'),fog:false})); sp.scale.set(1.6,.3,1); sp.position.set(0,((v.c.def.roof&&v.c.def.roof[2])||1.45)+.32,0); sp.layers.set(1); v.c.g.add(sp); RIDE.sign=sp; } }
+function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book your ride when you are on foot.'); return; }
+  const g=goalAt(player.x,player.z), dk=kerbPoint(pl.x,pl.z), v=pickCab(g); if(!v){ toast('"No driver dey around now. Try again small time."',2.6); return; }
+  Object.assign(RIDE,{v,state:'coming',dest:{...pl,rx:dk.x,rz:dk.z},goal:g,t:0,hint:false,fare:fareOf(pl),who:mpick(RIDE_WHO),car:mpick(RIDE_CAR),plate:mpick(['LND','KJA','AAA','EKY','MUS','APP'])+' '+(100+Math.floor(MR()*899))+' '+mpick(['XA','GH','KT','BD','FE'])});
+  v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); }
+function cancelRide(msg){ const v=RIDE.v; if(!v) return; if(RIDE.state==='riding'){ rideExit(true); return; }
+  if(v.ai){ v.ai.goal=null; v.ai.wait=0; } v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
+const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<4.4;
+function rideEnter(){ const v=RIDE.v, d=RIDE.dest; if(!v||!v.ai) return; closeWard(); RIDE.state='riding'; RIDE.t=0; RIDE.goal=goalAt(d.rx,d.rz); v.ai.goal=RIDE.goal; v.ai.wait=1.2;
+  drive.v=v; drive.ride=true; drive.speed=0; drive.steer=0; mode='drive'; rig.root.visible=false; carryDrop(true); player.speed=0; camState.last=-10; lastMode=null;
+  mapView.setDest(d.x,d.z,d); toast(`Oya, we dey go ${d.name}. Sit back, relax.`,2.6); if(PHONE.open) phoneUI(); }
+function rideExit(early){ const v=RIDE.v; if(!v) return; drive.ride=false; if(mode==='drive'&&drive.v===v) exitCar();
+  v.parked=false; if(v.ai){ v.ai.goal=null; v.ai.wait=2.5; } v.taxi=false; rideSign(v,false); if(early) mapView.clearRoute();
+  Object.assign(RIDE,{v:null,state:null,dest:null,goal:null}); lastMode=null; if(PHONE.open) phoneUI(); }
+function arriveRide(){ const d=RIDE.dest, f=RIDE.fare, w=RIDE.who; rideExit(false); mapView.clearRoute(); toast(`You don reach ${d.name}! ${w} collect ${naira(f)}. "Thank you o, safe journey!"`,3.6); }
+function skipRide(){ const v=RIDE.v, G=RIDE.goal; if(!v||RIDE.state!=='riding') return;
+  fadeSwap(()=>{ if(!placeCar(v,12,45,true,{x:G.x,z:G.z})){ v.x=G.x; v.z=G.z; } v.ai.goal=G; G.near=false; v.ai.wait=0; player.x=v.x; player.z=v.z; camState.last=-10; }); }
+function updateRide(dt){ const R=RIDE, v=R.v; if(!v) return; R.t+=dt;
+  if(R.state!=='riding'&&!v.ai){ cancelRide('Your driver had to go. Book again.'); return; }   // someone took the car
+  if(v.ai&&v.ai.goal!==R.goal) v.ai.goal=R.goal;   // keep the destination if the car was moved
+  if(R.state==='coming'){ const G=R.goal;
+    if((G.near||Math.hypot(v.x-player.x,v.z-player.z)<9)&&Math.abs(v.speed)<.5){ R.state='waiting'; R.t=0; toast(`${R.who} don reach! The car with the OYA RIDE sign. Press E to enter.`,3.2); if(PHONE.open) phoneUI(); }
+    else if(R.t>100){ placeCar(v,35,70,true); v.ai.goal=G; R.t=50; }   // stuck somewhere: he takes a shorter way
+    else if(Math.hypot(player.x-G.x,player.z-G.z)>30){ Object.assign(G,goalAt(player.x,player.z)); } }   // you walked off: he comes to where you are now
+  else if(R.state==='waiting'){ v.speed=0; if(v.ai) v.ai.wait=1; if(R.t>80) cancelRide(`${R.who} don wait tire. He don go.`); else if(Math.hypot(player.x-v.x,player.z-v.z)>60){ R.state='coming'; v.ai.wait=0; Object.assign(R.goal,goalAt(player.x,player.z)); } }
+  else if(R.state==='riding'){ if(mode!=='drive'||drive.v!==v){ rideExit(true); return; } player.x=v.x; player.z=v.z;
+    if(R.goal.near&&Math.abs(v.speed)<.5&&R.t>2) arriveRide(); else if(R.t>300) skipRide();
+    else if(R.t>18&&!R.hint&&!PHONE.open){ R.hint=true; toast(`Long ride? Open your phone (${touchUI?'phone button':'P'}) to skip it.`,3); } }
+  if(PHONE.open) phoneLive(); }
 
 /* ================= Eko Grand Hotel: walk in to the lounge bar =================
    The office tower nearest your house is the hotel. Its lounge (assets/models/hotel_bar.glb) loads the first time you come
@@ -2770,7 +3113,7 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior') updateWalk(dt,true); else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateRaid(dt); updateCarry(dt); updatePeds(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
+  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updatePeds(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); updateBlobs(); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="b8c914a5f8">
+<meta name="ns-build" content="b8fdedf800">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -111,6 +111,29 @@ body.touchui .ward .kb{display:none}
 .lookb small{font-weight:600;font-size:12px;color:var(--muted)}
 .lookb[aria-pressed="true"]{background:var(--cream);color:var(--ink);border-color:var(--cream)}
 .lookb:disabled{opacity:.5}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.25);padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.sw.orig{background:conic-gradient(#b3201e,#e9b81c,#2f7a3f,#2347a8,#6a3591,#b3201e)}
+.sw[aria-pressed="true"]{border-color:var(--danfo);box-shadow:0 0 0 3px rgba(242,183,5,.35)}
+.phone{width:min(292px,calc(100vw - 36px));padding:0 0 4px;border-radius:28px;border:3px solid #30343b;background:#0c0e12;box-shadow:0 18px 40px rgba(0,0,0,.5);z-index:6}
+.ph-top{display:flex;align-items:center;justify-content:space-between;padding:9px 14px 5px;font-weight:700;font-size:13px;color:var(--muted)}
+.ph-cam{width:54px;height:6px;border-radius:3px;background:#22252b}
+#phClose{background:none;border:none;color:var(--cream);font-size:18px;min-width:44px;min-height:36px;margin:-6px -10px -6px 0}
+.ph-app{background:var(--danfo);color:var(--ink);font-family:var(--fd);font-size:16px;padding:9px 14px}
+.ph-app small{font-family:var(--fb, inherit);font-weight:700;font-size:11px;margin-left:6px;opacity:.75}
+#phBody{padding:10px 12px 10px}
+.ph-h{margin:2px 0 8px!important;color:var(--cream)!important;letter-spacing:0!important;text-transform:none!important;font-size:17px!important}
+.ph-k{margin:10px 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.phq{width:100%;box-sizing:border-box;min-height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--cream);padding:0 12px;font-size:16px;margin:0 0 4px}
+.ph-row{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:50px;padding:6px 10px;margin:0 0 6px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;color:var(--cream);text-align:left}
+.ph-row b{display:block;font-size:15px;line-height:1.2}.ph-row small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.ph-row .fare{font-weight:700;color:var(--danfo);white-space:nowrap}
+.ph-card{display:flex;flex-direction:column;gap:3px;padding:12px;border-radius:14px;background:rgba(242,183,5,.12);border:1px solid rgba(242,183,5,.4);color:var(--cream);font-size:14px}
+.ph-card b{font-size:18px}
+.ph-live,.ph-note{color:var(--cream);font-size:14px;margin:10px 2px}
+.ph-btn{width:100%;min-height:46px;border-radius:12px;border:none;font-weight:700;font-size:15px;margin-top:8px}
+.ph-btn.go{background:var(--danfo);color:var(--ink)}.ph-btn.no{background:rgba(255,255,255,.1);color:var(--cream)}
+.iconbtn[aria-pressed="true"]{background:var(--danfo);color:var(--ink)}
 .ward .done{width:100%;margin-top:8px;min-height:48px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;font-family:var(--fd);font-size:16px}
 .lookhint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:600;font-size:15px;backdrop-filter:blur(8px)}
 
@@ -120,14 +143,14 @@ body.touchui .ward .kb{display:none}
 .zone.l{left:0;width:45%}.zone.r{right:0;width:55%}
 .joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.2)}
 .joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(247,239,223,.85)}
-.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,64px);gap:10px;pointer-events:auto;z-index:4}
+.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:10px;pointer-events:auto;z-index:4}
 .tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
-.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:2}
-#tRun,#tBrake{grid-column:1;grid-row:2}
-#tHorn{grid-column:3;grid-row:1}
-#tGrab{grid-column:1;grid-row:1}
-#tKick{grid-column:2;grid-row:1}#tJump{grid-column:3;grid-row:1}#tPunch{grid-column:2;grid-row:2}
+.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:3}
+#tRun,#tBrake{grid-column:1;grid-row:3}
+#tHorn{grid-column:3;grid-row:2}
+#tGrab{grid-column:1;grid-row:2}
+#tKick{grid-column:2;grid-row:2}#tJump{grid-column:3;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tDodge{grid-column:3;grid-row:1}
 .tbtns .fightb{background:rgba(208,87,62,.78);border-color:rgba(255,220,200,.55);font-size:12px}
 .tbtns .fightb:active{background:var(--rust)}
 .jail{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(10,10,12,.72);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 18px;pointer-events:none;z-index:6}
@@ -180,6 +203,10 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   .chip{font-size:14px;padding:5px 12px 5px 8px}.chip .w{display:none}
   .speedo b{font-size:46px}
 }
+@media (max-width:480px){
+  .tr{gap:6px}.iconbtn{width:40px;height:40px}.chip svg{display:none}
+  .tl{max-width:calc(100vw - 230px - var(--sl) - var(--sr))}
+}
 @media (orientation:portrait) and (max-width:760px){
   body.touchui #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:118px;height:118px}
   body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
@@ -207,6 +234,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>
   <div class="tr">
     <div class="chip" id="clock" aria-live="off"><svg id="wIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="t" id="clockT">--:--</span><span class="w" id="clockW"></span></div>
+    <button type="button" class="iconbtn" id="phoneBtn" aria-label="Your phone: book a ride" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button type="button" class="iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
   <button type="button" id="mmWrap" aria-label="Open the map"><canvas id="mm" width="420" height="420"></canvas><span class="mmtag">MAP</span></button>
@@ -215,9 +243,14 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="toast" id="toast" hidden></div>
   <div class="jail" id="jailBox" hidden><b>MUSHIN POLICE CELL</b><span id="jailT">3:00</span><small>until they release you</small></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
+  <div class="panel phone" id="phone" hidden role="dialog" aria-label="Your phone">
+    <div class="ph-top"><span id="phTime">--:--</span><span class="ph-cam"></span><button type="button" id="phClose" aria-label="Put the phone away">✕</button></div>
+    <div class="ph-app">OYA RIDE <small>Lagos rides, sharp sharp</small></div>
+    <div id="phBody"></div>
+  </div>
   <div class="panel ward" id="ward" hidden role="dialog" aria-label="Wardrobe">
     <h2>WARDROBE</h2>
-    <p class="note" style="margin:0">Pick a look. You keep it on everywhere until you change again. <span class="kb">E or Esc closes.</span></p>
+    <p class="note" style="margin:0">Pick your clothes and their colours. You keep your face, and the look stays on until you change again. <span class="kb">E or Esc closes.</span></p>
     <div id="looks"></div>
     <button type="button" class="done" id="wardDone">Done</button>
   </div>
@@ -243,11 +276,14 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>W A S D</dt><dd>Walk, or drive</dd>
         <dt>Shift</dt><dd>Run</dd>
         <dt>Mouse</dt><dd>Look around (click the city first)</dd>
-        <dt>E</dt><dd>Enter or leave a vehicle or house</dd>
+        <dt>E</dt><dd>Enter or leave a vehicle or house (at a moving car: take it from the driver)</dd>
         <dt>Space</dt><dd>Jump on foot, brake when driving</dd>
-        <dt>J or click</dt><dd>Punch (while running: takedown)</dd>
-        <dt>K or right click</dt><dd>Kick (while running: drop kick)</dd>
+        <dt>J or click</dt><dd>Punch: jab, cross, jab… (while running: takedown)</dd>
+        <dt>K or right click</dt><dd>Kick (after two punches it floors him; while running: drop kick)</dd>
+        <dt>L or Q</dt><dd>Dodge (hit straight after for a harder blow)</dd>
+        <dt>G</dt><dd>Slam the man you are fighting down, or carry someone</dd>
         <dt>H</dt><dd>Horn</dd>
+        <dt>P</dt><dd>Your phone: book a ride (OYA RIDE)</dd>
         <dt>M</dt><dd>Big map</dd>
         <dt>Wheel</dt><dd>Camera distance</dd>
       </dl>
@@ -262,6 +298,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" id="tGrab" hidden aria-label="Grab or put down">GRAB</button>
       <button type="button" id="tKick" class="fightb" hidden aria-label="Kick">KICK</button>
       <button type="button" id="tJump" hidden aria-label="Jump">JUMP</button>
+      <button type="button" id="tDodge" class="fightb" hidden aria-label="Dodge">DODGE</button>
       <button type="button" id="tRun">RUN</button>
       <button type="button" id="tBrake" hidden>BRAKE</button>
       <button type="button" id="tPunch" class="fightb" hidden aria-label="Punch">PUNCH</button>
@@ -325,7 +362,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=b8c914a5f8"></script>
+<script type="module" src="src/game.js?v=b8fdedf800"></script>
 
 </body>
 </html>

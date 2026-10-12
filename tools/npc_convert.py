@@ -56,6 +56,7 @@ MOVES = {
     'dance_macarena': ('ffe97785-Macarena_Dance.fbx', {'ref': 97.7}), 'dance_1': ('262036bd-Dancing_1.fbx', {'ref': 97.7}),
     'dance_salsa': ('d7434904-Salsa_Dancing.fbx', {'ref': 97.7}),
     'idle_suit': ('f30ad6e2-Idle.fbx', {'ref': 101.0}),
+    'threaten': ('b1e85720-Threatening.fbx', {}),   # pointing and shouting: the carjack
 }
 ONLY = next((a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('--only=')), None)   # convert just these characters (moves are always rebuilt)
 SKELETON_FROM = 'mama'   # a rig with every bone (65, fingers included) to carry the moves
