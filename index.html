@@ -124,14 +124,14 @@ body.touchui .ward .kb{display:none}
 .zone.l{left:0;width:45%}.zone.r{right:0;width:55%}
 .joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.2)}
 .joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(247,239,223,.85)}
-.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,64px);gap:10px;pointer-events:auto;z-index:4}
+.tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:10px;pointer-events:auto;z-index:4}
 .tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
-.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:2}
-#tRun,#tBrake{grid-column:1;grid-row:2}
-#tHorn{grid-column:3;grid-row:1}
-#tGrab{grid-column:1;grid-row:1}
-#tKick{grid-column:2;grid-row:1}#tJump{grid-column:3;grid-row:1}#tPunch{grid-column:2;grid-row:2}
+.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:3}
+#tRun,#tBrake{grid-column:1;grid-row:3}
+#tHorn{grid-column:3;grid-row:2}
+#tGrab{grid-column:1;grid-row:2}
+#tKick{grid-column:2;grid-row:2}#tJump{grid-column:3;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tDodge{grid-column:3;grid-row:1}
 .tbtns .fightb{background:rgba(208,87,62,.78);border-color:rgba(255,220,200,.55);font-size:12px}
 .tbtns .fightb:active{background:var(--rust)}
 .jail{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(10,10,12,.72);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 18px;pointer-events:none;z-index:6}
@@ -247,10 +247,12 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>W A S D</dt><dd>Walk, or drive</dd>
         <dt>Shift</dt><dd>Run</dd>
         <dt>Mouse</dt><dd>Look around (click the city first)</dd>
-        <dt>E</dt><dd>Enter or leave a vehicle or house</dd>
+        <dt>E</dt><dd>Enter or leave a vehicle or house (at a moving car: take it from the driver)</dd>
         <dt>Space</dt><dd>Jump on foot, brake when driving</dd>
-        <dt>J or click</dt><dd>Punch (while running: takedown)</dd>
-        <dt>K or right click</dt><dd>Kick (while running: drop kick)</dd>
+        <dt>J or click</dt><dd>Punch: jab, cross, jab… (while running: takedown)</dd>
+        <dt>K or right click</dt><dd>Kick (after two punches it floors him; while running: drop kick)</dd>
+        <dt>L or Q</dt><dd>Dodge (hit straight after for a harder blow)</dd>
+        <dt>G</dt><dd>Slam the man you are fighting down, or carry someone</dd>
         <dt>H</dt><dd>Horn</dd>
         <dt>M</dt><dd>Big map</dd>
         <dt>Wheel</dt><dd>Camera distance</dd>
@@ -266,6 +268,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" id="tGrab" hidden aria-label="Grab or put down">GRAB</button>
       <button type="button" id="tKick" class="fightb" hidden aria-label="Kick">KICK</button>
       <button type="button" id="tJump" hidden aria-label="Jump">JUMP</button>
+      <button type="button" id="tDodge" class="fightb" hidden aria-label="Dodge">DODGE</button>
       <button type="button" id="tRun">RUN</button>
       <button type="button" id="tBrake" hidden>BRAKE</button>
       <button type="button" id="tPunch" class="fightb" hidden aria-label="Punch">PUNCH</button>

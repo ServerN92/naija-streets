@@ -1475,7 +1475,9 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   if(speed<.08){ ti=1; hero.still+=dt; if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
   else { hero.still=0; hero.fid=null; if(speed<=WALK_V){ const k=speed/WALK_V; ti=1-k; tw=k; } else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
-  const ow=heroOverlay(dt), base=1-ow;   // a punch, kick, jump or hit plays over the walk
+  const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
+  { const o=hero.ov, b=FIGHT.buf; if(b&&(T0-b.t>.5)) FIGHT.buf=null; else if(b&&(!o||(o.atk&&o.t>=o.cancel*o.dur))){ FIGHT.buf=null; playerAttack(b.kind); } }   // a press made during a blow comes out as soon as it can
+  const ow=heroOverlay(hd), base=1-ow;   // a punch, kick, jump or hit plays over the walk
   // fists up while a fight is on
   w.fight+=((((FIGHT.near||T0-FIGHT.lastAtk<4)&&!FIGHT.ko&&a.fight_idle&&mode==='walk')?1:0)-w.fight)*(1-Math.exp(-6*dt)); if(w.fight>.05) hero.fid=null;
   let f=0; for(const n of ['text','phone']) if(a[n]){ w[n]+=((hero.fid===n?1:0)-w[n])*(1-Math.exp(-4*dt)); a[n].setEffectiveWeight(w[n]*base); f+=w[n]; }
@@ -1485,7 +1487,7 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2);
   if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+(O.walk||0)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
     hero.cObj.position.y=L.y0+y; }
-  hero.mixer.update(dt); }
+  hero.mixer.update(hd); }
 const HERO_RIDE={okada:{x:0,y:.08,z:0,ry:0},keke:{x:0,y:.08,z:0,ry:0},danfo:{x:0,y:.04,z:0,ry:0},bus:{x:0,y:.04,z:0,ry:0},police:{x:0,y:.04,z:0,ry:0},sedan:{x:0,y:.02,z:0,ry:0}};
 function updateEnter(dt){ hero.carT+=dt; hero.mixer.update(dt); const [f]=inputVec(); const dur=hero.act.car.getClip().duration/hero.act.car.timeScale;
   if(hero.carT>dur*.86||(hero.carT>.7&&(Math.abs(f)>.5||K[' ']))) finishEnter(); }
@@ -1695,7 +1697,7 @@ function updateHUD(dt){ if(!started) return;
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
-  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#tRun').hidden=dv||mode==='enter'; const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tKick','#tJump','#tGrab']) $(id).hidden=!fb; $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
+  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#tRun').hidden=dv||mode==='enter'; const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tKick','#tJump','#tGrab','#tDodge']) $(id).hidden=!fb; $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ mapView.clearRoute(); toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
@@ -1731,7 +1733,7 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j') playerAttack('punch'); else if(k==='k') playerAttack('kick'); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j') playerAttack('punch'); else if(k==='k') playerAttack('kick'); else if(k==='l'||k==='q') playerDodge(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
 addEventListener('keyup',e=>{ K[keyOf(e)]=false; });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
@@ -1766,7 +1768,8 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   $('#tRun').addEventListener('pointerdown',e=>{ e.preventDefault(); touchRun=!touchRun; $('#tRun').classList.toggle('on',touchRun); });
   const tb=$('#tBrake'); tb.addEventListener('pointerdown',e=>{ e.preventDefault(); touchBrake=true; tb.classList.add('on'); }); for(const ev of ['pointerup','pointercancel','pointerleave']) tb.addEventListener(ev,()=>{ touchBrake=false; tb.classList.remove('on'); });
   $('#tHorn').addEventListener('pointerdown',e=>{ e.preventDefault(); horn(); hornHeard(); });
-  $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('punch'); }); $('#tKick').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('kick'); }); $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); playerJump(); }); }
+  $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('punch'); }); $('#tKick').addEventListener('pointerdown',e=>{ e.preventDefault(); playerAttack('kick'); }); $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); playerJump(); });
+  $('#tDodge').addEventListener('pointerdown',e=>{ e.preventDefault(); playerDodge(); }); }
 if(isTouch) enableTouchUI(); else addEventListener('touchstart',()=>enableTouchUI(),{once:true,passive:true});
 let rotateSeen=false; function checkRotate(){ if(started&&innerWidth>innerHeight) rotateSeen=true; const show=touchUI&&started&&!rotateSeen&&innerHeight>innerWidth&&innerWidth<700; $('#rotate').hidden=!show; }
 $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); }); addEventListener('resize',checkRotate);
@@ -1775,7 +1778,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started) return;
-  if(mode==='walk'){ if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); const v=nearestVehicle(); if(v) return enterCar(v); }
+  if(mode==='walk'){ if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(WARD.open) closeWard(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); } }
 const OPEN_RIDE={okada:1,keke:1};
@@ -1795,6 +1798,21 @@ function enterCar(v){
     Object.assign(player,{x:sx,z:sz,yaw:Math.atan2(-lx,-lz),speed:0}); player.y=groundY(sx,sz); rig.root.position.set(player.x,player.y,player.z); rig.root.rotation.y=player.yaw;
     const a=hero.act; heroQuiet(); a.car.reset(); a.car.paused=false; a.car.timeScale=1.7; a.car.setEffectiveWeight(1); a.car.play(); hero.carT=0; mode='enter'; return; }
   mode='drive'; rig.root.visible=false; }
+/* ---- carjack: you walk to the driver's door, threaten, and the driver climbs out with hands up and runs (an area boy may fight you for it) */
+const JACK={go:null};
+const doorOf=(v,out)=>{ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx, o=OPEN_RIDE[v.type], ow=v.c.def.W/2+(o?.75:out), fw=o?0:.35; return {x:v.x+lx*ow+hx*fw,z:v.z+lz*ow+hz*fw,lx,lz,hx,hz}; };
+function carjack(v){ if(!hero||!hero.act.threaten||mode!=='walk'||(hero.ov&&hero.ov.lock)||CARRY.p) return enterCar(v);
+  v.ai=null; v.speed=0; v.jacked=true; v.parked=false; const d=doorOf(v,1.15), c={x:d.x,z:d.z}; resolveCircle(c,.34); JACK.go={x:c.x,z:c.z,v,t:0}; player.speed=Math.max(player.speed,1); }
+function jackThreaten(v){ if(mode!=='walk'||FIGHT.ko){ return; } const d=doorOf(v,1.15); player.yaw=Math.atan2(-d.lx,-d.lz); player.speed=0;
+  FIGHT.heat=Math.min(3.4,FIGHT.heat+(v.type==='police'?1.4:.5)); FIGHT.crimeT=0; incident(v.x,v.z,'carjack');
+  toast(v.type==='police'?'"Officer, come down! This van na my own now!"':mpick(['"Comot for the motor! Now now!"','"Oya come down! Come down sharp sharp!"','"Driver! Commot before I vex!"']),2.2);
+  if(!heroDo('threaten',{force:true,ts:1.6,from:.05,to:.6,hits:[[.38,()=>jackOut(v)]],onEnd:()=>{ if(mode==='walk'&&!FIGHT.ko&&!drive.v&&Math.hypot(player.x-v.x,player.z-v.z)<6) enterCar(v); }})){ jackOut(v); enterCar(v); } }
+function jackOut(v){ if(v.out) return; v.out=true; const p=freePed(); fleeFrom(v,Math.max(0,Math.min(5,(v.c.seats||[]).length-1)));
+  if(!p) return; const d=doorOf(v,.5); wakePed(p,v.type==='police'?'areaboy':MR()<.4?'areaboy':mpick(['baba','areaboy','schoolboy','mama','lady_black']));
+  const c={x:d.x+d.hx*.9,z:d.z+d.hz*.9}; resolveCircle(c,.3);
+  Object.assign(p,{x:c.x,z:c.z,y:0,speed:0,atk:null,hp:HP0(p.cast),fall:0,phone:false}); react(p,'hands_up',player.x,player.z,mrr(1,1.4)); p.seq=(p.seq||0)+1;
+  if(p.cast==='areaboy'&&MR()<.35) p.fightAfter=true; else p.fleeAfter=true;
+  setTimeout(()=>toast(p.fightAfter?'"Ehen? You wan take my motor? I go show you!"':v.type==='okada'?'"Take am! Na only okada I get o!"':v.type==='danfo'?'"Everybody come down! Run!"':mpick(['"Take am! Take am! No wahala!"','"Oga abeg, no kill me!"','"Ah! Na my daily bread o!"']),2.2),450); }
 // the player sits on okada / in keke and is seen riding
 function seatHero(v){ const st=(SEATS[v.type]||[])[0]; if(!st||!v.c.hi){ rig.root.visible=false; return; }
   if(hero){ const a=hero.act; heroQuiet(); a.car.reset(); a.car.setEffectiveWeight(1); a.car.play(); a.car.time=a.car.getClip().duration-.02; a.car.paused=true; hero.mixer.update(0);
@@ -1819,13 +1837,19 @@ function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thu
 /* ================= simulation ================= */
 function updateWalk(dt,inside){
   const [f,s]=inputVec(), cy=camState.yaw, fx=Math.sin(cy), fz=Math.cos(cy), rx=-Math.cos(cy), rz=Math.sin(cy);
-  let mx=fx*f+rx*s, mz=fz*f+rz*s; const len=Math.hypot(mx,mz), run=K.shift||touchRun; let target=len>.12?(run?RUN_V:WALK_V)*Math.min(1,len):0; if(CARRY.p) target=Math.min(target,RUN_V*.55);
+  let mx=fx*f+rx*s, mz=fz*f+rz*s, jd=0;
+  const jg=JACK.go; if(jg&&!inside){ jg.t+=dt; const dx=jg.x-player.x, dz=jg.z-player.z; jd=Math.hypot(dx,dz); if(jd<.2||jg.t>1.6||FIGHT.ko){ JACK.go=null; jackThreaten(jg.v); jd=0; } else { mx=dx/jd; mz=dz/jd; } }   // walking up to the driver's door
+  const len=Math.hypot(mx,mz), run=K.shift||touchRun; let target=len>.12?(run?RUN_V:WALK_V)*Math.min(1,len):0; if(CARRY.p) target=Math.min(target,RUN_V*.55); if(jd) target=Math.min(RUN_V*.75,jd*6);
   const ov=hero&&hero.ov, held=FIGHT.ko||(ov&&ov.lock);
-  if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1) target=v; } }
-  player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:10));
+  if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1){ target=v; player.speed=v; } }
+    else if(ov&&ov.foe&&ov.foe.state!=='off'){ const q=ov.foe, k=ov.t/ov.dur, dx=q.x-player.x, dz=q.z-player.z, d=Math.hypot(dx,dz);   // a blow carries you onto your man, turning with him
+      if(k<ov.until+.1) player.yaw=lerpA(player.yaw,Math.atan2(dx,dz),1-Math.exp(-20*dt));
+      if(k<ov.until){ const v=clamp((d-ov.stand)/Math.max(.05,(ov.until-k)*ov.dur),0,7); target=v; player.speed=v; } } }
+  player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:(held?16:10)));
   if(len>.12&&!held) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
   else if(!held&&!inside&&(FIGHT.near||T0-FIGHT.lastAtk<3)){ const t=lockFoe(); if(t) player.yaw=lerpA(player.yaw,Math.atan2(t.x-player.x,t.z-player.z),1-Math.exp(-10*dt)); }   // in a fight you keep facing your man
-  const nx=player.x+Math.sin(player.yaw)*player.speed*dt, nz=player.z+Math.cos(player.yaw)*player.speed*dt;
+  let ex=0, ez=0; const DS=FIGHT.dash; if(DS){ DS.t+=dt; const k=Math.max(0,1-DS.t/DS.dur)*1.6; ex=DS.vx*k*dt; ez=DS.vz*k*dt; if(DS.t>=DS.dur) FIGHT.dash=null; }   // a dodge slides you aside
+  const nx=player.x+Math.sin(player.yaw)*player.speed*dt+ex, nz=player.z+Math.cos(player.yaw)*player.speed*dt+ez;
   if(inside){ if(ROOM.move) ROOM.move(nx,nz); else { const b=ROOM.bounds, c={x:clamp(nx,b.x0,b.x1),z:clamp(nz,b.z0,b.z1)}; resolveCircle(c,.32,ROOM.cols); player.x=c.x; player.z=c.z; player.y=0; } }
   else { let x=nx, z=nz; if(!onLand(x,player.z)) x=player.x; if(!onLand(x,z)) z=player.z; const c={x,z}; resolveCircle(c,.34,null,player.y); player.x=c.x; player.z=c.z;
     if(player.y<2) for(const v of vehicles){ const dx=player.x-v.x, dz=player.z-v.z; if(Math.abs(dx)>4||Math.abs(dz)>4) continue; const hx=Math.cos(v.h), hz=-Math.sin(v.h), al=dx*hx+dz*hz, lat=-dx*hz+dz*hx, ex=v.c.def.L/2+.3-Math.abs(al), ey=v.c.def.W/2+.3-Math.abs(lat);
@@ -2118,15 +2142,17 @@ function setupCast(id,g,c=CAST[id]){ const tpl=g.scene; let mesh=null, hips=null
   PEOPLE.casts[id]={tpl,clips,off,y0:-bb.min.y,sc:c.h/Math.max(.5,bb.max.y-bb.min.y),f:!!c.f,idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>clips[n]&&c.idle.includes(n))||'idle_1'};
   if(CAST[id]) PEOPLE.n++; if(map) renderer.initTexture(map); }
 function heroMoves(){ if(!hero||!hero.cObj||!hero.hipsRest) return; const names=new Set(); hero.cObj.traverse(o=>{ if(o.isBone) names.add(o.name); }); const own=hero.look&&hero.look.clips;
-  for(const n of ['text','phone','fight_idle','punch','kick','drop_kick','hit_head','hit_body','hit_side','uppercut','stand_up','kip_up','jump','takedown_a','lie']){ let k=null;
+  for(const n of ['text','phone','fight_idle','punch','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','jump','takedown_a','lie','threaten','gp','rise']){ let k=null;
     if(own) k=own[n]; else if(PEOPLE.clips[n]) k=fitClip(PEOPLE.clips[n],names,hero.hipsRest); if(!k||k.tracks.length<10) continue; const a=hero.mixer.clipAction(k); hero.act[n]=a;
     if(n==='text'||n==='phone'||n==='fight_idle'){ a.play(); a.setEffectiveWeight(0); } }
+  for(const [n,src] of [['punch_b','punch'],['gp_b','gp']]) if(hero.act[src]){ const k=hero.act[src].getClip().clone(); k.name=n; hero.act[n]=hero.mixer.clipAction(k); }
   lastMode=null; }   // show the fight buttons
 async function loadPeople(){
   try{ const mv=await GLL.parseAsync(await fetchBuf(purl('moves')),''); for(const k of mv.animations) PEOPLE.clips[k.name]=k;
     if(HERO_RUN){ const k=HERO_RUN.clone(); k.name='run'; k.tracks=k.tracks.filter(t=>!/\.scale$/.test(t.name));
       for(const t of k.tracks) if(/Hips\.position$/.test(t.name)){ const v=t.values, y0=v[1]||1; for(let i=0;i<v.length;i+=3){ v[i]=0; v[i+1]/=y0; v[i+2]=0; } } PEOPLE.clips.run=k; }
     if(PEOPLE.clips.stand_up) PEOPLE.clips.lie=THREE.AnimationUtils.subclip(PEOPLE.clips.stand_up,'lie',0,3,30);   // the first moment of getting up = lying on the ground
+    try{ synthMoves(); }catch(e){ console.warn('moves',e); }
     try{ heroMoves(); }catch(e){ console.warn(e); }
     let mine=null; try{ mine=localStorage.getItem('naija-look'); }catch(e){} if(isF()&&!(mine&&LOOK_LIST.some(l=>l.id===mine&&l.f===1&&!l.file))) mine='girl';
     for(const id of Object.keys(CAST).sort((a,b)=>(b===mine)-(a===mine)||CAST[b].w-CAST[a].w)){
@@ -2158,18 +2184,19 @@ function poseBody(p,dt){ const b=p.body, C=PEOPLE.casts[b.id], cl=C.clips, st=p.
   else if(st==='idle') name=p.stand||C.idle0;
   else if(st==='spot'||st==='react') name=p.act||C.idle0;
   else if(st==='flee'){ if(cl.run){ name='run'; ts=clamp(p.speed/2.4,1.3,2.2); } else { name='walk'; ts=1.8; } }
-  else if(st==='fight'){ if(p.atk){ name=p.atk; ts=MOVE_INFO[p.atk].ts; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=cl.fight_idle?'fight_idle':C.idle0; }
-  else if(st==='hurt'){ name=p.react||'hit_head'; ts=1.2; }
+  else if(st==='fight'){ if(p.dodgeT>0&&cl[p.dclip]){ name=p.dclip; ts=2.4; } else if(p.atk){ name=p.atk; ts=AI_INFO[p.atk].ts; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=cl.fight_idle?'fight_idle':C.idle0; }
+  else if(st==='hurt'){ name=p.react||'hit_head'; ts=1.6; }
   else if(st==='down'){ name=(p.downT||0)<.45&&cl.uppercut?'uppercut':cl.lie?'lie':C.idle0; ts=name==='uppercut'?1.4:1; }   // knocked back, then lying
   else if(st==='dead'){ name=p.deadT<.4&&cl.uppercut?'uppercut':cl.lie?'lie':C.idle0; ts=1.4; }
   else if(st==='carried'){ name=cl.lie?'lie':C.idle0; }
   else if(st==='getup'){ name=p.gu; ts=p.gu==='stand_up'?1.7:1.1; }
-  else if(st==='takedown'){ name='takedown_v'; ts=1.6; }
+  else if(st==='takedown'){ name='takedown_v'; ts=1.7; }
   const again=b.seq!==p.seq&&ONCE.has(name); b.seq=p.seq; const a=bodyPlay(b,name,name==='lie'?.5:.25,again); if(a) a.timeScale=ts;
   b.root.position.set(p.x,p.y,p.z); b.root.rotation.set(0,p.yaw,0);
+  if(p.jolt>0){ b.root.position.y+=p.jolt*.06; b.root.rotation.z=p.jolt*.05; p.jolt=Math.max(0,p.jolt-dt*7); }   // a blow on the floor shakes the body
   if(st==='shop'&&p.speed<=.12&&p.act&&cl[p.act]&&b.clip!==p.act) bodyPlay(b,p.act,.3);
   b.oy+=((C.off[b.clip]||0)-b.oy)*Math.min(1,dt*6); b.inner.position.y=C.y0+b.oy;
-  b.acc+=dt; const k=p.dc<14?1:p.dc<30?2:3; if((NPCF+b.slot)%k===0){ b.mixer.update(b.acc); b.acc=0; } }   // far bodies move at a lower rate
+  if(p.stopT>0){ p.stopT-=dt; b.acc+=dt*.1; } else b.acc+=dt; const k=p.dc<14?1:p.dc<30?2:3; if((NPCF+b.slot)%k===0){ b.mixer.update(b.acc); b.acc=0; } }   // far bodies move at a lower rate
 const _cd=new THREE.Vector3();
 function assignBodies(){ if(!PEOPLE.n) return; const R=Q.npcR, cx=camera.position.x, cz=camera.position.z; camera.getWorldDirection(_cd); const list=[];
   for(const p of peds){ if(p.state==='off'){ if(p.body) freeBody(p); continue; } const dx=p.x-cx, dz=p.z-cz; p.dc=Math.hypot(dx,dz);
@@ -2189,7 +2216,8 @@ const SAY={areaboy:['"Oga, anything for the boys?"','"How far, my guy!"','"Boss,
 const BUMP=['"Ah ah! You no dey look road?"','"Oga, calm down o!"','"Wetin be this one now?"','"Abeg, mind yourself!"'];
 function react(p,act,tx,tz,dur){ if(p.state!=='react') p.prev=p.state; p.state='react'; if(CAST[p.cast].tray&&(act==='text'||act==='phone')) act='no';
   p.act=act; p.ry=Math.atan2(tx-p.x,tz-p.z); p.timer=dur; p.cool=12; p.replan=false; }
-function endReact(p){ if(p.fleeAfter){ p.fleeAfter=false; p.state='flee'; p.timer=mrr(3,5); p.yaw=Math.atan2(p.x-player.x,p.z-player.z); return; }
+function endReact(p){ if(p.fightAfter){ p.fightAfter=false; p.state='fight'; p.atk=null; p.atkT=.3; return; }
+  if(p.fleeAfter){ p.fleeAfter=false; p.state='flee'; p.timer=mrr(3,5); p.yaw=Math.atan2(p.x-player.x,p.z-player.z); return; }
   if(p.spot){ p.state='spot'; p.act=null; nextAct(p); return; }
   if(p.prev==='idle'){ p.state='idle'; p.timer=mrr(1,3); return; }
   if(p.replan||!p.q.length) replanPed(p); p.state='walk'; p.startT=1.6; }
@@ -2326,23 +2354,52 @@ function updatePark(dt){ const pk=SITES.park; if(!pk) return; if(!PARK.ready){ P
 }
 
 /* ================= fighting =================
-   On foot: J or left click = punch, K or right click = kick, Space = jump. Punch while running into someone = takedown,
-   kick while running = drop kick. Area boys fight back (their friends join); other people run or quarrel.
+   On foot: J or left click = punch (jab, cross, jab…), K or right click = kick (after two punches: the finisher that floors him),
+   L or Q = dodge, G next to the man you fight = slam him down, Space = jump. Punch while running into someone = takedown,
+   kick while running = drop kick. Hit someone lying on the floor and you go down and keep hitting until he stops moving. Area boys fight back (their friends join); other people run or quarrel.
    Hitting ordinary people brings the police: stars go up, a police van comes for you, and if it catches you
    you are taken to Mushin police station. Get far away and keep quiet and the stars fade. */
-const FIGHT={hp:100,calmT:99,heat:0,crimeT:99,lastAtk:-99,near:false,ko:false,dead:false,koT:0,arrestT:0,cop:null,foe:null,foeT:0,cx:0,cz:0,warned:0,combo:0,lastHit:-9,carT:0};
-// when each move lands (fraction of the move), how far it reaches, how hard it hits (measured from the moves themselves)
-const MOVE_INFO={punch:{ts:1.25,hits:[.33,.53],reach:1.5,dmg:13},kick:{ts:1.45,hits:[.47],reach:1.95,dmg:24},drop_kick:{ts:1.3,hits:[.48],reach:2.6,dmg:38,lunge:[.15,.5,5.2]}};
-const ONCE=new Set(['punch','kick','drop_kick','hit_head','hit_body','hit_side','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump']);
+const FIGHT={hp:100,calmT:99,heat:0,crimeT:99,lastAtk:-99,near:false,ko:false,dead:false,koT:0,arrestT:0,cop:null,foe:null,foeT:0,cx:0,cz:0,warned:0,combo:0,lastHit:-9,carT:0,
+  chain:0,swingT:-9,buf:null,stop:0,dash:null,inv:0,dodgeCool:0,counter:0};
+// your blows: which move (and which part of it), how fast, when it lands (fraction of the part), reach, damage, when the next blow can cut in,
+// how close you stand to land it. Punches alternate jab and cross; a kick after two punches is the finisher that puts them down.
+const MOVE_INFO={
+  jab:{act:'punch',from:0,to:.44,ts:1.75,hits:[.75],reach:1.45,dmg:10,cancel:.8,stand:.95,how:'punch'},
+  cross:{act:'punch_b',from:.4,to:.82,ts:1.7,hits:[.33],reach:1.5,dmg:13,cancel:.6,stand:.95,how:'punch'},
+  kick:{act:'kick',from:0,to:.8,ts:2,hits:[.59],reach:1.95,dmg:20,cancel:.72,stand:1.3,how:'kick'},
+  heavy:{act:'kick',from:0,to:.85,ts:1.75,hits:[.55],reach:2,dmg:26,cancel:.9,stand:1.3,how:'kick',knock:3.2},
+  drop_kick:{act:'drop_kick',ts:1.5,hits:[.48],reach:2.6,dmg:38,cancel:1,lunge:[.15,.5,6],how:'drop_kick',knock:4},
+  gp:{act:'gp',from:0,to:.44,ts:1.6,hits:[.75],dmg:13,cancel:.8},
+  gp2:{act:'gp_b',from:.4,to:.82,ts:1.6,hits:[.33],dmg:15,cancel:.6}};
+// the street's blows (area boys)
+const AI_INFO={punch:{ts:1.55,hits:[.33,.53],reach:1.5},kick:{ts:1.6,hits:[.47],reach:1.95}};
+const ONCE=new Set(['punch','punch_b','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump','threaten','gp','gp_b','rise']);
 const HP0=c=>c==='areaboy'?110:70;
 const durOf=(p,n)=>{ const C=PEOPLE.casts[p.cast], k=C&&C.clips[n]; return k?k.duration:1.2; };
 const fightReady=()=>!!(hero&&hero.act.punch);
-// ---- the player's moves (played over walking/standing)
+function whoosh(){ burst(.16,1500,.16,1.4); }
+function smack(k=1){ burst(.06,2600,.32*k,6); burst(.22,320,.5*k,3); }
+// moves made from other moves: hands up (the raised hand of a taxi hail, mirrored onto the other arm), punching down at someone on
+// the floor (crouched legs and back from getting up, arms from the punch), rising from that crouch, and a dodge to the other side
+function mirrorClip(k,name){ return new THREE.AnimationClip(name,k.duration,k.tracks.map(t=>{ const [b,pr]=t.name.split('.'), nb=/Left/.test(b)?b.replace('Left','Right'):/Right/.test(b)?b.replace('Right','Left'):b, v=t.values.slice();
+  if(pr==='quaternion') for(let i=0;i<v.length;i+=4){ v[i+1]=-v[i+1]; v[i+2]=-v[i+2]; } else if(pr==='position') for(let i=0;i<v.length;i+=3) v[i]=-v[i];
+  return new t.constructor(nb+'.'+pr,t.times.slice(),v); })); }
+function synthMoves(){ const C=PEOPLE.clips, at=(tr,t)=>Array.from(tr.createInterpolant().evaluate(t)), held=(tr,v,d)=>new tr.constructor(tr.name,[0,d],[...v,...v]);
+  if(C.hail&&!C.hands_up){ const t=1.6, by=new Map(C.hail.tracks.map(k=>[k.name,k]));
+    C.hands_up=new THREE.AnimationClip('hands_up',1,C.hail.tracks.map(k=>{ const [b,pr]=k.name.split('.'); let v=at(k,t);
+      if(/Left(Shoulder|Arm|ForeArm|Hand)/.test(b)&&pr==='quaternion'){ const r=by.get(k.name.replace('Left','Right')); if(r){ const q=at(r,t); v=[q[0],-q[1],-q[2],q[3]]; } } return held(k,v,1); })); }
+  if(C.punch&&C.stand_up&&!C.gp){ const t=2.6, LOW=/(Hips|UpLeg|Leg|Foot|ToeBase|Toe_End|Spine\d?|Neck|Head)\./, d=C.punch.duration;
+    C.gp=new THREE.AnimationClip('gp',d,[...C.stand_up.tracks.filter(k=>LOW.test(k.name)).map(k=>held(k,at(k,t),d)),...C.punch.tracks.filter(k=>!LOW.test(k.name)).map(k=>k.clone())]); }
+  if(C.stand_up&&!C.rise) C.rise=THREE.AnimationUtils.subclip(C.stand_up,'rise',Math.round(2.6*30),Math.round(4.3*30),30);
+  if(C.hit_side&&!C.hit_side_m) C.hit_side_m=mirrorClip(C.hit_side,'hit_side_m'); }
+// ---- the player's moves (played over walking/standing); from/to play only part of a move
 function heroDo(name,o={}){ if(!hero) return false; const a=hero.act[name]; if(!a) return false; const cur=hero.ov;
   if(cur&&cur.lock&&!o.force) return false;
-  if(cur&&cur.a!==a) cur.a.fadeOut(.15);
-  a.reset(); if(ONCE.has(name)){ a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; } a.timeScale=o.ts||1; a.setEffectiveWeight(0); a.play();
-  hero.ov={name,a,t:0,dur:a.getClip().duration/(o.ts||1),hits:(o.hits||[]).map(([at,fn])=>({at,fn,done:false})),lock:o.lock!==false,pause:!!o.pause,lunge:o.lunge||null,root:!!o.root,onEnd:o.onEnd||null};
+  if(cur&&cur.a!==a) cur.a.fadeOut(o.atk&&cur.atk?.08:.15);
+  const cd=a.getClip().duration, f0=o.from||0, f1=o.to||1, ts=o.ts||1;
+  a.reset(); if(ONCE.has(name)){ a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; } a.timeScale=ts; a.time=f0*cd; a.setEffectiveWeight(0); a.play();
+  hero.ov={name,a,t:0,dur:(f1-f0)*cd/ts,hits:(o.hits||[]).map(([at,fn])=>({at,fn,done:false})),lock:o.lock!==false,pause:!!o.pause,lunge:o.lunge||null,root:!!o.root,onEnd:o.onEnd||null,
+    atk:o.atk||null,cancel:o.cancel??1,heavy:!!o.heavy,inW:o.atk&&cur&&cur.atk?.05:.1,foe:o.foe||null,stand:o.stand||1,until:o.until||0};
   return true; }
 function heroEnd(){ const o=hero.ov; if(!o) return; hero.ov=null;
   if(o.root){ const p=hero.hips.getWorldPosition(_fv); player.x=p.x; player.z=p.z; FIGHT.cx=FIGHT.cz=0; }   // the move travelled: keep where it ended
@@ -2351,19 +2408,60 @@ function heroOverlay(dt){ const o=hero.ov; if(!o) return 0; o.t+=dt;
   if(o.root){ const p=hero.hips.getWorldPosition(_fv); FIGHT.cx=p.x-player.x; FIGHT.cz=p.z-player.z; }
   if(o.pause){ const w=Math.min(1,o.t/.35); o.a.setEffectiveWeight(w); return w; }
   for(const h of o.hits) if(!h.done&&o.t>=h.at*o.dur){ h.done=true; h.fn(); }
-  const w=Math.min(1,o.t/.1)*(o.root?1:Math.min(1,Math.max(0,(o.dur-o.t)/.2))); o.a.setEffectiveWeight(w);   // a travelling move ends at full strength, then you stand where it left you
+  if(hero.ov!==o) return 1;   // a hit can start another move (a knock-down, a death)
+  const w=Math.min(1,o.t/o.inW)*(o.root?1:clamp((o.dur-o.t)/Math.min(.18,o.dur*.3),0,1)); o.a.setEffectiveWeight(w);   // a travelling move ends at full strength, then you stand where it left you
   if(o.t>=o.dur){ heroEnd(); return 0; } return w; }
 // pick who the player is hitting: the nearest person in front, within reach (a little help with aiming)
 function pickFoe(reach,cone=1.2){ let best=null, bs=1e9; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
   for(const p of peds){ if(p.state==='off'||p.state==='down'||p.state==='dead'||p.state==='getup'||p.state==='takedown'||p.state==='arrest'||p.carried) continue; const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz); if(d>reach||d<.05) continue;
-    const ang=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1)); if(ang>cone) continue; const s=d+ang*1.2; if(s<bs){ bs=s; best=p; } } return best; }
-function playerAttack(kind){ if(mode!=='walk'||!fightReady()||FIGHT.ko||busy||mapView.isOpen) return; if(CARRY.p){ carryDrop(); return; } if(hero.ov&&hero.ov.lock) return;
-  const running=player.speed>WALK_V*1.3; let foe=pickFoe(running?3.4:2.6,1.5);
-  if(foe) player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z);
-  if(kind==='punch'&&running&&foe&&foe.body&&hero.act.takedown_a&&Math.hypot(foe.x-player.x,foe.z-player.z)<2.4&&!(foe.cast==='areaboy'&&foe.atk)) return takedown(foe);
-  const name=kind==='kick'&&running&&hero.act.drop_kick?'drop_kick':kind, mi=MOVE_INFO[name];
-  heroDo(name,{ts:mi.ts,hits:mi.hits.map(at=>[at,()=>landHit(name)]),lunge:mi.lunge}); FIGHT.lastAtk=T0; }
-// you hit harder than anyone on the street, and quick blows in a row hit harder still
+    const ang=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1)); if(ang>cone) continue; const s=d+ang*1.2+(FIGHT.attackers&&FIGHT.attackers.includes(p)?-.6:0); if(s<bs){ bs=s; best=p; } } return best; }
+const segDur=mi=>{ const a=hero.act[mi.act]; return a?((mi.to||1)-(mi.from||0))*a.getClip().duration/mi.ts:.5; };
+function playerAttack(kind){ if(mode!=='walk'||!fightReady()||FIGHT.ko||busy||mapView.isOpen||JACK.go) return; if(CARRY.p){ carryDrop(); return; }
+  const o=hero.ov; if(o&&o.lock&&!(o.atk&&o.t>=o.cancel*o.dur)){ FIGHT.buf={kind,t:T0}; return; } FIGHT.buf=null;   // too early: it comes out when this blow allows
+  const low=groundFoe(), up=low&&pickFoe(1.8,1); if(low&&hero.act.gp&&!(up&&(up.state==='fight'||up.state==='hurt'))) return groundPound(low,kind);   // someone on the floor beside you (and nobody standing in your face): you go down on them
+  const running=player.speed>WALK_V*1.3&&!(o&&o.atk); let foe=pickFoe(running?3.6:3.3,running?1.2:2.5);
+  if(kind==='punch'&&running&&foe&&foe.body&&hero.act.takedown_a&&Math.hypot(foe.x-player.x,foe.z-player.z)<2.6&&!(foe.cast==='areaboy'&&foe.atk)) return takedown(foe);
+  FIGHT.chain=T0-FIGHT.swingT<1.05?FIGHT.chain+1:0; FIGHT.swingT=T0;
+  const name=kind==='kick'?(running&&hero.act.drop_kick?'drop_kick':FIGHT.chain>=2?'heavy':'kick'):(FIGHT.chain%2?'cross':'jab'); if(name==='heavy'||name==='drop_kick') FIGHT.chain=-1;
+  swing(name,foe); }
+function swing(name,foe){ const mi=MOVE_INFO[name];
+  if(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); aiDodge(foe); }
+  heroDo(mi.act,{force:true,from:mi.from,to:mi.to,ts:mi.ts,atk:name,cancel:mi.cancel,heavy:!!mi.knock,lunge:mi.lunge||null,foe:mi.lunge?null:foe,stand:mi.stand,until:mi.hits[0],hits:mi.hits.map(at=>[at,()=>landHit(name,foe)])});
+  FIGHT.lastAtk=T0; whoosh(); }
+// you hit harder than anyone on the street; blows in a row hit harder still, and a blow right after a dodge hits hardest
+function landHit(name,foe){ const mi=MOVE_INFO[name]; let p=foe&&foe.state!=='off'&&foe.state!=='dead'&&foe.state!=='down'&&!foe.carried?foe:null;
+  if(p){ const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz), fwd=(dx*Math.sin(player.yaw)+dz*Math.cos(player.yaw))/(d||1); if(d>mi.reach+.5||fwd<.3) p=null; }
+  if(!p) p=pickFoe(mi.reach,.95);
+  if(!p) return;
+  if(p.dodgeT>0){ if(sayT<=0&&MR()<.5){ sayT=3; toast(mpick(['"You no fit touch me!"','"Too slow!"','"Ehen? Na so?"']),1.3); } return; }   // he slipped it
+  FIGHT.combo=T0-FIGHT.lastHit<1.1?Math.min(5,FIGHT.combo+1):1; FIGHT.lastHit=T0;
+  const counter=T0<FIGHT.counter, dmg=mi.dmg*mrr(.9,1.1)*1.3*(1+.15*(FIGHT.combo-1))*(counter?1.6:1); if(counter) FIGHT.counter=0;
+  const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw);
+  bleed(p.x,mi.how==='punch'?1.55:1.25,p.z,ux,uz,(mi.knock?10:mi.how==='kick'?6:4)+(FIGHT.combo>2?3:0),1.8);
+  FIGHT.stop=mi.knock?.11:.07; p.stopT=FIGHT.stop;
+  hurtPed(p,dmg,mi.how,mi.knock||(counter&&mi.how==='kick'?3:0)); camState.shake=Math.min(1,camState.shake+(mi.knock?.5:.28)); smack(mi.knock?1.3:1); }
+// somebody lying on the floor near you
+function groundFoe(){ let best=null, bd=2.3; for(const p of peds){ if(p.state!=='down'||p.carried||p.y>.5) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
+function groundPound(p,kind){ FIGHT.chain=T0-FIGHT.swingT<1.1?FIGHT.chain+1:0; FIGHT.swingT=T0;
+  const name=FIGHT.chain%2?'gp2':'gp', mi=MOVE_INFO[name], d=Math.hypot(p.x-player.x,p.z-player.z), ts=kind==='kick'?mi.ts*.85:mi.ts; player.yaw=Math.atan2(p.x-player.x,p.z-player.z);
+  heroDo(mi.act,{force:true,from:mi.from,to:mi.to,ts,atk:name,cancel:mi.cancel,foe:p,stand:.8,until:mi.hits[0],hits:mi.hits.map(at=>[at,()=>groundHit(p,mi.dmg*(kind==='kick'?1.35:1))])}); FIGHT.lastAtk=T0; whoosh(); }
+// each blow on the floor: blood, the body jolts, and after enough of them the person dies there
+function groundHit(p,dmg){ if(p.state!=='down'||Math.hypot(p.x-player.x,p.z-player.z)>2.5) return; p.hp=(p.hp??0)-dmg*mrr(.9,1.15); p.timer=Math.max(p.timer,2.4); p.jolt=1; p.stopT=.08; FIGHT.stop=.08; FIGHT.lastHit=T0; FIGHT.foe=p; FIGHT.foeT=4;
+  const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw); bleed(p.x,.35,p.z,ux*.3,uz*.3,7,1.2); if(p.pool&&BLOOD.p.includes(p.pool)) p.pool.size=Math.min(1.9,p.pool.size+.22); else p.pool=bloodPool(p.x,p.z,.6,2);
+  crime(p,1); incident(p.x,p.z,'fight'); camState.shake=Math.min(1,camState.shake+.3); smack(1.1);
+  if(p.hp<=-55){ sayT=0; killPed(p,ux,uz,0,'fight'); }
+  else if(sayT<=0&&MR()<.35){ sayT=3; toast(mpick(['"Abeg! Abeg!"','"I don hear! I don hear!"','"Ahh! Leave me!"','"Help! Dem wan kill me!"']),1.6); } }
+// GTA-style dodge: a quick slip to the side (or back) that blows can't touch; hit them straight after for a harder blow
+function playerDodge(){ if(mode!=='walk'||!hero||!hero.act.hit_side||FIGHT.ko||busy||mapView.isOpen||CARRY.p||JACK.go||T0<FIGHT.dodgeCool) return;
+  const o=hero.ov; if(o&&o.lock&&!o.atk&&!/^hit_(head|body)$/.test(o.name)) return;
+  const [f,s]=inputVec(), cy=camState.yaw; let dx=Math.sin(cy)*f-Math.cos(cy)*s, dz=Math.cos(cy)*f+Math.sin(cy)*s, l=Math.hypot(dx,dz);
+  if(l<.2){ dx=-Math.sin(player.yaw); dz=-Math.cos(player.yaw); l=1; } dx/=l; dz/=l;   // no direction: a step back
+  const side=dx*-Math.cos(player.yaw)+dz*Math.sin(player.yaw);
+  FIGHT.dash={vx:dx*7.5,vz:dz*7.5,t:0,dur:.3}; FIGHT.inv=T0+.42; FIGHT.dodgeCool=T0+.55; FIGHT.buf=null;
+  heroDo(side<0&&hero.act.hit_side_m?'hit_side_m':'hit_side',{force:true,ts:2.3,from:0,to:.55}); whoosh(); }
+// an area boy sees your blow coming and slips it, now and then
+function aiDodge(p){ if(p.state!=='fight'||p.atk||!p.body||p.dodgeT>0||MR()>.2) return; const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, s=MR()<.5?1:-1;
+  p.dodgeT=.38; p.dvx=(-dz/d*s*.8+dx/d*.6)*4.2; p.dvz=(dx/d*s*.8+dz/d*.6)*4.2; p.dclip=s>0?'hit_side':'hit_side_m'; p.seq=(p.seq||0)+1; }
 // who you are fighting: the nearest attacker, or the last person you hit
 function lockFoe(){ let best=null, bd=5; for(const p of FIGHT.attackers||[]){ const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } }
   if(!best&&FIGHT.foe&&FIGHT.foeT>0&&FIGHT.foe.state!=='off'&&FIGHT.foe.state!=='dead'&&Math.hypot(FIGHT.foe.x-player.x,FIGHT.foe.z-player.z)<4) best=FIGHT.foe; return best; }
@@ -2373,20 +2471,19 @@ function carHitPlayer(v,sp){ FIGHT.carT=1.5; const fx=Math.cos(v.h), fz=-Math.si
   hitPlayer((sp-4)*9,v,'car'); if(FIGHT.dead) return;
   FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})});
   if(sayT<=0){ sayT=5; toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"']),2.4); } }
-function landHit(name){ const mi=MOVE_INFO[name], p=pickFoe(mi.reach,.95); if(!p) return; FIGHT.combo=T0-FIGHT.lastHit<1.3?Math.min(4,FIGHT.combo+1):1; FIGHT.lastHit=T0;
-  const dmg=mi.dmg*mrr(.85,1.15)*1.3*(1+.2*(FIGHT.combo-1)); const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw);
-  bleed(p.x,name==='kick'?1.2:1.5,p.z,ux,uz,name==='punch'?3:name==='kick'?5:9,1.6); hurtPed(p,dmg,FIGHT.combo>=3&&name==='punch'?'kick':name); camState.shake=Math.min(1,camState.shake+.25); thud(); }
 function playerJump(){ if(mode!=='walk'||!hero||!hero.act.jump||FIGHT.ko||busy) return; if(hero.ov) return; heroDo('jump',{ts:1.35,lock:false}); }
-// paired move: you run in, grab them by the legs and put them on the floor
-function takedown(foe){ const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
-  Object.assign(foe,{x:player.x+fx*1.5,z:player.z+fz*1.5,yaw:player.yaw+Math.PI,state:'takedown',speed:0,timer:durOf(foe,'takedown_v')/1.6,atk:null}); foe.seq=(foe.seq||0)+1;
-  player.speed=0; heroDo('takedown_a',{ts:1.6,root:true}); FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); }
+// paired move ("jack" him): you grab them by the legs and slam them on the floor, and you are down there with them to keep hitting
+const TK=.34;   // the part of the takedown up to the slam
+function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
+  Object.assign(foe,{x:player.x+fx*1.5,z:player.z+fz*1.5,yaw:player.yaw+Math.PI,state:'takedown',speed:0,timer:TK*durOf(foe,'takedown_v')/1.7,atk:null,dodgeT:0}); foe.seq=(foe.seq||0)+1;
+  player.speed=0; FIGHT.buf=null; FIGHT.chain=0; heroDo('takedown_a',{force:true,ts:1.7,to:TK,root:true,onEnd:()=>{ if(!FIGHT.ko) heroDo('rise',{force:true,ts:1.5,lock:false}); }});
+  FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); camState.shake=Math.min(1,camState.shake+.2); setTimeout(()=>smack(1.4),TK*7250/1.7*.8); }
 // ---- people getting hit
-function hurtPed(p,dmg,how){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); crime(p,how==='drop_kick'?1.5:1);
+function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); crime(p,how==='drop_kick'?1.5:1);
   const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d; FIGHT.foe=p; FIGHT.foeT=4;
-  if(p.hp<=0||(how==='drop_kick'&&p.hp<45)) koPed(p,ux,uz,how==='drop_kick'?4:2.4);
-  else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?'hit_side':'uppercut';
-    p.timer=durOf(p,p.react)/1.2; p.vx=ux*(how==='punch'?.9:1.8); p.vz=uz*(how==='punch'?.9:1.8); p.speed=0; p.atk=null; p.seq=(p.seq||0)+1; p.yaw=Math.atan2(-ux,-uz); }
+  if(p.hp<=0||knock) koPed(p,ux,uz,knock||2.4);
+  else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?mpick(['hit_side','hit_body']):'uppercut';
+    p.timer=durOf(p,p.react)/1.6*.85; p.vx=ux*(how==='punch'?1:2); p.vz=uz*(how==='punch'?1:2); p.speed=0; p.atk=null; p.dodgeT=0; p.seq=(p.seq||0)+1; p.yaw=Math.atan2(-ux,-uz); }
   provoke(p); }
 function koPed(p,ux,uz,push){ p.kos=(p.kos||0)+1; if(p.kos>=3||p.hp<-45) return killPed(p,ux,uz,push,'fight');   // beaten again and again: they don't get up
   bloodPool(p.x+ux*push*.3,p.z+uz*push*.3,.55,2);
@@ -2413,23 +2510,29 @@ function afterDown(p){ p.hp=Math.max(p.hp||0,35);
 // an area boy in a fight: close in, keep a little space, swing when ready (two at a time; the rest wait their turn)
 function fightPed(p,dt){ const dx=player.x-p.x, dz=player.z-p.z, d=Math.hypot(dx,dz);
   if(mode!=='walk'||FIGHT.ko||d>30){ p.giveUp=(p.giveUp||0)+dt; if(p.giveUp>4){ calmPed(p); return; } } else p.giveUp=0;
-  p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); p.atkT=(p.atkT||0)-dt;
-  if(p.atk){ p.speed=0; p.atkTime+=dt; const mi=MOVE_INFO[p.atk], dur=durOf(p,p.atk)/mi.ts;
-    for(let i=0;i<mi.hits.length;i++) if(!p.fired[i]&&p.atkTime>=mi.hits[i]*dur){ p.fired[i]=1; const fwd=(dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))/(d||1); if(d<mi.reach+.15&&fwd>.5) hitPlayer(p.atk==='kick'?9:5,p); }
-    if(p.atkTime>=dur){ p.atk=null; p.atkT=mrr(1.3,2.6); } return; }
-  const front=FIGHT.attackers.indexOf(p)<2, want=front?1.2:2.8;
+  if(p.dodgeT>0){ p.dodgeT-=dt; const c={x:p.x+p.dvx*dt,z:p.z+p.dvz*dt}; resolveCircle(c,.32); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*6)); if(p.dodgeT<=0) p.atkT=Math.min(p.atkT,.25); return; }   // slipped your blow: straight back at you
+  p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*10)); p.atkT=(p.atkT||0)-dt;
+  if(p.atk){ p.speed=0; p.atkTime+=dt; const mi=AI_INFO[p.atk], dur=durOf(p,p.atk)/mi.ts;
+    if(p.atkTime<dur*.3&&d>1){ const c={x:p.x+dx/d*2.2*dt,z:p.z+dz/d*2.2*dt}; resolveCircle(c,.32); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } }   // stepping into the blow
+    for(let i=0;i<mi.hits.length;i++) if(!p.fired[i]&&p.atkTime>=mi.hits[i]*dur){ p.fired[i]=1; const fwd=(dx*Math.sin(p.yaw)+dz*Math.cos(p.yaw))/(d||1); if(d<mi.reach+.2&&fwd>.5) hitPlayer(p.atk==='kick'?9:5,p); else whoosh(); }
+    if(p.atkTime>=dur){ p.atk=null; p.atkT=mrr(.7,1.6); } return; }
+  const front=FIGHT.attackers.indexOf(p)<2, want=front?1.25:2.8;
   let mvx=0, mvz=0;
-  if(d>want+.3){ const sp=d>7?3.6:front?1.7:1.2; p.speed+=(sp-p.speed)*Math.min(1,dt*4); mvx=dx/d; mvz=dz/d; }
-  else if(d<want-.4){ p.speed=.8; mvx=-dx/d; mvz=-dz/d; }
-  else { p.speed=Math.max(0,p.speed-dt*6); if(front&&p.atkT<=0&&!FIGHT.ko&&!(hero&&hero.ov&&hero.ov.name==='takedown_a')){ p.atk=MR()<.65?'punch':'kick'; p.atkTime=0; p.fired=[]; p.seq=(p.seq||0)+1; } }
+  if(d>want+.3){ const sp=d>7?3.8:front?2.3:1.5; p.speed+=(sp-p.speed)*Math.min(1,dt*5); mvx=dx/d; mvz=dz/d; }
+  else if(d<want-.4){ p.speed=1; mvx=-dx/d; mvz=-dz/d; }
+  else { if(front&&p.atkT>0){ if(!p.sd||MR()<dt*.6) p.sd=MR()<.5?1:-1; p.speed=.9; mvx=-dz/d*p.sd; mvz=dx/d*p.sd; }   // circling you, looking for an opening
+    else p.speed=Math.max(0,p.speed-dt*6);
+    if(front&&p.atkT<=0&&!FIGHT.ko&&!(hero&&hero.ov&&(hero.ov.name==='takedown_a'||hero.ov.name==='threaten'))){ p.atk=MR()<.65?'punch':'kick'; p.atkTime=0; p.fired=[]; p.seq=(p.seq||0)+1; } }
   for(const q of FIGHT.attackers){ if(q===p) continue; const ex=p.x-q.x, ez=p.z-q.z, e=Math.hypot(ex,ez); if(e<.9&&e>.01){ mvx+=ex/e*.8; mvz+=ez/e*.8; } }   // don't stand inside each other
   if(p.speed>0&&(mvx||mvz)){ const l=Math.hypot(mvx,mvz)||1, c={x:p.x+mvx/l*p.speed*dt,z:p.z+mvz/l*p.speed*dt}; resolveCircle(c,.32); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } } }
 function calmPed(p){ p.atk=null; p.giveUp=0; if(p.spot){ p.state='spot'; p.act=null; nextAct(p); } else { replanPed(p); p.startT=1.6; } }
 // you are tougher than the people on the street, but a gang of area boys can still beat you to death
-function hitPlayer(dmg,from,how){ if(FIGHT.ko||FIGHT.dead||busy||mode==='interior'||(hero&&hero.ov&&hero.ov.name==='takedown_a')) return; FIGHT.hp-=dmg/1.5; FIGHT.calmT=0; camState.shake=Math.min(1.2,camState.shake+.45); thud();
+function hitPlayer(dmg,from,how){ if(FIGHT.ko||FIGHT.dead||busy||mode==='interior'||(hero&&hero.ov&&hero.ov.name==='takedown_a')) return;
+  if(T0<FIGHT.inv&&how!=='car'){ FIGHT.counter=T0+1.2; whoosh(); return; }   // dodged: your next blow lands harder
+  FIGHT.hp-=dmg/1.5; FIGHT.calmT=0; camState.shake=Math.min(1.2,camState.shake+.45); thud();
   { const ux=from?player.x-from.x:0, uz=from?player.z-from.z:0, l=Math.hypot(ux,uz)||1; bleed(player.x,1.5,player.z,ux/l,uz/l,how==='car'?10:3,1.4); } if(CARRY.p) carryDrop(true);
   if(FIGHT.hp<=0){ playerDie(how||'beaten'); return; }
-  if(!(hero&&hero.ov&&hero.ov.lock)) heroDo(MR()<.6?'hit_head':'hit_body',{ts:1.3}); }
+  const o=hero&&hero.ov; if(!o||!o.lock||(o.atk&&!o.heavy)) heroDo(MR()<.6?'hit_head':'hit_body',{force:true,ts:1.8}); FIGHT.chain=0; FIGHT.buf=null; }
 // dead: you fall, the screen goes dark, and you wake up at LUTH with your stars gone
 function playerDie(how){ if(FIGHT.dead) return; FIGHT.hp=0; FIGHT.ko=true; FIGHT.dead=true; FIGHT.koT=0; player.speed=0; carryDrop(true);
   if(mode==='drive'&&drive.v){ drive.speed=0; drive.v.speed=0; }
@@ -2472,7 +2575,8 @@ function arrest(){ releaseCop(); FIGHT.heat=0; carryDrop(true);
    G (or GRAB on a phone) next to someone picks them up over your shoulder; G again puts them down.
    Area boys who see it come for you; everyone else runs, and the police are called. */
 const CARRY={p:null,t:0,cry:0};
-function carryGrab(){ if(CARRY.p){ carryDrop(); return; } if(mode!=='walk'||busy||FIGHT.ko||!hero||(hero.ov&&hero.ov.lock)) return;
+function carryGrab(){ if(CARRY.p){ carryDrop(); return; } if(mode!=='walk'||busy||FIGHT.ko||!hero||(hero.ov&&hero.ov.lock&&!(hero.ov.atk&&hero.ov.t>=hero.ov.cancel*hero.ov.dur))||JACK.go) return;
+  { const f=pickFoe(2.6,1.6); if(f&&f.body&&hero.act.takedown_a&&(f.state==='fight'||f.state==='hurt'||f===FIGHT.foe)&&!(f.atk&&f.cast==='areaboy')) return takedown(f); }   // in a fight, GRAB slams him down
   let best=null, bd=1.9; for(const p of peds){ if(!(p.state==='walk'||p.state==='idle'||p.state==='spot'||p.state==='react'||p.state==='flee'||p.state==='down'||p.state==='hurt'||p.state==='shop')) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } }
   if(!best){ toast('Nobody close enough to carry.',1.6); return; }
   const p=best; if(p.spot){ const s=p.spot; s.peds=s.peds.filter(q=>q!==p); p.spot=null; }
