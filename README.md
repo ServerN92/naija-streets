@@ -22,7 +22,8 @@ Then commit and push. GitHub Pages serves the `main` branch.
 - `assets/characters/` – the player (`hero.glb`; the original Mixamo .fbx files are a fallback)
 - `assets/people/` – the city's people (one .glb each) and `moves.glb` (every move, shared by all of them)
 - `assets/maps/` – real street maps from OpenStreetMap (.json); `mushin_world.json` is the city you play in
-- `tools/` – model shrinking (`lod.py`, `bake.py`), OpenStreetMap conversion (`osm_world.py`, `convert.py`), `manifest.py`, `stamp.py`
+- `tools/` – model shrinking (`lod.py`, `bake.py`), OpenStreetMap conversion (`osm_world.py`, `convert.py`), `manifest.py`, `stamp.py`,
+  big Meshy/Tripo models (`fbxbin.py`, `rebake.py`, `autorig.py`)
 
 ## The city: Mushin
 The streets, buildings, markets, schools, railway and footpaths are the real Mushin (Lagos) from OpenStreetMap:
@@ -89,10 +90,43 @@ streets (one-ways included), with an OYA RIDE sign on the roof and a T on the mi
 (or Get in on the phone). He drives you there through the traffic with the route on the minimap; skip the ride from the
 phone, or get down anywhere when the car is slow. You pay the fare shown (cash).
 
-A fight, a killing or a kidnapping brings the nearest police van to the spot. It parks anyhow and everyone still
-fighting or lying there walks into the van (the officers stay inside until a police officer model is added). If you
-were part of it, or the police catch you with wanted stars, you spend three minutes in the cell at Mushin police
-station with the others, then they let you out.
+## Your phone: OYA WORK
+The second tab on the phone lists delivery jobs (a parcel, a crate of drinks, a birthday cake…). Take one, go to the
+yellow PICK UP ring (the route is on the minimap), then reach the green DROP OFF ring before the time runs out, on foot,
+driving or in an OYA RIDE. Late, and the customer pays only part; busted or wasted, and the package is gone. Urgent
+jobs pay more and give less time.
+
+## Money
+Cash is at the top left (kept on the device; you start with ₦5,000). People you floor or kill drop their money: walk
+over it to take it. With a weapon in your hand, G next to someone is a robbery: hands up, money on the floor, then they
+run, and the people around run too. Market and shop sellers carry the day's sales. Jobs pay, rides cost the fare,
+waking up at LUTH costs a hospital bill, and an arrest costs a fine.
+
+## Weapons: Oga Shege's black market
+A man at a table under a red umbrella on a side street a few minutes from your house (on the map: Oga Shege) sells a
+police baton (₦8,000), a katana (₦25,000), an AK-47 with 30 bullets (₦120,000) and more bullets (₦4,500 for 30). Press E
+near him. 1–4 or Tab (phones: WEAPON) picks fists, baton, katana or AK. The baton and katana go in your right hand and
+hit far harder (the katana kills); the AK rides on your back until you use it. Aim with the right mouse button or K
+(phones: AIM), fire with the left button or J (phones: FIRE), R reloads. Firing without aiming picks the nearest threat
+in front of you. Gunshots empty the street. Models: `assets/models/weapon_ak.glb`, `weapon_katana.glb`, `weapon_baton.glb`
+(the hands are put on the rifle by two-bone IK each frame).
+
+## The police: 1 to 5 stars
+Crimes give stars: a punch at a stranger, a robbery, a gunshot near people (one star), a killing (two more), shooting at
+an officer (three at least), killing one (two more). A police van comes for you; when it gets close it stops and
+the officers jump out (`assets/people/police_f.glb`, `police_m.glb`, rigged by `tools/autorig.py`).
+- 1–2 stars: they run you down with batons. Stand still next to them and you are BUSTED (cell at Mushin police station,
+  a fine, and they take your AK, sometimes the katana); fight back and they beat you, and a beating ends in handcuffs.
+- 3 stars: rifles. They find a clear line and shoot in bursts. They also draw rifles when you have a gun out.
+- 4 stars: a second van, faster shooting. 5 stars: a third van, and roadblocks: a van across the road ahead of you with
+  officers behind it.
+Kill an officer and his rifle lies on the ground: walk over it to take it (or 20 bullets if you have one). Get far
+away and keep quiet and the stars fade; when they reach zero the officers walk back to the van and drive off.
+Bullets that get you are WASTED: you wake up at LUTH.
+
+A fight, a killing or a kidnapping also brings a police van to the spot: it parks anyhow, an officer walks to the scene
+and the driver stands at his door while everyone still fighting or lying there walks into the van, then the officers
+climb back in and it drives off. If you were part of it, you go too.
 
 ## Eko Grand Hotel
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
@@ -119,5 +153,14 @@ Street trees and palms are 8-view pictures of real tree models (`tools/impostor.
 Export from Tripo or Meshy as GLB, then make a light near version and a far version, for example:
 `python3 tools/lod.py big.glb assets/models/name.glb 3000 1024 /path/to/gltfpack` and the same with `700 512` for `name_lod1.glb`.
 Add it to `MODEL_FILES` in `src/game.js`, run the two commands above, commit and push.
+
+Very big models (a 300 MB Meshy FBX with millions of triangles) go through three steps:
+```
+python3 tools/fbxbin.py big.fbx /tmp/big          # binary FBX -> OBJ + its texture (no Blender needed)
+GLTFPACK=/path/to/gltfpack python3 tools/rebake.py /tmp/big/big.obj /tmp/big/big.jpg /tmp/small big 20000 1024   # fewer triangles, texture re-baked
+THREE_DIR=/path/to/three python3 tools/autorig.py MIXAMO_RIGGED.fbx /tmp/small/big.obj person.glb 1.75   # a person: weights from a Mixamo-rigged copy
+```
+`autorig.py` works best on a T-pose body; arms that touch the thighs (A-pose) stretch when the arms move (`--nocut` keeps
+the mesh whole, `--gentle` cuts less).
 
 Map data © OpenStreetMap contributors, ODbL.
