@@ -2561,26 +2561,120 @@ function updateFightHUD(){ const show=started&&mode!=='interior';   // your life
   const f=FIGHT.foe, fs=f&&FIGHT.foeT>0&&f.state!=='off'; if($('#foe').hidden===!!fs) $('#foe').hidden=!fs;
   if(fs){ const nm=({areaboy:'AREA BOY',mama:'MAMA',baba:'BABA',hawker:'HAWKER',schoolboy:'SCHOOLBOY'})[f.cast]||'LADY'; if($('#foeName').textContent!==nm) $('#foeName').textContent=nm; $('#foeFill').style.width=Math.max(0,Math.round((f.hp??HP0(f.cast))/HP0(f.cast)*100))+'%'; } }
 
-/* ================= wardrobe: change into another full look at home =================
-   A look is a whole person: body, face and clothes. "Your usual" is the starting character; the others are people of the
-   city, plus outfits made in Mixamo (assets/people/outfit_*.glb), which show up here once their files are in the game.
-   The choice is kept on this device. */
+/* ================= wardrobe: change your clothes at home =================
+   Each look lends you its clothes: the body of one of the city's people (or an outfit made in Mixamo, assets/people/outfit_*.glb,
+   once its file is in the game) with its head cut away and yours put on, so you keep your face. Men pick from the men's clothes,
+   women from the women's. Shirt and trousers can be dyed. The choice is kept on this device. */
 const LOOK_LIST=[
   {id:'me',name:'Your usual',f:0,sw:['#55633f','#1d1d20']},
   {id:'areaboy',name:'Street green',f:0},
-  {id:'baba',name:'White kaftan',f:0},
+  {id:'baba',name:'White kaftan',f:0,robe:1},
   {id:'outfit_suit',name:'Gold print suit',f:0,h:1.84,idle:['idle_1'],sw:['#8a6a3a','#2a2218'],file:1},
-  {id:'outfit_thobe',name:'White thobe',f:0,h:1.82,idle:['idle_1'],sw:['#f2f0ea','#f2f0ea'],file:1},
+  {id:'outfit_thobe',name:'White thobe',f:0,robe:1,h:1.82,idle:['idle_1'],sw:['#f2f0ea','#f2f0ea'],file:1},
   {id:'outfit_tracksuit',name:'Black tracksuit',f:0,h:1.8,idle:['idle_1'],sw:['#2a2a2e','#141416'],file:1},
   {id:'girl',name:'Your usual',f:1},
   {id:'suit_lady',name:'Grey trouser suit',f:1},
-  {id:'mama',name:'Ankara mama',f:1},
-  {id:'lady_red',name:'Red dress',f:1},
+  {id:'mama',name:'Ankara mama',f:1,robe:1,hair:'Neck'},
+  {id:'lady_red',name:'Red dress',f:1,robe:1},
   {id:'lady_black',name:'All black',f:1},
-  {id:'outfit_dress_pink',name:'Pink dress',f:1,h:1.72,idle:['idle_3'],sw:['#ead3d8','#ead3d8'],file:1},
+  {id:'outfit_dress_pink',name:'Pink dress',f:1,robe:1,h:1.72,idle:['idle_3'],sw:['#ead3d8','#ead3d8'],file:1},
   {id:'outfit_casual',name:'Mustard and jeans',f:1,h:1.72,idle:['idle_4'],sw:['#cc9438','#2b3b5e'],file:1}];
 const WARD={open:false,cur:'me',busy:false,base:null,body:null,px:0};
 addEventListener('resize',()=>{ if(WARD.open) WARD.px=$('#ward').getBoundingClientRect().right; });
+/* ================= clothes only: you keep your own head; the wardrobe changes what you wear, and its colours =================
+   Every look is a Mixamo body on the same skeleton. Your head (the man you start as, or the girl) is cut from your own body by
+   its skin weights and fixed to the outfit's head bone; the outfit's own head is cut away. Shirts and trousers are recoloured
+   in the shader: each vertex knows if it belongs to the upper body (shirt) or the hips and legs (trousers), and skin is left alone. */
+const HEADB=/(Neck|Head|HeadTop_End|LeftEye|RightEye)$/, bname=n=>n.replace(/^.*mixamorig\d*:?/,'');
+const skinW=(mesh,test)=>{ const sk=mesh.skeleton, g=mesh.geometry, si=g.attributes.skinIndex, sw=g.attributes.skinWeight, n=si.count, out=new Float32Array(n), hit=sk.bones.map(b=>test(b.name));
+  const gi=[a=>si.getX(a),a=>si.getY(a),a=>si.getZ(a),a=>si.getW(a)], gw=[a=>sw.getX(a),a=>sw.getY(a),a=>sw.getZ(a),a=>sw.getW(a)];
+  for(let i=0;i<n;i++){ let w=0; for(let k=0;k<4;k++){ const wi=gw[k](i); if(wi>0&&hit[gi[k](i)]) w+=wi; } out[i]=w; } return out; };
+// which part of the clothes each vertex is: 0 skin/hands/feet/head, 1 shirt (body and arms), 2 trousers (hips and legs)
+function partAttr(mesh){ const up=skinW(mesh,n=>/(Spine\d?|Shoulder|Arm)$/.test(n)), lo=skinW(mesh,n=>/(Hips|Leg)$/.test(n)), n=up.length, a=new Float32Array(n);
+  for(let i=0;i<n;i++){ const o=1-up[i]-lo[i]; a[i]=up[i]>=lo[i]&&up[i]>o?1:lo[i]>o?2:0; } return new THREE.BufferAttribute(a,1); }
+const skinnedOf=o=>{ let m=null; o.traverse(x=>{ if(!m&&x.isSkinnedMesh) m=x; }); return m; };
+// a cast's body without its head and neck (shared by everyone who wears it)
+// a texture's colours on the CPU (the GPU draws it once into a small target), for telling hair from cloth
+function texPixels(map,W=256){ if(map.pix) return map.pix; const rt=new THREE.WebGLRenderTarget(W,W), sc=new THREE.Scene(), cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  sc.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({uniforms:{map:{value:map}},vertexShader:'varying vec2 u; void main(){ u=uv; gl_Position=vec4(position.xy,0.,1.); }',fragmentShader:'uniform sampler2D map; varying vec2 u; void main(){ gl_FragColor=vec4(texture2D(map,u).rgb,1.); }'})));
+  const was=renderer.getRenderTarget(), data=new Uint8Array(W*W*4); renderer.setRenderTarget(rt); renderer.render(sc,cam); renderer.readRenderTargetPixels(rt,0,0,W,W,data); renderer.setRenderTarget(was);
+  rt.dispose(); sc.children[0].geometry.dispose(); sc.children[0].material.dispose(); return map.pix={W,data}; }
+// hair: dark, greyish texels (braids), only above a given bone's height
+function hairVerts(m,below){ const map=m.material.map, g=m.geometry; if(!map||!g.attributes.uv) return null; let px; try{ px=texPixels(map); }catch(e){ return null; }
+  map.updateMatrix(); const UV=g.attributes.uv, P=g.attributes.position, n=UV.count, out=new Uint8Array(n), u=new THREE.Vector2(), v=new THREE.Vector3(), {W,data}=px;
+  const bb=m.skeleton.bones.findIndex(b=>new RegExp(below+'$').test(b.name)), y0=bb<0?-1e9:new THREE.Vector3().setFromMatrixPosition(_m.copy(m.skeleton.boneInverses[bb]).invert()).y;
+  for(let i=0;i<n;i++){ v.fromBufferAttribute(P,i).applyMatrix4(m.bindMatrix); if(v.y<y0) continue;
+    u.fromBufferAttribute(UV,i).applyMatrix3(map.matrix); const x=Math.floor((u.x-Math.floor(u.x))*W), y=Math.floor((u.y-Math.floor(u.y))*W), k=(y*W+x)*4;
+    const r=Math.pow(data[k]/255,1/2.2), gg=Math.pow(data[k+1]/255,1/2.2), b=Math.pow(data[k+2]/255,1/2.2), mx=Math.max(r,gg,b), mn=Math.min(r,gg,b);
+    if(mx<.42&&mx-mn<.13) out[i]=1; } return out; }
+function headless(C,L){ if(C.headless) return C.headless; const m=skinnedOf(C.tpl), g=m.geometry, hw=skinW(m,n=>HEADB.test(n)), I=g.index, P=g.attributes.position, n=P.count, keep=[];
+  const hair=L&&L.hair?hairVerts(m,L.hair):null;
+  // loose pieces hanging from the head (braids, long hair, earrings) go too: join vertices that touch, then drop small pieces tied to the head
+  const up=new Int32Array(n).map((_,i)=>i), find=i=>{ while(up[i]!==i){ up[i]=up[up[i]]; i=up[i]; } return i; }, join=(a,b)=>{ a=find(a); b=find(b); if(a!==b) up[a]=b; };
+  const at=new Map(); for(let i=0;i<n;i++){ const k=Math.round(P.getX(i)*1e4)+','+Math.round(P.getY(i)*1e4)+','+Math.round(P.getZ(i)*1e4), j=at.get(k); if(j===undefined) at.set(k,i); else join(i,j); }
+  const cut=[]; for(let t=0;t<I.count;t+=3){ const a=I.getX(t), b=I.getX(t+1), c=I.getX(t+2); if((hw[a]+hw[b]+hw[c])/3<.5&&!(hair&&hair[a]+hair[b]+hair[c]>=2)){ cut.push(a,b,c); join(a,b); join(a,c); } }   // pieces as they are once head and hair are off
+  const size=new Map(), head=new Map(); for(let i=0;i<n;i++){ const r=find(i); size.set(r,(size.get(r)||0)+1); if(hw[i]>(head.get(r)||0)) head.set(r,hw[i]); }
+  let big=0; for(const k of size.values()) big=Math.max(big,k);
+  const drop=r=>size.get(r)<big*.25&&((head.get(r)||0)>=.25||(hair&&size.get(r)<n*.03));   // bits of braid left hanging go too
+  for(let t=0;t<cut.length;t+=3) if(!drop(find(cut[t]))) keep.push(cut[t],cut[t+1],cut[t+2]);
+  const h=new THREE.BufferGeometry(); for(const k in g.attributes) h.setAttribute(k,g.attributes[k]); h.setIndex(keep); h.setAttribute('part',partAttr(m));
+  h.boundingSphere=g.boundingSphere; h.boundingBox=g.boundingBox; return C.headless=h; }
+// your head and neck, cut once from your own body: each vertex in the head bone's rest frame, with its bone names and weights,
+// so it can be skinned onto any outfit's skeleton and bend with that body's neck
+let MY_HEAD=null;
+function myHead(){ if(MY_HEAD&&MY_HEAD.f===isF()) return MY_HEAD; const G=PEOPLE.casts.girl, src=isF()?(G&&G.tpl):(WARD.base?WARD.base.body:hero.cObj), xs=isF()?(G?G.sc:1):1; if(!src) return null;
+  src.updateMatrixWorld(true); const m=skinnedOf(src); if(!m) return null; const sk=m.skeleton, hi=sk.bones.findIndex(b=>/Head$/.test(b.name)); if(hi<0) return null;
+  const g=m.geometry, hw=skinW(m,n=>HEADB.test(n)), hh=skinW(m,n=>/(Head|HeadTop_End|LeftEye|RightEye)$/.test(n)), I=g.index, P=g.attributes.position, UV=g.attributes.uv, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight;
+  const toLocal=new THREE.Matrix4().multiplyMatrices(sk.boneInverses[hi],m.bindMatrix), map=new Map(), pos=[], uv=[], nk=[], bones=[], wts=[], idx=[], v=new THREE.Vector3();
+  const vert=i=>{ let j=map.get(i); if(j!==undefined) return j; v.fromBufferAttribute(P,i).applyMatrix4(toLocal); j=pos.length/3; pos.push(v.x,v.y,v.z); if(UV) uv.push(UV.getX(i),UV.getY(i)); nk.push(1-hh[i]);
+    bones.push(bname(sk.bones[SI.getX(i)].name),bname(sk.bones[SI.getY(i)].name),bname(sk.bones[SI.getZ(i)].name),bname(sk.bones[SI.getW(i)].name)); wts.push(SW.getX(i),SW.getY(i),SW.getZ(i),SW.getW(i)); map.set(i,j); return j; };
+  for(let t=0;t<I.count;t+=3){ const a=I.getX(t), b=I.getX(t+1), c=I.getX(t+2); if((hw[a]+hw[b]+hw[c])/3>=.3) idx.push(vert(a),vert(b),vert(c)); }
+  const s=new THREE.Vector3(); sk.bones[hi].matrixWorld.decompose(_p,_q,s);
+  const mat=(m.material.dressOrig||m.material).clone(); HERO_MATS.push(mat);   // on the neck, only skin comes along: your old collar stays behind
+  mat.onBeforeCompile=sh=>{ sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float nk;\nvarying float vNk;').replace('#include <begin_vertex>','#include <begin_vertex>\nvNk=nk;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vNk;\n'+SKIN_GLSL).replace('#include <map_fragment>','#include <map_fragment>\nif(vNk>.45&&skinLike(diffuseColor.rgb)<.5) discard;'); };
+  mat.customProgramCacheKey=()=>'myhead';
+  return MY_HEAD={pos,uv,nk,bones,wts,idx,mat,s:s.x*xs,f:isF()}; }
+// put your head on an outfit: a skinned mesh on the outfit's own bones, sized like yours
+function putHead(inner){ const H=myHead(), om=skinnedOf(inner); if(!H||!om) return null; const sk=om.skeleton, hi=sk.bones.findIndex(b=>/Head$/.test(b.name)); if(hi<0) return null;
+  inner.updateMatrixWorld(true); const s=new THREE.Vector3(); sk.bones[hi].matrixWorld.decompose(_p,_q,s); const k=H.s/s.x;
+  const back=new THREE.Matrix4().multiplyMatrices(sk.boneInverses[hi],om.bindMatrix).invert(), byName=new Map(sk.bones.map((b,i)=>[bname(b.name),i])), n=H.pos.length/3;
+  const pos=new Float32Array(n*3), si=new Uint16Array(n*4), sw=new Float32Array(n*4), v=new THREE.Vector3();
+  for(let i=0;i<n;i++){ v.set(H.pos[i*3]*k,H.pos[i*3+1]*k,H.pos[i*3+2]*k).applyMatrix4(back); pos[i*3]=v.x; pos[i*3+1]=v.y; pos[i*3+2]=v.z;
+    let left=0; for(let q=0;q<4;q++){ const bi=byName.get(H.bones[i*4+q]), w=H.wts[i*4+q]; if(bi===undefined){ left+=w; continue; } si[i*4+q]=bi; sw[i*4+q]=w; }
+    if(left>0){ si[i*4+3]=hi; sw[i*4+3]+=left; } }   // a bone the outfit lacks: that share follows the head
+  const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3)); if(H.uv.length) geo.setAttribute('uv',new THREE.Float32BufferAttribute(H.uv,2));
+  geo.setAttribute('nk',new THREE.Float32BufferAttribute(H.nk,1)); geo.setAttribute('skinIndex',new THREE.BufferAttribute(si,4)); geo.setAttribute('skinWeight',new THREE.BufferAttribute(sw,4)); geo.setIndex(H.idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
+  const m=new THREE.SkinnedMesh(geo,H.mat); m.name='myHead'; m.position.copy(om.position); m.quaternion.copy(om.quaternion); m.scale.copy(om.scale);
+  m.castShadow=true; m.receiveShadow=true; m.frustumCulled=false; m.layers.mask=om.layers.mask; om.parent.add(m); m.bind(sk,om.bindMatrix); return m; }
+const SKIN_GLSL=`float skinLike(vec3 c){ vec3 s=pow(max(c,vec3(0.)),vec3(1./2.2)); float mx=max(s.r,max(s.g,s.b)), mn=min(s.r,min(s.g,s.b)), sat=mx>0.?(mx-mn)/mx:0.;
+  return (s.r>=s.g&&s.g>=s.b&&s.r-s.b>.07&&sat>.18&&sat<.78&&mx>.1&&mx<.92)?1.:0.; }`;
+// recolouring: a copy of the body's material that tints shirt and trousers (texture detail kept, skin untouched)
+function dressMat(base){ const m=base.clone(), u={sCol:{value:new THREE.Color(1,1,1)},pCol:{value:new THREE.Color(1,1,1)},sOn:{value:0},pOn:{value:0}}; m.dress=u; m.dressOrig=base;
+  m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,u);
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float part;\nvarying float vPart;').replace('#include <begin_vertex>','#include <begin_vertex>\nvPart=part;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+varying float vPart; uniform vec3 sCol; uniform vec3 pCol; uniform float sOn; uniform float pOn;
+${SKIN_GLSL}
+vec3 dye(vec3 c,vec3 a,vec3 t){ vec3 Y=vec3(.2126,.7152,.0722); return t*clamp(dot(c,Y)/max(dot(a,Y),.03),.4,1.6); }`)
+      .replace('#include <map_fragment>',`#include <map_fragment>
+if(vPart>.5&&skinLike(diffuseColor.rgb)<.5&&(vPart<1.5?sOn:pOn)>.5){
+#ifdef USE_MAP
+  vec3 avg=texture2D(map,vMapUv,5.).rgb;
+#else
+  vec3 avg=diffuseColor.rgb;
+#endif
+  diffuseColor.rgb=dye(diffuseColor.rgb,avg,vPart<1.5?sCol:pCol); }`)
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance=emissive*diffuseColor.rgb;'); };
+  m.customProgramCacheKey=()=>'dress'; return m; }
+const SHIRTS=[['orig','As it comes',null],['white','White','#f2f0ea'],['black','Black','#1d1d20'],['red','Red','#b3201e'],['blue','Royal blue','#2347a8'],['yellow','Yellow','#e9b81c'],['green','Green','#2f7a3f'],['purple','Purple','#6a3591'],['orange','Orange','#d9692a'],['pink','Pink','#e58cb0']];
+const TROUSERS=[['orig','As it comes',null],['black','Black','#1b1b1e'],['jeans','Blue jeans','#3b5a86'],['khaki','Khaki','#a99068'],['white','White','#ecebe6'],['grey','Grey','#6e7075'],['brown','Brown','#5b3b24'],['navy','Navy','#1f2a4a']];
+WARD.colors={s:'orig',p:'orig'}; try{ const c=JSON.parse(localStorage.getItem('naija-colours')||'null'); if(c&&c.s&&c.p) WARD.colors=c; }catch(e){}
+// the body you have on right now gets its colours
+const isRobe=()=>{ const L=LOOK_LIST.find(l=>l.id===WARD.cur); return !!(L&&L.robe); };
+function applyColours(){ if(!hero) return; const S=SHIRTS.find(x=>x[0]===WARD.colors.s)||SHIRTS[0], T=isRobe()?S:(TROUSERS.find(x=>x[0]===WARD.colors.p)||TROUSERS[0]);
+  hero.cObj.traverse(o=>{ if(!o.isSkinnedMesh||o.name==='myHead') return; let m=o.material; if(!m.dress){ const b=m; m=b.dressed||(b.dressed=dressMat(b)); o.material=m; if(!HERO_MATS.includes(m)) HERO_MATS.push(m); if(!o.geometry.attributes.part) o.geometry.setAttribute('part',partAttr(o)); }
+    const u=m.dress; u.sOn.value=S[2]?1:0; u.pOn.value=T[2]?1:0; if(S[2]) u.sCol.value.set(S[2]).convertSRGBToLinear(); if(T[2]) u.pCol.value.set(T[2]).convertSRGBToLinear(); }); }
 const lookFile=L=>!!(L.file&&(MANIFEST[`assets/people/${L.id}.glb`]||AV[`assets/people/${L.id}.glb`]));
 // men see the men's looks, women the women's (the moves always follow who you are)
 const lookShown=L=>L.f===(isF()?1:0)&&(L.id==='me'||(L.file?lookFile(L):!!CAST[L.id]));
@@ -2594,6 +2688,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
     if(!C&&lookFile(L)&&PEOPLE.done){ WARD.busy=true; try{ setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),''),L); }catch(e){ console.warn('look '+id+' could not load',e); } WARD.busy=false; C=PEOPLE.casts[id]; }
     if(!C||!C.clips.walk||!C.clips[C.idle0]) return false; }
   if(mode==='drive'||mode==='enter'||hero.ov) return false;
+  if(C&&id!==baseLook()) myHead();   // your own head, cut before your body comes off
   if(!WARD.base) WARD.base={body:hero.cObj,mixer:hero.mixer,act:hero.act,hips:hero.hips,hipsRest:hero.hipsRest};
   heroQuiet(); hero.act.car.stop();
   if(WARD.body){ hero.root.remove(WARD.body); hero.mixer.stopAllAction(); hero.mixer.uncacheRoot(hero.cObj); hero.cObj.traverse(o=>{ if(o.isSkinnedMesh) o.skeleton.dispose(); }); WARD.body=null; }
@@ -2601,30 +2696,38 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,look:null}); }
   else { const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(); wrap.scale.setScalar(C.sc); inner.position.y=C.y0; wrap.add(inner); hero.root.add(wrap); WARD.body=wrap;
     let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
+    if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
     const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())};
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
     Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0}}); }
   const a=hero.act; for(const k of ['idle','walk','run']){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0});
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);
   WARD.cur=id; if(save) try{ localStorage.setItem('naija-look',id); }catch(e){}
-  lastMode=null; return true; }
+  applyColours(); lastMode=null; return true; }
 // the look you chose last time comes back once the people files are in
 function applySavedLook(){ if(!PROFILE) return; let id=null; try{ id=localStorage.getItem('naija-look'); }catch(e){} const L=LOOK_LIST.find(l=>l.id===id);
-  if(!L||L.f!==(isF()?1:0)) id=baseLook(); if(id==='me'||id===WARD.cur) return;
+  if(!L||L.f!==(isF()?1:0)) id=baseLook(); if(id==='me'||id===WARD.cur){ applyColours(); return; }
   let n=0; const go=()=>{ if(n++>60||id===WARD.cur) return; const L2=LOOK_LIST.find(l=>l.id===id); if(!hero||busy||mode==='drive'||mode==='enter'||(hero&&hero.ov)||!(PEOPLE.casts[id]||(L2&&L2.file&&PEOPLE.done))){ setTimeout(go,400); return; }
     wearLook(id,false).then(ok=>{ if(!ok&&L2&&L2.file&&id!==baseLook()){ id=baseLook(); setTimeout(go,400); } else if(ok) bodyReady(); }); }; go(); }
 // a woman never shows up as the man you start with: her body has to be on first
 const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; } };
-function wardUI(){ const box=$('#looks'); box.textContent='';
-  for(const f of [0,1]){ const h=document.createElement('h3'); h.textContent=f?'Women':'Men'; box.appendChild(h);
-    for(const L of LOOK_LIST){ if(L.f!==f||!lookShown(L)) continue;
-      const b=document.createElement('button'); b.type='button'; b.className='lookb'; const c=CAST[L.id], sw=L.sw||(c?[c.look[1],c.look[2]]:['#888','#666']);
-      const i=document.createElement('i'); i.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=L.name; b.append(i,sp);
-      const ok=lookOk(L); b.disabled=!ok; if(!ok){ const sm=document.createElement('small'); sm.textContent='still arriving'; b.appendChild(sm); }
-      b.setAttribute('aria-pressed',L.id===WARD.cur?'true':'false');
-      b.addEventListener('click',async()=>{ if(WARD.busy||L.id===WARD.cur) return; if(L.id!=='me'&&!PEOPLE.casts[L.id]) toast('Getting dressed…',4);
-        const done=await wearLook(L.id); toast(done?(L.id==='me'?'Back to your usual look':mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])):'That look is not ready yet. Try again soon.'); wardUI(); });
-      box.appendChild(b); } } }
+function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0, h=t=>{ const e=document.createElement('h3'); e.textContent=t; box.appendChild(e); };
+  h('Clothes');
+  for(const L of LOOK_LIST){ if(L.f!==f||!lookShown(L)) continue;
+    const b=document.createElement('button'); b.type='button'; b.className='lookb'; const c=CAST[L.id], sw=L.sw||(c?[c.look[1],c.look[2]]:['#888','#666']);
+    const i=document.createElement('i'); i.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=L.name; b.append(i,sp);
+    const ok=lookOk(L); b.disabled=!ok; if(!ok){ const sm=document.createElement('small'); sm.textContent='still arriving'; b.appendChild(sm); }
+    b.setAttribute('aria-pressed',L.id===WARD.cur?'true':'false');
+    b.addEventListener('click',async()=>{ if(WARD.busy||L.id===WARD.cur) return; if(L.id!=='me'&&!PEOPLE.casts[L.id]) toast('Getting dressed…',4);
+      const done=await wearLook(L.id); toast(done?(L.id===baseLook()?'Back to your usual clothes':mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])):'That look is not ready yet. Try again soon.'); wardUI(); });
+    box.appendChild(b); }
+  // colours: shirt and trousers (a dress, kaftan or thobe takes one colour)
+  const row=(title,list,key)=>{ h(title); const r=document.createElement('div'); r.className='swatches';
+    for(const [k,name,hex] of list){ const b=document.createElement('button'); b.type='button'; b.className='sw'+(hex?'':' orig'); b.title=name; b.setAttribute('aria-label',title+': '+name);
+      if(hex) b.style.background=hex; b.setAttribute('aria-pressed',WARD.colors[key]===k?'true':'false');
+      b.addEventListener('click',()=>{ WARD.colors[key]=k; try{ localStorage.setItem('naija-colours',JSON.stringify(WARD.colors)); }catch(e){} applyColours(); wardUI(); });
+      r.appendChild(b); } box.appendChild(r); };
+  const robe=isRobe(); row(robe?(f?'Dress colour':'Robe colour'):'Shirt colour',SHIRTS,'s'); if(!robe) row(f?'Trousers / skirt colour':'Trousers colour',TROUSERS,'p'); }
 function openWard(){ if(WARD.open||!hero||busy) return; WARD.open=true; $('#settings').hidden=true; if(document.pointerLockElement) document.exitPointerLock(); wardUI(); $('#ward').hidden=false; $('#lookhint').hidden=true; WARD.px=$('#ward').getBoundingClientRect().right; lastPrompt=null;
   player.speed=0; player.yaw=0; camState.yaw=Math.PI; camState.pitch=.08; camState.last=T0; }   // turn round to face the room, camera in front: a mirror view
 function closeWard(){ if(!WARD.open) return; WARD.open=false; $('#ward').hidden=true; lastPrompt=null; }
