@@ -33,10 +33,10 @@ python3 tools/osm_world.py Mushin.osm assets/maps/mushin_world.json
 ```
 The same command works for another area (Oshodi, Ajegunle); the game loads `mushin_world.json`.
 
-Life on the streets: people cross the big roads by footbridge; hawkers walk out between the cars when the light turns
+Life on the streets: traffic moves fast on the highways and big roads, so people never walk across them: they use the footbridges; hawkers walk out between the cars when the light turns
 red and run back on green; at the motor park conductors call out, the queue climbs into a danfo and it leaves full,
 then another rolls in; pupils stand at the school gates in school hours; in the markets the mallams and market women
-sell from their stalls and people stop to buy.
+sell from their stalls and crowds of shoppers go from stall to stall. People only dance at the hotel.
 
 ## Shared time and weather
 Every player computes the same game time and weather from the server clock (the HTTP Date header), so day, night,
@@ -45,7 +45,9 @@ flies past in about 3 of them, bright and moonlit; weather can change every 16 m
 harmattan December–February).
 
 ## People
-Seven characters from Mixamo live in the city: mama, lady_red, lady_black, hawker, baba, areaboy and schoolboy.
+Nine characters from Mixamo live in the city: mama, lady_red, lady_black, hawker, baba, areaboy, schoolboy, girl and
+suit_lady. Women walk, run, stand, talk and dance with women's moves (Walking, Goofy Running, Idle, Talking, Thinking,
+Bashful, Macarena, Salsa, ...).
 They walk the pavements, gist at shop fronts, hold junction corners, stand at compound gates and wave down danfos at
 bus stops; they answer when you walk into them or horn at them. The nearest ones get the real body and moves
 (Low 8, Medium 14, High 24); farther away the same person is a light look-alike in the same colours.
@@ -58,15 +60,29 @@ cp /tmp/npc/out/*.glb assets/people/
 ```
 and add the character to `CAST` in `src/game.js` (height, how common, what it does, far look-alike colours).
 
-## Fighting
-On foot: J or click to punch, K or right click to kick, Space to jump; running turns a punch into a takedown and a kick
-into a drop kick (phones: the red buttons). Area boys fight back in a group; other people run or quarrel. Hitting
-people raises your wanted stars, and a police van comes for you along the streets; get caught and you are taken to
-Mushin police station.
+## Your profile
+The first time, you type a name and choose man or woman. It is kept on the device and cannot be changed afterwards.
+A woman plays as the girl in the white crop top and walks, runs and fights with women's moves; the wardrobe shows
+the looks of your own side only.
+
+## Life, fighting and the police
+Your life bar is always at the top left. On foot: J or click to punch, K or right click to kick, Space to jump;
+running turns a punch into a takedown and a kick into a drop kick (phones: the red buttons). In a fight you keep
+facing your man, and quick blows in a row hit harder. You are stronger than anyone on the street, but a gang of area
+boys can beat you to death, and so can a fast car; you wake up at the LUTH gate in Idi-Araba with full life and no
+stars. People bleed when hit; a person hit hard by a car twice (or once at highway speed) dies.
+
+G (phones: GRAB) picks someone up over your shoulder; G again puts them down. Area boys who see it come to beat you.
+Taking a car with someone in it drags the driver out; some get up fighting.
+
+A fight, a killing or a kidnapping brings the nearest police van to the spot. It parks anyhow and everyone still
+fighting or lying there walks into the van (the officers stay inside until a police officer model is added). If you
+were part of it, or the police catch you with wanted stars, you spend three minutes in the cell at Mushin police
+station with the others, then they let you out.
 
 ## Eko Grand Hotel
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
-bar (`assets/models/hotel_bar.glb`, downloaded only when you come near).
+bar (`assets/models/hotel_bar.glb`, downloaded only when you come near). Women dance on the floor there.
 
 ## Wardrobe
 At home, walk to the wardrobe and press E to change your look: your usual character or any of the city's people.
