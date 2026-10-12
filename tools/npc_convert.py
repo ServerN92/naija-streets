@@ -26,6 +26,8 @@ CAST = {
     'hawker':    'de1e9434-Walk.fbx',               # market woman with a tray of tomatoes on her head
     'baba':      'de9bc8d6-Idle.fbx',               # old man in white kaftan and cap
     'areaboy':   'deb24a60-Fighting_Idle.fbx',      # young man, green shirt, shorts, slippers
+    'girl':      '0a4d2050-Talking.fbx',            # young woman, white crop top, plaid skirt, boots (the female player)
+    'suit_lady': 'f30ad6e2-Idle.fbx',               # woman in a grey trouser suit
 }
 # move name -> FBX that carries it
 MOVES = {
@@ -44,7 +46,18 @@ MOVES = {
     'kip_up': ('73e56ecf-Kip_Up.fbx', {'ref': 1.0}), 'stand_up': ('d8cefe39-Standing_Up.fbx', {'ref': 1.0}),
     'jump': ('6aaadc30-Jump.fbx', {'ref': 1.0}), 'situps': ('7d17ce49-Situps.fbx', {'ref': 1.0}),
     'pushups': ('4e78b3e7-Push_Up_To_Idle.fbx', {'ref': 1.0, 'cut': 'rise'}),
+    # women's moves (one girl rig; her standing hips height is 0.977 m, so dances, lying and runs keep their true height)
+    'f_walk': ('dd3f5df2-Walking_1.fbx', {'ref': 97.7}), 'f_catwalk': ('adbdebbf-Catwalk_Walking.fbx', {'ref': 97.7}),
+    'f_run': ('1d786623-Goofy_Running.fbx', {'ref': 97.7}), 'f_start_walk': ('6ab3fef9-Female_Start_Walking.fbx', {'ref': 97.7}),
+    'f_stop_walk': ('82b5bc4f-Female_Stop_Walking.fbx', {'ref': 97.7}), 'f_idle': ('7856c4e7-Idle_3.fbx', {'ref': 97.7}),
+    'f_talk': ('0a4d2050-Talking.fbx', {'ref': 97.7}), 'f_think': ('936491b5-Thinking.fbx', {'ref': 97.7}),
+    'f_bashful': ('48781c16-Bashful.fbx', {'ref': 97.7}), 'f_lie': ('e7e6311b-Female_Laying_Pose.fbx', {'ref': 97.7}),
+    'f_fight_idle': ('3f6ae2f3-Standing_Idle_To_Fight_Idle.fbx', {'ref': 97.7, 'cut': 'last'}),
+    'dance_macarena': ('ffe97785-Macarena_Dance.fbx', {'ref': 97.7}), 'dance_1': ('262036bd-Dancing_1.fbx', {'ref': 97.7}),
+    'dance_salsa': ('d7434904-Salsa_Dancing.fbx', {'ref': 97.7}),
+    'idle_suit': ('f30ad6e2-Idle.fbx', {'ref': 101.0}),
 }
+ONLY = next((a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('--only=')), None)   # convert just these characters (moves are always rebuilt)
 SKELETON_FROM = 'mama'   # a rig with every bone (65, fingers included) to carry the moves
 
 HTML = """<!doctype html><html><body><script type="importmap">{"imports":{"three":"%sbuild/three.module.js","three/addons/":"%sexamples/jsm/"}}</script>
@@ -76,6 +89,7 @@ window.moves=async(skelFile,list)=>{ const sk=await load(skelFile); const bones=
       for(let i=0;i<v.length;i+=3){ v[i]=opt.root?(v[i]-x0)/ry:0; v[i+1]=v[i+1]/ry; v[i+2]=opt.root?(v[i+2]-z0)/ry:0; } } }
     if(opt.cut==='rise'){ const t=k.tracks.find(t=>/Hips\\.position$/.test(t.name)), v=t.values, n=v.length/3; let e=n; for(let i=1;i<n;i++) if(v[i*3+1]>.6){ e=i; break; }
       k=THREE.AnimationUtils.subclip(k,name,0,Math.max(2,e-4),30); }   // only the part before the person stands up
+    if(opt.cut==='last'){ const n=Math.round(k.duration*30); k=THREE.AnimationUtils.subclip(k,name,Math.max(0,n-3),n,30); }   // the pose it ends in (fists up), held
     clips.push(k); info.push([name,+k.duration.toFixed(2),k.tracks.length]); }
   const glb=await new GLTFExporter().parseAsync(holder,{binary:true,animations:clips,onlyVisible:false});
   return {b64:b64(glb),info}; };
@@ -95,11 +109,12 @@ with sync_playwright() as pw:
         return rt.abort()
     pg.route('**/*', route); pg.goto('http://conv.local/'); pg.wait_for_function('window.ready===true', timeout=60000)
     meta = {}
-    for cid, f in ([] if ONLY_MOVES else CAST.items()):
+    for cid, f in ([] if ONLY_MOVES else [(c, f) for c, f in CAST.items() if not ONLY or c in ONLY]):
         r = pg.evaluate(f'window.character({json.dumps(f)})', None)
         (OUT / 'raw' / f'{cid}.glb').write_bytes(base64.b64decode(r.pop('b64'))); meta[cid] = r; print(cid, r, flush=True)
     mv = [[n, f, {}] if isinstance(f, str) else [n, f[0], f[1]] for n, f in MOVES.items()]
     r = pg.evaluate(f'window.moves({json.dumps(CAST[SKELETON_FROM])},{json.dumps(mv)})')
     (OUT / 'raw' / 'moves.glb').write_bytes(base64.b64decode(r['b64'])); print('moves', r['info'], flush=True)
-    if meta: json.dump(meta, open(OUT / 'raw' / 'meta.json', 'w'), indent=1)
+    if meta:
+        mp = OUT / 'raw' / 'meta.json'; old = json.load(open(mp)) if mp.exists() else {}; old.update(meta); json.dump(old, open(mp, 'w'), indent=1)
     print('errors', errs[:5]); b.close()

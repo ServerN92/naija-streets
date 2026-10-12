@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="6e70ba846e">
+<meta name="ns-build" content="b8c914a5f8">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,6 +47,17 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .lbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--flag),var(--danfo));transition:width .3s}
 .ltxt{font-size:15px;color:var(--muted);letter-spacing:.04em;min-height:1.3em;font-variant-numeric:tabular-nums}
 .lerr{color:#ffb4a6;font-size:15px}
+.prof{display:flex;flex-direction:column;gap:10px}
+.pname{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:14px;font-weight:600}
+.pname input{font:inherit;font-size:18px;color:var(--cream);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:12px 14px;min-height:48px;max-width:320px}
+.pname input:focus{outline:2px solid var(--danfo);outline-offset:1px}
+.pg{display:flex;gap:10px;flex-wrap:wrap}
+.pgb{flex:1 1 150px;max-width:220px;text-align:left;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);border-radius:12px;padding:12px 14px;min-height:56px;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.pgb b{font-family:var(--fd);font-weight:400;font-size:20px}.pgb small{color:var(--muted);font-size:13px}
+.pgb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
+.pnote{color:var(--muted);font-size:13px}
+.pwho{color:var(--cream);font-weight:700;font-size:17px}
+.enter:disabled{opacity:.5}
 .enter{font-family:var(--fd);font-size:20px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:16px 26px;align-self:flex-start;min-height:56px}
 .enter:hover{filter:brightness(1.08)}
 .lnote{font-size:13px;color:var(--muted);margin:0}
@@ -56,6 +67,8 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
   .ld p{display:none}
   .lnote{display:none}
   .enter{padding:12px 22px;min-height:48px;font-size:18px}
+  .loading.pf .lbar,.loading.pf .ltxt{display:none}
+  .pgb small{display:none} .pgb{min-height:48px;padding:8px 12px} .pname input{min-height:44px;padding:8px 12px} .prof{gap:8px}
 }
 
 /* HUD */
@@ -113,9 +126,12 @@ body.touchui .ward .kb{display:none}
 .tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:2}
 #tRun,#tBrake{grid-column:1;grid-row:2}
 #tHorn{grid-column:3;grid-row:1}
+#tGrab{grid-column:1;grid-row:1}
 #tKick{grid-column:2;grid-row:1}#tJump{grid-column:3;grid-row:1}#tPunch{grid-column:2;grid-row:2}
 .tbtns .fightb{background:rgba(208,87,62,.78);border-color:rgba(255,220,200,.55);font-size:12px}
 .tbtns .fightb:active{background:var(--rust)}
+.jail{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(10,10,12,.72);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 18px;pointer-events:none;z-index:6}
+.jail b{font-family:var(--fd);font-weight:400;font-size:14px;color:var(--danfo);letter-spacing:.04em}.jail span{font-family:var(--fd);font-size:34px;color:var(--cream);font-variant-numeric:tabular-nums;line-height:1}.jail small{color:var(--muted);font-size:12px}
 .vitals{display:flex;align-items:center;gap:8px;margin-top:4px}
 .hpbar{width:132px;height:8px;border-radius:4px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.3);overflow:hidden}
 .hpbar i{display:block;height:100%;width:100%;background:var(--flag);transition:width .2s}
@@ -197,6 +213,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="prompt" id="prompt" hidden role="button" tabindex="-1"><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="jail" id="jailBox" hidden><b>MUSHIN POLICE CELL</b><span id="jailT">3:00</span><small>until they release you</small></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
   <div class="panel ward" id="ward" hidden role="dialog" aria-label="Wardrobe">
     <h2>WARDROBE</h2>
@@ -242,6 +259,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="joy" id="joy" hidden><i id="joyK"></i></div>
     <div class="tbtns">
       <button type="button" id="tHorn" hidden>HORN</button>
+      <button type="button" id="tGrab" hidden aria-label="Grab or put down">GRAB</button>
       <button type="button" id="tKick" class="fightb" hidden aria-label="Kick">KICK</button>
       <button type="button" id="tJump" hidden aria-label="Jump">JUMP</button>
       <button type="button" id="tRun">RUN</button>
@@ -277,11 +295,20 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 
 <div class="loading" id="loading">
   <div class="ld">
-    <h1><span class="a">NAIJA</span><span class="b">STREETS</span><span class="c">LAGOS · ISALE EKO · OBALENDE</span></h1>
+    <h1><span class="a">NAIJA</span><span class="b">STREETS</span><span class="c">LAGOS · MUSHIN</span></h1>
     <p>Ride okada, jump inside danfo, dodge the potholes and run your hustle on the streets of Lagos.</p>
     <div class="lbar"><i id="loadBar"></i></div>
     <div class="ltxt" id="loadTxt">Starting the engine…</div>
     <div class="lerr" id="loadErr" hidden></div>
+    <div class="prof" id="prof" hidden>
+      <label class="pname"><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. Tunde or Ada"></label>
+      <div class="pg" role="group" aria-label="Man or woman">
+        <button type="button" class="pgb" data-g="m" aria-pressed="false"><b>MAN</b><small>Walks and fights like a man</small></button>
+        <button type="button" class="pgb" data-g="f" aria-pressed="false"><b>WOMAN</b><small>Walks and fights like a woman</small></button>
+      </div>
+      <div class="pnote">You cannot change this later.</div>
+    </div>
+    <div class="pwho" id="pwho" hidden></div>
     <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
     <p class="lnote">Works on phones, tablets and computers. On a phone, turn it sideways.</p>
   </div>
@@ -298,7 +325,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=6e70ba846e"></script>
+<script type="module" src="src/game.js?v=b8c914a5f8"></script>
 
 </body>
 </html>
