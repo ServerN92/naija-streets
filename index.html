@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="842b0cd6a2">
+<meta name="ns-build" content="fd3d4e9f51">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -124,7 +124,7 @@ body.touchui .ward .kb{display:none}
 #phClose{background:none;border:none;color:var(--cream);font-size:18px;min-width:44px;min-height:36px;margin:-6px -10px -6px 0}
 .ph-app{background:var(--danfo);color:var(--ink);font-family:var(--fd);font-size:16px;padding:9px 14px}
 .ph-tabs{display:flex;background:var(--danfo)}.ph-tab{flex:1;background:none;border:none;font-family:var(--fd);font-size:15px;padding:10px 6px;color:rgba(14,16,20,.5);min-height:42px}.ph-tab.on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
-.jobhud{font-family:var(--fd);font-size:13px;color:#ffe08a;text-shadow:0 1px 3px #000;margin-top:4px;max-width:min(320px,70vw)}.jobhud.late{color:#ff9b8a}
+.jobhud{position:fixed;right:calc(18px + var(--sr));top:calc(64px + var(--st));text-align:right;font-family:var(--fd);font-size:13px;color:#ffe08a;text-shadow:0 1px 3px #000;max-width:min(300px,45vw);pointer-events:none}.jobhud.late{color:#ff9b8a}
 .ph-app small{font-family:var(--fb, inherit);font-weight:700;font-size:11px;margin-left:6px;opacity:.75}
 #phBody{padding:10px 12px 10px}
 .ph-h{margin:2px 0 8px!important;color:var(--cream)!important;letter-spacing:0!important;text-transform:none!important;font-size:17px!important}
@@ -159,11 +159,12 @@ body.touchui .ward .kb{display:none}
 .tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:10px;pointer-events:auto;z-index:4}
 .tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
-.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px;grid-column:3;grid-row:3}
-#tRun,#tBrake{grid-column:1;grid-row:3}
-#tHorn{grid-column:3;grid-row:2}
-#tGrab{grid-column:1;grid-row:2}
-#tKick{grid-column:2;grid-row:2}#tJump{grid-column:3;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tDodge{grid-column:3;grid-row:1}#tWeap{grid-column:2;grid-row:1;font-size:11px}
+.tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
+#tE{grid-column:3;grid-row:2}#tGrab,#tHorn{grid-column:2;grid-row:1}#tJump{grid-column:1;grid-row:2}#tPunch,#tBrake{grid-column:2;grid-row:3}
+.tbtns .tbig{width:76px;height:76px;margin:-6px;font-size:13px}
+.tbtns #tJump.fightb{font-size:12px}
+.joy.run{border-color:var(--danfo)}.joy.run i{background:var(--danfo)}
+.touchui .weap{min-height:38px;padding:6px 13px;font-size:14px}
 .tbtns .fightb{background:rgba(208,87,62,.78);border-color:rgba(255,220,200,.55);font-size:12px}
 .tbtns .fightb:active{background:var(--rust)}
 .jail{position:absolute;left:50%;top:calc(14px + var(--st));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(10,10,12,.72);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 18px;pointer-events:none;z-index:6}
@@ -183,7 +184,7 @@ body.touchui .ward .kb{display:none}
 body.touchui .speedo{right:calc(22px + var(--sr));bottom:calc(170px + var(--sb))}
 body.touchui .prompt{bottom:calc(24px + var(--sb))}
 body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:128px;height:128px}
-body.touchui.vit #mmWrap{top:calc(112px + var(--st))}
+body.touchui.vit #mmWrap{top:calc(122px + var(--st))}
 @media (orientation:landscape){ body.touchui.vit .toast{left:calc(50% + 50px);max-width:calc(100vw - 360px)} }   /* keep messages clear of the health bars */
 body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 .ctxlost{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(10,11,14,.9);padding:24px;text-align:center}
@@ -309,9 +310,10 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>G</dt><dd>Slam the man you are fighting down, or carry someone</dd>
         <dt>H</dt><dd>Horn</dd>
         <dt>P</dt><dd>Your phone: book a ride (OYA RIDE) or take a delivery job (OYA WORK)</dd>
-        <dt>1 2 3 4 · Tab</dt><dd>Fists, baton, katana, AK-47 (buy them from Oga Shege)</dd>
-        <dt>Right mouse / K</dt><dd>Aim the AK (left mouse or J fires, R reloads)</dd>
+        <dt>1–6 · Tab</dt><dd>Fists, baton, katana, AK-47, grenade, petrol bomb (from Oga Shege)</dd>
+        <dt>Right mouse / K</dt><dd>Aim the AK or a throw (left mouse or J fires or throws, R reloads)</dd>
         <dt>G with a weapon</dt><dd>Rob the person in front of you</dd>
+        <dt>E at a rope</dt><dd>Pay ₦200 to the area boys to pass</dd>
         <dt>M</dt><dd>Big map</dd>
         <dt>Wheel</dt><dd>Camera distance</dd>
       </dl>
@@ -323,15 +325,11 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="joy" id="joy" hidden><i id="joyK"></i></div>
     <div class="tbtns">
       <button type="button" id="tHorn" hidden>HORN</button>
-      <button type="button" id="tGrab" hidden aria-label="Grab or put down">GRAB</button>
-      <button type="button" id="tKick" class="fightb" hidden aria-label="Kick">KICK</button>
-      <button type="button" id="tJump" hidden aria-label="Jump">JUMP</button>
-      <button type="button" id="tDodge" class="fightb" hidden aria-label="Dodge">DODGE</button>
-      <button type="button" id="tWeap" hidden aria-label="Change weapon">WEAPON</button>
-      <button type="button" id="tRun">RUN</button>
-      <button type="button" id="tBrake" hidden>BRAKE</button>
-      <button type="button" id="tPunch" class="fightb" hidden aria-label="Punch">PUNCH</button>
+      <button type="button" id="tGrab" hidden aria-label="Grab, rob or aim">GRAB</button>
+      <button type="button" id="tJump" hidden aria-label="Jump, or dodge in a fight">JUMP</button>
       <button type="button" class="act" id="tE">E</button>
+      <button type="button" id="tBrake" hidden>BRAKE</button>
+      <button type="button" id="tPunch" class="fightb tbig" hidden aria-label="Attack: tap tap tap for jab, cross, kick">ATTACK</button>
     </div>
   </div>
 </div>
@@ -391,7 +389,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=842b0cd6a2"></script>
+<script type="module" src="src/game.js?v=fd3d4e9f51"></script>
 
 </body>
 </html>

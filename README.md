@@ -71,8 +71,13 @@ Your life bar is always at the top left. Fights are fast: J or click punches (ja
 blow come out as soon as it allows), K or right click kicks, and a kick after two punches is the finisher that floors
 him. L or Q dodges (a quick slip that blows can't touch; hit straight after and it lands harder). G next to the man you
 are fighting slams him down ("jack" him); hit someone lying on the floor and you go down on him and keep hitting, blood
-spreading, until he stops moving. Running turns a punch into a takedown and a kick into a drop kick. Phones: the red
-buttons (PUNCH, KICK, DODGE) and GRAB. Each blow carries you onto your man and freezes for a moment when it lands.
+spreading, until he stops moving. Running turns a punch into a takedown and a kick into a drop kick. Each blow carries
+you onto your man and freezes for a moment when it lands.
+
+Phones have few buttons: ATTACK (tap, tap, tap = jab, cross and the kick that floors him; running: a takedown; with a
+gun FIRE, with a bomb THROW), JUMP (it turns into DODGE when a fight is on), E, and GRAB, which shows only when someone
+is close (ROB with a weapon in hand, AIM with a gun). The joystick walks when pushed a little and runs when pushed all
+the way. Tap the weapon name at the top to change weapon.
 Area boys circle you, step into their blows and sometimes slip yours. You are stronger than anyone on the street, but a
 gang of area boys can beat you to death, and so can a fast car; you wake up at the LUTH gate in Idi-Araba with full life
 and no stars. People bleed when hit; a person hit hard by a car twice (or once at highway speed) dies.
@@ -104,20 +109,26 @@ waking up at LUTH costs a hospital bill, and an arrest costs a fine.
 
 ## Weapons: Oga Shege's black market
 A man at a table under a red umbrella on a side street a few minutes from your house (on the map: Oga Shege) sells a
-police baton (₦8,000), a katana (₦25,000), an AK-47 with 30 bullets (₦120,000) and more bullets (₦4,500 for 30). Press E
-near him. 1–4 or Tab (phones: WEAPON) picks fists, baton, katana or AK. The baton and katana go in your right hand and
+police baton (₦8,000), a katana (₦25,000), an AK-47 with 30 bullets (₦120,000), more bullets (₦4,500 for 30), grenades
+(₦15,000 for 3) and petrol bombs (₦6,000 for 3). Press E near him. 1–6 or Tab (phones: tap the weapon name) picks fists,
+baton, katana, AK, grenade or petrol bomb. The baton and katana go in your right hand and
 hit far harder (the katana kills); the AK rides on your back until you use it. Aim with the right mouse button or K
-(phones: AIM), fire with the left button or J (phones: FIRE), R reloads. Firing without aiming picks the nearest threat
-in front of you. Gunshots empty the street. Models: `assets/models/weapon_ak.glb`, `weapon_katana.glb`, `weapon_baton.glb`
+(phones: AIM), fire with the left button or J (phones: FIRE), R reloads. Firing without aiming helps only a little: it
+picks someone right in front of you, and the bullets spread, so aiming is a skill. Gunshots empty the street.
+Grenades and petrol bombs are thrown the same way (at the crosshair when aiming): a grenade bounces and goes off after two
+seconds; a petrol bomb breaks and the ground burns for about ten seconds, setting people (and you) on fire. Models: `assets/models/weapon_ak.glb`, `weapon_katana.glb`, `weapon_baton.glb`
 (the hands are put on the rifle by two-bone IK each frame).
 
 ## The police: 1 to 5 stars
-Crimes give stars: a punch at a stranger, a robbery, a gunshot near people (one star), a killing (two more), shooting at
-an officer (three at least), killing one (two more). A police van comes for you; when it gets close it stops and
+Stars grow with the crime: a few punches at strangers, a robbery, a gunshot near people or a stolen car give one star,
+and small crimes never go past two. Killings go up to three. Only attacking the police goes higher: hitting an officer
+gives two stars, shooting at one three, and each officer killed more. A police van comes for you; when it gets close it stops and
 the officers jump out (`assets/people/police_f.glb`, `police_m.glb`, rigged by `tools/autorig.py`).
-- 1–2 stars: they run you down with batons. Stand still next to them and you are BUSTED (cell at Mushin police station,
-  a fine, and they take your AK, sometimes the katana); fight back and they beat you, and a beating ends in handcuffs.
-- 3 stars: rifles. They find a clear line and shoot in bursts. They also draw rifles when you have a gun out.
+- 1 star: they run you down and grab you, no beating. Stand still next to them and you are BUSTED (cell at Mushin police
+  station, a fine, and they take your AK and bombs, sometimes the katana). Stop your car near them and they walk to your
+  door and pull you out.
+- 2 stars: batons too if you fight back or keep running; a beating ends in handcuffs.
+- 3 stars: rifles. They find a clear line and shoot in bursts (never below three stars).
 - 4 stars: a second van, faster shooting. 5 stars: a third van, and roadblocks: a van across the road ahead of you with
   officers behind it.
 Kill an officer and his rifle lies on the ground: walk over it to take it (or 20 bullets if you have one). Get far
@@ -127,6 +138,20 @@ Bullets that get you are WASTED: you wake up at LUTH.
 A fight, a killing or a kidnapping also brings a police van to the spot: it parks anyhow, an officer walks to the scene
 and the driver stands at his door while everyone still fighting or lying there walks into the van, then the officers
 climb back in and it drives off. If you were part of it, you go too.
+
+## Explosions and wrecks
+Cars take damage from bullets, hard crashes and blasts: first smoke from the bonnet, then fire (everybody jumps out), then
+a blast that throws people down or kills them and sets the cars around alight. The burnt wreck stays until you are far
+away. Flames and smoke are soft dots drawn in two batches (one draw each), so a burning street stays cheap on phones.
+
+## Rope tolls
+On some side streets two area boys hold a rope across the road with a ₦200 TO PASS sign. Press E to pay and they drop the
+rope. Walk past without paying and they fight you (their friends join); drive through and the rope breaks: they chase
+you throwing stones, then give up and tie it again. Traffic pays and passes.
+
+## On the street
+People gisting in a group get a speech bubble over their heads, a quarrel a red one, a phone call a ringing phone.
+The dead are taken away as soon as you look away.
 
 ## Eko Grand Hotel
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
