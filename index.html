@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="b8c914a5f8">
+<meta name="ns-build" content="b8fdedf800">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -203,6 +203,10 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   .chip{font-size:14px;padding:5px 12px 5px 8px}.chip .w{display:none}
   .speedo b{font-size:46px}
 }
+@media (max-width:480px){
+  .tr{gap:6px}.iconbtn{width:40px;height:40px}.chip svg{display:none}
+  .tl{max-width:calc(100vw - 230px - var(--sl) - var(--sr))}
+}
 @media (orientation:portrait) and (max-width:760px){
   body.touchui #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:118px;height:118px}
   body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
@@ -358,7 +362,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=b8c914a5f8"></script>
+<script type="module" src="src/game.js?v=b8fdedf800"></script>
 
 </body>
 </html>

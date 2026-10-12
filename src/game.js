@@ -12,11 +12,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=b8c914a5f8';
-import { MapView } from './mapview.js?v=b8c914a5f8';
+import * as CLOCK from './clock.js?v=b8fdedf800';
+import { MapView } from './mapview.js?v=b8fdedf800';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='b8c914a5f8';
+const BUILD='b8fdedf800';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1831,7 +1831,8 @@ function enterCar(v){
 /* ---- carjack: you walk to the driver's door, threaten, and the driver climbs out with hands up and runs (an area boy may fight you for it) */
 const JACK={go:null};
 const doorOf=(v,out)=>{ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx, o=OPEN_RIDE[v.type], ow=v.c.def.W/2+(o?.75:out), fw=o?0:.35; return {x:v.x+lx*ow+hx*fw,z:v.z+lz*ow+hz*fw,lx,lz,hx,hz}; };
-function carjack(v){ if(!hero||!hero.act.threaten||mode!=='walk'||(hero.ov&&hero.ov.lock)||CARRY.p) return enterCar(v);
+function carjack(v){ if(mode!=='walk'||FIGHT.ko||(hero&&hero.ov&&hero.ov.lock)) return; if(CARRY.p) carryDrop();
+  if(!hero||!hero.act.threaten){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); return enterCar(v); }   // no threatening move yet: the driver just runs
   v.ai=null; v.speed=0; v.jacked=true; v.parked=false; const d=doorOf(v,1.15), c={x:d.x,z:d.z}; resolveCircle(c,.34); JACK.go={x:c.x,z:c.z,v,t:0}; player.speed=Math.max(player.speed,1); }
 function jackThreaten(v){ if(mode!=='walk'||FIGHT.ko){ return; } const d=doorOf(v,1.15); player.yaw=Math.atan2(-d.lx,-d.lz); player.speed=0;
   FIGHT.heat=Math.min(3.4,FIGHT.heat+(v.type==='police'?1.4:.5)); FIGHT.crimeT=0; incident(v.x,v.z,'carjack');

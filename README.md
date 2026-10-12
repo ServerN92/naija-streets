@@ -66,14 +66,28 @@ A woman plays as the girl in the white crop top and walks, runs and fights with 
 the looks of your own side only.
 
 ## Life, fighting and the police
-Your life bar is always at the top left. On foot: J or click to punch, K or right click to kick, Space to jump;
-running turns a punch into a takedown and a kick into a drop kick (phones: the red buttons). In a fight you keep
-facing your man, and quick blows in a row hit harder. You are stronger than anyone on the street, but a gang of area
-boys can beat you to death, and so can a fast car; you wake up at the LUTH gate in Idi-Araba with full life and no
-stars. People bleed when hit; a person hit hard by a car twice (or once at highway speed) dies.
+Your life bar is always at the top left. Fights are fast: J or click punches (jab, cross, jab… presses made during a
+blow come out as soon as it allows), K or right click kicks, and a kick after two punches is the finisher that floors
+him. L or Q dodges (a quick slip that blows can't touch; hit straight after and it lands harder). G next to the man you
+are fighting slams him down ("jack" him); hit someone lying on the floor and you go down on him and keep hitting, blood
+spreading, until he stops moving. Running turns a punch into a takedown and a kick into a drop kick. Phones: the red
+buttons (PUNCH, KICK, DODGE) and GRAB. Each blow carries you onto your man and freezes for a moment when it lands.
+Area boys circle you, step into their blows and sometimes slip yours. You are stronger than anyone on the street, but a
+gang of area boys can beat you to death, and so can a fast car; you wake up at the LUTH gate in Idi-Araba with full life
+and no stars. People bleed when hit; a person hit hard by a car twice (or once at highway speed) dies.
+Moves made from other moves for now (until the Mixamo ones arrive): the ground punches (crouched legs from Standing Up,
+arms from Punching), the dodge (Big Side Hit, and its mirror), hands up (Hand Raising mirrored onto both arms).
 
 G (phones: GRAB) picks someone up over your shoulder; G again puts them down. Area boys who see it come to beat you.
-Taking a car with someone in it drags the driver out; some get up fighting.
+E at a car with someone in it is a carjack: you walk to the driver's door and threaten him (Threatening); he climbs out
+with his hands up and runs, passengers too, and some area boys come back fighting for their car.
+
+## Your phone: OYA RIDE
+P (phones: the phone button at the top) takes out your phone; you hold it in your right hand
+(`assets/models/phone.glb`). Pick where you are going: a driver accepts and drives to the street nearest you by the real
+streets (one-ways included), with an OYA RIDE sign on the roof and a T on the minimap. Walk to the car and press E
+(or Get in on the phone). He drives you there through the traffic with the route on the minimap; skip the ride from the
+phone, or get down anywhere when the car is slow. You pay the fare shown (cash).
 
 A fight, a killing or a kidnapping brings the nearest police van to the spot. It parks anyhow and everyone still
 fighting or lying there walks into the van (the officers stay inside until a police officer model is added). If you
@@ -85,11 +99,18 @@ The office tower a short walk from your house is the hotel. Walk to the yellow r
 bar (`assets/models/hotel_bar.glb`, downloaded only when you come near). Women dance on the floor there.
 
 ## Wardrobe
-At home, walk to the wardrobe and press E to change your look: your usual character or any of the city's people.
+At home, walk to the wardrobe and press E to change your clothes. You keep your own face: each look lends you its body
+and clothes, its head and neck are cut away (with loose braids) and your own head and neck are skinned onto its
+skeleton, so they move with it. Men pick from the men's clothes, women from the women's. Shirt and trousers can be dyed
+(a dress, kaftan or thobe takes one colour); the dye keeps the cloth's folds and prints and leaves skin alone.
 Extra full looks (`outfit_suit`, `outfit_thobe`, `outfit_tracksuit`, `outfit_dress_pink`, `outfit_casual`) show up by
 themselves once `assets/people/<id>.glb` exists: rig the model in Mixamo, download FBX *with skin*, convert and pack it
 like a character (above), name it after its id, and run `tools/manifest.py`. `tools/mixamo_prep.py` turns a Tripo/Meshy
 FBX into a Mixamo upload (`name:casual` repaints a revealing outfit as a top and jeans).
+
+## Billboards
+`assets/models/billboard.glb` (Poly by Google) stands along the main roads, angled to the traffic, with six Lagos ads
+drawn in the game; they light up at night.
 
 ## Trees
 Street trees and palms are 8-view pictures of real tree models (`tools/impostor.py`), drawn in one batch per kind.
