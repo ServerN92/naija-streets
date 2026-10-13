@@ -12,11 +12,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=0075047419';
-import { MapView } from './mapview.js?v=0075047419';
+import * as CLOCK from './clock.js?v=3a9f3ad8b5';
+import { MapView } from './mapview.js?v=3a9f3ad8b5';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='0075047419';
+const BUILD='3a9f3ad8b5';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1477,22 +1477,29 @@ const INT=buildInterior();
 Object.assign(INT,{bounds:{x0:-5.6,x1:5.6,z0:-4.6,z1:4.6},cam:{x0:-5.75,x1:5.75,z0:-4.75,z1:4.75,y0:.5,y1:3},label:'Your room · Mushin',camDist:2.7,
   out:()=>({x:APT.front.x+APT.nx*.8,z:APT.front.z+APT.nz*.8,ry:APT.ry}),update:dt=>{ if(INT.fan) INT.fan.rotation.y+=dt*4; }});
 let ROOM=INT;
-/* ================= your room, built in Blender (assets/models/room.glb) =================
-   The inside of your house is the room made in Blender: exported as glTF (assets/models/room.glb), its wave-grain oak floor
-   and walnut baked to assets/models/wood_oak.jpg and wood_walnut.jpg. The game finds what it needs by the object names:
-   the door (Door) is the way out, a wardrobe (any object named Wardrobe…) is where you change clothes, the window glass
-   (Window_Glass) lets the sun in, the lamps (Ceiling_Lamp, Lamp_Shade) light the room. Walls missing on a side are added.
+/* ================= your home, built in Blender (assets/models/room.glb) =================
+   The inside of your house is the flat made in Blender (sitting room, dining, kitchen, bathroom, hallway and your bedroom),
+   exported as glTF. The game finds what it needs by the object names: the front door (Front_Door; else Door) is the way in
+   and out, a wardrobe (Wardrobe…) is where you change clothes, window glass (Window_Glass…) shows the street and lets the
+   sun in, each ceiling lamp (Ceiling_Lamp…) and the bedside Lamp_Shade light their room, walls (Wall…) stop you and the
+   camera. Wood, tiles and granite are pictures mapped by material name (TEXMAP). Walls missing on a side are added.
    Until the file is in (or if it cannot load), the old built-in flat is used. */
 const MYROOM={ready:false,loading:null};
 const texUrl=f=>{ const u=`assets/models/${f}`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
+const WOOD_T=2*Math.PI*19/60;
+const TEXMAP={'Oak Floor':['wood_oak.jpg',WOOD_T,.4],'Walnut':['wood_walnut.jpg',WOOD_T,.45],'Floor Tile':['tile_floor.jpg',1.2,.22],'Bath Tile':['tile_bath.jpg',.6,.15],
+  'Bath Floor':['tile_bathfloor.jpg',.6,.5],'Kitchen Tile':['tile_kitchen.jpg',.6,.12],'Granite':['granite.jpg',1,.25]};
 function loadMyRoom(){ if(MYROOM.loading) return MYROOM.loading;
-  const u=murl('room'); DL.exp[u]=MANIFEST['assets/models/room.glb']||210000;
-  const tl=new THREE.TextureLoader(), tex=f=>tl.loadAsync(texUrl(f)).then(t=>{ t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=Math.min(8,maxAniso); return t; });
-  MYROOM.loading=Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),tex('wood_oak.jpg'),tex('wood_walnut.jpg')]).then(([g,oak,wal])=>{ buildMyRoom(g,oak,wal); MYROOM.ready=true; })
+  const u=murl('room'); DL.exp[u]=MANIFEST['assets/models/room.glb']||560000;
+  const tl=new THREE.TextureLoader(), tex=f=>tl.loadAsync(texUrl(f)).then(t=>{ t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=Math.min(8,maxAniso); return t; }).catch(()=>null);
+  MYROOM.loading=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(async g=>{ const used=new Set(); g.scene.traverse(o=>{ if(o.isMesh&&o.material) used.add(o.material.name); });
+      const names=Object.keys(TEXMAP).filter(n=>used.has(n)), tx=await Promise.all(names.map(n=>tex(TEXMAP[n][0]))), texs={}; names.forEach((n,i)=>{ if(tx[i]) texs[n]=tx[i]; });
+      buildMyRoom(g,texs); MYROOM.ready=true; })
     .catch(e=>{ console.warn('room.glb could not load; the built-in room stays',e); MYROOM.failed=true; });
   return MYROOM.loading; }
-// a Lagos view for the window: sky, low roofs, zinc and palms
-function lagosView(){ const [c,g]=cv(1024,512), sk=g.createLinearGradient(0,0,0,512); sk.addColorStop(0,'#7fb3e0'); sk.addColorStop(.6,'#cfe2ef'); sk.addColorStop(1,'#f1e6cf'); g.fillStyle=sk; g.fillRect(0,0,1024,512);
+// a Lagos view for the windows: sky, low roofs, zinc and palms (one picture shared by all windows)
+let LAGOS_VIEW=null;
+function lagosView(){ if(LAGOS_VIEW) return LAGOS_VIEW; const [c,g]=cv(1024,512), sk=g.createLinearGradient(0,0,0,512); sk.addColorStop(0,'#7fb3e0'); sk.addColorStop(.6,'#cfe2ef'); sk.addColorStop(1,'#f1e6cf'); g.fillStyle=sk; g.fillRect(0,0,1024,512);
   const rnd=seeded(5); for(let i=0;i<70;i++){ const w=40+rnd()*110, h=60+rnd()*150, x=rnd()*1080-40, y=512-h*(.55+rnd()*.45);
     g.fillStyle=`hsl(${20+rnd()*30},${20+rnd()*25}%,${62+rnd()*18}%)`; g.fillRect(x,y,w,512-y);
     g.fillStyle=`hsl(${15+rnd()*20},${18+rnd()*20}%,${30+rnd()*25}%)`; g.beginPath(); g.moveTo(x-6,y); g.lineTo(x+w/2,y-14-rnd()*12); g.lineTo(x+w+6,y); g.fill();   // zinc roof
@@ -1500,16 +1507,16 @@ function lagosView(){ const [c,g]=cv(1024,512), sk=g.createLinearGradient(0,0,0,
   g.strokeStyle='#4b3a2a'; g.lineWidth=5; for(let i=0;i<5;i++){ const x=80+rnd()*880, b=512, t=200+rnd()*90; g.beginPath(); g.moveTo(x,b); g.quadraticCurveTo(x+10,(b+t)/2,x+4,t); g.stroke();
     g.fillStyle='#2f5a2a'; for(let k=0;k<7;k++){ const a=k/7*Math.PI*2; g.beginPath(); g.ellipse(x+4+Math.cos(a)*30,t+Math.sin(a)*10,34,7,a,0,7); g.fill(); } }
   g.strokeStyle='rgba(30,30,30,.6)'; g.lineWidth=2; g.beginPath(); g.moveTo(0,250); g.quadraticCurveTo(512,290,1024,240); g.stroke();   // power line
-  return tx(c,true,false); }
-function buildMyRoom(g,oak,wal){ const S=new THREE.Scene(); S.background=new THREE.Color(0x1a1714);
+  return LAGOS_VIEW=tx(c,true,false); }
+function buildMyRoom(g,texs){ const S=new THREE.Scene(); S.background=new THREE.Color(0x1a1714);
   const envRT=pmrem.fromScene(new RoomEnvironment(),.04); S.environment=envRT.texture; S.environmentIntensity=.45;
   const root=g.scene; root.updateMatrixWorld(true);
   const nameOf=o=>{ for(let q=o;q&&q!==root;q=q.parent) if(q.name&&!/^mesh_\d+(_\d+)?$/.test(q.name)) return q.name; return ''; };   // packed files keep the names on the parent node
   const parts=[]; root.traverse(o=>{ if(!o.isMesh) return; const n=nameOf(o); const geo=floatGeo(o.geometry.clone()); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox();
     parts.push({name:n||'',geo,mat:o.material,bb:geo.boundingBox.clone()}); });
   const named=re=>parts.filter(p=>re.test(p.name)), boxOf=list=>{ const b=new THREE.Box3(); for(const p of list) b.union(p.bb); return b; };
-  const floorB=boxOf(named(/^Floor/i)).isEmpty()?boxOf(parts):boxOf(named(/^Floor/i)), x0=floorB.min.x, x1=floorB.max.x, z0=floorB.min.z, z1=floorB.max.z, cx=(x0+x1)/2, cz=(z0+z1)/2;
-  const ceilB=boxOf(named(/^Ceiling$/i)), H=ceilB.isEmpty()?3:ceilB.min.y;
+  const floors=named(/^Floor(?!_?Lamp)/i), floorB=floors.length?boxOf(floors):boxOf(parts), x0=floorB.min.x, x1=floorB.max.x, z0=floorB.min.z, z1=floorB.max.z, cx=(x0+x1)/2, cz=(z0+z1)/2;
+  const ceilB=boxOf(named(/^Ceiling(_[A-Z]$|$)/i)), H=ceilB.isEmpty()?3:ceilB.min.y;
   const matBy=name=>{ const p=parts.find(q=>q.mat&&q.mat.name===name); return p?p.mat:null; };
   // a side without a wall gets one (plaster, like the others)
   const walls=named(/^Wall/i), plaster=matBy('Wall Plaster')||new THREE.MeshStandardMaterial({color:0xd1c7b3,roughness:.85});
@@ -1517,52 +1524,72 @@ function buildMyRoom(g,oak,wal){ const S=new THREE.Scene(); S.background=new THR
     const has=walls.some(w=>ax==='x'?(out<0?w.bb.max.x<=v+.06&&w.bb.max.x>=v-.25:w.bb.min.x>=v-.06&&w.bb.min.x<=v+.25):(out<0?w.bb.max.z<=v+.06&&w.bb.max.z>=v-.25:w.bb.min.z>=v-.06&&w.bb.min.z<=v+.25));
     if(has) continue; const t=.15, geo=ax==='x'?new THREE.BoxGeometry(t,H,z1-z0):new THREE.BoxGeometry(x1-x0,H,t);
     geo.translate(ax==='x'?v+out*t/2:cx,H/2,ax==='x'?cz:v+out*t/2); geo.computeBoundingBox(); parts.push({name:'Wall_Added',geo,mat:plaster,bb:geo.boundingBox.clone()}); }
-  // wood: the baked wave grain, mapped on each face by its direction (one picture per 2 m)
-  const T=2*Math.PI*19/60;
-  for(const p of parts){ const wood=p.mat&&(p.mat.name==='Oak Floor'?oak:p.mat.name==='Walnut'?wal:null); if(!wood) continue;
+  // wood, tiles, granite: a picture mapped on each face by its direction (TEXMAP: file, metres per picture, roughness)
+  const texMats={};
+  for(const p of parts){ const nm=p.mat&&p.mat.name, tex=nm&&texs[nm]; if(!tex) continue; const rep=TEXMAP[nm][1];
     const G=p.geo.index?p.geo.toNonIndexed():p.geo; if(!G.attributes.normal) G.computeVertexNormals(); const P=G.attributes.position, N=G.attributes.normal, uv=new Float32Array(P.count*2);
     for(let i=0;i<P.count;i++){ const nx=Math.abs(N.getX(i)), ny=Math.abs(N.getY(i)), nz=Math.abs(N.getZ(i)), x=P.getX(i), y=P.getY(i), z=P.getZ(i);
-      const [u,v]=ny>=nx&&ny>=nz?[x,z]:nz>=nx?[x,y]:[z,y]; uv[i*2]=u/T; uv[i*2+1]=v/T; }
-    G.setAttribute('uv',new THREE.BufferAttribute(uv,2)); p.geo=G; p.mat=p.mat.userData.wood||(p.mat.userData.wood=new THREE.MeshStandardMaterial({map:wood,roughness:p.mat.roughness??.4,metalness:0,name:p.mat.name})); }
+      const [u,v]=ny>=nx&&ny>=nz?[x,z]:nz>=nx?[x,y]:[z,y]; uv[i*2]=u/rep; uv[i*2+1]=v/rep; }
+    G.setAttribute('uv',new THREE.BufferAttribute(uv,2)); p.geo=G; p.mat=texMats[nm]||(texMats[nm]=new THREE.MeshStandardMaterial({map:tex,roughness:TEXMAP[nm][2],metalness:0,name:nm})); }
   // glass you can see through without the cost of real refraction
   const glassM=new THREE.MeshStandardMaterial({color:0xdfeeff,transparent:true,opacity:.12,roughness:.05,metalness:.2,depthWrite:false});
   for(const p of parts) if(p.mat&&(p.mat.name==='Glass'||p.mat.transmission>0)) p.mat=glassM;
   // one draw per material
   const byMat=new Map(); for(const p of parts){ const k=p.mat||plaster; if(!byMat.has(k)) byMat.set(k,[]); const G=p.geo.index?p.geo.toNonIndexed():p.geo;
     for(const a of Object.keys(G.attributes)) if(!['position','normal','uv'].includes(a)) G.deleteAttribute(a); if(!G.attributes.normal) G.computeVertexNormals(); if(!G.attributes.uv) G.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(G.attributes.position.count*2),2)); byMat.get(k).push(G); }
-  for(const [mat,list] of byMat){ const m=new THREE.Mesh(mergeGeometries(list,false),mat); const big=mat===plaster||/Wall|Ceiling|Floor/.test(mat.name||'');
-    m.castShadow=!big&&mat!==glassM; m.receiveShadow=mat!==glassM; if(mat===glassM) m.renderOrder=2; S.add(m); }
-  // the window: a view of the street, sunlight coming in, cool daylight filling the room
-  const glass=named(/^Window_Glass/i); let sunSet=false;
-  for(const w of glass){ const b=w.bb, c=b.getCenter(new THREE.Vector3()), sz=b.getSize(new THREE.Vector3()), alongX=sz.x<sz.z, n=alongX?new THREE.Vector3(Math.sign(c.x-cx)||1,0,0):new THREE.Vector3(0,0,Math.sign(c.z-cz)||1);
-    const ww=(alongX?sz.z:sz.x)*2.6, wh=sz.y*2.6, v=new THREE.Mesh(new THREE.PlaneGeometry(ww,wh),new THREE.MeshBasicMaterial({map:lagosView(),fog:false}));
+  for(const [mat,list] of byMat){ const m=new THREE.Mesh(mergeGeometries(list,false),mat), flat=/Floor|^Rug/.test(mat.name||'');
+    m.castShadow=!flat&&mat!==glassM; m.receiveShadow=mat!==glassM; if(mat===glassM) m.renderOrder=2; S.add(m); }
+  // windows: a view of the street; the biggest lets the sun in
+  const glass=named(/^Window_Glass/i).sort((a,b)=>{ const s=p=>{ const z=p.bb.getSize(new THREE.Vector3()); return Math.max(z.x,z.z)*z.y; }; return s(b)-s(a); });
+  glass.forEach((w,i)=>{ const b=w.bb, c=b.getCenter(new THREE.Vector3()), sz=b.getSize(new THREE.Vector3()), alongX=sz.x<sz.z, n=alongX?new THREE.Vector3(Math.sign(c.x-cx)||1,0,0):new THREE.Vector3(0,0,Math.sign(c.z-cz)||1);
+    const v=new THREE.Mesh(new THREE.PlaneGeometry((alongX?sz.z:sz.x)*2.6,sz.y*2.6),new THREE.MeshBasicMaterial({map:lagosView(),fog:false}));
     v.position.copy(c).addScaledVector(n,2.4); v.position.y=c.y+.3; v.lookAt(c.x,v.position.y,c.z); S.add(v);
-    if(!sunSet){ sunSet=true; const sun=new THREE.DirectionalLight(0xfff0dc,2.4); sun.position.copy(c).addScaledVector(n,5).add(new THREE.Vector3(0,3.6,0)); sun.target.position.copy(c).addScaledVector(n,-2.6); sun.target.position.y=0;
-      sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); const sc=sun.shadow.camera; sc.left=-4.5; sc.right=4.5; sc.top=4.5; sc.bottom=-4.5; sc.near=.5; sc.far=16; sun.shadow.bias=-.0006; sun.shadow.normalBias=.02; sc.layers.enable(1); S.add(sun,sun.target);
-      const fill=new THREE.PointLight(0xcfe0ff,6,8,2); fill.position.copy(c).addScaledVector(n,-.7); S.add(fill); } }
-  S.add(new THREE.HemisphereLight(0xe2e9f2,0x3b2c20,.75));
-  { const b=boxOf(named(/^Ceiling_Lamp/i)), c=b.isEmpty()?new THREE.Vector3(cx,H-.1,cz):b.getCenter(new THREE.Vector3()); const l=new THREE.PointLight(0xffe2c4,16,11,1.7); l.position.set(c.x,c.y-.18,c.z); S.add(l); }
+    if(i===0){ // the sun comes in from this side; walls and ceilings cast shadows, so it only reaches the floor through windows
+      const sun=new THREE.DirectionalLight(0xfff0dc,2.4), ctr=new THREE.Vector3(cx,0,cz), dir=n.clone().multiplyScalar(6).add(new THREE.Vector3(0,4.2,0)).normalize(), R=Math.hypot(x1-x0,z1-z0)/2+.6;
+      sun.position.copy(ctr).addScaledVector(dir,R+8); sun.target.position.copy(ctr);
+      sun.castShadow=true; const sm=Q.sh||1024; sun.shadow.mapSize.set(sm,sm); const sc=sun.shadow.camera; sc.left=-R; sc.right=R; sc.top=R; sc.bottom=-R; sc.near=.5; sc.far=2*R+16;
+      sun.shadow.bias=-.0005; sun.shadow.normalBias=.03; sc.layers.enable(1); S.add(sun,sun.target); } });
+  S.add(new THREE.HemisphereLight(0xe2e9f2,0x3b2c20,.8));
+  // a warm light under each ceiling lamp (lamps made of several pieces share one light), and the bedside lamp
+  const lamps=new Map(); for(const p of named(/^Ceiling_Lamp/i)){ const k=p.name.replace(/[._]\d+$/,''); lamps.set(k,(lamps.get(k)||new THREE.Box3()).union(p.bb)); }
+  for(const [,b] of lamps){ const c=b.getCenter(new THREE.Vector3()), low=c.y<2.4, s=b.getSize(new THREE.Vector3()); const l=new THREE.PointLight(0xffe2c4,low?6:(s.x*s.z>.2?16:12),low?6:10,1.7); l.position.set(c.x,c.y-(low?.12:.2),c.z); S.add(l); }
+  if(!lamps.size){ const l=new THREE.PointLight(0xffe2c4,16,11,1.7); l.position.set(cx,H-.3,cz); S.add(l); }
   for(const p of named(/^Lamp_Shade/i)){ const c=p.bb.getCenter(new THREE.Vector3()); const l=new THREE.PointLight(0xffbf78,3,4.5,2); l.position.copy(c); S.add(l); }
-  // where you can walk: anything between knee and head height blocks a 20 cm cell
-  const CS=.2, gw=Math.ceil((x1-x0)/CS)+1, gd=Math.ceil((z1-z0)/CS)+1, grid=new Uint8Array(gw*gd), a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3();
-  for(const p of parts){ if(/^(Floor|Ceiling|Rug|Skirt)/i.test(p.name)) continue; const G=p.geo, P=G.attributes.position, I=G.index, nT=(I?I.count:P.count)/3;
+  // where you can walk: anything between knee and head height blocks a 10 cm cell. The camera is stopped by full-height walls.
+  const CS=.1, gw=Math.ceil((x1-x0)/CS)+1, gd=Math.ceil((z1-z0)/CS)+1, grid=new Uint8Array(gw*gd), camG=new Uint8Array(gw*gd), a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3(), e=.006;
+  for(const p of parts){ if(/^(Floor(?!_?Lamp)|Ceiling|Rug|Skirt|Doormat|POP)/i.test(p.name)) continue; const G=p.geo, P=G.attributes.position, I=G.index, nT=(I?I.count:P.count)/3;
+    const wallFull=/^Wall/i.test(p.name)&&p.bb.min.y<1.2&&p.bb.max.y>2.0;
     for(let t=0;t<nT;t++){ const i0=I?I.getX(t*3):t*3, i1=I?I.getX(t*3+1):t*3+1, i2=I?I.getX(t*3+2):t*3+2; a.fromBufferAttribute(P,i0); b.fromBufferAttribute(P,i1); c.fromBufferAttribute(P,i2);
       const ya=Math.min(a.y,b.y,c.y), yb=Math.max(a.y,b.y,c.y); if(yb<.3||ya>1.7) continue;
-      const gi0=Math.max(0,Math.floor((Math.min(a.x,b.x,c.x)-x0)/CS)), gi1=Math.min(gw-1,Math.floor((Math.max(a.x,b.x,c.x)-x0)/CS)), gj0=Math.max(0,Math.floor((Math.min(a.z,b.z,c.z)-z0)/CS)), gj1=Math.min(gd-1,Math.floor((Math.max(a.z,b.z,c.z)-z0)/CS));
-      for(let j=gj0;j<=gj1;j++) for(let i=gi0;i<=gi1;i++) grid[j*gw+i]=1; } }
+      const ax=Math.min(a.x,b.x,c.x), bx=Math.max(a.x,b.x,c.x), az=Math.min(a.z,b.z,c.z), bz=Math.max(a.z,b.z,c.z), ex=bx-ax>3*e?e:0, ez=bz-az>3*e?e:0;   // a hair inside, so a wall ending on a cell line does not block the next cell (thin glass still blocks)
+      const gi0=Math.max(0,Math.floor((ax+ex-x0)/CS)), gi1=Math.min(gw-1,Math.floor((bx-ex-x0)/CS)), gj0=Math.max(0,Math.floor((az+ez-z0)/CS)), gj1=Math.min(gd-1,Math.floor((bz-ez-z0)/CS));
+      for(let j=gj0;j<=gj1;j++) for(let i=gi0;i<=gi1;i++){ grid[j*gw+i]=1; if(wallFull) camG[j*gw+i]=1; } } }
   const cell=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:grid[j*gw+i]; };
-  const free=(x,z,r=.26)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z);
-  const nearFree=(x,z)=>{ if(free(x,z)) return {x,z}; for(let r=.2;r<3;r+=.2) for(let k=0;k<16;k++){ const q={x:x+Math.cos(k/16*6.283)*r,z:z+Math.sin(k/16*6.283)*r}; if(free(q.x,q.z)) return q; } return {x:cx,z:cz}; };
-  // the door: the way out, and where you come in (facing into the room)
-  const inward=bb=>{ const c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3()); const d=[[c.x-x0,1,0],[x1-c.x,-1,0],[c.z-z0,0,1],[z1-c.z,0,-1]].sort((p,q)=>p[0]-q[0])[0]; return {c,sz,n:new THREE.Vector3(d[1],0,d[2])}; };
+  const R=.19, free=(x,z,r=R)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z)&&!cell(x-r*.7,z-r*.7)&&!cell(x+r*.7,z-r*.7)&&!cell(x-r*.7,z+r*.7)&&!cell(x+r*.7,z+r*.7);
+  const nearFree=(x,z)=>{ if(free(x,z)) return {x,z}; for(let r=.1;r<3;r+=.1) for(let k=0;k<24;k++){ const q={x:x+Math.cos(k/24*6.283)*r,z:z+Math.sin(k/24*6.283)*r}; if(free(q.x,q.z)) return q; } return {x:cx,z:cz}; };
+  const camWall=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<0||j<0||i>=gw||j>=gd?0:camG[j*gw+i]; };
+  // which way an object faces: across its thin side, toward the side you can stand on
+  const facing=bb=>{ const c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3()), thinX=sz.x<sz.z, d=(thinX?sz.x:sz.z)/2;
+    let best=null; for(const s of [1,-1]){ const n=thinX?new THREE.Vector3(s,0,0):new THREE.Vector3(0,0,s); let k=1;
+      for(let r=.12;r<.5;r+=.05) if(cell(c.x+n.x*(d+r),c.z+n.z*(d+r))){ k=0; break; }   // a wall right behind it: that is its back
+      if(k) for(const r of [.45,.7,1.0]) if(free(c.x+n.x*(d+r),c.z+n.z*(d+r))) k++; if(!best||k>best.k) best={n,k}; }
+    return {c,sz,n:best.n,d}; };
+  // the front door: the way out, and where you come in (facing into the flat)
   let exit={x:cx,z:z1-.8}, spawn={x:cx,z:z1-1.2,ry:Math.PI};
-  { const d=boxOf(named(/^Door(?!_?Handle|_?Knob|_?Frame)/i)); if(!d.isEmpty()){ const {c,n}=inward(d); const e=nearFree(c.x+n.x*.55,c.z+n.z*.55), s=nearFree(c.x+n.x*1.1,c.z+n.z*1.1); exit={x:e.x,z:e.z}; spawn={x:s.x,z:s.z,ry:Math.atan2(n.x,n.z)}; } }
+  { let L=named(/^Front_?Door$/i); if(!L.length) L=named(/^Door(?!_?Handle|_?Knob|_?Frame|_?Panel|_?Lever)/i); const d=boxOf(L);
+    if(!d.isEmpty()){ const {c,n,d:h}=facing(d); const q=nearFree(c.x+n.x*(h+.5),c.z+n.z*(h+.5)), s=nearFree(c.x+n.x*(h+1.0),c.z+n.z*(h+1.0)); exit={x:q.x,z:q.z}; spawn={x:s.x,z:s.z,ry:Math.atan2(n.x,n.z)}; } }
   // the wardrobe: stand in front of it to change clothes (falls back to the bookshelf, then the middle of the room)
   let ward={x:cx,z:cz}, wardYaw=0; { const wb=boxOf(named(/wardrobe|closet|cupboard/i)), sb=boxOf(named(/^Shelf/i)), B=!wb.isEmpty()?wb:!sb.isEmpty()?sb:null;
-    if(B){ const {c,sz,n}=inward(B), depth=Math.abs(n.x)?sz.x:sz.z, q=nearFree(c.x+n.x*(depth/2+.55),c.z+n.z*(depth/2+.55)); ward=q; wardYaw=Math.atan2(n.x,n.z); } }
-  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,camDist:2.3,
+    if(B){ const {c,n,d}=facing(B), q=nearFree(c.x+n.x*(d+.55),c.z+n.z*(d+.55)); ward=q; wardYaw=Math.atan2(n.x,n.z); } }
+  const step=(nx,nz)=>{ if(free(nx,nz)){ player.x=nx; player.z=nz; return true; } return false; };
+  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,camDist:2.3,label:floors.length>1?'Your flat · Mushin':'Your room · Mushin',
     bounds:{x0:x0+.3,x1:x1-.3,z0:z0+.3,z1:z1-.3},cam:{x0:x0+.18,x1:x1-.18,z0:z0+.18,z1:z1-.18,y0:.45,y1:H-.15},
-    move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
+    // walking: straight on if free; else slide along what you hit, or turn a little toward a doorway
+    move(nx,nz){ const ox=player.x, oz=player.z, dx=nx-ox, dz=nz-oz; player.y=0; if(step(nx,nz)) return;
+      if(Math.abs(dx)>1e-5&&step(nx,oz)) return; if(Math.abs(dz)>1e-5&&step(ox,nz)) return;
+      for(const a of [.45,-.45,.9,-.9]){ const cs=Math.cos(a), sn=Math.sin(a), k=Math.cos(a); if(step(ox+(dx*cs-dz*sn)*k,oz+(dx*sn+dz*cs)*k)) return; } },
+    // the camera stops in front of the wall between you and it
+    camHit(t,d,dist){ const L=Math.hypot(d.x,d.z); if(L<1e-4) return dist; for(let s=.1;s<dist;s+=.05) if(camWall(t.x+d.x*s,t.z+d.z*s)) return s; return dist; },
     update(){} }); }
 
 /* ================= your character (Mixamo) ================= */
@@ -1833,7 +1860,7 @@ function updateCamera(dt){ let dist;
   if(mode!=='drive'){ let side=gunOut()&&ARMS.aim?.6:.35;   // over the shoulder; with the wardrobe open, you stand in the clear part of the screen
     if(WARD.open) side=-(WARD.px/2)/(innerWidth/2)*Math.tan(camera.fov*Math.PI/360)*camera.aspect*camState.dist;
     _t.x+=-Math.cos(camState.yaw)*side; _t.z+=Math.sin(camState.yaw)*side; }
-  let d=dist; if(mode!=='interior'){ d=Math.max(.7,Math.min(d,rayDist(_t,_d,dist)-.3)); }
+  let d=dist; if(mode!=='interior'){ d=Math.max(.7,Math.min(d,rayDist(_t,_d,dist)-.3)); } else if(ROOM.camHit) d=Math.max(.35,Math.min(d,ROOM.camHit(_t,_d,dist)-.2));
   camState.dist+=(d-camState.dist)*(d<camState.dist?1:1-Math.exp(-4*dt));
   _c.copy(_t).addScaledVector(_d,camState.dist);
   if(mode==='interior'){ const b=ROOM.cam; _c.x=clamp(_c.x,b.x0,b.x1); _c.z=clamp(_c.z,b.z0,b.z1); _c.y=clamp(_c.y,b.y0,b.y1); }
