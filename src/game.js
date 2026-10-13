@@ -12,11 +12,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=a77819cf0c';
-import { MapView } from './mapview.js?v=a77819cf0c';
+import * as CLOCK from './clock.js?v=0075047419';
+import { MapView } from './mapview.js?v=0075047419';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='a77819cf0c';
+const BUILD='0075047419';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1475,8 +1475,95 @@ function buildInterior(){
 const INT=buildInterior();
 // rooms you can be inside: your flat and the hotel lounge share the same walking, camera and exit code
 Object.assign(INT,{bounds:{x0:-5.6,x1:5.6,z0:-4.6,z1:4.6},cam:{x0:-5.75,x1:5.75,z0:-4.75,z1:4.75,y0:.5,y1:3},label:'Your room · Mushin',camDist:2.7,
-  out:()=>({x:APT.front.x+APT.nx*.8,z:APT.front.z+APT.nz*.8,ry:APT.ry}),update:dt=>{ INT.fan.rotation.y+=dt*4; }});
+  out:()=>({x:APT.front.x+APT.nx*.8,z:APT.front.z+APT.nz*.8,ry:APT.ry}),update:dt=>{ if(INT.fan) INT.fan.rotation.y+=dt*4; }});
 let ROOM=INT;
+/* ================= your room, built in Blender (assets/models/room.glb) =================
+   The inside of your house is the room made in Blender: exported as glTF (assets/models/room.glb), its wave-grain oak floor
+   and walnut baked to assets/models/wood_oak.jpg and wood_walnut.jpg. The game finds what it needs by the object names:
+   the door (Door) is the way out, a wardrobe (any object named Wardrobe…) is where you change clothes, the window glass
+   (Window_Glass) lets the sun in, the lamps (Ceiling_Lamp, Lamp_Shade) light the room. Walls missing on a side are added.
+   Until the file is in (or if it cannot load), the old built-in flat is used. */
+const MYROOM={ready:false,loading:null};
+const texUrl=f=>{ const u=`assets/models/${f}`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
+function loadMyRoom(){ if(MYROOM.loading) return MYROOM.loading;
+  const u=murl('room'); DL.exp[u]=MANIFEST['assets/models/room.glb']||210000;
+  const tl=new THREE.TextureLoader(), tex=f=>tl.loadAsync(texUrl(f)).then(t=>{ t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=Math.min(8,maxAniso); return t; });
+  MYROOM.loading=Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),tex('wood_oak.jpg'),tex('wood_walnut.jpg')]).then(([g,oak,wal])=>{ buildMyRoom(g,oak,wal); MYROOM.ready=true; })
+    .catch(e=>{ console.warn('room.glb could not load; the built-in room stays',e); MYROOM.failed=true; });
+  return MYROOM.loading; }
+// a Lagos view for the window: sky, low roofs, zinc and palms
+function lagosView(){ const [c,g]=cv(1024,512), sk=g.createLinearGradient(0,0,0,512); sk.addColorStop(0,'#7fb3e0'); sk.addColorStop(.6,'#cfe2ef'); sk.addColorStop(1,'#f1e6cf'); g.fillStyle=sk; g.fillRect(0,0,1024,512);
+  const rnd=seeded(5); for(let i=0;i<70;i++){ const w=40+rnd()*110, h=60+rnd()*150, x=rnd()*1080-40, y=512-h*(.55+rnd()*.45);
+    g.fillStyle=`hsl(${20+rnd()*30},${20+rnd()*25}%,${62+rnd()*18}%)`; g.fillRect(x,y,w,512-y);
+    g.fillStyle=`hsl(${15+rnd()*20},${18+rnd()*20}%,${30+rnd()*25}%)`; g.beginPath(); g.moveTo(x-6,y); g.lineTo(x+w/2,y-14-rnd()*12); g.lineTo(x+w+6,y); g.fill();   // zinc roof
+    g.fillStyle='rgba(40,48,58,.55)'; for(let k=0;k<3;k++) g.fillRect(x+8+k*(w/3),y+16,Math.max(6,w/6),18); }
+  g.strokeStyle='#4b3a2a'; g.lineWidth=5; for(let i=0;i<5;i++){ const x=80+rnd()*880, b=512, t=200+rnd()*90; g.beginPath(); g.moveTo(x,b); g.quadraticCurveTo(x+10,(b+t)/2,x+4,t); g.stroke();
+    g.fillStyle='#2f5a2a'; for(let k=0;k<7;k++){ const a=k/7*Math.PI*2; g.beginPath(); g.ellipse(x+4+Math.cos(a)*30,t+Math.sin(a)*10,34,7,a,0,7); g.fill(); } }
+  g.strokeStyle='rgba(30,30,30,.6)'; g.lineWidth=2; g.beginPath(); g.moveTo(0,250); g.quadraticCurveTo(512,290,1024,240); g.stroke();   // power line
+  return tx(c,true,false); }
+function buildMyRoom(g,oak,wal){ const S=new THREE.Scene(); S.background=new THREE.Color(0x1a1714);
+  const envRT=pmrem.fromScene(new RoomEnvironment(),.04); S.environment=envRT.texture; S.environmentIntensity=.45;
+  const root=g.scene; root.updateMatrixWorld(true);
+  const nameOf=o=>{ for(let q=o;q&&q!==root;q=q.parent) if(q.name&&!/^mesh_\d+(_\d+)?$/.test(q.name)) return q.name; return ''; };   // packed files keep the names on the parent node
+  const parts=[]; root.traverse(o=>{ if(!o.isMesh) return; const n=nameOf(o); const geo=floatGeo(o.geometry.clone()); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox();
+    parts.push({name:n||'',geo,mat:o.material,bb:geo.boundingBox.clone()}); });
+  const named=re=>parts.filter(p=>re.test(p.name)), boxOf=list=>{ const b=new THREE.Box3(); for(const p of list) b.union(p.bb); return b; };
+  const floorB=boxOf(named(/^Floor/i)).isEmpty()?boxOf(parts):boxOf(named(/^Floor/i)), x0=floorB.min.x, x1=floorB.max.x, z0=floorB.min.z, z1=floorB.max.z, cx=(x0+x1)/2, cz=(z0+z1)/2;
+  const ceilB=boxOf(named(/^Ceiling$/i)), H=ceilB.isEmpty()?3:ceilB.min.y;
+  const matBy=name=>{ const p=parts.find(q=>q.mat&&q.mat.name===name); return p?p.mat:null; };
+  // a side without a wall gets one (plaster, like the others)
+  const walls=named(/^Wall/i), plaster=matBy('Wall Plaster')||new THREE.MeshStandardMaterial({color:0xd1c7b3,roughness:.85});
+  for(const [ax,v,out] of [['x',x0,-1],['x',x1,1],['z',z0,-1],['z',z1,1]]){
+    const has=walls.some(w=>ax==='x'?(out<0?w.bb.max.x<=v+.06&&w.bb.max.x>=v-.25:w.bb.min.x>=v-.06&&w.bb.min.x<=v+.25):(out<0?w.bb.max.z<=v+.06&&w.bb.max.z>=v-.25:w.bb.min.z>=v-.06&&w.bb.min.z<=v+.25));
+    if(has) continue; const t=.15, geo=ax==='x'?new THREE.BoxGeometry(t,H,z1-z0):new THREE.BoxGeometry(x1-x0,H,t);
+    geo.translate(ax==='x'?v+out*t/2:cx,H/2,ax==='x'?cz:v+out*t/2); geo.computeBoundingBox(); parts.push({name:'Wall_Added',geo,mat:plaster,bb:geo.boundingBox.clone()}); }
+  // wood: the baked wave grain, mapped on each face by its direction (one picture per 2 m)
+  const T=2*Math.PI*19/60;
+  for(const p of parts){ const wood=p.mat&&(p.mat.name==='Oak Floor'?oak:p.mat.name==='Walnut'?wal:null); if(!wood) continue;
+    const G=p.geo.index?p.geo.toNonIndexed():p.geo; if(!G.attributes.normal) G.computeVertexNormals(); const P=G.attributes.position, N=G.attributes.normal, uv=new Float32Array(P.count*2);
+    for(let i=0;i<P.count;i++){ const nx=Math.abs(N.getX(i)), ny=Math.abs(N.getY(i)), nz=Math.abs(N.getZ(i)), x=P.getX(i), y=P.getY(i), z=P.getZ(i);
+      const [u,v]=ny>=nx&&ny>=nz?[x,z]:nz>=nx?[x,y]:[z,y]; uv[i*2]=u/T; uv[i*2+1]=v/T; }
+    G.setAttribute('uv',new THREE.BufferAttribute(uv,2)); p.geo=G; p.mat=p.mat.userData.wood||(p.mat.userData.wood=new THREE.MeshStandardMaterial({map:wood,roughness:p.mat.roughness??.4,metalness:0,name:p.mat.name})); }
+  // glass you can see through without the cost of real refraction
+  const glassM=new THREE.MeshStandardMaterial({color:0xdfeeff,transparent:true,opacity:.12,roughness:.05,metalness:.2,depthWrite:false});
+  for(const p of parts) if(p.mat&&(p.mat.name==='Glass'||p.mat.transmission>0)) p.mat=glassM;
+  // one draw per material
+  const byMat=new Map(); for(const p of parts){ const k=p.mat||plaster; if(!byMat.has(k)) byMat.set(k,[]); const G=p.geo.index?p.geo.toNonIndexed():p.geo;
+    for(const a of Object.keys(G.attributes)) if(!['position','normal','uv'].includes(a)) G.deleteAttribute(a); if(!G.attributes.normal) G.computeVertexNormals(); if(!G.attributes.uv) G.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(G.attributes.position.count*2),2)); byMat.get(k).push(G); }
+  for(const [mat,list] of byMat){ const m=new THREE.Mesh(mergeGeometries(list,false),mat); const big=mat===plaster||/Wall|Ceiling|Floor/.test(mat.name||'');
+    m.castShadow=!big&&mat!==glassM; m.receiveShadow=mat!==glassM; if(mat===glassM) m.renderOrder=2; S.add(m); }
+  // the window: a view of the street, sunlight coming in, cool daylight filling the room
+  const glass=named(/^Window_Glass/i); let sunSet=false;
+  for(const w of glass){ const b=w.bb, c=b.getCenter(new THREE.Vector3()), sz=b.getSize(new THREE.Vector3()), alongX=sz.x<sz.z, n=alongX?new THREE.Vector3(Math.sign(c.x-cx)||1,0,0):new THREE.Vector3(0,0,Math.sign(c.z-cz)||1);
+    const ww=(alongX?sz.z:sz.x)*2.6, wh=sz.y*2.6, v=new THREE.Mesh(new THREE.PlaneGeometry(ww,wh),new THREE.MeshBasicMaterial({map:lagosView(),fog:false}));
+    v.position.copy(c).addScaledVector(n,2.4); v.position.y=c.y+.3; v.lookAt(c.x,v.position.y,c.z); S.add(v);
+    if(!sunSet){ sunSet=true; const sun=new THREE.DirectionalLight(0xfff0dc,2.4); sun.position.copy(c).addScaledVector(n,5).add(new THREE.Vector3(0,3.6,0)); sun.target.position.copy(c).addScaledVector(n,-2.6); sun.target.position.y=0;
+      sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); const sc=sun.shadow.camera; sc.left=-4.5; sc.right=4.5; sc.top=4.5; sc.bottom=-4.5; sc.near=.5; sc.far=16; sun.shadow.bias=-.0006; sun.shadow.normalBias=.02; sc.layers.enable(1); S.add(sun,sun.target);
+      const fill=new THREE.PointLight(0xcfe0ff,6,8,2); fill.position.copy(c).addScaledVector(n,-.7); S.add(fill); } }
+  S.add(new THREE.HemisphereLight(0xe2e9f2,0x3b2c20,.75));
+  { const b=boxOf(named(/^Ceiling_Lamp/i)), c=b.isEmpty()?new THREE.Vector3(cx,H-.1,cz):b.getCenter(new THREE.Vector3()); const l=new THREE.PointLight(0xffe2c4,16,11,1.7); l.position.set(c.x,c.y-.18,c.z); S.add(l); }
+  for(const p of named(/^Lamp_Shade/i)){ const c=p.bb.getCenter(new THREE.Vector3()); const l=new THREE.PointLight(0xffbf78,3,4.5,2); l.position.copy(c); S.add(l); }
+  // where you can walk: anything between knee and head height blocks a 20 cm cell
+  const CS=.2, gw=Math.ceil((x1-x0)/CS)+1, gd=Math.ceil((z1-z0)/CS)+1, grid=new Uint8Array(gw*gd), a=new THREE.Vector3(), b=new THREE.Vector3(), c=new THREE.Vector3();
+  for(const p of parts){ if(/^(Floor|Ceiling|Rug|Skirt)/i.test(p.name)) continue; const G=p.geo, P=G.attributes.position, I=G.index, nT=(I?I.count:P.count)/3;
+    for(let t=0;t<nT;t++){ const i0=I?I.getX(t*3):t*3, i1=I?I.getX(t*3+1):t*3+1, i2=I?I.getX(t*3+2):t*3+2; a.fromBufferAttribute(P,i0); b.fromBufferAttribute(P,i1); c.fromBufferAttribute(P,i2);
+      const ya=Math.min(a.y,b.y,c.y), yb=Math.max(a.y,b.y,c.y); if(yb<.3||ya>1.7) continue;
+      const gi0=Math.max(0,Math.floor((Math.min(a.x,b.x,c.x)-x0)/CS)), gi1=Math.min(gw-1,Math.floor((Math.max(a.x,b.x,c.x)-x0)/CS)), gj0=Math.max(0,Math.floor((Math.min(a.z,b.z,c.z)-z0)/CS)), gj1=Math.min(gd-1,Math.floor((Math.max(a.z,b.z,c.z)-z0)/CS));
+      for(let j=gj0;j<=gj1;j++) for(let i=gi0;i<=gi1;i++) grid[j*gw+i]=1; } }
+  const cell=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:grid[j*gw+i]; };
+  const free=(x,z,r=.26)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z);
+  const nearFree=(x,z)=>{ if(free(x,z)) return {x,z}; for(let r=.2;r<3;r+=.2) for(let k=0;k<16;k++){ const q={x:x+Math.cos(k/16*6.283)*r,z:z+Math.sin(k/16*6.283)*r}; if(free(q.x,q.z)) return q; } return {x:cx,z:cz}; };
+  // the door: the way out, and where you come in (facing into the room)
+  const inward=bb=>{ const c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3()); const d=[[c.x-x0,1,0],[x1-c.x,-1,0],[c.z-z0,0,1],[z1-c.z,0,-1]].sort((p,q)=>p[0]-q[0])[0]; return {c,sz,n:new THREE.Vector3(d[1],0,d[2])}; };
+  let exit={x:cx,z:z1-.8}, spawn={x:cx,z:z1-1.2,ry:Math.PI};
+  { const d=boxOf(named(/^Door(?!_?Handle|_?Knob|_?Frame)/i)); if(!d.isEmpty()){ const {c,n}=inward(d); const e=nearFree(c.x+n.x*.55,c.z+n.z*.55), s=nearFree(c.x+n.x*1.1,c.z+n.z*1.1); exit={x:e.x,z:e.z}; spawn={x:s.x,z:s.z,ry:Math.atan2(n.x,n.z)}; } }
+  // the wardrobe: stand in front of it to change clothes (falls back to the bookshelf, then the middle of the room)
+  let ward={x:cx,z:cz}, wardYaw=0; { const wb=boxOf(named(/wardrobe|closet|cupboard/i)), sb=boxOf(named(/^Shelf/i)), B=!wb.isEmpty()?wb:!sb.isEmpty()?sb:null;
+    if(B){ const {c,sz,n}=inward(B), depth=Math.abs(n.x)?sz.x:sz.z, q=nearFree(c.x+n.x*(depth/2+.55),c.z+n.z*(depth/2+.55)); ward=q; wardYaw=Math.atan2(n.x,n.z); } }
+  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,camDist:2.3,
+    bounds:{x0:x0+.3,x1:x1-.3,z0:z0+.3,z1:z1-.3},cam:{x0:x0+.18,x1:x1-.18,z0:z0+.18,z1:z1-.18,y0:.45,y1:H-.15},
+    move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
+    update(){} }); }
 
 /* ================= your character (Mixamo) ================= */
 await step('Loading your character…', 91);
@@ -1880,7 +1967,10 @@ function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let pl
   if(!placed){ for(const s of [1,-1]){ const c={x:v.x+hx*(v.c.def.L/2+1)*s,z:v.z+hz*(v.c.def.L/2+1)*s}; if(onLand(c.x,c.z)&&!resolveCircle({...c},.34)){ player.x=c.x; player.z=c.z; placed=true; break; } } }
   if(!placed){ player.x=v.x; player.z=v.z; }
   unseatHero(); player.y=groundY(player.x,player.z); player.yaw=Math.atan2(hx,hz); player.speed=0; v.speed=0; v.parked=true; drive.v=null; drive.speed=0; drive.ride=false; mode='walk'; rig.root.visible=true; headSpot.intensity=0; BEAM.visible=false; }
-function enterApt(){ fadeSwap(()=>{ ROOM=INT; mode='interior'; enteredAt=T0; INT.scene.add(rig.root); Object.assign(player,{x:0,z:3.3,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.22,dist:2.7}); setScene(INT.scene); toast('Home sweet home'); }); }
+async function enterApt(){ if(busy) return;
+  if(!MYROOM.ready&&!MYROOM.failed&&MANIFEST['assets/models/room.glb']){ toast('Opening your room…',4); busy=true; try{ await loadMyRoom(); }catch(e){} busy=false; }
+  fadeSwap(()=>{ ROOM=INT; mode='interior'; enteredAt=T0; INT.scene.add(rig.root); const s=INT.spawn||{x:0,z:3.3,ry:Math.PI};
+    Object.assign(player,{x:s.x,z:s.z,y:0,yaw:s.ry,speed:0}); Object.assign(camState,{yaw:s.ry,pitch:.22,dist:INT.camDist}); setScene(INT.scene); toast('Home sweet home'); }); }
 function exitApt(){ closeWard(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
 function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thud(); }
 
@@ -2962,7 +3052,7 @@ function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0,
       r.appendChild(b); } box.appendChild(r); };
   const robe=isRobe(); row(robe?(f?'Dress colour':'Robe colour'):'Shirt colour',SHIRTS,'s'); if(!robe) row(f?'Trousers / skirt colour':'Trousers colour',TROUSERS,'p'); }
 function openWard(){ if(WARD.open||!hero||busy) return; WARD.open=true; $('#settings').hidden=true; if(document.pointerLockElement) document.exitPointerLock(); wardUI(); $('#ward').hidden=false; $('#lookhint').hidden=true; WARD.px=$('#ward').getBoundingClientRect().right; lastPrompt=null;
-  player.speed=0; player.yaw=0; camState.yaw=Math.PI; camState.pitch=.08; camState.last=T0; }   // turn round to face the room, camera in front: a mirror view
+  player.speed=0; player.yaw=INT.wardYaw||0; camState.yaw=player.yaw+Math.PI; camState.pitch=.08; camState.last=T0; }   // turn round to face the room, camera in front: a mirror view
 function closeWard(){ if(!WARD.open) return; WARD.open=false; $('#ward').hidden=true; lastPrompt=null; }
 $('#wardDone').addEventListener('click',closeWard);
 
@@ -3767,7 +3857,8 @@ async function enterHotel(){ if(busy) return;
   fadeSwap(()=>{ ROOM=HOTEL; mode='interior'; enteredAt=T0; HOTEL.scene.add(rig.root); Object.assign(player,{x:HOTEL.spawn.x,z:HOTEL.spawn.z,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.22,dist:3}); setScene(HOTEL.scene);
     toast('Welcome to Eko Grand Hotel. The lounge is open.',3); }); }
 // start downloading the lounge when you walk near the hotel, so the door opens at once
-let hotelPeek=0; function hotelPrefetch(dt){ if(HOTEL.loading||!HOTEL.door||(hotelPeek-=dt)>0) return; hotelPeek=1; if(Math.hypot(player.x-HOTEL.door.x,player.z-HOTEL.door.z)<70) loadHotel(); }
+let hotelPeek=0; function hotelPrefetch(dt){ if(!MYROOM.loading&&MANIFEST['assets/models/room.glb']&&Math.hypot(player.x-APT.front.x,player.z-APT.front.z)<60) loadMyRoom();
+  if(HOTEL.loading||!HOTEL.door||(hotelPeek-=dt)>0) return; hotelPeek=1; if(Math.hypot(player.x-HOTEL.door.x,player.z-HOTEL.door.z)<70) loadHotel(); }
 
 /* ================= the cell at Mushin police station: three minutes, with whoever else was picked up ================= */
 const JAIL={room:null,left:0,taken:[],people:[],talkT:0};
