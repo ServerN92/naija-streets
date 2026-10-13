@@ -157,16 +157,21 @@ The dead are taken away as soon as you look away.
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
 bar (`assets/models/hotel_bar.glb`, downloaded only when you come near). Women dance on the floor there.
 
-## Your room
-The inside of your house is a room made in Blender (`assets/models/room.glb`). The game reads it by object names: `Door`
-is the way in and out, an object named `Wardrobe…` (or `Closet`/`Cupboard`) is where you change clothes (until there is
-one, the bookshelf `Shelf_…` is used), `Window_Glass` lets the sun in and shows a Lagos street outside, `Ceiling_Lamp`
-and `Lamp_Shade` light the room, and a side with no `Wall…` gets a plain wall. Anything between knee and head height
-blocks walking. To update it: in Blender's Python console export with
-`bpy.ops.export_scene.gltf(filepath=r'...\room.glb', export_format='GLB', export_apply=True, export_cameras=False, export_lights=False, use_visible=True)`,
-then pack it with `gltfpack -i room.glb -o assets/models/room.glb -kn -km -cc` (keep the names), and run `tools/manifest.py`.
-The wave-grain wood (materials `Oak Floor` and `Walnut`) is baked to `assets/models/wood_oak.jpg` and `wood_walnut.jpg`.
-If the file cannot load, the old built-in flat is used.
+## Your home
+The inside of your house is a whole flat made in Blender (`assets/models/room.glb`): sitting room with TV wall, sofas,
+POP ceiling and chandelier, dining table for six, kitchen (cabinets, granite tops, sink, gas cooker and hood, fridge,
+microwave, gas cylinder), bathroom (toilet, vanity and mirror, shower, water heater, bucket and bowl), hallway, and your
+bedroom (with wardrobe, AC and curtains). `tools/build_flat.py` builds it inside Blender from your bedroom room
+(run in Blender's Python console: `exec(open(r'...\build_flat.py').read())`); it keeps a backup copy, puts everything new
+in the "Flat" collection, can be run again, and exports `room.glb`. Pack that with
+`gltfpack -i room.glb -o assets/models/room.glb -kn -km -cc` (keep the names) and run `tools/manifest.py`.
+
+The game reads the flat by object names: `Front_Door` is the way in and out (else `Door`), `Wardrobe…` is where you
+change clothes (else the bookshelf `Shelf_…`), `Window_Glass…` shows a Lagos street and the biggest lets the sun in,
+each `Ceiling_Lamp…` (and the bedside `Lamp_Shade`) lights its room, and `Wall…` pieces stop you and the camera.
+Anything between knee and head height blocks walking. Wood, tiles and granite are pictures mapped by material name
+(`Oak Floor`, `Walnut`, `Floor Tile`, `Bath Tile`, `Bath Floor`, `Kitchen Tile`, `Granite` → `assets/models/*.jpg`).
+A side with no wall gets one. If the file cannot load, the old built-in flat is used.
 
 ## Wardrobe
 At home, walk to the wardrobe and press E to change your clothes. You keep your own face: each look lends you its body
