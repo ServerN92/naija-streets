@@ -19,7 +19,11 @@ def quat_xyzw(m):
     q = np.array(q); return q / np.linalg.norm(q)
 
 MOVES = [('v2_idle', 'Idle'), ('v2_walk', 'Walking'), ('v2_swagger', 'Swagger Walk'), ('v2_fwalk', 'Female Walking'), ('v2_run', 'Running'),
-         ('v2_jump', 'Jump'), ('v2_fjump', 'Female Jump ')]
+         ('v2_jump', 'Jump'), ('v2_fjump', 'Female Jump '),
+         ('v2_sit_in', 'Stand_To_Sit'), ('v2_sit', 'Sitting'), ('v2_sit_out', 'Sit_To_Stand')]
+# sitting down, sitting and getting up share one place for the body: the seated hips sit where Stand_To_Sit ends
+# (so the three moves chain on one fixed spot: you stand there, sit down behind you, and stand up there again)
+SEAT_FROM = 'Stand_To_Sit'; SEAT_SHIFT = {'Sitting': 'first', 'Sit_To_Stand': 'first'}
 
 def main(indir, out):
     g = GLB(); first = load(os.path.join(indir, 'Idle.fbx'))
@@ -36,6 +40,11 @@ def main(indir, out):
         if not n.get('children'): n.pop('children', None)
     g.js['scenes'][0]['nodes'].append(root)
     H = rest['mixamorig:Hips']['Lcl Translation'][1]
+    def hips_track(fn):
+        a = load(os.path.join(indir, fn + '.fbx')); n = max(len(c[0]) for bb in a['anim'].values() for c in bb.values()); times = np.arange(n) / 30.
+        r = a['rest'].get('mixamorig:Hips', rest['mixamorig:Hips']); t0 = np.array(r.get('Lcl Translation', [0, 0, 0]), float); cv = a['anim']['mixamorig:Hips']
+        return np.stack([sample(cv.get('T' + k), times, t0[i]) for i, k in enumerate('XYZ')], 1)
+    seat = hips_track(SEAT_FROM)[-1] if os.path.exists(os.path.join(indir, SEAT_FROM + '.fbx')) else None
     anims = []
     for clip, fn in MOVES:
         a = load(os.path.join(indir, fn + '.fbx'))
@@ -52,7 +61,9 @@ def main(indir, out):
             sm.append(dict(input=tin, output=g.acc(Q.astype(np.float32), 'VEC4'), interpolation='LINEAR')); ch.append(dict(sampler=len(sm) - 1, target=dict(node=idx[b], path='rotation')))
             if b.endswith('Hips'):
                 t0 = np.array(r.get('Lcl Translation', [0, 0, 0]), float)
-                T = np.stack([sample(cv.get('T' + k), times, t0[i]) for i, k in enumerate('XYZ')], 1) / H
+                T = np.stack([sample(cv.get('T' + k), times, t0[i]) for i, k in enumerate('XYZ')], 1)
+                if seat is not None and fn in SEAT_SHIFT: T[:, [0, 2]] += seat[[0, 2]] - T[0, [0, 2]]   # line up with where sitting down ended
+                T = T / H
                 sm.append(dict(input=tin, output=g.acc(T.astype(np.float32), 'VEC3'), interpolation='LINEAR')); ch.append(dict(sampler=len(sm) - 1, target=dict(node=idx[b], path='translation')))
         anims.append(dict(name=clip, channels=ch, samplers=sm))
         print(clip, fn, n, 'frames', len(ch), 'channels')
