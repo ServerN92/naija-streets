@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=cb034ef97d';
-import * as C2 from './char2.js?v=cb034ef97d';
-import { MapView } from './mapview.js?v=cb034ef97d';
+import * as CLOCK from './clock.js?v=57aaba7130';
+import * as C2 from './char2.js?v=57aaba7130';
+import { MapView } from './mapview.js?v=57aaba7130';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='cb034ef97d';
+const BUILD='57aaba7130';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1568,6 +1568,14 @@ function loadMyRoom(){ if(MYROOM.loading) return MYROOM.loading;
   return MYROOM.loading; }
 // a Lagos view for the windows: sky, low roofs, zinc and palms (one picture shared by all windows)
 let LAGOS_VIEW=null;
+// the same street at night: dark sky, a few stars, lit windows
+let LAGOS_NIGHT=null;
+function lagosNight(){ if(LAGOS_NIGHT) return LAGOS_NIGHT; const [c,g]=cv(1024,512), sk=g.createLinearGradient(0,0,0,512); sk.addColorStop(0,'#060b1c'); sk.addColorStop(.62,'#16213f'); sk.addColorStop(1,'#3a2c3a'); g.fillStyle=sk; g.fillRect(0,0,1024,512);
+  const rnd=seeded(9); for(let i=0;i<90;i++){ g.fillStyle=`rgba(255,255,255,${.3+rnd()*.6})`; g.fillRect(rnd()*1024,rnd()*230,1.5,1.5); }
+  for(let i=0;i<70;i++){ const w=40+rnd()*110, h=60+rnd()*150, x=rnd()*1080-40, y=512-h*(.55+rnd()*.45); g.fillStyle=`hsl(${215+rnd()*20},${15+rnd()*10}%,${7+rnd()*7}%)`; g.fillRect(x,y,w,512-y);
+    for(let k=0;k<3;k++) if(rnd()<.7){ g.fillStyle=rnd()<.8?'rgba(255,196,110,.9)':'rgba(170,210,255,.8)'; g.fillRect(x+8+k*(w/3),y+16,Math.max(6,w/6),14); } }
+  g.strokeStyle='rgba(10,10,14,.9)'; g.lineWidth=5; for(let i=0;i<5;i++){ const x=80+rnd()*880, t=200+rnd()*90; g.beginPath(); g.moveTo(x,512); g.quadraticCurveTo(x+10,(512+t)/2,x+4,t); g.stroke(); }
+  return LAGOS_NIGHT=tx(c,true,false); }
 function lagosView(){ if(LAGOS_VIEW) return LAGOS_VIEW; const [c,g]=cv(1024,512), sk=g.createLinearGradient(0,0,0,512); sk.addColorStop(0,'#7fb3e0'); sk.addColorStop(.6,'#cfe2ef'); sk.addColorStop(1,'#f1e6cf'); g.fillStyle=sk; g.fillRect(0,0,1024,512);
   const rnd=seeded(5); for(let i=0;i<70;i++){ const w=40+rnd()*110, h=60+rnd()*150, x=rnd()*1080-40, y=512-h*(.55+rnd()*.45);
     g.fillStyle=`hsl(${20+rnd()*30},${20+rnd()*25}%,${62+rnd()*18}%)`; g.fillRect(x,y,w,512-y);
@@ -1610,15 +1618,16 @@ function buildMyRoom(g,texs){ const S=new THREE.Scene(); S.background=new THREE.
     m.castShadow=!flat&&mat!==glassM; m.receiveShadow=mat!==glassM; if(mat===glassM) m.renderOrder=2; S.add(m); }
   // windows: a view of the street; the biggest lets the sun in
   const glass=named(/^Window_Glass/i).sort((a,b)=>{ const s=p=>{ const z=p.bb.getSize(new THREE.Vector3()); return Math.max(z.x,z.z)*z.y; }; return s(b)-s(a); });
+  const views=[]; let sunL=null;
   glass.forEach((w,i)=>{ const b=w.bb, c=b.getCenter(new THREE.Vector3()), sz=b.getSize(new THREE.Vector3()), alongX=sz.x<sz.z, n=alongX?new THREE.Vector3(Math.sign(c.x-cx)||1,0,0):new THREE.Vector3(0,0,Math.sign(c.z-cz)||1);
     const v=new THREE.Mesh(new THREE.PlaneGeometry((alongX?sz.z:sz.x)*2.6,sz.y*2.6),new THREE.MeshBasicMaterial({map:lagosView(),fog:false}));
-    v.position.copy(c).addScaledVector(n,2.4); v.position.y=c.y+.3; v.lookAt(c.x,v.position.y,c.z); S.add(v);
+    v.position.copy(c).addScaledVector(n,2.4); v.position.y=c.y+.3; v.lookAt(c.x,v.position.y,c.z); S.add(v); views.push(v);
     if(i===0){ // the sun comes in from this side; walls and ceilings cast shadows, so it only reaches the floor through windows
       const sun=new THREE.DirectionalLight(0xfff0dc,2.4), ctr=new THREE.Vector3(cx,0,cz), dir=n.clone().multiplyScalar(6).add(new THREE.Vector3(0,4.2,0)).normalize(), R=Math.hypot(x1-x0,z1-z0)/2+.6;
       sun.position.copy(ctr).addScaledVector(dir,R+8); sun.target.position.copy(ctr);
       sun.castShadow=true; const sm=Q.sh||1024; sun.shadow.mapSize.set(sm,sm); const sc=sun.shadow.camera; sc.left=-R; sc.right=R; sc.top=R; sc.bottom=-R; sc.near=.5; sc.far=2*R+16;
-      sun.shadow.bias=-.0005; sun.shadow.normalBias=.03; sc.layers.enable(1); S.add(sun,sun.target); } });
-  S.add(new THREE.HemisphereLight(0xe2e9f2,0x3b2c20,.8));
+      sun.shadow.bias=-.0005; sun.shadow.normalBias=.03; sc.layers.enable(1); S.add(sun,sun.target); sunL=sun; } });
+  const hemiL=new THREE.HemisphereLight(0xe2e9f2,0x3b2c20,.8); S.add(hemiL);
   // a warm light under each ceiling lamp (lamps made of several pieces share one light), and the bedside lamp
   const lamps=new Map(); for(const p of named(/^Ceiling_Lamp/i)){ const k=p.name.replace(/[._]\d+$/,''); lamps.set(k,(lamps.get(k)||new THREE.Box3()).union(p.bb)); }
   for(const [,b] of lamps){ const c=b.getCenter(new THREE.Vector3()), low=c.y<2.4, s=b.getSize(new THREE.Vector3()); const l=new THREE.PointLight(0xffe2c4,low?6:(s.x*s.z>.2?16:12),low?6:10,1.7); l.position.set(c.x,c.y-(low?.12:.2),c.z); S.add(l); }
@@ -1652,10 +1661,11 @@ function buildMyRoom(g,texs){ const S=new THREE.Scene(); S.background=new THREE.
     if(B){ const {c,n,d}=facing(B), q=nearFree(c.x+n.x*(d+.55),c.z+n.z*(d+.55)); ward=q; wardYaw=Math.atan2(n.x,n.z); } }
   const step=(nx,nz)=>{ if(free(nx,nz)){ player.x=nx; player.z=nz; return true; } return false; };
   let home=null; try{ home=homeSpots({named,boxOf,facing,free,nearFree,parts}); }catch(e){ console.warn('home spots',e); }   // sofas, TV, cooker, shower, bed, speaker, bucket
-  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,home,camDist:2.3,label:floors.length>1?'Your flat · Mushin':'Your room · Mushin',
+  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,home,views,sunL,hemiL,camDist:2.3,label:floors.length>1?'Your flat · Mushin':'Your room · Mushin',
     bounds:{x0:x0+.3,x1:x1-.3,z0:z0+.3,z1:z1-.3},cam:{x0:x0+.18,x1:x1-.18,z0:z0+.18,z1:z1-.18,y0:.45,y1:H-.15},
     // walking: straight on if free; else slide along what you hit, or turn a little toward a doorway
     move(nx,nz){ const ox=player.x, oz=player.z, dx=nx-ox, dz=nz-oz; player.y=0; if(step(nx,nz)) return;
+      if(!free(ox,oz)&&(free(nx,nz,.1)||!cell(nx,nz))){ player.x=nx; player.z=nz; return; }   // stuck inside something: walk out
       if(Math.abs(dx)>1e-5&&step(nx,oz)) return; if(Math.abs(dz)>1e-5&&step(ox,nz)) return;
       for(const a of [.45,-.45,.9,-.9]){ const cs=Math.cos(a), sn=Math.sin(a), k=Math.cos(a); if(step(ox+(dx*cs-dz*sn)*k,oz+(dx*sn+dz*cs)*k)) return; } },
     // the camera stops in front of the wall between you and it
@@ -3173,8 +3183,8 @@ function homeClips(){ if(HL.clipsFor===hero.cObj&&HL.clips) return HL.clips; con
 function homeMeasure(clip,t){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0);
   const m=new THREE.AnimationMixer(hero.cObj), a=m.clipAction(clip).play(); m.setTime(t); r.updateMatrixWorld(true); const D=HL.clips.info, P=n=>{ const b=D.nodes.get(n); return b?b.getWorldPosition(new THREE.Vector3()):null; };
   const head=P('Head'), hips=P('Hips'), fl=P('LeftFoot'), fr=P('RightFoot'), feet=fl&&fr?fl.clone().add(fr).multiplyScalar(.5):hips.clone();
-  let lo=1e9; for(const n of ['Head','Hips','LeftFoot','RightFoot','LeftHand','RightHand','Spine2','LeftLeg','RightLeg']){ const q=P(n); if(q) lo=Math.min(lo,q.y); }
-  a.stop(); m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.mixer.update(0); r.updateMatrixWorld(true); return {head,hips,feet,lo}; }
+  let lo=1e9; const pts=[]; for(const n of ['Head','Hips','LeftFoot','RightFoot','LeftHand','RightHand','Spine2','LeftLeg','RightLeg','LeftToeBase','RightToeBase','LeftForeArm','RightForeArm']){ const q=P(n); if(q){ lo=Math.min(lo,q.y); pts.push(q); } }
+  a.stop(); m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.mixer.update(0); r.updateMatrixWorld(true); return {head,hips,feet,lo,pts}; }
 
 // ---- things you see: the TV picture, fire and steam, shower water, a plate of jollof, the broom, dirt, the speaker lights
 function homeFx(){ const R=INT.home; if(HL.fx&&HL.fx.scene===INT.scene) return HL.fx; const S=INT.scene, fx={scene:S};
@@ -3250,11 +3260,23 @@ function homeLoop(kind,on){ if(!AC) return; const L=HL.loops||(HL.loops={}); if(
     n.connect(f); f.connect(g); g.connect(master); n.start(); L[kind]={n,g}; }
   else if(!on&&L[kind]){ const {n,g}=L[kind]; g.gain.setTargetAtTime(0,AC.currentTime,.15); setTimeout(()=>{ try{ n.stop(); }catch(e){} g.disconnect(); },800); delete L[kind]; } }
 
+// where you can walk to from the door (10 cm cells), so nothing is put where you cannot get
+function homeReach(rad=.19){ const R=INT, G=R.grid; if(!G||!R.free) return null; const key='reach'+rad; if(R[key]&&R[key].G===G) return R[key]; const {gw,gd,x0,z0,CS}=G;
+  const ok=(i,j)=>i>=0&&j>=0&&i<gw&&j<gd&&R.free(x0+(i+.5)*CS,z0+(j+.5)*CS,rad), seen=new Uint8Array(gw*gd), s0=R.spawn||R.exit; let si=Math.floor((s0.x-x0)/CS), sj=Math.floor((s0.z-z0)/CS);
+  if(!ok(si,sj)){ let bd=1e9, bi=si, bj=sj; for(let a=-8;a<=8;a++) for(let b=-8;b<=8;b++) if(ok(si+a,sj+b)&&Math.hypot(a,b)<bd){ bd=Math.hypot(a,b); bi=si+a; bj=sj+b; } si=bi; sj=bj; }
+  const q=[si+sj*gw]; seen[q[0]]=1;
+  for(let h=0;h<q.length;h++){ const c=q[h], i=c%gw, j=(c/gw)|0; for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const n=(i+a)+(j+b)*gw; if(!seen[n]&&ok(i+a,j+b)){ seen[n]=1; q.push(n); } } }
+  return R[key]={G,seen,gw,gd,x0,z0,CS}; }
+function canReach(x,z,rad){ const r=homeReach(rad); if(!r) return true; const i=Math.floor((x-r.x0)/r.CS), j=Math.floor((z-r.z0)/r.CS); return i>=0&&j>=0&&i<r.gw&&j<r.gd&&!!r.seen[i+j*r.gw]; }
+function fixSpots(){ const R=INT.home; if(!R||R.fixed) return; R.fixed=true;
+  for(const s of R.spots){ if(canReach(s.at.x,s.at.z)) continue; let best=null, bd=1e9;
+    for(let r=.1;r<=1.2&&!best;r+=.1) for(let k=0;k<24;k++){ const x=s.at.x+Math.cos(k/24*6.283)*r, z=s.at.z+Math.sin(k/24*6.283)*r; if(canReach(x,z)&&r<bd){ bd=r; best={x,z}; } }
+    if(best) s.at=best; } }
 // ---- dirt: it builds up while you are out (one spot every 25 minutes, up to 8); sweep it with the broom
-function homeDirt(){ const R=INT.home, F=homeFx(); for(const d of HL.dirt) dropProp(d.m); HL.dirt=[]; if(!R||!R.floors.length) return;
+function homeDirt(){ const R=INT.home, F=homeFx(); fixSpots(); for(const d of HL.dirt) dropProp(d.m); HL.dirt=[]; if(!R||!R.floors.length) return;
   let last=0; try{ last=+localStorage.getItem('naija-swept')||0; }catch(e){} const n=last?Math.min(8,Math.floor((Date.now()-last)/(25*60e3))):6; let tries=0;
   while(HL.dirt.length<n&&tries++<400){ const b=R.floors[Math.floor(Math.random()*R.floors.length)], x=b.min.x+.3+Math.random()*(b.max.x-b.min.x-.6), z=b.min.z+.3+Math.random()*(b.max.z-b.min.z-.6);
-    if(!R.free(x,z,.3)||HL.dirt.some(d=>Math.hypot(d.x-x,d.z-z)<1.2)) continue; const s=.45+Math.random()*.35, m=new THREE.Mesh(new THREE.PlaneGeometry(s,s).rotateX(-Math.PI/2),F.dirtM.clone()); m.position.set(x,.012,z); m.rotation.y=Math.random()*6; F.scene.add(m); HL.dirt.push({x,z,m,k:1}); } }
+    if(!R.free(x,z,.3)||!canReach(x,z,.27)||HL.dirt.some(d=>Math.hypot(d.x-x,d.z-z)<1.2)) continue; const s=.45+Math.random()*.35, m=new THREE.Mesh(new THREE.PlaneGeometry(s,s).rotateX(-Math.PI/2),F.dirtM.clone()); m.position.set(x,.012,z); m.rotation.y=Math.random()*6; F.scene.add(m); HL.dirt.push({x,z,m,k:1}); } }
 
 // ---- where you are near, and what E does there
 const HOME_LABEL={sit:'Sit down',tv:'Watch TV',dine:()=>HL.food?'Sit and eat your jollof':'Sit down',cook:()=>HL.food?'':'Cook jollof',bath:'Take a bath',bed:'Sleep',music:()=>HL.music?'Stop the music':'Play music',clean:()=>HL.broom?'Put the broom down':'Sweep the house'};
@@ -3316,18 +3338,22 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
   heroQuiet(); if(PHONE.open) closePhone();
   if(s.kind==='sit'||s.kind==='tv'||s.kind==='dine'){ const eat=s.kind==='dine'&&HL.food;
     if(C.sitIn){ const m=homeMeasure(C.sitLoop,0), cs=Math.cos(A.yaw), sn=Math.sin(A.yaw), open=s.soft;   // the Mixamo moves: sit down, sit, stand up, all on one spot in front of the seat (a chair at a table or desk: straight into the seat)
-      A.p1=new THREE.Vector3(s.x-(m.hips.x*cs+m.hips.z*sn),clamp(s.y+.08-m.hips.y,-.05,0),s.z-(-m.hips.x*sn+m.hips.z*cs)); A.camH=Math.max(.6,m.head.y+A.p1.y-.12);
+      A.lift=clamp(s.y+.09-m.hips.y,-.12,.14); A.seatY=m.hips.y; A.standY=homeMeasure(C.sitIn,0).hips.y;   // up to the cushion; the legs bend so the feet stay down
+      A.p1=new THREE.Vector3(s.x-(m.hips.x*cs+m.hips.z*sn),0,s.z-(-m.hips.x*sn+m.hips.z*cs)); A.camH=Math.max(.6,m.head.y+A.lift-.12);
       if(open){ A.seq='in'; A.loopClip=eat?C.eatSeat:C.sitLoop; clip=C.sitIn; } else clip=eat?C.eatSeat:C.sitLoop; }
     else { clip=eat?C.eat:s.kind==='tv'?C.tv:s.soft?C.sofa:C.sit; const m=homeMeasure(clip,0);
-      A.p1=new THREE.Vector3(s.x,s.y+.09-m.hips.y,s.z); A.camH=Math.max(.6,m.head.y+(s.y+.09-m.hips.y)-.12); }
+      A.lift=s.y+.09-m.hips.y; A.p1=new THREE.Vector3(s.x,0,s.z); A.camH=Math.max(.6,m.head.y+A.lift-.12); }
     if(s.kind==='tv'){ HL.tv=1; if(HL.fx.tv) HL.fx.tv.ch=Math.floor(Math.random()*3); }
     if(eat){ const tb=R.table, p=new THREE.Vector3(s.x+s.n.x*.42,tb?tb.max.y+.012:.78,s.z+s.n.z*.42); if(tb){ p.x=clamp(p.x,tb.min.x+.15,tb.max.x-.15); p.z=clamp(p.z,tb.min.z+.15,tb.max.z-.15); }
       F.plate.position.copy(p); F.plate.visible=true; holdProp(F.spoon,'Right',[0,.05,.02],[1.2,0,0]); A.eatT=0; A.prompt=()=>A.eatT<10?`Eating… ${Math.round(A.eatT*10)}%`:'Stand up'; } }
   else if(s.kind==='cook'){ clip=C.cook; A.p1=new THREE.Vector3(s.x,0,s.z); A.camH=1.35; holdProp(F.spoon,'Right',[0,.05,.02],[1.4,0,0]); A.cookT=0; homeLoop('fry',true); A.prompt=()=>`Cooking jollof… ${Math.round(A.cookT/14*100)}%`; }
   else if(s.kind==='bath'){ clip=C.bath; A.p1=new THREE.Vector3(s.x,s.y,s.z); A.camH=1.35; A.fade=true; A.bathT=0; A.prompt=()=>A.bathT<12?`Bathing… ${Math.round(A.bathT/12*100)}%`:'Come out'; }
-  else if(s.kind==='bed'){ clip=C.sleep; const m=homeMeasure(clip,Math.min(.5,clip.duration*.3)), a=new THREE.Vector3(m.head.x-m.feet.x,0,m.head.z-m.feet.z), mid=m.head.clone().add(m.feet).multiplyScalar(.5);
-    const yaw=Math.atan2(s.dir.x,s.dir.z)-Math.atan2(a.x,a.z), cs=Math.cos(yaw), sn=Math.sin(yaw), rx=mid.x*cs+mid.z*sn, rz=-mid.x*sn+mid.z*cs;
-    A.yaw=yaw; A.p1=new THREE.Vector3(s.x-rx,s.y-(m.lo-.06),s.z-rz); A.camH=s.y+.35; A.fade=true; A.sleepT=0; A.prompt=()=>A.sleepT<4?'Sleeping… Zzz':'Get up'; }
+  else if(s.kind==='bed'){ clip=C.sleep; const m=homeMeasure(clip,Math.min(.5,clip.duration*.3)), a=new THREE.Vector3(m.head.x-m.hips.x,0,m.head.z-m.hips.z);
+    const d=s.dir, yaw=Math.atan2(d.x,d.z)-Math.atan2(a.x,a.z), cs=Math.cos(yaw), sn=Math.sin(yaw), u=[1e9,-1e9], v=[1e9,-1e9];
+    for(const q of m.pts){ const x=q.x*cs+q.z*sn, z=-q.x*sn+q.z*cs, au=x*d.x+z*d.z, av=x*d.z-z*d.x; u[0]=Math.min(u[0],au); u[1]=Math.max(u[1],au); v[0]=Math.min(v[0],av); v[1]=Math.max(v[1],av); }
+    const hx=m.head.x*cs+m.head.z*sn, hz=-m.head.x*sn+m.head.z*cs, hu=hx*d.x+hz*d.z, L=(s.len||2)/2;
+    let ou=L-.3-hu; ou=Math.max(ou,-L+.04-u[0]); const ov=-(v[0]+v[1])/2;   // head on the pillow, feet on the bed, body in the middle
+    A.yaw=yaw; A.p1=new THREE.Vector3(s.x+d.x*ou+d.z*ov,s.y-(m.lo-.06),s.z+d.z*ou-d.x*ov); A.camH=s.y+.35; A.fade=true; A.sleepT=0; A.prompt=()=>A.sleepT<4?'Sleeping… Zzz':'Get up'; }
   else if(s.kind==='dance'){ const list=C.dance; if(!list.length){ toast('No dance moves yet'); return; } clip=list[HL.danceI++%list.length]; A.p1=new THREE.Vector3(player.x,0,player.z); A.yaw=player.yaw; A.camH=1.3; A.at={x:player.x,z:player.z}; A.danceT=0; }
   if(!clip) return;
   A.action=hero.mixer.clipAction(clip); A.action.reset().play(); A.action.setEffectiveWeight(0); A.clip=clip; if(A.seq){ A.action.setLoop(THREE.LoopOnce,1); A.action.clampWhenFinished=true; }
@@ -3341,19 +3367,38 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
 function seqTo(A,clip,seq){ if(A.prev) A.prev.stop(); A.prev=A.action; A.xf=0; A.action=hero.mixer.clipAction(clip); A.action.reset().play(); A.clip=clip; A.seq=seq;
   if(seq!=='loop'){ A.action.setLoop(THREE.LoopOnce,1); A.action.clampWhenFinished=true; } else A.action.setLoop(THREE.LoopRepeat,Infinity); }
 function homeStop(){ const A=HL.act; if(!A||A.leaving) return;
+  if(A.seq==='in'&&A.action.time<.45){ A.seq=null; A.p1=rig.root.position.clone().setY(0); A.at={x:A.p0.x,z:A.p0.z}; A.leaving=true; A.lt=0; homeFinish(A); return; }   // changed your mind straight away: just stay standing
   if(A.seq){ if(A.seq!=='out'){ const C=homeClips(); dropProp(HL.fx.spoon); if(!HL.food) HL.fx.plate.visible=false; seqTo(A,C.sitOut,'out'); } return; }   // stand up first; you are free when it ends
   A.leaving=true; A.lt=0; homeFinish(A); }
 function homeFinish(A){
   const done=()=>{ const F=HL.fx; A.action.stop(); if(A.prev){ A.prev.stop(); A.prev=null; } if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } dropProp(F.spoon); if(A.kind!=='dine'||!HL.food) F.plate.visible=false; homeLoop('fry',false); homeLoop('shower',false); showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; if(F.fireL) F.fireL.intensity=0;
     if(A.kind==='tv') HL.tvT=8;
-    Object.assign(player,{x:A.at.x,z:A.at.z,y:0,speed:0}); player.yaw=A.kind==='dance'?A.yaw:A.kind==='bed'?player.yaw:A.yaw+Math.PI*(A.kind==='bath'?0:0); rig.root.position.set(player.x,0,player.z); rig.root.rotation.y=player.yaw;
+    const R=INT.home, q=R&&!INT.free(A.at.x,A.at.z)?R.nearFree(A.at.x,A.at.z):A.at;   // never left standing inside the furniture
+    Object.assign(player,{x:q.x,z:q.z,y:0,speed:0}); player.yaw=A.kind==='dance'?A.yaw:A.kind==='bed'?player.yaw:A.yaw+Math.PI*(A.kind==='bath'?0:0); rig.root.position.set(player.x,0,player.z); rig.root.rotation.y=player.yaw;
     hero.w.idle=1; hero.act.idle.setEffectiveWeight(1); HL.act=null; camState.pitch=.22; };
   if(A.fade) fadeSwap(done); else A.doneSoon=done; }
 
+// ---- seated: lift the body onto the cushion and bend each leg so the foot stays flat on the floor
+function twoBone(a,b,c,t){ const V=THREE.Vector3, Q=THREE.Quaternion, A=a.getWorldPosition(new V()), B=b.getWorldPosition(new V()), C=c.getWorldPosition(new V());
+  const lab=A.distanceTo(B), lcb=B.distanceTo(C), lat=clamp(A.distanceTo(t),.02,lab+lcb-.002), ac=C.clone().sub(A).normalize(), ab=B.clone().sub(A).normalize(), ba=ab.clone().negate(), bc=C.clone().sub(B).normalize(), at=t.clone().sub(A).normalize();
+  const ang=(u,v)=>Math.acos(clamp(u.dot(v),-1,1)), ax0=new V().crossVectors(ac,ab), ax1=new V().crossVectors(ac,at); if(ax0.lengthSq()<1e-8) return; ax0.normalize();
+  const k0=ang(ac,ab), k1=Math.acos(clamp((lcb*lcb-lab*lab-lat*lat)/(-2*lab*lat),-1,1)), j0=ang(ba,bc), j1=Math.acos(clamp((lat*lat-lab*lab-lcb*lcb)/(-2*lab*lcb),-1,1)), g0=ang(ac,at);
+  const ia=a.getWorldQuaternion(new Q()).invert(), ib=b.getWorldQuaternion(new Q()).invert(), r0=new Q().setFromAxisAngle(ax0.clone().applyQuaternion(ia),k1-k0);
+  if(ax1.lengthSq()>1e-10) r0.multiply(new Q().setFromAxisAngle(ax1.normalize().applyQuaternion(ia),g0));
+  a.quaternion.multiply(r0); b.quaternion.multiply(new Q().setFromAxisAngle(ax0.applyQuaternion(ib),j1-j0)); }
+function seatLegs(A){ const D=HL.clips&&HL.clips.info, N=n=>D&&D.nodes.get(n), hip=N('Hips'), r=rig.root; if(!hip) return;
+  r.position.y=0; r.updateMatrixWorld(true);
+  const hy=hip.getWorldPosition(new THREE.Vector3()).y-r.position.y, w=A.seq&&A.standY>A.seatY+.1?clamp((A.standY-hy)/(A.standY-A.seatY),0,1):A.action.getEffectiveWeight(), lift=A.lift*w;   // standing up or sitting down: only as much as you are seated
+  if(w<.02) return; const legs=[];
+  for(const S of ['Left','Right']){ const a=N(S+'UpLeg'), b=N(S+'Leg'), c=N(S+'Foot'), toe=N(S+'ToeBase'); if(!a||!b||!c) continue;
+    const t=c.getWorldPosition(new THREE.Vector3()), ty=toe?toe.getWorldPosition(new THREE.Vector3()).y:t.y-.08; t.y-=Math.max(0,ty-.03)*w;
+    legs.push({a,b,c,t,fq:c.getWorldQuaternion(new THREE.Quaternion())}); }
+  r.position.y=lift; r.updateMatrixWorld(true);
+  for(const L of legs){ twoBone(L.a,L.b,L.c,L.t); L.a.updateMatrixWorld(true); L.c.quaternion.copy(L.b.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(L.fq)); L.c.updateMatrixWorld(true); } }
 // ---- every frame while doing something
 function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.leaving){ hero.act.idle.setEffectiveWeight(1); hero.mixer.update(dt); return; }   // waiting to go in (the bath gets its body ready)
   A.t+=dt; const [f,s]=inputVec();
-  if(!A.leaving&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)&&!(A.kind==='cook'&&A.cookT<14)) homeStop();   // walk off and you stand up (the pot needs you to the end)
+  if(!A.leaving&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)){ if(A.kind==='cook'&&A.cookT<14) toast('You left the pot. The jollof never ready.',3); homeStop(); }   // walk off and you stand up (the pot needs you to the end)
   const k=Math.min(1,A.t/.4), e=k*k*(3-2*k); let wa=Math.min(1,A.t/.35); if(A.leaving){ A.lt+=dt; wa=Math.max(0,1-A.lt/.3); }
   if(A.seq&&!A.leaving){ const end=A.action.time>=A.clip.duration-.04;
     if(A.seq==='in'&&end) seqTo(A,A.loopClip,'loop');
@@ -3363,7 +3408,7 @@ function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.lea
   for(const n of ['idle','walk','walk2','run','text','phone','fight_idle']){ const a=hero.act[n]; if(a) a.setEffectiveWeight(n==='idle'?1-wa:0); }
   if(A.prev){ A.xf+=dt/.25; if(A.xf>=1){ A.prev.stop(); A.prev=null; } else A.prev.setEffectiveWeight(wa*(1-A.xf)); } A.action.setEffectiveWeight(wa*(A.prev?Math.min(1,A.xf):1));
   player.x=rig.root.position.x; player.z=rig.root.position.z; player.y=0; player.speed=0;
-  hero.mixer.update(dt); phoneInHand(); heroWeapon();
+  hero.mixer.update(dt); if(A.lift!==undefined) seatLegs(A); phoneInHand(); heroWeapon();
   // what each thing does over time
   if(A.kind==='dine'&&HL.food&&!A.leaving){ A.eatT+=dt; if(A.eatT>=10){ HL.food=0; F.plate.visible=false; dropProp(F.spoon); FIGHT.hp=Math.min(100,FIGHT.hp+45); toast(mpick(['Belle don full! That jollof sweet die.','Chop finish. Body don strong again!']),3.5);
       const C=homeClips(); if(C.sitIn){ const was=A.seq; seqTo(A,C.sitLoop,'loop'); if(!was) A.seq=null; } else { A.action.stop(); A.action=hero.mixer.clipAction(C.sit); A.action.reset().play(); } A.prompt=null; } }   // done eating: just sit
@@ -3377,7 +3422,10 @@ function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.lea
   if(A.kind==='dance'&&!A.leaving){ A.danceT+=dt; if(!HL.music){ homeStop(); } else if(A.danceT>9){ const C=homeClips(), next=C.dance[HL.danceI++%C.dance.length]; if(next&&next!==A.clip){ const na=hero.mixer.clipAction(next); na.reset().play(); A.action.crossFadeTo(na,.5,false); A.action=na; A.clip=next; } A.danceT=0; } }
   if(A.leaving&&!A.fade&&A.lt>=.3&&A.doneSoon){ const d=A.doneSoon; A.doneSoon=null; d(); } }
 // every frame inside: the TV, the speaker lights, sweeping the dirt
-function homeTick(dt){ if(ROOM!==INT||!INT.home) return; const F=homeFx();
+function homeLight(){ const R=INT; if(!R.views) return; const day=clamp((ENV.elev+1)/10,0,1), dim=1-ENV.dim*.45, night=day<.35;
+  for(const v of R.views){ const m=v.material, want=night?lagosNight():lagosView(); if(m.map!==want){ m.map=want; m.needsUpdate=true; } m.color.setScalar(night?.9:.55+.6*day); }
+  if(R.sunL) R.sunL.intensity=2.4*day*dim; if(R.hemiL) R.hemiL.intensity=.8*(.3+.7*day)*dim; }
+function homeTick(dt){ if(ROOM!==INT||!INT.home) return; const F=homeFx(); HL.lt=(HL.lt||0)-dt; if(HL.lt<=0){ HL.lt=.5; homeLight(); }
   if(HL.tvT>0){ HL.tvT-=dt; if(HL.tvT<=0&&!(HL.act&&HL.act.kind==='tv')) HL.tv=0; } if(HL.act&&HL.act.kind==='tv') HL.tv=1;
   if(F.tv&&HL.tv&&(T0%20)<dt) F.tv.ch++; drawTV(dt); homeLoop('tv',HL.tv>0&&!HL.music);
   if(F.leds){ const b=HL.music?HL.music.beat:0; F.leds.forEach((m,i)=>{ m.visible=!!HL.music&&(i<=((b*7)%5)); }); }
@@ -3570,7 +3618,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   WALK_V=C&&C.v2&&C.f?1.45:1.7;   // her walk is a sway, a little slower
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);
   WARD.cur=id; if(save) try{ localStorage.setItem('naija-look2',id); }catch(e){}
-  applyColours(); lastMode=null; return true; }
+  applyColours(); lastMode=null; if(HL.broom) holdProp(HL.broom,'Right',[0,.05,.02],[0,0,0]); return true; }
 // the look you chose last time comes back once the people files are in
 function applySavedLook(){ if(!PROFILE) return; let id=savedLook();
   if(id===WARD.cur){ applyColours(); bodyReady(); return; } if(id==='me'){ applyColours(); }
