@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=9b411fa7c2';
-import * as C2 from './char2.js?v=9b411fa7c2';
-import { MapView } from './mapview.js?v=9b411fa7c2';
+import * as CLOCK from './clock.js?v=1c0cf98c20';
+import * as C2 from './char2.js?v=1c0cf98c20';
+import { MapView } from './mapview.js?v=1c0cf98c20';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='9b411fa7c2';
+const BUILD='1c0cf98c20';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -291,7 +291,8 @@ const PLACES=[]; // things to show on the big map: {name, sub, kind, x, z} (+ do
 const GATES=[];  // house fronts and compound gates facing the street (people stand there)
 const placeKind=sub=>/AMALA|BUKA|JOLLOF|SUYA|PEPPER|KITCHEN|RICE|DRINKS/.test(sub)?'food':/BARB|SALON|HAIR|PHARMACY|POS|BUREAU|LAUNDRY|PRINT|VULCAN|GENERATOR|REPAIR/.test(sub)?'service':'shop';
 let WB={x:1650,z:1650};   // half size of the map (set when the map loads)
-function onLand(x,z,bm=.6){ return Math.abs(x)<WB.x-bm&&Math.abs(z)<WB.z-bm; }
+const LAND_EXTRA=[];   // walkable strips outside the map square: the Third Mainland Bridge deck {x0,x1,z0,z1}
+function onLand(x,z,bm=.6){ if(Math.abs(x)<WB.x-bm&&Math.abs(z)<WB.z-bm) return true; for(const r of LAND_EXTRA) if(x>r.x0&&x<r.x1-bm&&z>r.z0+bm&&z<r.z1-bm) return true; return false; }
 /* ================= collision hash =================
    Boxes can be turned (ob: centre, axis cos/sin, half sizes) and can float (y0: bottom, h: top), e.g. footbridge rails. */
 const colliders=[], CELL=40, hash=new Map();
@@ -551,7 +552,8 @@ function condAt(x,z){ const e=roadAt(x,z,.3); return e?e.cond:null; }
 function groundY(){ return 0; }
 
 // ---- the ground, then parks, school fields, market yards and filling stations
-{ const W2=2*WB.x+600, D2=2*WB.z+600, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2);
+const SHORE_X=WB.x+34;   // east of Mushin the land ends at the Lagos Lagoon (the Third Mainland Bridge crosses it)
+{ const x0=-WB.x-300, W2=SHORE_X-x0, D2=2*WB.z+600, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2); g.translate((x0+SHORE_X)/2,0,0);
   const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*W2/16,uv.getY(i)*D2/16);
   const m=new THREE.Mesh(g,MAT.ground); m.receiveShadow=true; scene.add(m); }
 const AREAS=WD.areas.map(a=>({...a,pts:(()=>{ const o=[]; for(let i=0;i<a.p.length;i+=2) o.push([a.p[i],a.p[i+1]]); return o; })()}));
@@ -742,6 +744,50 @@ const FLYOVERS=[];
     PLACES.push({name:fo.name,sub:'Under the bridge',kind:'place',x:cx,z:cz}); } }
 function colBox(w,h,d,x,y,z,hex,M){ const g=box(w,h,d,x,y,z); g.applyMatrix4(M); const c=new THREE.Color(hex), n=g.attributes.position.count, a=new Float32Array(n*3); for(let i=0;i<n;i++){ a[i*3]=c.r; a[i*3+1]=c.g; a[i*3+2]=c.b; } g.setAttribute('color',new THREE.BufferAttribute(a,3)); return g; }
 
+// ---- the Third Mainland Bridge: from the end of Western Avenue across the lagoon toward Lagos Island.
+// Six lanes on a long low viaduct with lamps down the middle. The island's towers stand across the water,
+// but the road is closed near the far end until that city is built.
+const TMB=(()=>{ let st=null; for(const e of ROADS){ if(e.c>2||!/Western Avenue/i.test(e.name)) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd]; if(!st||n.x>st.x) st={x:n.x,z:n.z}; } }
+  if(!st) return null;
+  const z=st.z, HW=14, x0=st.x, xs=SHORE_X, xEnd=xs+1350, xBlock=xEnd-150, WY=-5.2;   // half width, start, shore, island shore, roadblock, water level
+  LAND_EXTRA.push({x0:WB.x-1,x1:xBlock,z0:z-HW+1.2,z1:z+HW-1.2});
+  const L=xEnd-x0, cxm=(x0+xEnd)/2;
+  const roadT=T.road4.clone(); roadT.wrapS=roadT.wrapT=THREE.RepeatWrapping; roadT.repeat.set(L/16,2); roadT.needsUpdate=true;
+  const road=new THREE.Mesh(new THREE.PlaneGeometry(L,HW*2-2.4).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({map:roadT,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  road.position.set(cxm,.03,z); road.receiveShadow=true; scene.add(road); ROAD_MATS.push(road.material); road.material.userData={r0:.85,c0:road.material.color.clone(),k:.55};
+  const parts=[], dark=[], lights=[];
+  parts.push(box(xEnd-xs,1.9,HW*2,(xs+xEnd)/2,-.95,z));                                     // deck slab
+  for(const sz of [-1,1]){ parts.push(box(L,1.0,.45,cxm,.5,z+sz*(HW-.25))); parts.push(box(L,.12,.6,cxm,1.02,z+sz*(HW-.3))); }   // parapets
+  parts.push(box(L,.8,.6,cxm,.4,z));                                                          // median barrier
+  for(let x=xs+15;x<xEnd;x+=32){ for(const sz of [-1,1]) parts.push(box(1.6,-WY-1.9+.6,1.6,x,(WY-1.9)/2,z+sz*(HW-4))); parts.push(box(2.2,1.2,HW*2-2,x,-2.4,z)); }   // piers and pier caps
+  for(let x=x0+20;x<xEnd;x+=40){ dark.push(box(.22,10,.22,x,5,z)); dark.push(box(4.2,.2,.3,x,10,z)); lights.push([x,z]); }   // twin lamps on the median
+  parts.push(box(6,-WY+2,HW*2+12,xs-3,WY/2,z));                                               // abutment on the shore
+  const conc=new THREE.MeshStandardMaterial({map:T.conc,color:0xd0cbc2,roughness:.9}), steel=new THREE.MeshStandardMaterial({color:0x7d8285,roughness:.5,metalness:.4});
+  const mk=(list,m,sh)=>{ const g=mergeList(list); const me=new THREE.Mesh(g,m); me.castShadow=sh; me.receiveShadow=true; scene.add(me); return me; };
+  mk(parts,conc,true); mk(dark,steel,false);
+  const heads=new THREE.Mesh(mergeList(lights.flatMap(([x,zz])=>[box(.6,.18,.45,x-1.9,9.85,zz),box(.6,.18,.45,x+1.9,9.85,zz)])),new THREE.MeshStandardMaterial({color:0xfff2d0,emissive:0xffd590,emissiveIntensity:0,roughness:.4})); scene.add(heads);
+  // sea wall along the shore and the lagoon itself
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(2,-WY+1,2*WB.z+600),conc); wall.position.set(SHORE_X+1,(WY-1)/2+.5,0); scene.add(wall);
+  const wn=texWaterNormals(); wn.wrapS=wn.wrapT=THREE.RepeatWrapping; wn.repeat.set(60,60);
+  const lag=new THREE.Mesh(new THREE.PlaneGeometry(4200,4200).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({color:0x22424a,roughness:.18,metalness:.15,normalMap:wn,normalScale:new THREE.Vector2(.18,.18)}));
+  lag.position.set(SHORE_X+2100,WY,0); lag.receiveShadow=true; scene.add(lag);
+  // the roadblock: concrete barriers across all lanes, a police tent and the sign
+  const bar=[]; for(let zz=z-HW+1.5;zz<z+HW-1;zz+=2.1) bar.push(box(2,1.0,.6,xBlock,.5,zz));
+  const bm=mk(bar,new THREE.MeshStandardMaterial({color:0xe9e5dc,roughness:.8}),true);
+  const stripes=[]; for(let zz=z-HW+1.5;zz<z+HW-1;zz+=2.1) stripes.push(box(2.02,.25,.62,xBlock,.6,zz));
+  mk(stripes,new THREE.MeshStandardMaterial({color:0xd23a2a,roughness:.7}),false);
+  const sign=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('ROAD CLOSED · LAGOS ISLAND UNDER CONSTRUCTION','#d23a2a','#ffffff',1800,170),fog:false})); sign.scale.set(14,1.3,1); sign.position.set(xBlock-1,3.4,z); sign.layers.set(1); scene.add(sign);
+  const gate=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('THIRD MAINLAND BRIDGE','#16A06B','#ffffff',1400,170),fog:false})); gate.scale.set(9,1.1,1); gate.position.set(xs+6,7.5,z); gate.layers.set(1); scene.add(gate);
+  dark.length=0; for(const sz of [-1,1]) dark.push(box(.4,8,.4,xs+6,4,z+sz*(HW-1))); dark.push(box(.4,.6,HW*2-2,xs+6,7.7,z)); mk(dark,steel,false);   // name gantry
+  // Lagos Island across the water: towers of glass and concrete (out of bounds for now)
+  const isl=new THREE.Mesh(new THREE.PlaneGeometry(900,1400).rotateX(-Math.PI/2),MAT.conc); isl.position.set(xEnd+450,.01,z); isl.receiveShadow=true; scene.add(isl);
+  const iw=new THREE.Mesh(new THREE.BoxGeometry(2,-WY+1,1400),conc); iw.position.set(xEnd-1,(WY-1)/2+.5,z); scene.add(iw);
+  const R2=mulberry32(4711), towers={glass:[],office:[],resi:[]};
+  for(let i=0;i<46;i++){ const x=xEnd+40+R2()*700, zz=z+(R2()-.5)*1100; if(Math.abs(zz-z)<40&&x<xEnd+120) continue; const w=14+R2()*26, d=14+R2()*22, h=i<8?90+R2()*90:20+R2()*70, k=['glass','office','resi'][Math.floor(R2()*3)];
+    const g=new THREE.BoxGeometry(w,h,d); const uv=g.attributes.uv, nr=g.attributes.normal; for(let j=0;j<uv.count;j++){ const ax=Math.abs(nr.getX(j))>.5?d:w; uv.setXY(j,uv.getX(j)*ax/12.8,uv.getY(j)*h/28.8); } g.translate(x,h/2,zz); towers[k].push(g); }
+  for(const k of Object.keys(towers)){ if(!towers[k].length) continue; const g=mergeGeometries(towers[k]); const c=g.attributes.position.count, col=new Float32Array(c*3).fill(1); g.setAttribute('color',new THREE.BufferAttribute(col,3)); const me=new THREE.Mesh(g,MAT[k==='resi'?'resi':k]); me.castShadow=false; me.receiveShadow=true; scene.add(me); }
+  PLACES.push({name:'Third Mainland Bridge',sub:'Closed near Lagos Island for now',kind:'place',x:xs+200,z});
+  let t=0; return {z,xs,xBlock,heads,update(dt){ t+=dt; wn.offset.set(t*.004,t*.0025); heads.material.emissiveIntensity=ENV.lamp>0?Math.min(3,ENV.lamp*.6):0; }}; })();
 // ---- motor park by Mushin station: danfos load here for Oshodi, Yaba, Ojota and Ikeja
 { const st=WD.pois.station[0]||[1167,-541]; let best=null, bs=1e18;
   for(const e of ROADS){ if(e.c>4||!e.drive||e.len<40) continue; const A0=nodes[e.a], t=clamp((st[0]-A0.x)*e.fx+(st[1]-A0.z)*e.fz,20,e.len-20), px=A0.x+e.fx*t, pz=A0.z+e.fz*t;
@@ -2443,7 +2489,7 @@ const SCAT=(()=>{ const CELL=3, RAD=Q===QUAL.low?20:Q===QUAL.medium?28:38, NG=Q=
   function inBld(x,z){ for(const b of bldNear(x,z,1)){ if(b.skip) continue; const dx=x-b.cx, dz=z-b.cz, u=b.c*dx+b.s*dz, v=-b.s*dx+b.c*dz; if(Math.abs(u)<b.w/2+.4&&Math.abs(v)<b.d/2+.4) return true; } return false; }
   function cellItems(i,j){ const key=i*100003+j; let it=cache.get(key); if(it) return it;
     let s=(Math.imul(i,73856093)^Math.imul(j,19349663))>>>0; const rnd=()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; };
-    const cx=(i+.5)*CELL, cz=(j+.5)*CELL, ar=areaAt(cx,cz), kind=ar?ar.k:'';
+    const cx=(i+.5)*CELL, cz=(j+.5)*CELL; if(cx>SHORE_X-2||(cx>WB.x&&TMB&&Math.abs(cz-TMB.z)<16)){ it={g:[],s:[]}; cache.set(key,it); return it; } const ar=areaAt(cx,cz), kind=ar?ar.k:'';
     const lawn=AREA_ACC[kind]==='lawn', yard=NO_GRASS.has(kind)||AREA_ACC[kind]==='lot';
     const nG=yard?0:lawn?5+Math.floor(rnd()*4):kind==='school'?Math.floor(rnd()*2):(rnd()<.55?Math.floor(rnd()*4):0);   // tufts come in clumps
     const nS=lawn?(rnd()<.2?1:0):yard?(rnd()<.3?1:0):Math.floor(rnd()*3);
@@ -4599,7 +4645,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); updateBlobs(); SCAT.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
+  updateCamera(dt); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -4646,6 +4692,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     start(){ if(!started) $('#enterBtn').click(); },
     // test helper: stand next to a place from the map (name contains the text), facing it
     // test helper: a fixed camera looking at a place from `back` metres away and `h` metres up (look() with no place gives control back)
+    cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
     goto(q,back=26,yaw=null,zoom=3){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return PLACES.map(p=>p.name).slice(0,80); const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
