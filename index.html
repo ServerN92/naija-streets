@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="1c0cf98c20">
+<meta name="ns-build" content="292e998d85">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -95,8 +95,8 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .chip .w{color:var(--muted);font-weight:600}
 .iconbtn{width:44px;height:44px;display:grid;place-items:center;background:var(--glass);border:1px solid var(--line);border-radius:50%;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:0}
 .iconbtn svg{width:22px;height:22px}
-#mmWrap{position:absolute;left:calc(18px + var(--sl));bottom:calc(18px + var(--sb));width:210px;height:210px;pointer-events:auto;cursor:pointer;border:none;background:none;padding:0}
-#mm{width:100%;height:100%;border-radius:50%;border:3px solid rgba(0,0,0,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.5);display:block}
+#mmWrap{position:absolute;left:calc(18px + var(--sl));bottom:calc(18px + var(--sb));width:190px;height:190px;pointer-events:auto;cursor:pointer;border:none;background:none;padding:0}
+#mm{width:100%;height:100%;border-radius:12px;border:3px solid rgba(0,0,0,.6);box-shadow:0 0 0 2px rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.5);display:block}
 #mmWrap .mmtag{position:absolute;right:-2px;bottom:6px;font-family:var(--fd);font-size:12px;background:var(--danfo);color:var(--ink);border-radius:999px;padding:4px 9px 3px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .prompt{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(34px + var(--sb));display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:8px 16px 8px 8px;font-weight:700;font-size:19px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap;pointer-events:auto;min-height:44px;box-sizing:border-box}
 .prompt kbd{font-family:var(--fd);font-size:15px;background:var(--danfo);color:var(--ink);border-radius:6px;padding:4px 9px 3px}
@@ -131,6 +131,7 @@ body.touchui .ward .kb{display:none}
 .ph-cam{width:54px;height:6px;border-radius:3px;background:#22252b}
 #phClose{background:none;border:none;color:var(--cream);font-size:18px;min-width:44px;min-height:36px;margin:-6px -10px -6px 0}
 .ph-app{background:var(--danfo);color:var(--ink);font-family:var(--fd);font-size:16px;padding:9px 14px}
+.ph-kinds{display:flex;gap:6px;margin:0 0 8px}.ph-kind{flex:1;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:999px;color:var(--cream);font-weight:700;font-size:14px;min-height:40px}.ph-kind.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
 .ph-tabs{display:flex;background:var(--danfo)}.ph-tab{flex:1;background:none;border:none;font-family:var(--fd);font-size:15px;padding:10px 6px;color:rgba(14,16,20,.5);min-height:42px}.ph-tab.on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
 .jobhud{position:fixed;right:calc(18px + var(--sr));top:calc(64px + var(--st));text-align:right;font-family:var(--fd);font-size:13px;color:#ffe08a;text-shadow:0 1px 3px #000;max-width:min(300px,45vw);pointer-events:none}.jobhud.late{color:#ff9b8a}
 .ph-app small{font-family:var(--fb, inherit);font-weight:700;font-size:11px;margin-left:6px;opacity:.75}
@@ -191,7 +192,8 @@ body.touchui .ward .kb{display:none}
 .foe .hpbar i{background:var(--rust)}
 body.touchui .speedo{right:calc(22px + var(--sr));bottom:calc(170px + var(--sb))}
 body.touchui .prompt{bottom:calc(24px + var(--sb))}
-body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:128px;height:128px}
+body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:112px;height:112px}
+@media (max-height:500px),(max-width:760px){ body.touchui #mmWrap{width:96px;height:96px} body.touchui #mm{border-radius:9px;border-width:2px} body.touchui #mmWrap .mmtag{font-size:10px;padding:3px 7px 2px;bottom:3px;right:-4px} }
 body.touchui.vit #mmWrap{top:calc(122px + var(--st))}
 @media (orientation:landscape){ body.touchui.vit .toast{left:calc(50% + 50px);max-width:calc(100vw - 360px)} }   /* keep messages clear of the health bars */
 body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
@@ -222,7 +224,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 .bm-card button.off{background:rgba(255,255,255,.12);color:var(--cream)}
 
 @media (max-width:760px){
-  #mmWrap{width:118px;height:118px;left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));bottom:auto}
+  #mmWrap{width:110px;height:110px;left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));bottom:auto}
   .loc{font-size:17px}
   .chip{font-size:14px;padding:5px 12px 5px 8px}.chip .w{display:none}
   .speedo b{font-size:46px}
@@ -232,7 +234,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   .tl{max-width:calc(100vw - 230px - var(--sl) - var(--sr))}
 }
 @media (orientation:portrait) and (max-width:760px){
-  body.touchui #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:118px;height:118px}
+  body.touchui #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:96px;height:96px}
   body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
   body.touchui .prompt{bottom:calc(172px + var(--sb))}
   body.touchui .toast{top:calc(196px + var(--st));max-width:calc(100vw - 32px)}
@@ -240,7 +242,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 }
 @media (max-height:520px){
   #mmWrap{width:132px;height:132px}
-  body.touchui #mmWrap{width:112px;height:112px;top:calc(60px + var(--st))}
+  body.touchui #mmWrap{width:96px;height:96px;top:calc(60px + var(--st))}
   .loc{font-size:17px}
   .speedo b{font-size:46px}
   body.touchui .speedo{bottom:calc(162px + var(--sb))}
@@ -399,7 +401,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=1c0cf98c20"></script>
+<script type="module" src="src/game.js?v=292e998d85"></script>
 
 </body>
 </html>

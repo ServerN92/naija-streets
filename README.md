@@ -41,9 +41,10 @@ sell from their stalls and crowds of shoppers go from stall to stall. People onl
 
 ## Shared time and weather
 Every player computes the same game time and weather from the server clock (the HTTP Date header), so day, night,
-rain and harmattan change for everyone at the same moment. One game day lasts 48 minutes, and the night (20:00 to 05:00)
-flies past in about 3 of them, bright and moonlit; weather can change every 16 minutes and follows the Lagos seasons (rain April–October,
-harmattan December–February).
+rain and harmattan change for everyone at the same moment. One game day lasts 2 hours: morning, afternoon and evening
+about 35 minutes each, and the night (20:00 to 05:00) comes late and passes in about 8 minutes, bright and moonlit. Weather
+can change every 40 minutes and follows the Lagos seasons (harmattan December–February). Rain hardly falls: a short
+shower of about 9 minutes, mostly in April–October, then it clears to cloud and the roads dry.
 
 ## People
 Nine characters from Mixamo live in the city: mama, lady_red, lady_black, hawker, baba, areaboy, schoolboy, girl and
@@ -67,6 +68,10 @@ A woman plays as the girl in the white crop top and walks, runs and fights with 
 the looks of your own side only.
 
 ## Life, fighting and the police
+People are solid: they step around each other, and you can't walk through them. Bump into someone hard and he may
+shove you back; shove a hothead twice and he fights. Stand and stare at someone too long and he asks "Wetin you dey
+look?"; area boys and some others then fight you, the rest walk off.
+
 Your life bar is always at the top left. Fights are fast: J or click punches (jab, cross, jab… presses made during a
 blow come out as soon as it allows), K or right click kicks, and a kick after two punches is the finisher that floors
 him. L or Q dodges (a quick slip that blows can't touch; hit straight after and it lands harder). G next to the man you
@@ -94,6 +99,15 @@ P (phones: the phone button at the top) takes out your phone; you hold it in you
 streets (one-ways included), with an OYA RIDE sign on the roof and a T on the minimap. Walk to the car and press E
 (or Get in on the phone). He drives you there through the traffic with the route on the minimap; skip the ride from the
 phone, or get down anywhere when the car is slow. You pay the fare shown (cash).
+Pick Okada instead of Car for a bike man: cheaper, and he comes anywhere. On dirt roads and quiet back streets cars
+won't come ("No car fit reach where you dey"), but the okada does; you ride on the back. "Main road" drops you at the
+nearest big road.
+
+## Carrying passengers
+Drive a danfo, bus, keke, okada or car past a bus stop and people wave you down; now and then someone by the road waves
+too. Stop by them and they get in (danfo 3, bus 4, keke 2, car 2, okada 1), tell you where they are going (the route
+shows on the minimap) and pay when you stop there: the farther, the more. Too slow and they pay less; get out on the way
+and they leave without paying.
 
 ## Your phone: OYA WORK
 The second tab on the phone lists delivery jobs (a parcel, a crate of drinks, a birthday cake…). Take one, go to the
@@ -108,7 +122,9 @@ run, and the people around run too. Market and shop sellers carry the day's sale
 waking up at LUTH costs a hospital bill, and an arrest costs a fine.
 
 ## Weapons: Oga Shege's black market
-A man at a table under a red umbrella on a side street a few minutes from your house (on the map: Oga Shege) sells a
+Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
+big map, where the Guns chip shows only him). His boys smoke at the gap in the fence and stop you: ₦100 to pass (E).
+They don't let you push through; hit them and it's a fight. Inside, he stands at his table and sells a
 police baton (₦8,000), a katana (₦25,000), an AK-47 with 30 bullets (₦120,000), more bullets (₦4,500 for 30), grenades
 (₦15,000 for 3) and petrol bombs (₦6,000 for 3). Press E near him. 1–6 or Tab (phones: tap the weapon name) picks fists,
 baton, katana, AK, grenade or petrol bomb. The baton and katana go in your right hand and
@@ -122,10 +138,16 @@ seconds; a petrol bomb breaks and the ground burns for about ten seconds, settin
 ## The police: 1 to 5 stars
 Stars grow with the crime: a few punches at strangers, a robbery, a gunshot near people or a stolen car give one star,
 and small crimes never go past two. Killings go up to three. Only attacking the police goes higher: hitting an officer
-gives two stars, shooting at one three, and each officer killed more. A police van comes for you; when it gets close it stops and
+gives two stars, shooting at one three, and each officer killed more. If the police see it themselves (an officer or
+a police car close by), a van comes for you at once. Otherwise somebody calls them and they take their time (about
+40–55 seconds for one star, less for more), drive to where it happened and ask the people there. Still around, or in
+their sight, and they come after you; long gone (or hiding indoors), and they give up and your stars clear.
+When a van chases you and gets close it stops and
 the officers jump out (`assets/people/police_f.glb`, `police_m.glb`, rigged by `tools/autorig.py`).
 - 1 star: they run you down and grab you, no beating. Stand still next to them and you are BUSTED (cell at Mushin police
-  station, a fine, and they take your AK and bombs, sometimes the katana). Stop your car near them and they walk to your
+  station, a fine, and they take your AK and bombs, sometimes the katana). The cell time grows with every arrest:
+  20 s, 40 s, 1 min, 1 min 10 s, 2 min, then 3 min each time. It is saved, so reloading the game puts you back in the
+  cell with the time you had left. Stop your car near them and they walk to your
   door and pull you out.
 - 2 stars: batons too if you fight back or keep running; a beating ends in handcuffs.
 - 3 stars: rifles. They find a clear line and shoot in bursts (never below three stars).
@@ -135,7 +157,7 @@ Kill an officer and his rifle lies on the ground: walk over it to take it (or 20
 away and keep quiet and the stars fade; when they reach zero the officers walk back to the van and drive off.
 Bullets that get you are WASTED: you wake up at LUTH.
 
-A fight, a killing or a kidnapping also brings a police van to the spot: it parks anyhow, an officer walks to the scene
+A fight, a killing or a kidnapping also brings a police van to the spot (late, after the call): it parks anyhow, an officer walks to the scene
 and the driver stands at his door while everyone still fighting or lying there walks into the van, then the officers
 climb back in and it drives off. If you were part of it, you go too.
 
