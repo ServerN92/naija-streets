@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=20da8e83ac';
-import * as C2 from './char2.js?v=20da8e83ac';
-import { MapView } from './mapview.js?v=20da8e83ac';
+import * as CLOCK from './clock.js?v=6dbd9dd63a';
+import * as C2 from './char2.js?v=6dbd9dd63a';
+import { MapView } from './mapview.js?v=6dbd9dd63a';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='20da8e83ac';
+const BUILD='6dbd9dd63a';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -374,7 +374,7 @@ let MANIFEST={}; try{ const r=await fetch('assets/manifest.json',{cache:'no-cach
 const clockSync=CLOCK.syncClock();
 // key: [file, front direction, real size (m) along x after turning, has a low-detail file]
 const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.75,1],bus:['citybus','+z',10.5,1],police:['police_pickup','-x',5.3,1],okada:['red_motorcycle','-x',2.05,1],sedan:['sedancar','-x',4.55,1],
-  bungalow:['beigehouse','h',12.5,1],house:['residentialhouse','h',16,1],storey:['two-story_house_3d_model','h',12.5,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  bungalow:['ns_bungalow','h',12.5,1],house:['ns_house','h',16,1],storey:['ns_storey','h',12.5,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -396,7 +396,7 @@ const modelJobs=Object.entries(MODEL_FILES).map(async([key,[file,front,size,lod]
     geo.translate(-T.cx,-T.y0,-T.cz); if(front==='tl') geo.translate(T.cx,0,T.cz); geo.scale(T.sc,T.sc,T.sc); geo.computeBoundingBox(); geo.computeBoundingSphere(); geo.boundingBox.getSize(sz);
     const mat=mesh.material; if(mat.map){ mat.map.anisotropy=maxAniso; mat.map.colorSpace=THREE.SRGBColorSpace; }
     const bld=front==='h'; mat.side=bld&&li>0?THREE.FrontSide:THREE.DoubleSide; mat.roughness=bld?.9:(front==='tl'?.6:.55); mat.metalness=bld?0:(front==='tl'?.3:.15);
-    if(li===0) Object.assign(out,{geo,mat,W:sz.x,D:sz.z,H:sz.y}); else Object.assign(out,{geo1:geo,mat1:mat}); });
+    if(li===0) Object.assign(out,{geo,mat,W:sz.x,D:sz.z,H:sz.y,cz0:T.cz,sc0:T.sc}); else Object.assign(out,{geo1:geo,mat1:mat}); });
   return [key,out]; });
 modelJobs.forEach(p=>p.catch(()=>{}));
 // trees: one picture strip per kind, the real tree seen from 8 sides (tools/impostor.py)
@@ -477,7 +477,9 @@ const TINTS={glass:['#ffffff','#e2f2ff','#dcfff2','#eef0ff'],bronze:['#ffffff','
   resi:['#fffaf0','#ffe6d2','#e2f0ff','#e4f6e8','#f1e6ff','#ffffff','#fff1c0'],oldmid:['#f6d98b','#f2b8a8','#a9d6e5','#b8e0b0','#e9c46a','#f4a261','#ddd5c8','#c9b8e8','#e7e1d3']};
 const A={}; for(const k of [...FAC_KEYS,'roof','zinc','fence','curb','pave','plaza','grass','road2','road4','cross','sign','conc','roadBad2','roadBad4','dirt','asph','sand','lot','lawn']) A[k]=new Acc();
 const ROAD_MATS=[MAT.road2,MAT.road4,MAT.cross,MAT.roadBad2,MAT.roadBad4,MAT.dirt,MAT.pave,MAT.plaza,MAT.curb,MAT.asph,MAT.ground,MAT.sand,MAT.lot];
-for(const m of ROAD_MATS){ m.userData.r0=m.roughness; m.userData.c0=m.color.clone(); m.userData.k=m===MAT.dirt?.45:.72; }
+// how much shine rain gives each surface: earth and sand only get damp (never a mirror), tar and concrete a soft sheen
+const WET_K=new Map([[MAT.dirt,.3],[MAT.ground,.3],[MAT.sand,.25],[MAT.lot,.4],[MAT.pave,.4],[MAT.plaza,.45],[MAT.curb,.35]]);
+for(const m of ROAD_MATS){ m.userData.r0=m.roughness; m.userData.c0=m.color.clone(); m.userData.k=WET_K.get(m)??.55; }
 
 /* ================= sky, sun, water ================= */
 await step('Hanging the sun over Mushin…', 14);
@@ -808,7 +810,7 @@ function farBox(M,wallHex,roofHex){ const W=M.W, D=M.D, H=M.H*.7, Y=M.H, g=new T
   for(const s of [-1,1]){ const a=[s*hw,H,s*hd], b2=[s*hw,H,-s*hd], c=[s*hw,Y,0]; for(const p of [a,b2,c]){ P.push(...p); N.push(s,0,0); C.push(wc.r,wc.g,wc.b); } }
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(C,3)); g.computeBoundingSphere(); return g; }
 const FAR_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95});
-if(HOUSES){ const farC={bungalow:['#d9c7a6','#8a7d70'],storey:['#e6dccb','#7d6f62'],house:['#e9e2d6','#6f6a64']};
+if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555c'],house:['#ece6da','#3e5f6f']};   // walls and roof of the Blender houses (tools/blender_houses.py)
   for(const key in houseInst){ const M=MODELS[key], fc=farC[key]||['#ddd','#777'], lv=[{geo:M.geo,mat:M.mat,dist:Q.lod0,shadow:true}];
     if(M.geo1) lv.push({geo:M.geo1,mat:M.mat1,dist:Math.max(Q.lod0+30,Q.draw*.55),shadow:false});
     lv.push({geo:farBox(M,fc[0],fc[1]),mat:FAR_MAT,dist:Q.draw+40,shadow:false});
@@ -830,13 +832,15 @@ const APT={door:{x:0,z:0},front:{x:0,z:0},ry:0};
   if(b){ f=FACE_DIR(b); const key=MODELS.storey?'storey':'bungalow';
     if(HOUSES){ const M=MODELS[key], fw=frontLen(b), dd=depthLen(b), s=clamp(Math.min(fw/M.W,dd/M.D),.7,1.2), ry=Math.atan2(f[0],f[1]);
       new CullSet(modelLevels(M,Q.lod0*1.6,Q.draw+60),[{x:b.cx,y:0,z:b.cz,ry,sc:s}],{shadowDist:Q.shR,name:'home'}); addOB(b.cx,b.cz,M.W*s/2,M.D*s/2,-ry,M.H*s);
-      const hd=M.D*s/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; }
+      // the Blender storey house has its own front door, steps and balcony: the lit door sits on its real front wall
+      const own=MODEL_FILES[key][0]==='ns_storey', k=own?M.sc0*s:1, hd=own?(6.75-M.cz0)*k:M.D*s/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; APT.own=own?k:0; }
     else { obBuilding(b,{type:'resi',h:6.8,zinc:true}); const hd=depthLen(b)/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; } }
   APT.front={x:APT.door.x+f[0]*2.3,z:APT.door.z+f[1]*2.3}; APT.ry=Math.atan2(f[0],f[1]); APT.nx=f[0]; APT.nz=f[1];
   const g=new THREE.Group(); g.position.set(APT.door.x,0,APT.door.z); g.rotation.y=APT.ry; scene.add(g);
-  const canopy=new THREE.Mesh(new THREE.BoxGeometry(4.2,.22,2.2),MAT.conc); canopy.position.set(0,3.25,1.05); canopy.castShadow=true; g.add(canopy);
-  for(const sx of [-1.95,1.95]){ const b=new THREE.Mesh(new THREE.BoxGeometry(.14,.5,2),MAT.conc); b.position.set(sx,2.95,1); g.add(b); }   // cantilever brackets, nothing for the camera to sit in
-  const door=new THREE.Mesh(new THREE.BoxGeometry(1.5,2.6,.12),new THREE.MeshStandardMaterial({color:0x2a2018,roughness:.5,emissive:0xffb873,emissiveIntensity:0})); door.position.set(0,1.3,.08); g.add(door); APT.doorMesh=door;
+  if(!APT.own){ const canopy=new THREE.Mesh(new THREE.BoxGeometry(4.2,.22,2.2),MAT.conc); canopy.position.set(0,3.25,1.05); canopy.castShadow=true; g.add(canopy);
+    for(const sx of [-1.95,1.95]){ const b=new THREE.Mesh(new THREE.BoxGeometry(.14,.5,2),MAT.conc); b.position.set(sx,2.95,1); g.add(b); } }   // cantilever brackets, nothing for the camera to sit in
+  const dk=APT.own||1, door=new THREE.Mesh(APT.own?new THREE.BoxGeometry(1.2*dk,2.3*dk,.06):new THREE.BoxGeometry(1.5,2.6,.12),new THREE.MeshStandardMaterial({color:0x5b3a22,roughness:.5,emissive:0xffb873,emissiveIntensity:0}));
+  if(APT.own) door.position.set(0,(.5+1.15)*dk,.06*dk); else door.position.set(0,1.3,.08); g.add(door); APT.doorMesh=door;
   const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1.15,48),new THREE.MeshBasicMaterial({color:0xF2B705,transparent:true,opacity:.8,depthWrite:false,fog:false})); ring.rotation.x=-Math.PI/2; ring.position.set(APT.front.x,.05,APT.front.z); ring.layers.set(1); scene.add(ring); APT.ring=ring;
   const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('YOUR HOUSE'),transparent:true,depthTest:true,fog:false})); lab.scale.set(4.2,.8,1); lab.position.set(APT.door.x+f[0]*1.6,5.2,APT.door.z+f[1]*1.6); lab.layers.set(1); scene.add(lab); APT.label=lab; }
 
