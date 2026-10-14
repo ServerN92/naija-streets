@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=0435a7fed9';
-import * as C2 from './char2.js?v=0435a7fed9';
-import { MapView } from './mapview.js?v=0435a7fed9';
+import * as CLOCK from './clock.js?v=fd1639032a';
+import * as C2 from './char2.js?v=fd1639032a';
+import { MapView } from './mapview.js?v=fd1639032a';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='0435a7fed9';
+const BUILD='fd1639032a';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1587,7 +1587,8 @@ function buildMyRoom(g,texs){ const S=new THREE.Scene(); S.background=new THREE.
   let ward={x:cx,z:cz}, wardYaw=0; { const wb=boxOf(named(/wardrobe|closet|cupboard/i)), sb=boxOf(named(/^Shelf/i)), B=!wb.isEmpty()?wb:!sb.isEmpty()?sb:null;
     if(B){ const {c,n,d}=facing(B), q=nearFree(c.x+n.x*(d+.55),c.z+n.z*(d+.55)); ward=q; wardYaw=Math.atan2(n.x,n.z); } }
   const step=(nx,nz)=>{ if(free(nx,nz)){ player.x=nx; player.z=nz; return true; } return false; };
-  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,camDist:2.3,label:floors.length>1?'Your flat · Mushin':'Your room · Mushin',
+  let home=null; try{ home=homeSpots({named,boxOf,facing,free,nearFree}); }catch(e){ console.warn('home spots',e); }   // sofas, TV, cooker, shower, bed, speaker, bucket
+  Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,home,camDist:2.3,label:floors.length>1?'Your flat · Mushin':'Your room · Mushin',
     bounds:{x0:x0+.3,x1:x1-.3,z0:z0+.3,z1:z1-.3},cam:{x0:x0+.18,x1:x1-.18,z0:z0+.18,z1:z1-.18,y0:.45,y1:H-.15},
     // walking: straight on if free; else slide along what you hit, or turn a little toward a doorway
     move(nx,nz){ const ox=player.x, oz=player.z, dx=nx-ox, dz=nz-oz; player.y=0; if(step(nx,nz)) return;
@@ -1617,7 +1618,7 @@ try{
   const act={idle:mixer.clipAction(inPlace(CL[0])),walk:mixer.clipAction(inPlace(CL[1])),run:mixer.clipAction(inPlace(CL[2])),car:mixer.clipAction(CL[3])};
   act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
   for(const k of ['idle','walk','run']){ act[k].play(); act[k].setEffectiveWeight(k==='idle'?1:0); }
-  hero={root,mixer,act,w:{idle:1,walk:0,run:0,text:0,phone:0,fight:0},ov:null,carT:0,hips:hips||cObj,cObj,hipsRest:hips?hips.position.clone():null,still:0,fid:null};
+  hero={root,mixer,act,w:{idle:1,walk:0,run:0,text:0,phone:0,fight:0},ov:null,carT:0,hips:hips||cObj,cObj,hipsRest:hips?hips.position.clone():null,still:0,fid:null,rest:snapRest(cObj)};
   scene.remove(rig.root); rig={root}; scene.add(root); WALK_V=1.7; RUN_V=4.9; { let l2=null; try{ l2=localStorage.getItem('naija-look2'); }catch(e){} if(isF()||(PROFILE&&l2!=='me')) root.visible=false; }   // you appear once your own person (Tunde, Amaka, Ada) is on
 }catch(e){ console.warn('Character files could not load, using the built-in model.',e); }
 function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','walk2','run','text','phone']) if(a[k]){ a[k].setEffectiveWeight(0); hero.w[k]=0; } hero.fid=null; hero.still=0;
@@ -1848,7 +1849,7 @@ function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
   let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':'Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; } }
+    else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':'Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(HL.act) txt=homePrompt(); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
@@ -1863,7 +1864,7 @@ const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
 function updateCamera(dt){ let dist;
   if(mode==='drive'){ const v=drive.v; _t.set(v.x,v.y+1.5,v.z); dist=7.8+Math.abs(drive.speed)*.04;
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
-  else { _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:1.55),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
+  else { _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
   dist*=camState.zoom; const cp=Math.cos(camState.pitch); _d.set(-Math.sin(camState.yaw)*cp,Math.sin(camState.pitch),-Math.cos(camState.yaw)*cp);
   if(mode!=='drive'){ let side=gunOut()&&ARMS.aim?.6:.35;   // over the shoulder; with the wardrobe open, you stand in the clear part of the screen
     if(WARD.open) side=-(WARD.px/2)/(innerWidth/2)*Math.tan(camera.fov*Math.PI/360)*camera.aspect*camState.dist;
@@ -1951,7 +1952,7 @@ async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await ne
 function action(){ if(busy||!started) return;
   if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
-  else if(mode==='interior'){ if(WARD.open) closeWard(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); } }
+  else if(mode==='interior'){ if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
   for(let i=0;i<n&&i<far.length;i++){ const p=far[i], side=i%2?-1:1; Object.assign(p,{x:v.x+lx*1.6*side+hx*mrr(-1,1),z:v.z+lz*1.6*side+hz*mrr(-1,1),y:SLAB,state:'flee',timer:mrr(4,6),fall:0,phone:false,yaw:Math.atan2(lx*side,lz*side)+mrr(-.6,.6)}); } }
@@ -2005,8 +2006,8 @@ function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let pl
 async function enterApt(){ if(busy) return;
   if(!MYROOM.ready&&!MYROOM.failed&&MANIFEST['assets/models/room.glb']){ toast('Opening your room…',4); busy=true; try{ await loadMyRoom(); }catch(e){} busy=false; }
   fadeSwap(()=>{ ROOM=INT; mode='interior'; enteredAt=T0; INT.scene.add(rig.root); const s=INT.spawn||{x:0,z:3.3,ry:Math.PI};
-    Object.assign(player,{x:s.x,z:s.z,y:0,yaw:s.ry,speed:0}); Object.assign(camState,{yaw:s.ry,pitch:.22,dist:INT.camDist}); setScene(INT.scene); toast('Home sweet home'); }); }
-function exitApt(){ closeWard(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
+    Object.assign(player,{x:s.x,z:s.z,y:0,yaw:s.ry,speed:0}); Object.assign(camState,{yaw:s.ry,pitch:.22,dist:INT.camDist}); setScene(INT.scene); if(INT.home) homeDirt(); toast(INT.home&&HL.dirt.length>2?'Home sweet home. The house don dirty small: the broom dey near the bucket.':'Home sweet home'); }); }
+function exitApt(){ closeWard(); homeLeave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
 function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thud(); }
 
 /* ================= simulation ================= */
@@ -2940,6 +2941,230 @@ const LOOK_LIST=[
   {id:'lady_black',name:'All black',f:1},
   {id:'outfit_dress_pink',name:'Pink dress',f:1,robe:1,h:1.72,idle:['idle_3'],sw:['#ead3d8','#ead3d8'],file:1},
   {id:'outfit_casual',name:'Mustard and jeans',f:1,h:1.72,idle:['idle_4'],sw:['#cc9438','#2b3b5e'],file:1}];
+/* ================= home life: sit, watch TV, cook and eat, bath, sleep, music and dance, sweep =================
+   The flat's furniture (found by name in room.glb) gives the places: sofas and chairs to sit, the TV, the cooker, the
+   dining table, the shower, the bed, the soundbar and the bucket. Walk up and press E. Moving again (or E) stands you up.
+   Moves: the real Mixamo ones when they are in moves2.glb (v2_sit, v2_eat…), else poses made in code (src/char2.js POSES). */
+const HL={act:null,music:null,tv:0,tvT:0,food:0,broom:null,dirt:[],fx:null,clips:null,clipsFor:null,danceI:0};
+function homeSpots(H){ const {named,boxOf,facing,free,nearFree}=H, V=THREE.Vector3, out={spots:[],free,nearFree};
+  const bb=re=>boxOf(named(re)), ok=b=>!b.isEmpty(), ctr=b=>b.getCenter(new V()), size=b=>b.getSize(new V());
+  const tvB=bb(/^TV_Screen$/), coffee=bb(/^CoffeeTable_Top$/), dining=bb(/^Dining_Top$/), desk=bb(/^Desk_Top$/);
+  if(ok(tvB)){ const f=facing(tvB); out.tv={c:ctr(tvB),sz:size(tvB),n:f.n.clone()}; }
+  // seats along a sofa (or one chair), facing what stands in front of it; you walk up from the front, or from behind a dining chair
+  const seats=(b,kind,target,{depth=.24,y=.47,max=3,from='front'}={})=>{ if(!ok(b)) return; const c=ctr(b), s=size(b);
+    let n; if(target&&ok(target)){ const t=ctr(target), dx=t.x-c.x, dz=t.z-c.z; n=Math.abs(dx)>Math.abs(dz)?new V(Math.sign(dx),0,0):new V(0,0,Math.sign(dz)); } else n=facing(b).n.clone();
+    const alongX=Math.abs(n.z)>.5, len=alongX?s.x:s.z, thin=alongX?s.z:s.x, k=Math.max(1,Math.min(max,Math.round(len/.68))), yaw=Math.atan2(n.x,n.z);
+    let kd=kind; if(kind==='sit'&&out.tv){ const d=out.tv.c.clone().sub(c); d.y=0; d.normalize(); if(d.dot(n)>.8) kd='tv'; }
+    for(let i=0;i<k;i++){ const u=(i+.5)/k-.5, hx=c.x+(alongX?u*len:0)+n.x*(thin/2-depth), hz=c.z+(alongX?0:u*len)+n.z*(thin/2-depth);
+      const a=from==='back'?.48:-.62, at=nearFree(hx-n.x*a,hz-n.z*a); out.spots.push({kind:kd,x:hx,z:hz,y,yaw,at,r:.55,n:n.clone()}); } };
+  const front=ok(coffee)?coffee:tvB;
+  seats(bb(/^Sofa3_Cushions$/),'sit',front); seats(bb(/^Sofa_(Base|Cushion)/),'sit',front); seats(bb(/^Armchair_Cushions$/),'sit',front,{max:1});
+  const dc=named(/^DiningChair_.*_Seat$/); for(const p of dc) seats(p.bb,'dine',dining,{depth:.2,max:1,from:'back'});
+  if(!dc.length&&ok(dining)){ const c=ctr(dining), sz=size(dining), alongX=sz.x>=sz.z, len=alongX?sz.x:sz.z, thin=alongX?sz.z:sz.x, k=Math.max(1,Math.round(len/.8));   // chairs packed together in the file: seats all round the table
+    const put=(x,z,nx,nz)=>{ const at=nearFree(x-nx*.48,z-nz*.48); out.spots.push({kind:'dine',x,z,y:.47,yaw:Math.atan2(nx,nz),at,r:.55,n:new V(nx,0,nz)}); };
+    for(const sg of [1,-1]) for(let i=0;i<k;i++){ const u=((i+.5)/k-.5)*len, o=thin/2+.28; if(alongX) put(c.x+u,c.z+sg*o,0,-sg); else put(c.x+sg*o,c.z+u,-sg,0); }
+    for(const sg of [1,-1]){ const o=len/2+.33; if(alongX) put(c.x+sg*o,c.z,-sg,0); else put(c.x,c.z+sg*o,0,-sg); } }
+  seats(bb(/^Chair_Seat$/),'sit',desk,{depth:.2,y:.5,max:1,from:'back'});
+  if(ok(dining)) out.table=dining;
+  // the cooker and its pot
+  const ck=bb(/^Cooker_(Top|Body)$/); if(ok(ck)){ const f=facing(ck), c=f.c, q=nearFree(c.x+f.n.x*(f.d+.36),c.z+f.n.z*(f.d+.36));
+    out.spots.push({kind:'cook',x:q.x,z:q.z,y:0,yaw:Math.atan2(-f.n.x,-f.n.z),at:q,r:.75});
+    const pot=bb(/^Pot_Jollof$/); out.pot=ok(pot)?ctr(pot):new V(c.x,ck.max.y+.1,c.z); out.potTop=ok(pot)?pot.max.y:ck.max.y+.15; out.burnY=bb(/^Cooker_Top$/).max.y||ck.max.y; }
+  // the shower: you stand in the middle, facing out through the glass
+  const sm=bb(/^Shower_Metal$/), sh=ok(sm)?sm:bb(/^Shower_(Tray|Screen)$/); if(ok(sh)){ const c=ctr(sh), scr=bb(/^Shower_Screen$/); let n=facing(sh).n.clone();
+    if(ok(scr)){ const d=ctr(scr).sub(c); d.y=0; n=Math.abs(d.x)>Math.abs(d.z)?new V(Math.sign(d.x),0,0):new V(0,0,Math.sign(d.z)); }
+    const at=nearFree(c.x+n.x*.95,c.z+n.z*.95), tray=bb(/^Shower_Tray$/); out.spots.push({kind:'bath',x:c.x,z:c.z,y:ok(tray)?tray.max.y:0,yaw:Math.atan2(n.x,n.z),at,r:.8,n});
+    out.shower={c,top:Math.min(2.1,sh.max.y),sz:size(sh)}; }
+  // the bed: lie along it, head to the headboard
+  const mt=bb(/^Mattress$/), hb=bb(/^Bed_Headboard$/); if(ok(mt)){ const c=ctr(mt), s=size(mt), alongX=s.x>s.z, dir=alongX?new V(1,0,0):new V(0,0,1);
+    if(ok(hb)){ const h=ctr(hb); if((alongX?h.x-c.x:h.z-c.z)<0) dir.negate(); }
+    const side=alongX?new V(0,0,1):new V(1,0,0), w=(alongX?s.z:s.x)/2; let at=null;
+    for(const sg of [1,-1]){ const q={x:c.x+side.x*sg*(w+.4)-dir.x*.2,z:c.z+side.z*sg*(w+.4)-dir.z*.2}; if(free(q.x,q.z)){ at=q; break; } }
+    const bl=bb(/^Blanket$/); out.spots.push({kind:'bed',x:c.x,z:c.z,y:Math.max(mt.max.y,ok(bl)?bl.max.y-.02:0),dir,at:at||nearFree(c.x+side.x*(w+.4),c.z+side.z*(w+.4)),r:.85,len:alongX?s.x:s.z}); }
+  // the soundbar (or any speaker) plays music
+  const sb=bb(/^(Soundbar|Speaker)/i); if(ok(sb)){ const c=ctr(sb), n=out.tv?out.tv.n:facing(sb).n; out.spots.push({kind:'music',x:c.x,z:c.z,y:0,at:nearFree(c.x+n.x*.9,c.z+n.z*.9),r:.9}); out.sb={c,sz:size(sb),n:n.clone()}; }
+  // the bucket: take the broom
+  const bk=bb(/^Bucket$/); if(ok(bk)){ const c=ctr(bk); out.spots.push({kind:'clean',x:c.x,z:c.z,y:0,at:nearFree(c.x,c.z+.01),r:.8}); out.bucket=c; }
+  out.floors=named(/^Floor(?!_?Lamp)/i).map(p=>p.bb.clone());
+  return out; }
+
+// ---- the moves for the house, made once per body
+function snapRest(o){ const m=new Map(); o.traverse(b=>{ if(b.isBone) m.set(b,[b.position.clone(),b.quaternion.clone()]); }); return m; }   // a body's bones as it came (its rest pose)
+function homeInfo(){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y, yo=hero.cObj.position.y; r.position.set(0,0,0); r.rotation.set(0,0,0); hero.cObj.position.y=0;
+  if(hero.rest) for(const [b,[pp,q]] of hero.rest){ b.position.copy(pp); b.quaternion.copy(q); }
+  const D=C2.skeletonInfo(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.cObj.position.y=yo; hero.mixer.update(0); r.updateMatrixWorld(true); return D; }
+function homeClips(){ if(HL.clipsFor===hero.cObj&&HL.clips) return HL.clips; const D=homeInfo(), C={}, names=new Set(); hero.cObj.traverse(o=>{ if(o.isBone) names.add(o.name); });
+  const own=hero.look&&hero.look.clips, fit=n=>own&&own[n]?own[n]:(PEOPLE.clips[n]?fitClip(PEOPLE.clips[n],names,hero.hipsRest):null);
+  const M=V2.movesDone, mv=n=>{ const c=M&&M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true}):null; };
+  for(const k of ['sit','eat','cook','sweep','bath']) C[k]=mv('v2_'+k)||C2.poseClip(D,'home_'+k,C2.POSES[k]);   // the real Mixamo move when it is in, else the made pose
+  C.tv=mv('v2_tv')||C.sit; C.sleep=mv('v2_sleep')||fit('f_lie')||fit('lie')||C.sit;
+  C.dance=['v2_dance1','v2_dance2','v2_dance3'].map(mv).filter(Boolean); if(!C.dance.length) C.dance=['dance_1','dance_salsa','dance_macarena'].map(fit).filter(Boolean);
+  C.info=D; HL.clips=C; HL.clipsFor=hero.cObj; return C; }
+// where a move puts the head, hips and feet (relative to the body's own spot), to fit it on a bed or a seat
+function homeMeasure(clip,t){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0);
+  const m=new THREE.AnimationMixer(hero.cObj), a=m.clipAction(clip).play(); m.setTime(t); r.updateMatrixWorld(true); const D=HL.clips.info, P=n=>{ const b=D.nodes.get(n); return b?b.getWorldPosition(new THREE.Vector3()):null; };
+  const head=P('Head'), hips=P('Hips'), fl=P('LeftFoot'), fr=P('RightFoot'), feet=fl&&fr?fl.clone().add(fr).multiplyScalar(.5):hips.clone();
+  let lo=1e9; for(const n of ['Head','Hips','LeftFoot','RightFoot','LeftHand','RightHand','Spine2','LeftLeg','RightLeg']){ const q=P(n); if(q) lo=Math.min(lo,q.y); }
+  a.stop(); m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.mixer.update(0); r.updateMatrixWorld(true); return {head,hips,feet,lo}; }
+
+// ---- things you see: the TV picture, fire and steam, shower water, a plate of jollof, the broom, dirt, the speaker lights
+function homeFx(){ const R=INT.home; if(HL.fx&&HL.fx.scene===INT.scene) return HL.fx; const S=INT.scene, fx={scene:S};
+  const soft=(()=>{ const [c,g]=cv(64,64), gr=g.createRadialGradient(32,32,2,32,32,30); gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(0,0,64,64); return tx(c,false,false); })();
+  if(R.tv){ const [c,g]=cv(320,180), t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; const m=new THREE.Mesh(new THREE.PlaneGeometry(R.tv.sz.x>R.tv.sz.z?R.tv.sz.x*.97:R.tv.sz.z*.97,R.tv.sz.y*.95),new THREE.MeshBasicMaterial({map:t,toneMapped:false}));
+    m.position.copy(R.tv.c).addScaledVector(R.tv.n,.006); m.lookAt(m.position.clone().add(R.tv.n)); m.visible=false; m.layers.enableAll(); S.add(m); fx.tv={m,c,g,t,last:-1,ch:0,glow:new THREE.PointLight(0x88aaff,0,4,2)}; fx.tv.glow.position.copy(R.tv.c).addScaledVector(R.tv.n,.6); S.add(fx.tv.glow); }
+  if(R.pot){ const fm=new THREE.MeshBasicMaterial({color:0xff8a2a,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false}), fb=new THREE.MeshBasicMaterial({color:0x3a7bff,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false});
+    const g=new THREE.Group(); for(let i=0;i<10;i++){ const a=i/10*Math.PI*2, m=new THREE.Mesh(new THREE.ConeGeometry(.018,.06,6),i%2?fm:fb); m.position.set(Math.cos(a)*.1,.03,Math.sin(a)*.1); g.add(m); }
+    g.position.set(R.pot.x,R.burnY,R.pot.z); g.visible=false; S.add(g); fx.fire=g; fx.fireL=new THREE.PointLight(0xff9a40,0,2.5,2); fx.fireL.position.set(R.pot.x,R.burnY+.15,R.pot.z); S.add(fx.fireL); }
+  const steamM=new THREE.SpriteMaterial({map:soft,color:0xffffff,transparent:true,opacity:0,depthWrite:false}); fx.steam=[];
+  for(let i=0;i<14;i++){ const s=new THREE.Sprite(steamM.clone()); s.visible=false; S.add(s); fx.steam.push({s,t:Math.random(),src:null}); }
+  if(R.shower){ const n=260, P=new Float32Array(n*6), geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(P,3)); const w=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0xcfe6ff,transparent:true,opacity:.55,depthWrite:false}));
+    w.frustumCulled=false; w.visible=false; S.add(w); fx.water={w,P,n,seed:new Float32Array(n*3).map(()=>Math.random())}; }
+  { const g=new THREE.Group(), plate=new THREE.Mesh(new THREE.CylinderGeometry(.14,.11,.025,24),new THREE.MeshStandardMaterial({color:0xf4f1ea,roughness:.3}));
+    const rice=new THREE.Mesh(new THREE.SphereGeometry(.1,18,10,0,Math.PI*2,0,Math.PI/2.2),new THREE.MeshStandardMaterial({color:0xd8571e,roughness:.85})); rice.scale.y=.45; rice.position.y=.012;
+    const meat=new THREE.Mesh(new THREE.SphereGeometry(.035,10,8),new THREE.MeshStandardMaterial({color:0x6b3416,roughness:.6})); meat.scale.set(1.4,.8,1); meat.position.set(.05,.04,.03);
+    const pl=new THREE.Mesh(new THREE.BoxGeometry(.05,.012,.03),new THREE.MeshStandardMaterial({color:0xe8a33a,roughness:.5})); pl.position.set(-.06,.03,.04); pl.rotation.y=.6;   // dodo
+    g.add(plate,rice,meat,pl); g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); g.visible=false; S.add(g); fx.plate=g; }
+  { const g=new THREE.Group(), straw=new THREE.MeshStandardMaterial({color:0xc9a35a,roughness:.95,side:THREE.DoubleSide}), tie=new THREE.MeshStandardMaterial({color:0x7a3b1c,roughness:.8});
+    const bun=new THREE.Mesh(new THREE.ConeGeometry(.075,.74,14,1,true),straw); bun.rotation.x=Math.PI; bun.position.y=.37;   // a Nigerian broom: a bundle of palm sticks tied at the top, fanning out
+    const band=new THREE.Mesh(new THREE.CylinderGeometry(.02,.022,.07,10),tie); band.position.y=.07; g.add(bun,band);
+    g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.layers.set(1); } }); fx.broom=g; }   // a Nigerian broom: a long handle and a bundle of straw
+  { const g=new THREE.Group(), m=new THREE.Mesh(new THREE.CylinderGeometry(.008,.006,.32,6),new THREE.MeshStandardMaterial({color:0x8a5a2b,roughness:.6})); m.position.y=.1; g.add(m); fx.spoon=g; }
+  { const [c,g]=cv(128,128); for(let i=0;i<26;i++){ const x=64+(Math.random()-.5)*70, y=64+(Math.random()-.5)*70, r=6+Math.random()*16, gr=g.createRadialGradient(x,y,1,x,y,r); gr.addColorStop(0,'rgba(70,48,26,.7)'); gr.addColorStop(1,'rgba(70,48,26,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128); }
+    fx.dirtM=new THREE.MeshBasicMaterial({map:tx(c,true,false),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}); }
+  if(R.sb){ const leds=[]; for(let i=0;i<5;i++){ const m=new THREE.Mesh(new THREE.BoxGeometry(.04,.012,.004),new THREE.MeshBasicMaterial({color:0x33ff88,toneMapped:false})); const along=Math.abs(R.sb.n.z)>.5;
+      m.position.set(R.sb.c.x+(along?(i-2)*.06:0),R.sb.c.y,R.sb.c.z+(along?0:(i-2)*.06)).addScaledVector(R.sb.n,R.sb.sz.z/2+.003); m.lookAt(m.position.clone().add(R.sb.n)); m.visible=false; S.add(m); leds.push(m); } fx.leds=leds; }
+  return HL.fx=fx; }
+// the TV: a few Naija channels drawn live (news with a ticker, a music video, football)
+const TV_CH=[['NTA','Lagos traffic: Third Mainland is moving small small','BREAKING: Jollof Friday confirmed at Ladipo Market'],['AFRO HITS','Now playing: Mushin Vibes (official video)','Request your song: text 3344'],['SUPER SPORT','LIVE: Super Eagles 2 - 1 Black Stars','Goal! What a strike from outside the box']];
+function drawTV(dt){ const F=HL.fx, T=F&&F.tv; if(!T) return; const on=HL.tv>0; T.m.visible=on; T.glow.intensity=on?.8+Math.sin(T0*7)*.15:0; if(!on) return;
+  if(T0-T.last<.1) return; T.last=T0; const g=T.g, W=320, H=180, ch=TV_CH[T.ch%TV_CH.length], t=T0;
+  if(T.ch%3===0){ g.fillStyle='#0d3b66'; g.fillRect(0,0,W,H); g.fillStyle='#e9eef5'; g.fillRect(16,20,110,96); g.fillStyle='#7b5032'; g.beginPath(); g.arc(71,58,22,0,7); g.fill(); g.fillStyle='#1d2a44'; g.fillRect(40,82,62,34);
+    g.fillStyle='#fff'; g.font='bold 15px sans-serif'; g.fillText(ch[0]+' NEWS',140,40); g.font='12px sans-serif'; g.fillText('Lagos · Live',140,60); g.fillStyle='#F2B705'; g.fillRect(140,72,160,3); }
+  else if(T.ch%3===1){ const hue=(t*40)%360; g.fillStyle=`hsl(${hue},70%,22%)`; g.fillRect(0,0,W,H); for(let i=0;i<5;i++){ g.fillStyle=`hsla(${(hue+i*60)%360},90%,60%,.35)`; g.beginPath(); g.arc(60+i*55,90+Math.sin(t*3+i)*30,26+Math.sin(t*5+i)*8,0,7); g.fill(); }
+    for(let i=0;i<3;i++){ const x=90+i*70, b=Math.sin(t*6+i*1.7)*8; g.fillStyle='#111'; g.beginPath(); g.arc(x,58+b,10,0,7); g.fill(); g.fillRect(x-9,70+b,18,40); g.fillRect(x-20+Math.sin(t*6+i)*6,74+b,10,26); g.fillRect(x+10-Math.sin(t*6+i)*6,74+b,10,26); g.fillRect(x-9,110,7,30+b*.3); g.fillRect(x+2,110,7,30-b*.3); } }
+  else { g.fillStyle='#2f8a3c'; g.fillRect(0,0,W,H); g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=2; g.strokeRect(10,14,300,140); g.beginPath(); g.moveTo(160,14); g.lineTo(160,154); g.stroke(); g.beginPath(); g.arc(160,84,24,0,7); g.stroke();
+    for(let i=0;i<10;i++){ const x=40+((i*53+t*(i%2?18:-14))%240+240)%240, y=30+(i*37)%110; g.fillStyle=i<5?'#e8f1ff':'#ffd23a'; g.fillRect(x,y,5,9); } g.fillStyle='#fff'; g.beginPath(); g.arc(160+Math.sin(t*1.3)*90,84+Math.cos(t*1.7)*40,3,0,7); g.fill(); }
+  g.fillStyle='rgba(0,0,0,.6)'; g.fillRect(0,H-26,W,26); g.fillStyle='#fff'; g.font='bold 12px sans-serif'; const msg=ch[1]+'   ·   '+ch[2]+'   ·   '; const w=g.measureText(msg).width, off=(t*40)%w; g.fillText(msg,8-off,H-9); g.fillText(msg,8-off+w,H-9);
+  g.fillStyle='#F2B705'; g.fillRect(W-62,6,56,16); g.fillStyle='#111'; g.font='bold 10px sans-serif'; g.fillText(ch[0],W-58,18); T.t.needsUpdate=true; }
+function steamAt(src,dt,rate){ const F=HL.fx; if(!F) return; for(const p of F.steam){ if(p.src!==src&&p.src) continue; if(!src){ p.s.visible=false; continue; }
+    p.src=src; p.t+=dt*rate; if(p.t>1){ p.t-=1; p.ox=(Math.random()-.5)*src.w; p.oz=(Math.random()-.5)*src.w; } const k=p.t; p.s.visible=true;
+    p.s.position.set(src.x+(p.ox||0)*(1+k),src.y+k*src.h,src.z+(p.oz||0)*(1+k)); const sc=src.s0+k*src.s1; p.s.scale.set(sc,sc,sc); p.s.material.opacity=Math.sin(k*Math.PI)*src.a; } }
+function steamOff(src){ const F=HL.fx; if(!F) return; for(const p of F.steam) if(p.src===src||!src){ p.src=null; p.s.visible=false; } }
+function showerWater(on,dt){ const F=HL.fx, W=F&&F.water, R=INT.home; if(!W) return; W.w.visible=on; if(!on) return; const c=R.shower.c, top=R.shower.top-.08, P=W.P;
+  for(let i=0;i<W.n;i++){ const a=W.seed[i*3]*6.283, r=Math.sqrt(W.seed[i*3+1])*.22, ph=(W.seed[i*3+2]+T0*1.9)%1, y=top-ph*top, x=c.x+Math.cos(a)*r*(1+ph*.6), z=c.z+Math.sin(a)*r*(1+ph*.6);
+    P[i*6]=x; P[i*6+1]=y; P[i*6+2]=z; P[i*6+3]=x; P[i*6+4]=Math.max(.02,y-.09); P[i*6+5]=z; } W.w.geometry.attributes.position.needsUpdate=true; }
+function handBone(side='Right'){ let hb=null; hero.cObj.traverse(o=>{ if(!hb&&o.isBone&&new RegExp(side+'Hand$').test(o.name)) hb=o; }); return hb; }
+function holdProp(obj,side='Right',pos=[0,.06,.02],rot=[0,0,0]){ const hb=handBone(side); if(!hb||!obj) return; hero.cObj.updateMatrixWorld(true); const s=new THREE.Vector3(); hb.matrixWorld.decompose(_p,_q,s);
+  obj.scale.setScalar(1/s.x); obj.position.set(pos[0]/s.x,pos[1]/s.x,pos[2]/s.x); obj.rotation.set(rot[0],rot[1],rot[2]); hb.add(obj); }
+function dropProp(obj){ if(obj&&obj.parent) obj.parent.remove(obj); }
+
+// ---- sound: an afrobeat loop for the speaker, the shower, the pot frying, the broom
+function homeMusic(on){ if(!AC) initAudio(); if(!AC) return; if(!on){ if(HL.music){ clearInterval(HL.music.iv); HL.music.g.gain.setTargetAtTime(0,AC.currentTime,.2); const g=HL.music.g; setTimeout(()=>g.disconnect(),1500); HL.music=null; } return; }
+  if(HL.music) return; const g=AC.createGain(); g.gain.value=0; g.connect(master); g.gain.setTargetAtTime(.5,AC.currentTime,.3); const bpm=108, st=60/bpm/4, M={g,iv:0,next:AC.currentTime+.08,step:0,beat:0};
+  const BASS=[0,null,null,0,null,null,7,null,0,null,null,0,null,5,null,null], ROOT=[55,55,65.4,49];
+  const hit=(t,dur,f0,f1,type,gain)=>{ const o=AC.createOscillator(), e=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f0,t); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dur); e.gain.setValueAtTime(gain,t); e.gain.exponentialRampToValueAtTime(.001,t+dur); o.connect(e); e.connect(g); o.start(t); o.stop(t+dur+.02); };
+  const noise=(t,dur,f,gain,type='highpass')=>{ const n=AC.createBufferSource(); n.buffer=HL.nb||(HL.nb=noiseBuf(1)); const fl=AC.createBiquadFilter(); fl.type=type; fl.frequency.value=f; const e=AC.createGain(); e.gain.setValueAtTime(gain,t); e.gain.exponentialRampToValueAtTime(.001,t+dur); n.connect(fl); fl.connect(e); e.connect(g); n.start(t,Math.random()*.5); n.stop(t+dur+.02); };
+  const tick=()=>{ while(M.next<AC.currentTime+.12){ const t=M.next, s=M.step%16, bar=Math.floor(M.step/16)%4, root=ROOT[bar];
+      if(s===0||s===6||s===8||s===14) hit(t,.32,120,42,'sine',.55);   // kick
+      if(s===4||s===12) noise(t,.16,1400,.32,'bandpass');   // clap
+      if(s===3||s===11) hit(t,.05,620,null,'square',.05);   // rim
+      noise(t,.04,7000,s%2?.05:.09);   // shaker
+      if(BASS[s]!==null) hit(t,.22,root*Math.pow(2,BASS[s]/12),null,'triangle',.28);   // log drum bass
+      if(s===2||s===10) for(const k of [0,4,7]) hit(t,.12,root*4*Math.pow(2,k/12),null,'triangle',.035);   // chords on the off-beat
+      if(s%4===2&&bar%2===1) hit(t,.1,root*8*Math.pow(2,[0,3,5,7][(M.step>>2)%4]/12),null,'square',.018);   // a little lead
+      M.beat=s; M.step++; M.next+=st; } };
+  tick(); M.iv=setInterval(tick,25); HL.music=M; }
+function homeLoop(kind,on){ if(!AC) return; const L=HL.loops||(HL.loops={}); if(on&&!L[kind]){ const n=AC.createBufferSource(); n.buffer=noiseBuf(2); n.loop=true; const f=AC.createBiquadFilter(), g=AC.createGain();
+    if(kind==='shower'){ f.type='bandpass'; f.frequency.value=3200; f.Q.value=.6; g.gain.value=.0; g.gain.setTargetAtTime(.1,AC.currentTime,.3); }
+    else if(kind==='fry'){ f.type='highpass'; f.frequency.value=2500; g.gain.value=0; g.gain.setTargetAtTime(.035,AC.currentTime,.3); }
+    else { f.type='lowpass'; f.frequency.value=700; g.gain.value=0; g.gain.setTargetAtTime(.025,AC.currentTime,.3); }   // TV murmur
+    n.connect(f); f.connect(g); g.connect(master); n.start(); L[kind]={n,g}; }
+  else if(!on&&L[kind]){ const {n,g}=L[kind]; g.gain.setTargetAtTime(0,AC.currentTime,.15); setTimeout(()=>{ try{ n.stop(); }catch(e){} g.disconnect(); },800); delete L[kind]; } }
+
+// ---- dirt: it builds up while you are out (one spot every 25 minutes, up to 8); sweep it with the broom
+function homeDirt(){ const R=INT.home, F=homeFx(); for(const d of HL.dirt) dropProp(d.m); HL.dirt=[]; if(!R||!R.floors.length) return;
+  let last=0; try{ last=+localStorage.getItem('naija-swept')||0; }catch(e){} const n=last?Math.min(8,Math.floor((Date.now()-last)/(25*60e3))):6; let tries=0;
+  while(HL.dirt.length<n&&tries++<400){ const b=R.floors[Math.floor(Math.random()*R.floors.length)], x=b.min.x+.3+Math.random()*(b.max.x-b.min.x-.6), z=b.min.z+.3+Math.random()*(b.max.z-b.min.z-.6);
+    if(!R.free(x,z,.3)||HL.dirt.some(d=>Math.hypot(d.x-x,d.z-z)<1.2)) continue; const s=.45+Math.random()*.35, m=new THREE.Mesh(new THREE.PlaneGeometry(s,s).rotateX(-Math.PI/2),F.dirtM.clone()); m.position.set(x,.012,z); m.rotation.y=Math.random()*6; F.scene.add(m); HL.dirt.push({x,z,m,k:1}); } }
+
+// ---- where you are near, and what E does there
+const HOME_LABEL={sit:'Sit down',tv:'Watch TV',dine:()=>HL.food?'Sit and eat your jollof':'Sit down',cook:()=>HL.food?'':'Cook jollof',bath:'Take a bath',bed:'Sleep',music:()=>HL.music?'Stop the music':'Play music',clean:()=>HL.broom?'Put the broom down':'Sweep the house'};
+function homeNear(){ const R=INT.home; if(!R||ROOM!==INT||mode!=='interior'||!hero) return null; let best=null, bd=1e9;
+  for(const s of R.spots){ const d=Math.hypot(player.x-s.at.x,player.z-s.at.z); if(d<s.r&&d<bd){ const L=HOME_LABEL[s.kind], t=typeof L==='function'?L():L; if(t){ best={s,label:t}; bd=d; } } }
+  if(!best&&HL.music&&!HL.broom) best={s:{kind:'dance'},label:'Dance'};   // music on: dance anywhere
+  return best; }
+function homePrompt(){ const A=HL.act; if(A) return A.prompt?A.prompt():A.kind==='dance'?'Stop dancing':A.kind==='bed'?'Get up':'Stand up'; const n=homeNear(); return n?n.label:''; }
+function homeAction(){ if(HL.act){ if(HL.act.stop!==false) homeStop(); return true; } const n=homeNear(); if(!n) return false; homeStart(n.s); return true; }
+
+// ---- starting and stopping
+function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=null, A={kind:s.kind,s,t:0,lock:true,camH:1.0,yaw:s.yaw||0,at:s.at};
+  if(s.kind==='music'){ const on=!HL.music; homeMusic(on); toast(on?mpick(['Music don start! Press E anywhere to dance.','Afrobeat dey play. Shake body!']):'Music off'); return; }
+  if(s.kind==='clean'){ if(HL.broom){ dropProp(HL.broom); HL.broom=null; toast('Broom don go back'); return; }
+    if(!HL.dirt.length){ toast('Your house clean well well already'); return; } HL.broom=F.broom; holdProp(HL.broom,'Right',[0,.05,.02],[0,0,0]); toast(`Sweep the dirty spots: ${HL.dirt.length} to go`,3.5); return; }
+  if(s.kind==='cook'&&HL.food) return;
+  if(HL.broom){ dropProp(HL.broom); HL.broom=null; }
+  heroQuiet(); if(PHONE.open) closePhone();
+  if(s.kind==='sit'||s.kind==='tv'||s.kind==='dine'){ const eat=s.kind==='dine'&&HL.food; clip=eat?C.eat:s.kind==='tv'?C.tv:C.sit; const m=homeMeasure(clip,0);
+    A.p1=new THREE.Vector3(s.x,s.y+.09-m.hips.y,s.z); A.camH=Math.max(.6,m.head.y+(s.y+.09-m.hips.y)-.12);
+    if(s.kind==='tv'){ HL.tv=1; if(HL.fx.tv) HL.fx.tv.ch=Math.floor(Math.random()*3); }
+    if(eat){ const tb=R.table, p=new THREE.Vector3(s.x+s.n.x*.42,tb?tb.max.y+.012:.78,s.z+s.n.z*.42); if(tb){ p.x=clamp(p.x,tb.min.x+.15,tb.max.x-.15); p.z=clamp(p.z,tb.min.z+.15,tb.max.z-.15); }
+      F.plate.position.copy(p); F.plate.visible=true; holdProp(F.spoon,'Right',[0,.05,.02],[1.2,0,0]); A.eatT=0; A.prompt=()=>A.eatT<10?`Eating… ${Math.round(A.eatT*10)}%`:'Stand up'; } }
+  else if(s.kind==='cook'){ clip=C.cook; A.p1=new THREE.Vector3(s.x,0,s.z); A.camH=1.35; holdProp(F.spoon,'Right',[0,.05,.02],[1.4,0,0]); A.cookT=0; homeLoop('fry',true); A.prompt=()=>`Cooking jollof… ${Math.round(A.cookT/14*100)}%`; }
+  else if(s.kind==='bath'){ clip=C.bath; A.p1=new THREE.Vector3(s.x,s.y,s.z); A.camH=1.35; A.fade=true; A.bathT=0; A.prompt=()=>A.bathT<12?`Bathing… ${Math.round(A.bathT/12*100)}%`:'Come out'; }
+  else if(s.kind==='bed'){ clip=C.sleep; const m=homeMeasure(clip,Math.min(.5,clip.duration*.3)), a=new THREE.Vector3(m.head.x-m.feet.x,0,m.head.z-m.feet.z), mid=m.head.clone().add(m.feet).multiplyScalar(.5);
+    const yaw=Math.atan2(s.dir.x,s.dir.z)-Math.atan2(a.x,a.z), cs=Math.cos(yaw), sn=Math.sin(yaw), rx=mid.x*cs+mid.z*sn, rz=-mid.x*sn+mid.z*cs;
+    A.yaw=yaw; A.p1=new THREE.Vector3(s.x-rx,s.y-(m.lo-.06),s.z-rz); A.camH=s.y+.35; A.fade=true; A.sleepT=0; A.prompt=()=>A.sleepT<4?'Sleeping… Zzz':'Get up'; }
+  else if(s.kind==='dance'){ const list=C.dance; if(!list.length){ toast('No dance moves yet'); return; } clip=list[HL.danceI++%list.length]; A.p1=new THREE.Vector3(player.x,0,player.z); A.yaw=player.yaw; A.camH=1.3; A.at={x:player.x,z:player.z}; A.danceT=0; }
+  if(!clip) return;
+  A.action=hero.mixer.clipAction(clip); A.action.reset().play(); A.action.setEffectiveWeight(0); A.clip=clip;
+  A.p0=new THREE.Vector3(player.x,player.y,player.z); A.y0=player.yaw; HL.act=A;
+  const CAMY={tv:.95,cook:.75,bath:Math.PI,bed:Math.PI+.9,dance:Math.PI+.3};   // where the camera looks from: beside you to the TV and the pot, in front for the rest
+  const front=()=>{ camState.yaw=A.yaw+(CAMY[s.kind]!==undefined?CAMY[s.kind]:Math.PI+.55); camState.pitch=s.kind==='bed'?.55:s.kind==='cook'?.32:.18; camState.last=T0; };
+  if(A.fade){ fadeSwap(()=>{ A.t=1; rig.root.position.copy(A.p1); rig.root.rotation.y=A.yaw; A.action.setEffectiveWeight(1); for(const k of ['idle','walk','walk2','run']) if(hero.act[k]) hero.act[k].setEffectiveWeight(0); front(); if(s.kind==='bath'){ homeLoop('shower',true); } }); }
+  else front(); }
+function homeStop(){ const A=HL.act; if(!A||A.leaving) return; A.leaving=true; A.lt=0;
+  const done=()=>{ const F=HL.fx; A.action.stop(); dropProp(F.spoon); if(A.kind!=='dine'||!HL.food) F.plate.visible=false; homeLoop('fry',false); homeLoop('shower',false); showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; if(F.fireL) F.fireL.intensity=0;
+    if(A.kind==='tv') HL.tvT=8;
+    Object.assign(player,{x:A.at.x,z:A.at.z,y:0,speed:0}); player.yaw=A.kind==='dance'?A.yaw:A.kind==='bed'?player.yaw:A.yaw+Math.PI*(A.kind==='bath'?0:0); rig.root.position.set(player.x,0,player.z); rig.root.rotation.y=player.yaw;
+    hero.w.idle=1; hero.act.idle.setEffectiveWeight(1); HL.act=null; camState.pitch=.22; };
+  if(A.fade) fadeSwap(done); else A.doneSoon=done; }
+
+// ---- every frame while doing something
+function updateHomeAct(dt){ const A=HL.act, F=HL.fx; A.t+=dt; const [f,s]=inputVec();
+  if(!A.leaving&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)&&!(A.kind==='cook'&&A.cookT<14)) homeStop();   // walk off and you stand up (the pot needs you to the end)
+  const k=Math.min(1,A.t/.4), e=k*k*(3-2*k); let wa=Math.min(1,A.t/.35); if(A.leaving){ A.lt+=dt; wa=Math.max(0,1-A.lt/.3); }
+  if(A.leaving&&!A.fade){ rig.root.position.lerpVectors(A.p1,new THREE.Vector3(A.at.x,0,A.at.z),Math.min(1,A.lt/.3)); } else if(!A.fade||A.t<1){ rig.root.position.lerpVectors(A.p0,A.p1,e); } else rig.root.position.copy(A.p1);
+  rig.root.rotation.y=A.fade?A.yaw:lerpA(A.y0,A.yaw,e);
+  for(const n of ['idle','walk','walk2','run','text','phone','fight_idle']){ const a=hero.act[n]; if(a) a.setEffectiveWeight(n==='idle'?1-wa:0); } A.action.setEffectiveWeight(wa);
+  player.x=rig.root.position.x; player.z=rig.root.position.z; player.y=0; player.speed=0;
+  hero.mixer.update(dt); phoneInHand(); heroWeapon();
+  // what each thing does over time
+  if(A.kind==='dine'&&HL.food&&!A.leaving){ A.eatT+=dt; if(A.eatT>=10){ HL.food=0; F.plate.visible=false; dropProp(F.spoon); FIGHT.hp=Math.min(100,FIGHT.hp+45); toast(mpick(['Belle don full! That jollof sweet die.','Chop finish. Body don strong again!']),3.5);
+      const s=A.s, C=homeClips(); A.action.stop(); A.action=hero.mixer.clipAction(C.sit); A.action.reset().play(); A.prompt=null; } }
+  if(A.kind==='cook'&&!A.leaving){ A.cookT+=dt; const R=INT.home; if(F.fire){ F.fire.visible=true; F.fire.children.forEach((m,i)=>{ m.scale.y=.7+Math.random()*.7; }); } if(F.fireL) F.fireL.intensity=1.2+Math.random()*.6;
+    steamAt({x:R.pot.x,y:R.potTop,z:R.pot.z,w:.12,h:.7,s0:.12,s1:.4,a:.35},dt,.6);
+    if(A.cookT>=14){ HL.food=1; toast('Jollof don ready! Go chop am for the dining table.',4); homeStop(); } }
+  if(A.kind==='bath'&&A.t>=1&&!A.leaving){ A.bathT+=dt; showerWater(true,dt); const R=INT.home; steamAt({x:R.shower.c.x,y:1.2,z:R.shower.c.z,w:.4,h:1.1,s0:.3,s1:.7,a:.22},dt,.35);
+    if(A.bathT>=12&&!A.told){ A.told=1; toast(mpick(['You don baff! You dey fresh like new money.','Clean body, clean mind. You dey shine!']),3.5); } }
+  if(A.kind==='bed'&&A.t>=1&&!A.leaving){ A.sleepT+=dt; if(A.sleepT>=4&&!A.told){ A.told=1; FIGHT.hp=100; toast('You sleep well. Body don rest!',3.5); } }
+  if(A.kind==='dance'&&!A.leaving){ A.danceT+=dt; if(!HL.music){ homeStop(); } else if(A.danceT>9){ const C=homeClips(), next=C.dance[HL.danceI++%C.dance.length]; if(next&&next!==A.clip){ const na=hero.mixer.clipAction(next); na.reset().play(); A.action.crossFadeTo(na,.5,false); A.action=na; A.clip=next; } A.danceT=0; } }
+  if(A.leaving&&!A.fade&&A.lt>=.3&&A.doneSoon){ const d=A.doneSoon; A.doneSoon=null; d(); } }
+// every frame inside: the TV, the speaker lights, sweeping the dirt
+function homeTick(dt){ if(ROOM!==INT||!INT.home) return; const F=homeFx();
+  if(HL.tvT>0){ HL.tvT-=dt; if(HL.tvT<=0&&!(HL.act&&HL.act.kind==='tv')) HL.tv=0; } if(HL.act&&HL.act.kind==='tv') HL.tv=1;
+  if(F.tv&&HL.tv&&(T0%20)<dt) F.tv.ch++; drawTV(dt); homeLoop('tv',HL.tv>0&&!HL.music);
+  if(F.leds){ const b=HL.music?HL.music.beat:0; F.leds.forEach((m,i)=>{ m.visible=!!HL.music&&(i<=((b*7)%5)); }); }
+  if(HL.broom&&!HL.act){ for(const d of HL.dirt){ const dd=Math.hypot(player.x-d.x,player.z-d.z); if(dd<.6){ d.k-=dt*.9; d.m.material.opacity=Math.max(0,d.k); if(!d.sw){ d.sw=1; burst(.25,1800,.12,2); } else if(Math.random()<dt*3) burst(.2,1800,.08,2); } }
+    const left=HL.dirt.filter(d=>d.k>0); if(left.length<HL.dirt.length){ for(const d of HL.dirt) if(d.k<=0) dropProp(d.m); HL.dirt=left;
+      if(!left.length){ try{ localStorage.setItem('naija-swept',String(Date.now())); }catch(e){} addCash(500); toast('Your house dey shine! Landlord don dash you ₦500.',4); dropProp(HL.broom); HL.broom=null; } else toast(`${left.length} dirty spot${left.length>1?'s':''} remain`,1.6); } }
+  // sweeping: the broom swings while you walk over dirt
+  if(HL.broom&&!HL.act&&HL.dirt.some(d=>Math.hypot(player.x-d.x,player.z-d.z)<.6)){ const C=homeClips(); if(!HL.sweepA){ HL.sweepA=hero.mixer.clipAction(C.sweep); HL.sweepA.reset().play(); } HL.sweepW=Math.min(1,(HL.sweepW||0)+dt*4); }
+  else HL.sweepW=Math.max(0,(HL.sweepW||0)-dt*4);
+  if(HL.sweepA){ HL.sweepA.setEffectiveWeight(HL.sweepW); if(HL.sweepW<=0&&!HL.broom){ HL.sweepA.stop(); HL.sweepA=null; } } }
+// leaving the house: everything off
+function homeLeave(){ if(HL.act){ const A=HL.act; A.action.stop(); HL.act=null; hero.act.idle.setEffectiveWeight(1); } homeMusic(false); homeLoop('tv',false); homeLoop('fry',false); homeLoop('shower',false); HL.tv=0; HL.tvT=0;
+  if(HL.broom){ dropProp(HL.broom); HL.broom=null; } if(HL.sweepA){ HL.sweepA.stop(); HL.sweepA=null; } const F=HL.fx; if(F){ dropProp(F.spoon); F.plate.visible=false; showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; } }
+
 const WARD={open:false,cur:'me',busy:false,base:null,body:null,px:0};
 addEventListener('resize',()=>{ if(WARD.open) WARD.px=$('#ward').getBoundingClientRect().right; });
 /* ================= clothes only: you keep your own head; the wardrobe changes what you wear, and its colours =================
@@ -3067,7 +3292,7 @@ const v2Of=id=>V2.list.find(p=>p.id===id);
 const myPerson=()=>{ const f=isF()?1:0, c=PROFILE&&PROFILE.c, p=pickable(f).find(p=>p.id===c); return p?p.id:pickable(f)[0].id; };
 const savedLook=()=>{ let id=null; try{ id=localStorage.getItem('naija-look2'); }catch(e){} const f=isF()?1:0;
   if(isV2(id)){ const p=v2Of(id); return p&&p.f===f&&!p.npc?id:myPerson(); } const L=LOOK_LIST.find(l=>l.id===id); return L&&L.f===f?id:myPerson(); };
-function v2Moves(){ return V2.moves||(V2.moves=fetchBuf(purl('moves2')).then(b=>GLL.parseAsync(b,'')).then(g=>({g,S:C2.skeletonInfo(g.scene)}))); }
+function v2Moves(){ return V2.moves||(V2.moves=fetchBuf(purl('moves2')).then(b=>GLL.parseAsync(b,'')).then(g=>(V2.movesDone={g,S:C2.skeletonInfo(g.scene)}))); }
 // one person, ready to wear: every move fitted, and how far each one lifts or sinks the feet
 function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); const P=v2Of(id); if(!P) return Promise.resolve(null);
   return V2.job[id]||(V2.job[id]=(async()=>{
@@ -3078,7 +3303,7 @@ function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); cons
     if(P.shape) C2.shapeBody(tpl,D,shapeAmt(id));   // her body shape
     const names=new Set(); tpl.traverse(o=>{ if(o.isBone) names.add(o.name); }); const hp=hips.position.clone(), clips={}, off={};
     const add=(n,k)=>{ if(!k||k.tracks.length<10) return; k.name=n; clips[n]=k; off[n]=C2.footOffset(tpl,D,k); };
-    for(const n in PEOPLE.clips){ if(!P.f&&/^(f_|dance_)/.test(n)) continue; add(n,fitClip(PEOPLE.clips[n],names,hp)); }
+    for(const n in PEOPLE.clips){ if(!P.f&&/^f_/.test(n)&&n!=='f_lie') continue; add(n,fitClip(PEOPLE.clips[n],names,hp)); }   // (men keep the lying pose and the dances, for the house)
     const nclips={...clips}, noff={...off};   // as a person on the street: the city's own walks
     if(P.f) for(const [a,b] of [['walk','f_walk'],['run','f_run'],['start_walk','f_start_walk'],['lie','f_lie'],['fight_idle','f_fight_idle']]) if(nclips[b]){ nclips[a]=nclips[b]; noff[a]=noff[b]; }
     const mv=n=>{ const c=M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true}):null; };
@@ -3102,18 +3327,18 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
     if(!C||!C.clips.walk||!C.clips[C.idle0]) return false; }
   if(mode==='drive'||mode==='enter'||hero.ov) return false;
   if(C&&!v2&&id!==baseLook()) myHead();   // your own head, cut before your body comes off (the new people have their own)
-  if(!WARD.base) WARD.base={body:hero.cObj,mixer:hero.mixer,act:hero.act,hips:hero.hips,hipsRest:hero.hipsRest};
+  if(!WARD.base) WARD.base={body:hero.cObj,mixer:hero.mixer,act:hero.act,hips:hero.hips,hipsRest:hero.hipsRest,rest:hero.rest};
   heroQuiet(); hero.act.car.stop();
   if(WARD.body){ hero.root.remove(WARD.body); hero.mixer.stopAllAction(); hero.mixer.uncacheRoot(hero.cObj); hero.cObj.traverse(o=>{ if(o.isSkinnedMesh) o.skeleton.dispose(); }); WARD.body=null; }
   else hero.root.remove(WARD.base.body);
-  if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,look:null}); }
+  if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,rest:B.rest,look:null}); }
   else { const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(); wrap.scale.setScalar(C.sc); inner.position.y=C.y0; wrap.add(inner); hero.root.add(wrap); WARD.body=wrap;
     let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
     if(v2) C2.setOutfit(inner,fitOf(id));   // the outfit you chose last time
     else if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
     const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())}; if(cl.walk2) act.walk2=mixer.clipAction(cl.walk2);
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
-    Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0,v2:v2?id:null,mx:!!C.mx,wv:C.wv,rv:C.rv,w2v:C.w2v}}); }
+    Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),rest:snapRest(inner),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0,v2:v2?id:null,mx:!!C.mx,wv:C.wv,rv:C.rv,w2v:C.w2v}}); }
   const a=hero.act; for(const k of ['idle','walk','walk2','run']) if(a[k]){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0}); hero.k2=0;
   WALK_V=C&&C.v2&&C.f?1.45:1.7;   // her walk is a sway, a little slower
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);
@@ -3392,7 +3617,7 @@ function holdOf(id){ const H=HOLD[id]; if(H.q) return H; const X=new THREE.Vecto
 function boneOf(root,re,cache,key){ if(cache&&cache[key]&&cache[key].parent) return cache[key]; let b=null; root.traverse(o=>{ if(!b&&o.isBone&&re.test(o.name)) b=o; }); if(cache) cache[key]=b; return b; }
 const _wv=new THREE.Vector3(), _wv2=new THREE.Vector3(), _wq=new THREE.Quaternion(), _ws=new THREE.Vector3();
 // the hero's weapon: in the right hand (blades, baton), on the back (AK), or in both hands while aiming (placed each frame)
-function heroWeapon(){ if(!hero) return; const id=ARMS.cur, want=mode==='walk'||mode==='interior'?id:'fists';
+function heroWeapon(){ if(!hero) return; const id=ARMS.cur, want=(mode==='walk'||mode==='interior')&&!HL.act&&!HL.broom?id:'fists';
   if(ARMS.heldId!==want||ARMS.heldOn!==hero.cObj||!ARMS.held){ if(ARMS.held&&ARMS.held.parent) ARMS.held.parent.remove(ARMS.held); ARMS.held=null; ARMS.heldId=want; ARMS.heldOn=hero.cObj; ARMS.bones={};
     if(want!=='fists'){ if(!ARMS.lib[want]){ loadWeapon(want).then(()=>{ ARMS.heldId=null; }); return; } ARMS.held=cloneWeapon(want); } }
   const w=ARMS.held; if(!w) return;
@@ -4043,7 +4268,7 @@ let warm=0, perfAcc=0, perfN=0, prCool=3, errShown=0;
 function applyPR(){ renderer.setPixelRatio(PR); renderer.setSize(innerWidth,innerHeight); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } }
 function reportErr(e){ console.error(e); if(errShown++<1&&started) toast('Small hitch. The game kept running.'); }
 function simulate(dt){
-  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior') updateWalk(dt,true); else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
+  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
