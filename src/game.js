@@ -12,11 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=3a9f3ad8b5';
-import { MapView } from './mapview.js?v=3a9f3ad8b5';
+import * as CLOCK from './clock.js?v=19eaf515b5';
+import * as C2 from './char2.js?v=19eaf515b5';
+import { MapView } from './mapview.js?v=19eaf515b5';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='3a9f3ad8b5';
+const BUILD='19eaf515b5';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1613,14 +1614,15 @@ try{
   act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
   for(const k of ['idle','walk','run']){ act[k].play(); act[k].setEffectiveWeight(k==='idle'?1:0); }
   hero={root,mixer,act,w:{idle:1,walk:0,run:0,text:0,phone:0,fight:0},ov:null,carT:0,hips:hips||cObj,cObj,hipsRest:hips?hips.position.clone():null,still:0,fid:null};
-  scene.remove(rig.root); rig={root}; scene.add(root); WALK_V=1.7; RUN_V=4.9; if(isF()) root.visible=false;
+  scene.remove(rig.root); rig={root}; scene.add(root); WALK_V=1.7; RUN_V=4.9; { let l2=null; try{ l2=localStorage.getItem('naija-look2'); }catch(e){} if(isF()||(PROFILE&&l2!=='me')) root.visible=false; }   // you appear once your own person (Tunde, Amaka, Ada) is on
 }catch(e){ console.warn('Character files could not load, using the built-in model.',e); }
-function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','run','text','phone']) if(a[k]){ a[k].setEffectiveWeight(0); hero.w[k]=0; } hero.fid=null; hero.still=0;
+function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','walk2','run','text','phone']) if(a[k]){ a[k].setEffectiveWeight(0); hero.w[k]=0; } hero.fid=null; hero.still=0;
   if(a.fight_idle) a.fight_idle.setEffectiveWeight(0); hero.w.fight=0; if(hero.ov){ hero.ov.a.stop(); hero.ov=null; } FIGHT.cx=FIGHT.cz=0; }
 function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   // stand still for a while and you take out your phone (moves arrive with the people files)
   if(speed<.08){ ti=1; hero.still+=dt; if(PHONE.open&&a.text&&hero.fid!=='text'&&!hero.ov){ hero.fid='text'; a.text.reset().play(); } else if(!hero.fid&&hero.still>8&&started&&(mode==='walk'||mode==='interior')&&(a.text||a.phone)){ hero.fid=a.phone&&(!a.text||MR()<.3)?'phone':'text'; a[hero.fid].reset().play(); } }
-  else { hero.still=0; hero.fid=null; if(speed<=WALK_V){ const k=speed/WALK_V; ti=1-k; tw=k; } else if(CARRY.p) tw=1; else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
+  // (the new people's walks slow right down instead of mixing with standing)
+  else { hero.still=0; hero.fid=null; const wb=hero.look&&hero.look.wv?Math.min(WALK_V,.6):WALK_V; if(speed<=WALK_V){ const k=Math.min(1,speed/wb); ti=1-k; tw=k; } else if(CARRY.p) tw=1; else { const k=clamp((speed-WALK_V)/(RUN_V-WALK_V),0,1); tw=1-k; tr=k; } }
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
   const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
   { const o=hero.ov, b=FIGHT.buf; if(b&&(T0-b.t>.5)) FIGHT.buf=null; else if(b&&(!o||(o.atk&&o.t>=o.cancel*o.dur))){ FIGHT.buf=null; playerAttack(b.kind); } }   // a press made during a blow comes out as soon as it can
@@ -1630,9 +1632,11 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   let f=0; for(const n of ['text','phone']) if(a[n]){ w[n]+=((hero.fid===n?1:0)-w[n])*(1-Math.exp(-4*dt)); a[n].setEffectiveWeight(w[n]*base); f+=w[n]; }
   const idleW=w.idle*(1-Math.min(1,f)), fw=a.fight_idle?w.fight:0;
   a.idle.setEffectiveWeight(idleW*(1-fw)*base); if(a.fight_idle) a.fight_idle.setEffectiveWeight(idleW*fw*base);
-  a.walk.setEffectiveWeight(w.walk*base); a.run.setEffectiveWeight(w.run*base);
-  a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,CARRY.p?2.5:1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2);
-  if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+(O.walk||0)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
+  const LK=hero.look; hero.k2=(hero.k2||0)+(((a.walk2&&speed>.05&&speed<1.05&&!CARRY.p)?1:0)-(hero.k2||0))*(1-Math.exp(-8*dt)); const k2=a.walk2?hero.k2:0;   // slow steps: the swagger
+  a.walk.setEffectiveWeight(w.walk*(1-k2)*base); if(a.walk2) a.walk2.setEffectiveWeight(w.walk*k2*base); a.run.setEffectiveWeight(w.run*base);
+  if(LK&&LK.wv){ a.walk.timeScale=clamp(Math.max(speed,.5)/LK.wv,.6,CARRY.p?2.5:1.6); if(a.walk2) a.walk2.timeScale=clamp(Math.max(speed,.4)/LK.w2v,.6,1.3); a.run.timeScale=clamp(Math.max(speed,2.5)/LK.rv,.7,1.5); }   // each move at the speed it was made for
+  else { a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,CARRY.p?2.5:1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2); }
+  if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+((O.walk||0)*(1-k2)+(O.walk2||0)*k2)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
     hero.cObj.position.y=L.y0+y; }
   hero.mixer.update(hd); phoneInHand(); heroWeapon(); carryArms(); }
 const HERO_RIDE={okada:{x:0,y:.08,z:0,ry:0},keke:{x:0,y:.08,z:0,ry:0},danfo:{x:0,y:.04,z:0,ry:0},bus:{x:0,y:.04,z:0,ry:0},police:{x:0,y:.04,z:0,ry:0},sedan:{x:0,y:.02,z:0,ry:0}};
@@ -2350,13 +2354,15 @@ function heroMoves(){ if(!hero||!hero.cObj||!hero.hipsRest) return; const names=
   for(const [n,src] of [['punch_b','punch'],['gp_b','gp']]) if(hero.act[src]){ const k=hero.act[src].getClip().clone(); k.name=n; hero.act[n]=hero.mixer.clipAction(k); }
   lastMode=null; }   // show the fight buttons
 async function loadPeople(){
+  if(PROFILE) loadV2(savedLook());   // your own person comes in alongside the moves
   try{ const mv=await GLL.parseAsync(await fetchBuf(purl('moves')),''); for(const k of mv.animations) PEOPLE.clips[k.name]=k;
     if(HERO_RUN){ const k=HERO_RUN.clone(); k.name='run'; k.tracks=k.tracks.filter(t=>!/\.scale$/.test(t.name));
       for(const t of k.tracks) if(/Hips\.position$/.test(t.name)){ const v=t.values, y0=v[1]||1; for(let i=0;i<v.length;i+=3){ v[i]=0; v[i+1]/=y0; v[i+2]=0; } } PEOPLE.clips.run=k; }
     if(PEOPLE.clips.stand_up) PEOPLE.clips.lie=THREE.AnimationUtils.subclip(PEOPLE.clips.stand_up,'lie',0,3,30);   // the first moment of getting up = lying on the ground
     try{ synthMoves(); }catch(e){ console.warn('moves',e); }
     try{ heroMoves(); }catch(e){ console.warn(e); }
-    let mine=null; try{ mine=localStorage.getItem('naija-look'); }catch(e){} if(isF()&&!(mine&&LOOK_LIST.some(l=>l.id===mine&&l.f===1&&!l.file))) mine='girl';
+    PEOPLE.clipsIn=true; applySavedLook();
+    let mine=null; try{ mine=localStorage.getItem('naija-look2'); }catch(e){} if(isF()&&!(mine&&LOOK_LIST.some(l=>l.id===mine&&l.f===1&&!l.file))) mine='girl';
     for(const id of Object.keys(CAST).sort((a,b)=>(b===mine)-(a===mine)||CAST[b].w-CAST[a].w)){
       try{ setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),'')); }catch(e){ console.warn('person '+id+' could not load',e); }
       if(id===mine) applySavedLook();   // you get your own body as soon as it is in
@@ -2916,13 +2922,13 @@ function updateFightHUD(){ const show=started&&mode!=='interior';   // your life
    once its file is in the game) with its head cut away and yours put on, so you keep your face. Men pick from the men's clothes,
    women from the women's. Shirt and trousers can be dyed. The choice is kept on this device. */
 const LOOK_LIST=[
-  {id:'me',name:'Your usual',f:0,sw:['#55633f','#1d1d20']},
+  {id:'me',name:'Classic you',f:0,sw:['#55633f','#1d1d20']},
   {id:'areaboy',name:'Street green',f:0},
   {id:'baba',name:'White kaftan',f:0,robe:1},
   {id:'outfit_suit',name:'Gold print suit',f:0,h:1.84,idle:['idle_1'],sw:['#8a6a3a','#2a2218'],file:1},
   {id:'outfit_thobe',name:'White thobe',f:0,robe:1,h:1.82,idle:['idle_1'],sw:['#f2f0ea','#f2f0ea'],file:1},
   {id:'outfit_tracksuit',name:'Black tracksuit',f:0,h:1.8,idle:['idle_1'],sw:['#2a2a2e','#141416'],file:1},
-  {id:'girl',name:'Your usual',f:1},
+  {id:'girl',name:'Classic you',f:1},
   {id:'suit_lady',name:'Grey trouser suit',f:1},
   {id:'mama',name:'Ankara mama',f:1,robe:1,hair:'Neck'},
   {id:'lady_red',name:'Red dress',f:1,robe:1},
@@ -3022,7 +3028,7 @@ const TROUSERS=[['orig','As it comes',null],['black','Black','#1b1b1e'],['jeans'
 WARD.colors={s:'orig',p:'orig'}; try{ const c=JSON.parse(localStorage.getItem('naija-colours')||'null'); if(c&&c.s&&c.p) WARD.colors=c; }catch(e){}
 // the body you have on right now gets its colours
 const isRobe=()=>{ const L=LOOK_LIST.find(l=>l.id===WARD.cur); return !!(L&&L.robe); };
-function applyColours(){ if(!hero) return; const S=SHIRTS.find(x=>x[0]===WARD.colors.s)||SHIRTS[0], T=isRobe()?S:(TROUSERS.find(x=>x[0]===WARD.colors.p)||TROUSERS[0]);
+function applyColours(){ if(!hero||(hero.look&&hero.look.v2)) return; const S=SHIRTS.find(x=>x[0]===WARD.colors.s)||SHIRTS[0], T=isRobe()?S:(TROUSERS.find(x=>x[0]===WARD.colors.p)||TROUSERS[0]);
   hero.cObj.traverse(o=>{ if(!o.isSkinnedMesh||o.name==='myHead') return; let m=o.material; if(!m.dress){ const b=m; m=b.dressed||(b.dressed=dressMat(b)); o.material=m; if(!HERO_MATS.includes(m)) HERO_MATS.push(m); if(!o.geometry.attributes.part) o.geometry.setAttribute('part',partAttr(o)); }
     const u=m.dress; u.sOn.value=S[2]?1:0; u.pOn.value=T[2]?1:0; if(S[2]) u.sCol.value.set(S[2]).convertSRGBToLinear(); if(T[2]) u.pCol.value.set(T[2]).convertSRGBToLinear(); }); }
 const lookFile=L=>!!(L.file&&(MANIFEST[`assets/people/${L.id}.glb`]||AV[`assets/people/${L.id}.glb`]));
@@ -3031,14 +3037,50 @@ const lookShown=L=>L.f===(isF()?1:0)&&(L.id==='me'||(L.file?lookFile(L):!!CAST[L
 const baseLook=()=>isF()?'girl':'me';
 const lookOk=L=>L.id==='me'||!!PEOPLE.casts[L.id]||(lookFile(L)&&PEOPLE.done);
 const nearWard=()=>!!hero&&mode==='interior'&&ROOM===INT&&Math.hypot(player.x-INT.ward.x,player.z-INT.ward.z)<1.4;
+/* ================= the new people: Tunde, Amaka and Ada =================
+   Made in Blender from MakeHuman bodies (tools/character). One file each (assets/people/p_*.glb): body, hair and four outfits on a
+   Mixamo skeleton whose bones are turned like Mixamo's, so the game's moves (fighting, phone, getting up…) play on it as they are.
+   Their own idle, walk, swagger, run and jump come from moves2.glb, fitted bone by bone (src/char2.js). */
+const V2={list:[{id:'p_tunde',name:'Tunde',f:0},{id:'p_amaka',name:'Amaka',f:1},{id:'p_ada',name:'Ada',f:1}],moves:null,job:{},casts:{},fit:{},
+  sw:{p_tunde:[['#0e8a44','#16161a'],['#1b2b55','#1b2b55'],['#eae1ce','#a8741c'],['#eeeeea','#8a7a52']],
+      p_amaka:[['#f5f1ea','#4a6492'],['#c0102c','#c0102c'],['#1b2766','#ea871c'],['#126c4f','#d54e38']],
+      p_ada:[['#e8457a','#4a6492'],['#0f7a5a','#0f7a5a'],['#561869','#e9b004'],['#cec9c2','#861a29']]}};
+try{ const s=JSON.parse(localStorage.getItem('naija-fit')||'null'); if(s&&typeof s==='object') V2.fit=s; }catch(e){}
+const isV2=id=>typeof id==='string'&&id.startsWith('p_');
+const v2Of=id=>V2.list.find(p=>p.id===id);
+// who you are: the person on your profile (or the first of your kind)
+const myPerson=()=>{ const f=isF()?1:0, c=PROFILE&&PROFILE.c, p=V2.list.find(p=>p.id===c&&p.f===f); return p?p.id:(f?'p_amaka':'p_tunde'); };
+const savedLook=()=>{ let id=null; try{ id=localStorage.getItem('naija-look2'); }catch(e){} const f=isF()?1:0;
+  if(isV2(id)){ const p=v2Of(id); return p&&p.f===f?id:myPerson(); } const L=LOOK_LIST.find(l=>l.id===id); return L&&L.f===f?id:myPerson(); };
+function v2Moves(){ return V2.moves||(V2.moves=fetchBuf(purl('moves2')).then(b=>GLL.parseAsync(b,'')).then(g=>({g,S:C2.skeletonInfo(g.scene)}))); }
+// one person, ready to wear: every move fitted, and how far each one lifts or sinks the feet
+function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); const P=v2Of(id); if(!P) return Promise.resolve(null);
+  return V2.job[id]||(V2.job[id]=(async()=>{
+    const [g,M]=await Promise.all([fetchBuf(purl(id)).then(b=>GLL.parseAsync(b,'')),v2Moves()]);
+    while(!PEOPLE.clipsIn){ if(PEOPLE.done) throw new Error('no moves'); await new Promise(r=>setTimeout(r,200)); }   // the game's moves (moves.glb) first
+    const ch=C2.prepChar(g,{maxAniso:Math.min(4,maxAniso),layer:1,shadows:Q.shadows}), tpl=ch.root, D=ch.info, hips=D.nodes.get('Hips'); if(!hips) throw new Error('no hips in '+id);
+    for(const m of ch.mats) HERO_MATS.push(m);
+    const names=new Set(); tpl.traverse(o=>{ if(o.isBone) names.add(o.name); }); const hp=hips.position.clone(), clips={}, off={};
+    const add=(n,k)=>{ if(!k||k.tracks.length<10) return; k.name=n; clips[n]=k; off[n]=C2.footOffset(tpl,D,k); };
+    for(const n in PEOPLE.clips){ if(!P.f&&/^(f_|dance_)/.test(n)) continue; add(n,fitClip(PEOPLE.clips[n],names,hp)); }
+    const mv=n=>{ const c=M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true}):null; };
+    add('idle',mv('v2_idle')); add('walk',mv(P.f?'v2_fwalk':'v2_walk')); add('run',mv('v2_run')); add('jump',mv(P.f?'v2_fjump':'v2_jump')); if(!P.f) add('walk2',mv('v2_swagger'));
+    if(P.f) for(const [a,b] of [['start_walk','f_start_walk'],['lie','f_lie'],['fight_idle','f_fight_idle']]) if(clips[b]){ clips[a]=clips[b]; off[a]=off[b]; }   // women stand, fall and fight like women
+    if(!clips.idle||!clips.walk) throw new Error('moves missing for '+id);
+    tpl.updateMatrixWorld(true); for(const m of ch.mats) if(m.map) renderer.initTexture(m.map);
+    return V2.casts[id]={tpl,clips,off,y0:0,sc:1,f:P.f,idle0:'idle',v2:true,meta:ch.meta,wv:P.f?.93:1.77,rv:P.f?4.2:4.7,w2v:.92};
+  })().catch(e=>{ console.warn('person '+id+' could not load',e); delete V2.job[id]; return null; })); }
+const fitOf=id=>{ const i=+V2.fit[id]; return i>=0&&i<4?i:0; };
+function wearFit(i){ const id=WARD.cur; if(!isV2(id)||!hero) return; C2.setOutfit(hero.cObj,i); V2.fit[id]=i; try{ localStorage.setItem('naija-fit',JSON.stringify(V2.fit)); }catch(e){} }
 // put on a look: the body is swapped inside the same character, so walking, driving and fighting carry on as before
-async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const L=LOOK_LIST.find(l=>l.id===id); if(!L) return false; if(id===WARD.cur) return true;
+async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const v2=isV2(id), L=v2?v2Of(id):LOOK_LIST.find(l=>l.id===id); if(!L) return false; if(id===WARD.cur) return true;
   let C=null;
-  if(id!=='me'){ C=PEOPLE.casts[id];
+  if(v2){ C=V2.casts[id]; if(!C){ WARD.busy=true; try{ C=await loadV2(id); }catch(e){} WARD.busy=false; } if(!C||!hero) return false; }
+  else if(id!=='me'){ C=PEOPLE.casts[id];
     if(!C&&lookFile(L)&&PEOPLE.done){ WARD.busy=true; try{ setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),''),L); }catch(e){ console.warn('look '+id+' could not load',e); } WARD.busy=false; C=PEOPLE.casts[id]; }
     if(!C||!C.clips.walk||!C.clips[C.idle0]) return false; }
   if(mode==='drive'||mode==='enter'||hero.ov) return false;
-  if(C&&id!==baseLook()) myHead();   // your own head, cut before your body comes off
+  if(C&&!v2&&id!==baseLook()) myHead();   // your own head, cut before your body comes off (the new people have their own)
   if(!WARD.base) WARD.base={body:hero.cObj,mixer:hero.mixer,act:hero.act,hips:hero.hips,hipsRest:hero.hipsRest};
   heroQuiet(); hero.act.car.stop();
   if(WARD.body){ hero.root.remove(WARD.body); hero.mixer.stopAllAction(); hero.mixer.uncacheRoot(hero.cObj); hero.cObj.traverse(o=>{ if(o.isSkinnedMesh) o.skeleton.dispose(); }); WARD.body=null; }
@@ -3046,30 +3088,53 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,look:null}); }
   else { const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(); wrap.scale.setScalar(C.sc); inner.position.y=C.y0; wrap.add(inner); hero.root.add(wrap); WARD.body=wrap;
     let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
-    if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
-    const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())};
+    if(v2) C2.setOutfit(inner,fitOf(id));   // the outfit you chose last time
+    else if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
+    const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())}; if(cl.walk2) act.walk2=mixer.clipAction(cl.walk2);
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
-    Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0}}); }
-  const a=hero.act; for(const k of ['idle','walk','run']){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0});
+    Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0,v2:v2?id:null,wv:C.wv,rv:C.rv,w2v:C.w2v}}); }
+  const a=hero.act; for(const k of ['idle','walk','walk2','run']) if(a[k]){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0}); hero.k2=0;
+  WALK_V=C&&C.v2&&C.f?1.45:1.7;   // her walk is a sway, a little slower
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);
-  WARD.cur=id; if(save) try{ localStorage.setItem('naija-look',id); }catch(e){}
+  WARD.cur=id; if(save) try{ localStorage.setItem('naija-look2',id); }catch(e){}
   applyColours(); lastMode=null; return true; }
 // the look you chose last time comes back once the people files are in
-function applySavedLook(){ if(!PROFILE) return; let id=null; try{ id=localStorage.getItem('naija-look'); }catch(e){} const L=LOOK_LIST.find(l=>l.id===id);
-  if(!L||L.f!==(isF()?1:0)) id=baseLook(); if(id==='me'||id===WARD.cur){ applyColours(); return; }
-  let n=0; const go=()=>{ if(n++>60||id===WARD.cur) return; const L2=LOOK_LIST.find(l=>l.id===id); if(!hero||busy||mode==='drive'||mode==='enter'||(hero&&hero.ov)||!(PEOPLE.casts[id]||(L2&&L2.file&&PEOPLE.done))){ setTimeout(go,400); return; }
-    wearLook(id,false).then(ok=>{ if(!ok&&L2&&L2.file&&id!==baseLook()){ id=baseLook(); setTimeout(go,400); } else if(ok) bodyReady(); }); }; go(); }
+function applySavedLook(){ if(!PROFILE) return; let id=savedLook();
+  if(id===WARD.cur){ applyColours(); bodyReady(); return; } if(id==='me'){ applyColours(); }
+  if(WARD.want===id) return; WARD.want=id; let n=0;
+  const go=()=>{ if(WARD.want!==id) return; if(id===WARD.cur){ WARD.want=null; bodyReady(); return; } if(n++>150){ WARD.want=null; bodyReady(); return; }
+    const v2=isV2(id), L2=v2?null:LOOK_LIST.find(l=>l.id===id);
+    if(!hero||busy||WARD.busy||mode==='drive'||mode==='enter'||hero.ov||!(v2?true:(id==='me'||PEOPLE.casts[id]||(L2&&L2.file&&PEOPLE.done)))){ setTimeout(go,400); return; }
+    wearLook(id,false).then(ok=>{ if(ok){ WARD.want=null; bodyReady(); return; }
+      if(v2&&V2.casts[id]){ setTimeout(go,400); return; }   // ready, just not this moment
+      if((v2||(L2&&L2.file))&&id!==baseLook()){ id=baseLook(); WARD.want=id; } setTimeout(go,400); }); };
+  go(); }
 // a woman never shows up as the man you start with: her body has to be on first
 const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; } };
 function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0, h=t=>{ const e=document.createElement('h3'); e.textContent=t; box.appendChild(e); };
-  h('Clothes');
+  const cur=WARD.cur, mine=isV2(cur);
+  h('Who you are');
+  for(const P of V2.list){ if(P.f!==f) continue; const b=document.createElement('button'); b.type='button'; b.className='lookb who';
+    const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; const sp=document.createElement('span'); sp.textContent=P.name; b.append(im,sp);
+    b.setAttribute('aria-pressed',P.id===cur?'true':'false');
+    b.addEventListener('click',async()=>{ if(WARD.busy||P.id===WARD.cur) return; if(!V2.casts[P.id]) toast(`Getting ${P.name} ready…`,5);
+      const done=await wearLook(P.id); if(done&&PROFILE){ PROFILE.c=P.id; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} }
+      toast(done?`You are ${P.name}.`:'Not ready yet. Try again soon.'); wardUI(); });
+    box.appendChild(b); }
+  if(mine){ const C=V2.casts[cur], outs=(C&&C.meta&&C.meta.outfits)||[], fi=fitOf(cur); h('Clothes');
+    outs.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='lookb'; const sw=(V2.sw[cur]||[])[i]||['#888','#666'];
+      const ic=document.createElement('i'); ic.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=o.name; b.append(ic,sp);
+      b.setAttribute('aria-pressed',i===fi?'true':'false');
+      b.addEventListener('click',()=>{ if(i===fitOf(cur)) return; wearFit(i); toast(mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])); wardUI(); });
+      box.appendChild(b); }); }
+  h(mine?'Classic looks':'Clothes');
   for(const L of LOOK_LIST){ if(L.f!==f||!lookShown(L)) continue;
     const b=document.createElement('button'); b.type='button'; b.className='lookb'; const c=CAST[L.id], sw=L.sw||(c?[c.look[1],c.look[2]]:['#888','#666']);
     const i=document.createElement('i'); i.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=L.name; b.append(i,sp);
     const ok=lookOk(L); b.disabled=!ok; if(!ok){ const sm=document.createElement('small'); sm.textContent='still arriving'; b.appendChild(sm); }
     b.setAttribute('aria-pressed',L.id===WARD.cur?'true':'false');
     b.addEventListener('click',async()=>{ if(WARD.busy||L.id===WARD.cur) return; if(L.id!=='me'&&!PEOPLE.casts[L.id]) toast('Getting dressed…',4);
-      const done=await wearLook(L.id); toast(done?(L.id===baseLook()?'Back to your usual clothes':mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])):'That look is not ready yet. Try again soon.'); wardUI(); });
+      const done=await wearLook(L.id); toast(done?(L.id===baseLook()?'Back to your classic look':mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])):'That look is not ready yet. Try again soon.'); wardUI(); });
     box.appendChild(b); }
   // colours: shirt and trousers (a dress, kaftan or thobe takes one colour)
   const row=(title,list,key)=>{ h(title); const r=document.createElement('div'); r.className='swatches';
@@ -3077,6 +3142,7 @@ function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0,
       if(hex) b.style.background=hex; b.setAttribute('aria-pressed',WARD.colors[key]===k?'true':'false');
       b.addEventListener('click',()=>{ WARD.colors[key]=k; try{ localStorage.setItem('naija-colours',JSON.stringify(WARD.colors)); }catch(e){} applyColours(); wardUI(); });
       r.appendChild(b); } box.appendChild(r); };
+  if(mine) return;   // the new people's clothes keep their own colours
   const robe=isRobe(); row(robe?(f?'Dress colour':'Robe colour'):'Shirt colour',SHIRTS,'s'); if(!robe) row(f?'Trousers / skirt colour':'Trousers colour',TROUSERS,'p'); }
 function openWard(){ if(WARD.open||!hero||busy) return; WARD.open=true; $('#settings').hidden=true; if(document.pointerLockElement) document.exitPointerLock(); wardUI(); $('#ward').hidden=false; $('#lookhint').hidden=true; WARD.px=$('#ward').getBoundingClientRect().right; lastPrompt=null;
   player.speed=0; player.yaw=INT.wardYaw||0; camState.yaw=player.yaw+Math.PI; camState.pitch=.08; camState.last=T0; }   // turn round to face the room, camera in front: a mirror view
@@ -4016,18 +4082,18 @@ setTimeout(loadPeople,200);   // the real people arrive while the title screen s
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
 const eb=$('#enterBtn');
 // ---- profile: the first time, you choose a name and man or woman (kept on this device; it cannot be changed later)
-{ const PF=$('#prof'), PN=$('#profName'), PW=$('#pwho'); let pickG=null;
-  const who=()=>{ PW.textContent=`${PROFILE.name} · ${PROFILE.g==='f'?'Woman':'Man'}`; PW.hidden=false; PF.hidden=true; };
+{ const PF=$('#prof'), PN=$('#profName'), PW=$('#pwho'); let pickG=null, pickC=null;
+  const who=()=>{ PW.textContent=`${PROFILE.name} · ${(v2Of(myPerson())||{}).name||(PROFILE.g==='f'?'Woman':'Man')}`; PW.hidden=false; PF.hidden=true; };
   const ok=()=>{ eb.disabled=!(pickG&&PN.value.trim().length>=2); };
   if(PROFILE) who();
   else { PF.hidden=false; $('#loading').classList.add('pf'); eb.dataset.label=eb.textContent='CREATE & ENTER'; eb.disabled=true;
-    for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ pickG=b.dataset.g; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); ok(); });
+    for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ pickG=b.dataset.g; pickC=b.dataset.c||null; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); ok(); if(pickC) loadV2(pickC); });   // start bringing them in
     PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!eb.disabled) eb.click(); }); }
-  eb.makeProfile=()=>{ if(PROFILE) return; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
+  eb.makeProfile=()=>{ if(PROFILE) return; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
     if(isF()){ CAST.girl.w=0; for(const p of peds) if(p.cast==='girl'&&p.state!=='off'&&!p.spot) recast(p); } }; }
-if(isF()&&WARD.cur!=='girl'){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent='GETTING HER READY…'; setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
+if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
-eb.addEventListener('click',()=>{ if(!PROFILE){ eb.makeProfile(); if(isF()&&WARD.cur!=='girl'){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },9000); } }   // her body arrives in a moment
+eb.addEventListener('click',()=>{ if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
   started=true; lastT=performance.now(); camState.yaw=0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); });
