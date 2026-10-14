@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="19eaf515b5">
+<meta name="ns-build" content="0435a7fed9">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -58,9 +58,13 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .pgb{flex:1 1 150px;max-width:220px;text-align:left;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);border-radius:12px;padding:12px 14px;min-height:56px;display:flex;flex-direction:column;gap:2px;cursor:pointer}
 .pgb b{font-family:var(--fd);font-weight:400;font-size:20px}.pgb small{color:var(--muted);font-size:13px}
 .pgb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
-.pgb.pp{flex:1 1 120px;max-width:200px;flex-direction:row;align-items:center;gap:10px;padding:8px 12px 8px 8px}
-.pp img{flex:none;width:44px;height:55px;border-radius:8px;object-fit:cover;background:#2a2420}
-.pp span{display:flex;flex-direction:column;gap:2px}
+.ppl{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.ppc{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);border-radius:12px;cursor:pointer;font-weight:700;font-size:14px}
+.ppc img{width:68px;height:85px;border-radius:8px;object-fit:cover;background:#2a2420}
+.ppc[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
+.pshape{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:14px;font-weight:600}
+.psb{min-height:40px;padding:6px 16px;border-radius:20px;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);font-weight:700;cursor:pointer}
+.psb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
 .lookb.who img{flex:none;width:30px;height:38px;border-radius:7px;object-fit:cover;background:#2a2420}
 .pnote{color:var(--muted);font-size:13px}
 .pwho{color:var(--cream);font-weight:700;font-size:17px}
@@ -75,7 +79,7 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
   .lnote{display:none}
   .enter{padding:12px 22px;min-height:48px;font-size:18px}
   .loading.pf .lbar,.loading.pf .ltxt{display:none}
-  .pgb small{display:none} .pgb{min-height:48px;padding:8px 12px} .pp img{width:30px;height:38px} .pname input{min-height:44px;padding:8px 12px} .prof{gap:8px}
+  .pgb small{display:none} .pname span{display:none} .ld h1 .c{display:none} .pgb{min-height:44px;padding:6px 12px} .ppc{width:62px;padding:3px;font-size:12px;gap:2px} .ppc img{width:50px;height:56px} .psb{min-height:36px;padding:4px 12px} .pname input{min-height:44px;padding:8px 12px} .prof{gap:8px}
 }
 
 /* HUD */
@@ -370,12 +374,13 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="lerr" id="loadErr" hidden></div>
     <div class="prof" id="prof" hidden>
       <label class="pname"><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. Tunde or Ada"></label>
-      <div class="pg" role="group" aria-label="Who you are">
-        <button type="button" class="pgb pp" data-g="m" data-c="p_tunde" aria-pressed="false"><img src="assets/people/face_tunde.jpg" alt=""><span><b>TUNDE</b><small>Man</small></span></button>
-        <button type="button" class="pgb pp" data-g="f" data-c="p_amaka" aria-pressed="false"><img src="assets/people/face_amaka.jpg" alt=""><span><b>AMAKA</b><small>Woman</small></span></button>
-        <button type="button" class="pgb pp" data-g="f" data-c="p_ada" aria-pressed="false"><img src="assets/people/face_ada.jpg" alt=""><span><b>ADA</b><small>Woman</small></span></button>
+      <div class="pg" role="group" aria-label="Man or woman">
+        <button type="button" class="pgb" data-g="m" aria-pressed="false"><b>MAN</b><small>Then pick who you are</small></button>
+        <button type="button" class="pgb" data-g="f" aria-pressed="false"><b>WOMAN</b><small>Then pick who you are</small></button>
       </div>
-      <div class="pnote">Man or woman stays. Clothes change in the wardrobe at home.</div>
+      <div class="ppl" id="ppl" role="group" aria-label="Who you are" hidden></div>
+      <div class="pshape" id="pshape" role="group" aria-label="Body shape" hidden></div>
+      <div class="pnote">Man or woman stays. Change person, clothes and colours in the wardrobe at home.</div>
     </div>
     <div class="pwho" id="pwho" hidden></div>
     <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
@@ -394,7 +399,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=19eaf515b5"></script>
+<script type="module" src="src/game.js?v=0435a7fed9"></script>
 
 </body>
 </html>
