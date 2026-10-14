@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=17b3a8a1f0';
-import * as C2 from './char2.js?v=17b3a8a1f0';
-import { MapView } from './mapview.js?v=17b3a8a1f0';
+import * as CLOCK from './clock.js?v=e83efc833f';
+import * as C2 from './char2.js?v=e83efc833f';
+import { MapView } from './mapview.js?v=e83efc833f';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='17b3a8a1f0';
+const BUILD='e83efc833f';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -3135,12 +3135,16 @@ function homeSpots(H){ const {named,boxOf,facing,free,nearFree,parts}=H, V=THREE
 function snapRest(o){ const m=new Map(); o.traverse(b=>{ if(b.isBone) m.set(b,[b.position.clone(),b.quaternion.clone()]); }); return m; }   // a body's bones as it came (its rest pose)
 function homeInfo(){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y, yo=hero.cObj.position.y; r.position.set(0,0,0); r.rotation.set(0,0,0); hero.cObj.position.y=0;
   if(hero.rest) for(const [b,[pp,q]] of hero.rest){ b.position.copy(pp); b.quaternion.copy(q); }
-  const D=C2.skeletonInfo(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.cObj.position.y=yo; hero.mixer.update(0); r.updateMatrixWorld(true); return D; }
+  r.updateMatrixWorld(true); const D=C2.skeletonInfo(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.cObj.position.y=yo; hero.mixer.update(0); r.updateMatrixWorld(true); return D; }
 function homeClips(){ if(HL.clipsFor===hero.cObj&&HL.clips) return HL.clips; const D=homeInfo(), C={}, names=new Set(); hero.cObj.traverse(o=>{ if(o.isBone) names.add(o.name); });
   const own=hero.look&&hero.look.clips, fit=n=>own&&own[n]?own[n]:(PEOPLE.clips[n]?fitClip(PEOPLE.clips[n],names,hero.hipsRest):null);
   const M=V2.movesDone, mv=n=>{ const c=M&&M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true}):null; };
   for(const k of ['sit','sofa','eat','cook','sweep','bath']) C[k]=mv('v2_'+k)||(k==='sofa'&&mv('v2_sit'))||C2.poseClip(D,'home_'+k,C2.POSES[k]);   // the real Mixamo move when it is in, else the made pose
-  C.tv=mv('v2_tv')||C.sofa; C.sleep=mv('v2_sleep')||fit('f_lie')||fit('lie')||C.sit;
+  const mvT=n=>{ const c=M&&M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true,travel:true}):null; };   // these move the body (sitting down behind you)
+  C.sitIn=mvT('v2_sit_in'); C.sitLoop=mvT('v2_sit'); C.sitOut=mvT('v2_sit_out'); if(!(C.sitIn&&C.sitLoop&&C.sitOut)) C.sitIn=null;
+  if(C.sitIn){ const ARM=/(Shoulder|Arm|ForeArm|Hand)\.quaternion$/, eat=C2.poseClip(D,'home_eat',C2.POSES.eat), k=C.sitLoop.clone();   // eating: seated as in the Mixamo sit, arms from the eating move
+    k.tracks=k.tracks.filter(t=>!ARM.test(bname(t.name))).concat(eat.tracks.filter(t=>ARM.test(bname(t.name)))); k.duration=eat.duration; k.name='home_eat_seat'; C.eatSeat=k; }
+  C.tv=mv('v2_tv')||(C.sitIn?C.sitLoop:C.sofa); C.sleep=mv('v2_sleep')||fit('f_lie')||fit('lie')||C.sit;
   C.dance=['v2_dance1','v2_dance2','v2_dance3'].map(mv).filter(Boolean); if(!C.dance.length) C.dance=['dance_1','dance_salsa','dance_macarena'].map(fit).filter(Boolean);
   C.info=D; HL.clips=C; HL.clipsFor=hero.cObj; return C; }
 // where a move puts the head, hips and feet (relative to the body's own spot), to fit it on a bed or a seat
@@ -3288,8 +3292,12 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
   if(s.kind==='cook'&&HL.food) return;
   if(HL.broom){ dropProp(HL.broom); HL.broom=null; }
   heroQuiet(); if(PHONE.open) closePhone();
-  if(s.kind==='sit'||s.kind==='tv'||s.kind==='dine'){ const eat=s.kind==='dine'&&HL.food; clip=eat?C.eat:s.kind==='tv'?C.tv:s.soft?C.sofa:C.sit; const m=homeMeasure(clip,0);
-    A.p1=new THREE.Vector3(s.x,s.y+.09-m.hips.y,s.z); A.camH=Math.max(.6,m.head.y+(s.y+.09-m.hips.y)-.12);
+  if(s.kind==='sit'||s.kind==='tv'||s.kind==='dine'){ const eat=s.kind==='dine'&&HL.food;
+    if(C.sitIn){ const m=homeMeasure(C.sitLoop,0), cs=Math.cos(A.yaw), sn=Math.sin(A.yaw), open=s.soft;   // the Mixamo moves: sit down, sit, stand up, all on one spot in front of the seat (a chair at a table or desk: straight into the seat)
+      A.p1=new THREE.Vector3(s.x-(m.hips.x*cs+m.hips.z*sn),clamp(s.y+.08-m.hips.y,-.05,0),s.z-(-m.hips.x*sn+m.hips.z*cs)); A.camH=Math.max(.6,m.head.y+A.p1.y-.12);
+      if(open){ A.seq='in'; A.loopClip=eat?C.eatSeat:C.sitLoop; clip=C.sitIn; } else clip=eat?C.eatSeat:C.sitLoop; }
+    else { clip=eat?C.eat:s.kind==='tv'?C.tv:s.soft?C.sofa:C.sit; const m=homeMeasure(clip,0);
+      A.p1=new THREE.Vector3(s.x,s.y+.09-m.hips.y,s.z); A.camH=Math.max(.6,m.head.y+(s.y+.09-m.hips.y)-.12); }
     if(s.kind==='tv'){ HL.tv=1; if(HL.fx.tv) HL.fx.tv.ch=Math.floor(Math.random()*3); }
     if(eat){ const tb=R.table, p=new THREE.Vector3(s.x+s.n.x*.42,tb?tb.max.y+.012:.78,s.z+s.n.z*.42); if(tb){ p.x=clamp(p.x,tb.min.x+.15,tb.max.x-.15); p.z=clamp(p.z,tb.min.z+.15,tb.max.z-.15); }
       F.plate.position.copy(p); F.plate.visible=true; holdProp(F.spoon,'Right',[0,.05,.02],[1.2,0,0]); A.eatT=0; A.prompt=()=>A.eatT<10?`Eating… ${Math.round(A.eatT*10)}%`:'Stand up'; } }
@@ -3300,7 +3308,7 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
     A.yaw=yaw; A.p1=new THREE.Vector3(s.x-rx,s.y-(m.lo-.06),s.z-rz); A.camH=s.y+.35; A.fade=true; A.sleepT=0; A.prompt=()=>A.sleepT<4?'Sleeping… Zzz':'Get up'; }
   else if(s.kind==='dance'){ const list=C.dance; if(!list.length){ toast('No dance moves yet'); return; } clip=list[HL.danceI++%list.length]; A.p1=new THREE.Vector3(player.x,0,player.z); A.yaw=player.yaw; A.camH=1.3; A.at={x:player.x,z:player.z}; A.danceT=0; }
   if(!clip) return;
-  A.action=hero.mixer.clipAction(clip); A.action.reset().play(); A.action.setEffectiveWeight(0); A.clip=clip;
+  A.action=hero.mixer.clipAction(clip); A.action.reset().play(); A.action.setEffectiveWeight(0); A.clip=clip; if(A.seq){ A.action.setLoop(THREE.LoopOnce,1); A.action.clampWhenFinished=true; }
   A.p0=new THREE.Vector3(player.x,player.y,player.z); A.y0=player.yaw; HL.act=A;
   const CAMY={tv:.95,cook:.75,bath:Math.PI,bed:Math.PI+.9,dance:Math.PI+.3};   // where the camera looks from: beside you to the TV and the pot, in front for the rest
   const front=()=>{ camState.yaw=A.yaw+(CAMY[s.kind]!==undefined?CAMY[s.kind]:Math.PI+.55); camState.pitch=s.kind==='bed'?.55:s.kind==='cook'?.32:.18; camState.last=T0; };
@@ -3308,8 +3316,13 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
       if(s.kind==='bath'){ homeLoop('shower',true); bathUndress(A.bathB,true); } });
     if(s.kind==='bath'){ const pr=A.prompt; A.prompt=()=>'Getting ready…'; bathBody().then(B=>{ if(HL.act!==A) return; A.bathB=B; A.prompt=pr; go(); }).catch(e=>{ console.warn('bath',e); A.prompt=pr; go(); }); } else go(); }
   else front(); }
-function homeStop(){ const A=HL.act; if(!A||A.leaving) return; A.leaving=true; A.lt=0;
-  const done=()=>{ const F=HL.fx; A.action.stop(); if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } dropProp(F.spoon); if(A.kind!=='dine'||!HL.food) F.plate.visible=false; homeLoop('fry',false); homeLoop('shower',false); showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; if(F.fireL) F.fireL.intensity=0;
+function seqTo(A,clip,seq){ if(A.prev) A.prev.stop(); A.prev=A.action; A.xf=0; A.action=hero.mixer.clipAction(clip); A.action.reset().play(); A.clip=clip; A.seq=seq;
+  if(seq!=='loop'){ A.action.setLoop(THREE.LoopOnce,1); A.action.clampWhenFinished=true; } else A.action.setLoop(THREE.LoopRepeat,Infinity); }
+function homeStop(){ const A=HL.act; if(!A||A.leaving) return;
+  if(A.seq){ if(A.seq!=='out'){ const C=homeClips(); dropProp(HL.fx.spoon); if(!HL.food) HL.fx.plate.visible=false; seqTo(A,C.sitOut,'out'); } return; }   // stand up first; you are free when it ends
+  A.leaving=true; A.lt=0; homeFinish(A); }
+function homeFinish(A){
+  const done=()=>{ const F=HL.fx; A.action.stop(); if(A.prev){ A.prev.stop(); A.prev=null; } if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } dropProp(F.spoon); if(A.kind!=='dine'||!HL.food) F.plate.visible=false; homeLoop('fry',false); homeLoop('shower',false); showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; if(F.fireL) F.fireL.intensity=0;
     if(A.kind==='tv') HL.tvT=8;
     Object.assign(player,{x:A.at.x,z:A.at.z,y:0,speed:0}); player.yaw=A.kind==='dance'?A.yaw:A.kind==='bed'?player.yaw:A.yaw+Math.PI*(A.kind==='bath'?0:0); rig.root.position.set(player.x,0,player.z); rig.root.rotation.y=player.yaw;
     hero.w.idle=1; hero.act.idle.setEffectiveWeight(1); HL.act=null; camState.pitch=.22; };
@@ -3320,14 +3333,18 @@ function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.lea
   A.t+=dt; const [f,s]=inputVec();
   if(!A.leaving&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)&&!(A.kind==='cook'&&A.cookT<14)) homeStop();   // walk off and you stand up (the pot needs you to the end)
   const k=Math.min(1,A.t/.4), e=k*k*(3-2*k); let wa=Math.min(1,A.t/.35); if(A.leaving){ A.lt+=dt; wa=Math.max(0,1-A.lt/.3); }
-  if(A.leaving&&!A.fade){ rig.root.position.lerpVectors(A.p1,new THREE.Vector3(A.at.x,0,A.at.z),Math.min(1,A.lt/.3)); } else if(!A.fade||A.t<1){ rig.root.position.lerpVectors(A.p0,A.p1,e); } else rig.root.position.copy(A.p1);
+  if(A.seq&&!A.leaving){ const end=A.action.time>=A.clip.duration-.04;
+    if(A.seq==='in'&&end) seqTo(A,A.loopClip,'loop');
+    else if(A.seq==='out'&&end){ A.at={x:rig.root.position.x,z:rig.root.position.z}; A.leaving=true; A.lt=0; homeFinish(A); } }   // stood up: you are where you got up
+  if(A.leaving&&!A.fade&&!A.seq){ rig.root.position.lerpVectors(A.p1,new THREE.Vector3(A.at.x,0,A.at.z),Math.min(1,A.lt/.3)); } else if(!A.fade||A.t<1){ rig.root.position.lerpVectors(A.p0,A.p1,e); } else rig.root.position.copy(A.p1);
   rig.root.rotation.y=A.fade?A.yaw:lerpA(A.y0,A.yaw,e);
-  for(const n of ['idle','walk','walk2','run','text','phone','fight_idle']){ const a=hero.act[n]; if(a) a.setEffectiveWeight(n==='idle'?1-wa:0); } A.action.setEffectiveWeight(wa);
+  for(const n of ['idle','walk','walk2','run','text','phone','fight_idle']){ const a=hero.act[n]; if(a) a.setEffectiveWeight(n==='idle'?1-wa:0); }
+  if(A.prev){ A.xf+=dt/.25; if(A.xf>=1){ A.prev.stop(); A.prev=null; } else A.prev.setEffectiveWeight(wa*(1-A.xf)); } A.action.setEffectiveWeight(wa*(A.prev?Math.min(1,A.xf):1));
   player.x=rig.root.position.x; player.z=rig.root.position.z; player.y=0; player.speed=0;
   hero.mixer.update(dt); phoneInHand(); heroWeapon();
   // what each thing does over time
   if(A.kind==='dine'&&HL.food&&!A.leaving){ A.eatT+=dt; if(A.eatT>=10){ HL.food=0; F.plate.visible=false; dropProp(F.spoon); FIGHT.hp=Math.min(100,FIGHT.hp+45); toast(mpick(['Belle don full! That jollof sweet die.','Chop finish. Body don strong again!']),3.5);
-      const s=A.s, C=homeClips(); A.action.stop(); A.action=hero.mixer.clipAction(C.sit); A.action.reset().play(); A.prompt=null; } }
+      const C=homeClips(); if(C.sitIn){ const was=A.seq; seqTo(A,C.sitLoop,'loop'); if(!was) A.seq=null; } else { A.action.stop(); A.action=hero.mixer.clipAction(C.sit); A.action.reset().play(); } A.prompt=null; } }   // done eating: just sit
   if(A.kind==='cook'&&!A.leaving){ A.cookT+=dt; const R=INT.home; if(F.fire){ F.fire.visible=true; F.fire.children.forEach((m,i)=>{ m.scale.y=.7+Math.random()*.7; }); } if(F.fireL) F.fireL.intensity=1.2+Math.random()*.6;
     steamAt({x:R.pot.x,y:R.potTop,z:R.pot.z,w:.12,h:.7,s0:.12,s1:.4,a:.35},dt,.6);
     if(A.cookT>=14){ HL.food=1; toast('Jollof don ready! Go chop am for the dining table.',4); homeStop(); } }
@@ -3350,7 +3367,7 @@ function homeTick(dt){ if(ROOM!==INT||!INT.home) return; const F=homeFx();
   else HL.sweepW=Math.max(0,(HL.sweepW||0)-dt*4);
   if(HL.sweepA){ HL.sweepA.setEffectiveWeight(HL.sweepW); if(HL.sweepW<=0&&!HL.broom){ HL.sweepA.stop(); HL.sweepA=null; } } }
 // leaving the house: everything off
-function homeLeave(){ if(HL.act){ const A=HL.act; A.action.stop(); if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } HL.act=null; hero.act.idle.setEffectiveWeight(1); } homeMusic(false); homeLoop('tv',false); homeLoop('fry',false); homeLoop('shower',false); HL.tv=0; HL.tvT=0;
+function homeLeave(){ if(HL.act){ const A=HL.act; A.action.stop(); if(A.prev) A.prev.stop(); if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } HL.act=null; hero.act.idle.setEffectiveWeight(1); } homeMusic(false); homeLoop('tv',false); homeLoop('fry',false); homeLoop('shower',false); HL.tv=0; HL.tvT=0;
   if(HL.broom){ dropProp(HL.broom); HL.broom=null; } if(HL.sweepA){ HL.sweepA.stop(); HL.sweepA=null; } const F=HL.fx; if(F){ dropProp(F.spoon); F.plate.visible=false; showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; } }
 
 const WARD={open:false,cur:'me',busy:false,base:null,body:null,px:0};
