@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=e83efc833f';
-import * as C2 from './char2.js?v=e83efc833f';
-import { MapView } from './mapview.js?v=e83efc833f';
+import * as CLOCK from './clock.js?v=cb034ef97d';
+import * as C2 from './char2.js?v=cb034ef97d';
+import { MapView } from './mapview.js?v=cb034ef97d';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='e83efc833f';
+const BUILD='cb034ef97d';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -375,7 +375,10 @@ const clockSync=CLOCK.syncClock();
 // key: [file, front direction, real size (m) along x after turning, has a low-detail file]
 const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.75,1],bus:['citybus','+z',10.5,1],police:['police_pickup','-x',5.3,1],okada:['red_motorcycle','-x',2.05,1],sedan:['sedancar','-x',4.55,1],
   bungalow:['ns_bungalow','h',12.5,1],house:['ns_house','h',16,1],storey:['ns_storey','h',12.5,1],
-  dup1:['ns_dup1','h',14.8,1],dup2:['ns_dup2','h',15.2,1],dup3:['ns_dup3','h',15.2,1],dup4:['ns_dup4','h',14.8,1],dup5:['ns_dup5','h',14.8,1],faceme:['ns_faceme','h',18.8,1],zinc:['ns_zinc','h',7.1,1],wood:['ns_wood','h',8.2,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  dup1:['ns_dup1','h',14.8,1],dup2:['ns_dup2','h',15.2,1],dup3:['ns_dup3','h',15.2,1],dup4:['ns_dup4','h',14.8,1],dup5:['ns_dup5','h',14.8,1],faceme:['ns_faceme','h',18.8,1],zinc:['ns_zinc','h',7.1,1],wood:['ns_wood','h',8.2,1],
+  school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
+  hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
+  church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -756,35 +759,50 @@ const SHED_POSTS=[], MARKET_SHEDS=[];
 // plain bungalows are the most common, luxury duplexes take the big plots now and then, zinc and plank houses the small ones
 const MODEL_PICK=[['bungalow',1],['storey',.8],['house',.55],['faceme',.55],['zinc',.45],['wood',.35],['dup1',.22],['dup2',.22],['dup3',.22],['dup4',.22],['dup5',.22]];
 const PLAIN_TINT=['#ffffff','#f1ede6','#e8e3dc'];
-function fitHouse(b){ if(!HOUSES) return false; const fw=frontLen(b), dd=depthLen(b), f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]);
+function fitHouse(b){ return fitModel(b,MODEL_PICK,k=>k==='zinc'||k==='wood'?PLAIN_TINT:HOUSE_TINT); }
+// any building on the map: pick, from a weighted list, the model whose natural size suits the plot; front to the street.
+// o.lo/o.hi: how far a model may be scaled; o.tall: extra height (the hospitals stand taller than their footprint asks)
+function fitModel(b,list,tints,o={}){ if(!HOUSES) return false; const fw=frontLen(b), dd=depthLen(b), f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]), lo=o.lo??.55, hi=o.hi??1.5;
   const fits=[]; let tot=0;
-  for(const [k,w] of MODEL_PICK){ const M=MODELS[k]; if(!M) continue; const s=Math.min(fw/M.W,dd/M.D); if(s<.55||s>1.5) continue;
-    const near=Math.max(.08,1-Math.abs(Math.log(s))*1.6);   // best when the house keeps its real size
+  for(const [k,w] of list){ const M=MODELS[k]; if(!M) continue; const s=Math.min(fw/M.W,dd/M.D); if(s<lo||s>hi) continue;
+    const near=Math.max(.08,1-Math.abs(Math.log(s))*1.6);   // best when the building keeps its real size
     fits.push([k,s,w*near]); tot+=w*near; }
   if(!fits.length) return false;
   let r=R()*tot, key=fits[0][0], s=fits[0][1]; for(const [k,sk,w] of fits){ if(r<w){ key=k; s=sk; break; } r-=w; }
   const MM=MODELS[key];
-  const sx=Math.min(fw/MM.W,s*1.22), sz=Math.min(dd/MM.D,s*1.22), sy=clamp(Math.sqrt(sx*sz)*rr(.95,1.08),.6,1.45);
-  const col=new THREE.Color(pick(key==='zinc'||key==='wood'?PLAIN_TINT:HOUSE_TINT)); addHouse(key,b.cx,b.cz,ry,sx,sy,sz,col);
+  const sx=Math.min(fw/MM.W,s*1.22), sz=Math.min(dd/MM.D,s*1.22), sy=clamp(Math.sqrt(sx*sz)*rr(.95,1.08)*(o.tall||1),.6,1.6);
+  const tl=typeof tints==='function'?tints(key):tints, col=new THREE.Color(pick(tl)); addHouse(key,b.cx,b.cz,ry,sx,sy,sz,col);
   addOB(b.cx,b.cz,MM.W*sx/2,MM.D*sz/2,-ry,MM.H*sy);
   b.model=key; b.mh=MM.H*sy; return true; }
+const BLOCK_PICK=[['flats3',1],['flats4',.8],['storey',.25],['dup5',.08]], SHOP_PICK=[['shops1',1],['shops2',.8]], SCHOOL_PICK=[['school2',1],['school1',.7]],
+  HOSP_PICK=[['clinic',1],['hospital',.6]], GREY_TINT=['#ffffff','#eef0f0','#e4e6e6'];
 const SCHOOL_N=['Mushin Community Primary School','Ansar-Ud-Deen Primary School','St. Agnes Primary School','Olateju Junior Grammar School','Ishaga Grammar School'];
 const SCHOOLS=AREAS.filter(a=>a.k==='school'&&a.a>2000).map((a,i)=>({a,name:SCHOOL_N[i%SCHOOL_N.length],signed:false}));
+// the university: the College of Medicine of the University of Lagos stands in the LUTH grounds at Idi-Araba,
+// so the biggest hospital-ground building becomes the faculty block
+let WORSHIP_N=0;
+const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
 let builtN=0;
 for(const b of BLD){ if(b.skip||b.special) continue; const ar=b.w*b.d;
   switch(b.kind){
     case 'house': if(!fitHouse(b)) obBuilding(b,{type:pick(['oldmid','resi']),h:ar<70?3.4:3.4*ri(1,2)+.6}); if(b.gap<5&&b.gap>.6&&R()<.06){ const p=frontPoint(b,.9); GATES.push({x:p.x,z:p.z,nx:p.nx,nz:p.nz}); } break;
-    case 'shop': obBuilding(b,{shop:true,type:'oldmid'}); break;
+    case 'shop': if(!fitModel(b,SHOP_PICK,PLAIN_TINT,{lo:.45,hi:1.6})) obBuilding(b,{shop:true,type:'oldmid'}); break;
+    case 'block': if(!fitModel(b,BLOCK_PICK,HOUSE_TINT)) obBuilding(b,{h:ar>600?3.4*ri(2,3)+.6:undefined,zinc:ar>900?false:undefined}); break;
     case 'kiosk': obKiosk(b); break;
     case 'market': obShed(b); break;
-    case 'school': { const sc=SCHOOLS.find(s=>inPoly(s.a.pts,b.cx,b.cz)); obBuilding(b,{type:'resi',col:pick(['#e8f0ff','#fff4d6','#e0ecff']),h:ar>250?7.4:4,zinc:true}); if(sc&&!sc.signed&&ar>150){ sc.signed=true; sc.b=b; } break; }
-    case 'hospital': obBuilding(b,{type:'office',col:'#f4f8f6',h:3.4*ri(1,3)+.8,zinc:false}); break;
-    case 'industrial': obBuilding(b,{type:'office',col:pick(['#d9d4cb','#c8ccd0']),h:rr(7,9.5),zinc:R()<.4}); break;
-    case 'worship': obBuilding(b,{type:'resi',col:'#f6f1e6',h:7.5,zinc:false}); break;
-    case 'bank': obBuilding(b,{type:'glass',h:3.4*ri(2,3)+.6,zinc:false}); break;
+    case 'school': { const sc=SCHOOLS.find(s=>inPoly(s.a.pts,b.cx,b.cz)); if(!fitModel(b,SCHOOL_PICK,PLAIN_TINT,{lo:.45})) obBuilding(b,{type:'resi',col:pick(['#e8f0ff','#fff4d6','#e0ecff']),h:ar>250?7.4:4,zinc:true}); if(sc&&!sc.signed&&ar>150){ sc.signed=true; sc.b=b; } break; }
+    case 'hospital': if(b===UNI_SITE&&MODELS.uni){ const M=MODELS.uni, f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]), sc=clamp(Math.min(frontLen(b)/M.W,depthLen(b)/M.D)*1.1,.7,1.25); addHouse('uni',b.cx,b.cz,ry,sc,sc,sc,new THREE.Color('#ffffff')); addOB(b.cx,b.cz,M.W*sc/2,M.D*sc/2,-ry,M.H*sc); b.model='uni'; UNI_SITE.sc=sc; UNI_SITE.ry=ry; break; }
+      if(!fitModel(b,HOSP_PICK,GREY_TINT,{lo:.45,hi:1.6,tall:1.2})) obBuilding(b,{type:'office',col:'#f4f8f6',h:3.4*ri(1,3)+.8,zinc:false}); break;
+    case 'industrial': if(!fitModel(b,[['warehouse',1]],GREY_TINT,{lo:.45,hi:1.8})) obBuilding(b,{type:'office',col:pick(['#d9d4cb','#c8ccd0']),h:rr(7,9.5),zinc:R()<.4}); break;
+    case 'worship': if(!fitModel(b,[[(WORSHIP_N++)%2?'mosque':'church',1]],PLAIN_TINT,{lo:.4,hi:1.8})&&!fitModel(b,[['church',1],['mosque',1]],PLAIN_TINT,{lo:.3,hi:2})) obBuilding(b,{type:'resi',col:'#f6f1e6',h:7.5,zinc:false}); break;
+    case 'bank': if(!fitModel(b,[['bank',1]],GREY_TINT,{lo:.4,hi:1.8})) obBuilding(b,{type:'glass',h:3.4*ri(2,3)+.6,zinc:false}); break;
     case 'fuel': obBuilding(b,{type:'office',col:'#ffffff',h:3.6,zinc:false}); break;
     default: obBuilding(b,{h:ar>600?3.4*ri(2,3)+.6:undefined,zinc:ar>900?false:undefined});
   } builtN++; }
+if(UNI_SITE&&UNI_SITE.model==='uni'){ const b=UNI_SITE, f=FACE_DIR(b), M=MODELS.uni, hd=(M.D*UNI_SITE.sc)/2;
+  const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('UNIVERSITY OF LAGOS · COLLEGE OF MEDICINE','#1f3b66','#ffffff',1800,170),fog:false})); lab.scale.set(11,1.05,1);
+  lab.position.set(b.cx+f[0]*(hd+.5),M.H*UNI_SITE.sc+1.2,b.cz+f[1]*(hd+.5)); lab.layers.set(1); scene.add(lab);
+  PLACES.push({name:'University of Lagos, College of Medicine',sub:'University',kind:'place',x:b.cx,z:b.cz}); }
 /* per-instance culling + level of detail: only instances near the camera (or inside the shadow area) are drawn */
 const CULLS=[]; const _fr=new THREE.Frustum(), _pm=new THREE.Matrix4(), _sph=new THREE.Sphere();
 class CullSet{ // levels: [{geo,mat,dist,shadow}] sorted by dist ; items: {x,y,z,ry,sc|sx,sy,sz,r}
@@ -825,7 +843,7 @@ function farBox(M,wallHex,roofHex){ const W=M.W, D=M.D, H=M.H*.7, Y=M.H, g=new T
   for(const s of [-1,1]){ const a=[s*hw,H,s*hd], b2=[s*hw,H,-s*hd], c=[s*hw,Y,0]; for(const p of [a,b2,c]){ P.push(...p); N.push(s,0,0); C.push(wc.r,wc.g,wc.b); } }
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(C,3)); g.computeBoundingSphere(); return g; }
 const FAR_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95});
-if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555c'],house:['#ece6da','#3e5f6f'],dup1:['#ece9e2','#8f8a84'],dup2:['#ece2cc','#4e3427'],dup3:['#e3dfd8','#4f5458'],dup4:['#e6d2ab','#b0552f'],dup5:['#ece9e2','#8f8a84'],faceme:['#d6d9c0','#9aa1a4'],zinc:['#85725f','#7b6250'],wood:['#7f6448','#8a7a6a']};   // walls and roof of the Blender houses (tools/blender_houses.py)
+if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555c'],house:['#ece6da','#3e5f6f'],dup1:['#ece9e2','#8f8a84'],dup2:['#ece2cc','#4e3427'],dup3:['#e3dfd8','#4f5458'],dup4:['#e6d2ab','#b0552f'],dup5:['#ece9e2','#8f8a84'],faceme:['#d6d9c0','#9aa1a4'],zinc:['#85725f','#7b6250'],wood:['#7f6448','#8a7a6a'],school2:['#e6dcbd','#8a8f8f'],school1:['#e6dcbd','#8a8f8f'],hospital:['#e9e9e5','#8f8a84'],clinic:['#e9e9e5','#6c7a74'],uni:['#ddd5c4','#8f8a84'],flats3:['#e3dccb','#8f8a84'],flats4:['#e3dccb','#7a3a2a'],shops1:['#d9d1c0','#8e9292'],shops2:['#d9d1c0','#8f8a84'],warehouse:['#b4b8ba','#a7acae'],church:['#ebe5d8','#4d5a63'],mosque:['#ebe7dc','#2f8a5a'],bank:['#cfc8bc','#8f8a84']};   // walls and roof of the Blender houses (tools/blender_houses.py)
   for(const key in houseInst){ const M=MODELS[key], fc=farC[key]||['#ddd','#777'], lv=[{geo:M.geo,mat:M.mat,dist:Q.lod0,shadow:true}];
     if(M.geo1) lv.push({geo:M.geo1,mat:M.mat1,dist:Math.max(Q.lod0+30,Q.draw*.55),shadow:false});
     lv.push({geo:farBox(M,fc[0],fc[1]),mat:FAR_MAT,dist:Q.draw+40,shadow:false});
@@ -839,7 +857,7 @@ function placeModelOn(b,key,label,col){ const M=MODELS[key], f=FACE_DIR(b), ry=M
   if(label){ const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(label,col,'#ffffff'),fog:false})); lab.scale.set(5.5,1.05,1); lab.position.set(b.cx+f[0]*(hd+.3),M.H*sc+2.2,b.cz+f[1]*(hd+.3)); lab.layers.set(1); scene.add(lab); }
   return {x:b.cx,z:b.cz,ry,sc,M,door,face:f,hd}; }
 if(HOUSES&&SITES.station){ const r=placeModelOn(SITES.station,'station','POLICE STATION','#1d3a8a'); Object.assign(STATION,{x:r.x,z:r.z,front:{x:r.door.x,z:r.door.z,ry:r.ry}}); }
-let HOTEL_SITE=null; if(MODELS.office&&SITES.hotel){ const r=placeModelOn(SITES.hotel,'office',null); HOTEL_SITE={x:r.x,z:r.z,door:{x:r.door.x,z:r.door.z,ry:r.ry},hx:r.M.W*r.sc/2,hz:r.M.D*r.sc/2}; }
+let HOTEL_SITE=null; if((MODELS.hotel||MODELS.office)&&SITES.hotel){ const r=placeModelOn(SITES.hotel,MODELS.hotel?'hotel':'office',null); HOTEL_SITE={x:r.x,z:r.z,door:{x:r.door.x,z:r.door.z,ry:r.ry},hx:r.M.W*r.sc/2,hz:r.M.D*r.sc/2}; }
 
 /* apartment entrance details: your house is a real Mushin house, with a canopy, a lit door and a ring to walk into */
 const APT={door:{x:0,z:0},front:{x:0,z:0},ry:0};
@@ -1013,10 +1031,13 @@ const STALLS=[];
 for(const sc of SCHOOLS){ const pts=sc.a.pts; let gate=null, gd=1e9; const segsW=[];
   for(let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length], L=Math.hypot(q[0]-p[0],q[1]-p[1]); if(L<1) continue; const mx=(p[0]+q[0])/2, mz=(p[1]+q[1])/2, [e,d]=nearestRoad(mx,mz); if(e&&d<gd&&L>8){ gd=d; gate={i,mx,mz}; } segsW.push([p,q,i]); }
   const fc=new THREE.Color('#d8cfbe');
-  for(const [p,q,i] of segsW){ const L=Math.hypot(q[0]-p[0],q[1]-p[1]), ux=(q[0]-p[0])/L, uz=(q[1]-p[1])/L; const parts=gate&&gate.i===i?[[0,L/2-2],[L/2+2,L]]:[[0,L]];
+  for(const [p,q,i] of segsW){ const L=Math.hypot(q[0]-p[0],q[1]-p[1]), ux=(q[0]-p[0])/L, uz=(q[1]-p[1])/L; const parts=gate&&gate.i===i?[[0,L/2-3.7],[L/2+3.7,L]]:[[0,L]];
     for(const [a,b] of parts){ for(let t=a;t<b-.2;t+=4){ const t2=Math.min(b,t+4), x0=p[0]+ux*t, z0=p[1]+uz*t, x1=p[0]+ux*t2, z1=p[1]+uz*t2, mx=(x0+x1)/2, mz=(z0+z1)/2;
         if(roadAt(mx,mz,.3)||resolveCircle({x:mx,z:mz},.2)) continue; wallQ(A.fence,[x0,z0],[x1,z1],0,2.2,6,3,0,0,fc); wallQ(A.fence,[x1,z1],[x0,z0],0,2.2,6,3,0,0,fc); addOB(mx,mz,(t2-t)/2,.12,Math.atan2(uz,ux),2.2); } } }
-  if(gate){ sc.gate=gate; const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(sc.name.toUpperCase(),'#1d3a8a','#ffffff',1400,192),fog:false})); lab.scale.set(8,1.1,1); lab.position.set(gate.mx,3.4,gate.mz); lab.layers.set(1); scene.add(lab); }
+  if(gate&&MODELS.sgate){ const p=pts[gate.i], q=pts[(gate.i+1)%pts.length], L=Math.hypot(q[0]-p[0],q[1]-p[1]), ux=(q[0]-p[0])/L, uz=(q[1]-p[1])/L, [e]=nearestRoad(gate.mx,gate.mz);   // the gate: pillars, steel leaves, name board
+    let ry=Math.atan2(-uz,ux); if(e){ const A0=nodes[e.a], t=clamp((gate.mx-A0.x)*e.fx+(gate.mz-A0.z)*e.fz,0,e.len), rx=A0.x+e.fx*t-gate.mx, rz=A0.z+e.fz*t-gate.mz; if(-uz*rx+ux*rz<0) ry+=Math.PI; }
+    new CullSet(modelLevels(MODELS.sgate,Q.lod0,Q.draw),[{x:gate.mx,y:0,z:gate.mz,ry,sc:1}],{shadowDist:Q.shR,name:'sgate'}); addOB(gate.mx-ux*3.4,gate.mz-uz*3.4,.5,.5,0,3.9); addOB(gate.mx+ux*3.4,gate.mz+uz*3.4,.5,.5,0,3.9); gate.ry=ry; }
+  if(gate){ sc.gate=gate; const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(sc.name.toUpperCase(),'#1d3a8a','#ffffff',1400,192),fog:false})); lab.scale.set(8,1.1,1); lab.position.set(gate.mx,MODELS.sgate?5.6:3.4,gate.mz); lab.layers.set(1); scene.add(lab); }
   let x=0,z=0; for(const p of pts){ x+=p[0]; z+=p[1]; } sc.x=x/pts.length; sc.z=z/pts.length; PLACES.push({name:sc.name,sub:'School',kind:'place',x:sc.x,z:sc.z}); }
 // ---- filling stations: a canopy over the pumps, the brand on a pole
 for(const a of AREAS){ if(a.k!=='fuel') continue; let x=0,z=0; for(const p of a.pts){ x+=p[0]; z+=p[1]; } x/=a.pts.length; z/=a.pts.length; const [e]=nearestRoad(x,z), ang=e?Math.atan2(e.fz,e.fx):0, c=Math.cos(ang), s=Math.sin(ang);
@@ -1948,7 +1969,8 @@ function updateHUD(dt){ if(!started) return;
 /* ================= camera ================= */
 const camState={yaw:APT.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0};
 const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
-function updateCamera(dt){ let dist;
+let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
+function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
   if(mode==='drive'){ const v=drive.v; _t.set(v.x,v.y+1.5,v.z); dist=7.8+Math.abs(drive.speed)*.04;
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
   else { _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
@@ -2460,7 +2482,7 @@ const SPOTS=[];
       addSpot('park',x,z,m,{row:true,ex:c,ez:s2,face:Math.atan2(s2*pk2.fs,-c*pk2.fs),skipFree:true,park:pk2}); }
     for(const bay of pk2.bays.filter((b,i)=>i%2===0)){ const x=bay.x+c*3.2, z=bay.z+s2*3.2; addSpot('tout',x,z,[['areaboy',['hail','talk','hail','argue']]],{face:Math.atan2(-bay.fwx,-bay.fwz),skipFree:true,park:pk2}); } }
   // school compounds: pupils in groups in the yard during school hours
-  for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; for(let t=0;t<80&&n<4;t++){ const x=sc.x+rr(-30,30), z=sc.z+rr(-30,30); if(!inPoly(sc.a.pts,x,z)) continue;
+  for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; const span=Math.min(60,Math.sqrt(sc.a.a)*.45), want=Math.min(12,4+Math.floor(sc.a.a/2500)); for(let t=0;t<260&&n<want;t++){ const x=sc.x+rr(-span,span), z=sc.z+rr(-span,span); if(!inPoly(sc.a.pts,x,z)) continue;
       const m=[['schoolboy',['talk','idle_1','no','text']],['schoolboy',['idle_1','talk','idle_2']],['schoolboy',['talk','no','idle_1']]]; if(addSpot('pupils',x,z,m,{rot:SR()*6.28,hours:[7.3,13.4]})) n++; } } }
 
 
@@ -4523,6 +4545,12 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {med:+t[n>>1].toFixed(2), p90:+t[Math.floor(n*.9)].toFixed(2), calls:renderer.info.render.calls, tris:renderer.info.render.triangles, px:[renderer.domElement.width,renderer.domElement.height]}; },
     sim(sec=1){ for(let i=0;i<sec*60;i++){ T0+=1/60; simulate(1/60); } },
     start(){ if(!started) $('#enterBtn').click(); },
+    // test helper: stand next to a place from the map (name contains the text), facing it
+    // test helper: a fixed camera looking at a place from `back` metres away and `h` metres up (look() with no place gives control back)
+    look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
+      DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
+    goto(q,back=26,yaw=null,zoom=3){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return PLACES.map(p=>p.name).slice(0,80); const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
+      player.x=pl.x+Math.sin(a)*back; player.z=pl.z+Math.cos(a)*back; player.y=0; rig.root.position.set(player.x,0,player.z); camState.yaw=a+Math.PI; camState.pitch=.3; camState.zoom=zoom; return pl.name; },
     scene, camera, sun, hemi, fillLight, headSpot,
     env(b){ scene.environment=b?envRT.texture:null; }, fog(b){ scene.fog.density=b?.0017:0; },
     light(name,b){ const L={sun,hemi,fill:fillLight,spot:headSpot}[name]; if(L) L.visible=b; },

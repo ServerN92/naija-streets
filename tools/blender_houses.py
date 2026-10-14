@@ -32,7 +32,8 @@ FASCIA = '#fdfdfb'; TILE = '#b9b0a2'; BRASS = '#c9a25a'; GUTTER = '#e2e2e2'
 class Builder:
     """Collects boxes and faces into one bmesh with a colour per face corner."""
 
-    def __init__(self, detail=True):
+    def __init__(self, detail=True, simple=False):
+        self.simple = simple                      # big buildings: windows drawn with fewer pieces
         self.bm = bmesh.new()
         self.col = self.bm.loops.layers.color.new('Col')
         self.detail = detail
@@ -106,6 +107,18 @@ class Wall:
     def window(self, u, zs, w, h, kind='louvre', bars=True):
         B, d = self.B, self.B.detail
         a, b, top = u - w / 2, u + w / 2, zs + h
+        if B.simple or not d:                                                         # light version: frame, pane, sill, a few bars
+            self.box(a - .07, b + .07, zs - .05, top + .07, 0, .05, TRIM)
+            self.box(a, b, zs, top, .05, .062, LOUVRE if kind == 'louvre' and d else GLASS)
+            if d:
+                self.box(a - .12, b + .12, zs - .11, zs - .05, 0, .12, TRIM)
+                if bars:
+                    n = max(2, int(w / .26))
+                    for i in range(1, n):
+                        x = a + w * i / n
+                        self.box(x - .012, x + .012, zs, top, .075, .095, BARS)
+                    self.box(a, b, zs + h / 2 - .015, zs + h / 2 + .015, .07, .1, BARS)
+            return
         self.box(a, b, zs, top, 0, .012, GLASS)                                     # glass
         for (p, q, r, t) in [(a - .07, a, zs, top), (b, b + .07, zs, top), (a - .07, b + .07, top, top + .07), (a - .07, b + .07, zs - .05, zs)]:
             self.box(p, q, r, t, 0, .06, TRIM)                                       # frame
@@ -381,6 +394,14 @@ def flat_roof(B, x0, x1, y0, y1, z, parapet=.9, wallc=WALL, cap=TRIM, roofc='#8f
 def glass_wall(w, u, z0, width, h, frame='#2b2e31', panes=3, glass='#2c3b44'):
     """Floor-to-ceiling glazing with slim dark frames."""
     a, b = u - width / 2, u + width / 2
+    if not w.B.detail or w.B.simple:
+        w.box(a - .06, b + .06, z0 - .03, z0 + h + .06, 0, .05, frame)
+        w.box(a, b, z0, z0 + h, .05, .062, glass)
+        if w.B.detail:
+            for i in range(1, panes):
+                x = a + width * i / panes
+                w.box(x - .025, x + .025, z0, z0 + h, .062, .08, frame)
+        return
     w.box(a, b, z0, z0 + h, 0, .015, glass)
     for (p, q, r, t) in [(a - .06, a, z0, z0 + h), (b, b + .06, z0, z0 + h), (a - .06, b + .06, z0 + h, z0 + h + .06), (a - .06, b + .06, z0 - .03, z0)]:
         w.box(p, q, r, t, 0, .07, frame)
@@ -857,7 +878,454 @@ def export(ob, path):
     ob.location = loc
 
 
-BUILDS = (bungalow, wide_house, storey, dup_modern, dup_colonial, dup_mono, dup_med, dup_pent, face_me, zinc_house, wood_house)
+
+# ================================================================ public and commercial buildings
+def cylinder(B, cx, cy, z0, z1, r, c, n=16, top=True):
+    pts = [(cx + r * math.cos(2 * math.pi * i / n), cy + r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+    for i in range(n):
+        (ax, ay), (bx, by) = pts[i], pts[(i + 1) % n]
+        B.face([(ax, ay, z0), (bx, by, z0), (bx, by, z1), (ax, ay, z1)], c)
+    if top:
+        B.face([(x, y, z1) for x, y in pts], c)
+
+
+def dome(B, cx, cy, z, r, c, n=16, rings=6, stretch=1.0):
+    for j in range(rings):
+        a0, a1 = math.pi / 2 * j / rings, math.pi / 2 * (j + 1) / rings
+        r0, r1 = r * math.cos(a0), r * math.cos(a1)
+        z0, z1 = z + r * math.sin(a0) * stretch, z + r * math.sin(a1) * stretch
+        for i in range(n):
+            t0, t1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n
+            p = [(cx + r0 * math.cos(t0), cy + r0 * math.sin(t0), z0), (cx + r0 * math.cos(t1), cy + r0 * math.sin(t1), z0),
+                 (cx + r1 * math.cos(t1), cy + r1 * math.sin(t1), z1), (cx + r1 * math.cos(t0), cy + r1 * math.sin(t0), z1)]
+            if r1 < 1e-4:
+                p = p[:3]
+            B.face(p, shade(c, .85 + .15 * j / rings))
+
+
+def ribbon(w, u0, u1, zs, h, step=1.6, glass=GLASS, frame=TRIM, sill=True):
+    """A run of identical windows along a wall."""
+    u = u0 + step / 2
+    while u < u1 - step / 2 + .01:
+        w.window(u, zs, step * .62, h, kind='slide', bars=False) if sill else glass_wall(w, u, zs, step * .8, h, panes=2)
+        u += step
+
+
+def breeze(w, u0, u1, z0, z1, c='#e6e0d4'):
+    """A panel of breeze blocks (the patterned concrete blocks of Lagos stairwells)."""
+    w.box(u0, u1, z0, z1, 0, .02, '#3a3a38')
+    if not w.B.detail:
+        w.box(u0, u1, z0, z1, .02, .05, c)
+        return
+    z = z0                                                                            # a grid of block edges
+    while z < z1 + .01:
+        w.box(u0, u1, z - .04, min(z1, z + .04), .02, .07, c)
+        z += .45
+    u = u0
+    while u < u1 + .01:
+        w.box(u - .04, min(u1, u + .04), z0, z1, .02, .07, c)
+        u += .45
+
+
+def corridor(B, x0, x1, y_wall, depth, z_floor, z_ceil, posts, rail='#d9d2c4', post_c=COLUMN, low_wall=True):
+    """An open corridor along a front wall: floor slab, posts and a balustrade wall (school and flat blocks)."""
+    y0 = y_wall - depth
+    B.box(x0, x1, y0, y_wall, z_floor - .2, z_floor, TRIM, bottom=True)
+    for i in range(posts + 1):
+        x = x0 + .15 + (x1 - x0 - .3) * i / posts
+        B.box(x - .15, x + .15, y0, y0 + .3, z_floor, z_ceil, post_c)
+    if low_wall:
+        B.box(x0, x1, y0, y0 + .15, z_floor, z_floor + 1.0, rail)
+        B.box(x0 - .03, x1 + .03, y0 - .03, y0 + .18, z_floor + 1.0, z_floor + 1.08, TRIM)
+
+
+def school_block(detail, floors=2):
+    """A Nigerian school classroom block: long, open corridors with half walls, a row of classrooms, a zinc hip roof."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH = 30.0, 9.0, .45, 3.4
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .3, x1 + .3, y0 - 2.4, y1 + .2, F)
+    top = F + FH * floors
+    w = walls(B, x0, x1, y0, y1, F, top, '#f0e6c8', .9)
+    B.box(x0 - .03, x1 + .03, y0 - .03, y1 + .03, F + .9, F + 1.05, '#2f5d9b')      # the blue school band
+    n = 5
+    for f in range(floors):
+        z = F + FH * f
+        for i in range(n):
+            u = x0 + W * (i + .5) / n
+            w['F'].door(u - 1.8, z, 1.0, 2.2, '#2f5d9b')
+            for du in (-.2, 1.2, 2.4):
+                w['F'].window(u + du, z + 1.0, .9, 1.3)
+            for du in (-2.0, -.4, 1.2):
+                w['B'].window(-(u + du), z + 1.0, .9, 1.3)
+        if f > 0:
+            corridor(B, x0, x1, y0, 2.2, z, z + FH, 8, '#f0e6c8')
+            B.box(x0 - .03, x1 + .03, y0 - 2.23, y0 - 2.0, z + .4, z + .55, '#2f5d9b')
+        else:
+            for i in range(9):
+                x = x0 + .15 + (W - .3) * i / 8
+                B.box(x - .15, x + .15, y0 - 2.2, y0 - 1.9, F, F + FH, COLUMN)
+    if floors > 1:                                                                # stair at the end
+        B.box(x1, x1 + 2.6, y0 - 2.2, y0 + 2.0, 0, F + FH * floors - .3, '#e9dfc2')
+        breeze(Wall(B, 'R', x1, x1 + 2.6, y0 - 2.2, y0 + 2.0), -1.6, 1.8, F + 1.2, F + FH * floors - 1.0)
+    for s_ in 'LR':
+        for f in range(floors):
+            w[s_].window(0, F + FH * f + 1.0, 1.0, 1.3)
+    hip_roof(B, x0, x1, y0 - 2.2, y1, top, .6, 18, '#8a8f8f')
+    return B.finish('ns_school%d' % floors + ('' if detail else '_lod1'))
+
+
+def school2(detail):
+    return school_block(detail, 2)
+
+
+def school1(detail):
+    return school_block(detail, 1)
+
+
+def school_gate(detail):
+    """A school gate: two pillars with caps, a steel double gate and an arch beam that carries the name board."""
+    B = Builder(detail)
+    for x in (-3.4, 3.4):
+        B.box(x - .45, x + .45, -.45, .45, 0, 3.4, '#ede3c6')
+        B.box(x - .55, x + .55, -.55, .55, 3.4, 3.6, '#2f5d9b')
+        B.box(x - .35, x + .35, -.35, .35, 3.6, 3.9, '#ede3c6')
+    B.box(-3.0, 3.0, -.3, .3, 3.9, 4.6, '#2f5d9b')                                 # beam / board
+    B.box(-2.8, 2.8, -.33, -.3, 4.0, 4.5, '#f4f1e6')
+    if detail:
+        for side in (-1, 1):                                                          # the two gate leaves
+            a, b = (-2.95, -.05) if side < 0 else (.05, 2.95)
+            B.box(a, b, -.05, .05, .1, .2, '#1f3b66'); B.box(a, b, -.05, .05, 1.9, 2.0, '#1f3b66'); B.box(a, b, -.05, .05, 1.0, 1.08, '#1f3b66')
+            x = a + .1
+            while x < b:
+                B.box(x - .02, x + .02, -.04, .04, .1, 2.15, '#1f3b66')
+                x += .15
+    else:
+        B.box(-2.95, 2.95, -.05, .05, .1, 2.0, '#1f3b66')
+    return B.finish('ns_schoolgate' + ('' if detail else '_lod1'))
+
+
+def hospital_big(detail):
+    """A big teaching-hospital block: five floors of wards, a stair tower, a drive-in canopy for ambulances."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH, N = 42.0, 16.0, .5, 3.6, 5
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .3, x1 + .3, y0 - 7.5, y1 + .3, F)
+    top = F + FH * N
+    w = walls(B, x0, x1, y0, y1, F, top, '#f3f2ee', .6)
+    for f in range(N):
+        z = F + FH * f
+        B.box(x0 - .05, x1 + .05, y0 - .05, y1 + .05, z + FH - .35, z + FH, '#3f8a62')     # green floor bands
+        if f == 0:
+            glass_wall(w['F'], 0, F, 10, 3.0, panes=6)
+            ribbon(w['F'], x0 + .5, -6, z + 1.0, 1.4); ribbon(w['F'], 6, x1 - .5, z + 1.0, 1.4)
+        else:
+            ribbon(w['F'], x0 + .5, x1 - .5, z + .9, 1.6, 2.4)
+        ribbon(w['B'], -x1 + .5, -x0 - .5, z + .9, 1.6, 2.4)
+        for s_ in 'LR':
+            ribbon(w[s_], y0 + .6, y1 - .6, z + .9, 1.6, 2.6)
+    B.box(x1 - 6, x1 - 1, y0 - 1.2, y0, F, top + 2.0, '#e5e8e6')                   # stair tower
+    glass_wall(Wall(B, 'F', x1 - 6, x1 - 1, y0 - 1.2, y0), x1 - 3.5, F + 1, 3.4, top - 2, panes=2)
+    flat_roof(B, x0, x1, y0, y1, top, 1.0, '#f3f2ee', '#3f8a62')
+    B.box(-7, 7, y0 - 7.2, y0, F + 4.2, F + 4.6, '#f7f7f5')                         # ambulance canopy
+    for x in (-6.6, 6.6):
+        B.box(x - .2, x + .2, y0 - 7.0, y0 - 6.6, F, F + 4.2, '#d8dad8')
+    B.box(-7, 7, y0 - 7.25, y0 - 7.15, F + 3.8, F + 4.6, '#3f8a62')
+    # a red cross board high on the front
+    B.box(-2.6, 2.6, y0 - .25, y0 - .05, top + .2, top + 3.2, '#ffffff')
+    B.box(-.35, .35, y0 - .32, y0 - .25, top + .7, top + 2.7, '#d22b2b'); B.box(-1.0, 1.0, y0 - .32, y0 - .25, top + 1.35, top + 2.05, '#d22b2b')
+    return B.finish('ns_hospital' + ('' if detail else '_lod1'))
+
+
+def clinic(detail):
+    """A two-storey clinic or ward block with a green band and a covered entrance."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH = 20.0, 11.0, .5, 3.5
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .3, x1 + .3, y0 - 3.2, y1 + .3, F)
+    w = walls(B, x0, x1, y0, y1, F, F + FH * 2, '#f2f1ec', .6)
+    for f in range(2):
+        z = F + FH * f
+        B.box(x0 - .05, x1 + .05, y0 - .05, y1 + .05, z + FH - .3, z + FH, '#3f8a62')
+        ribbon(w['F'], x0 + .4, -2.2 if f == 0 else x1 - .4, z + .95, 1.5, 2.2)
+        if f == 0:
+            ribbon(w['F'], 2.2, x1 - .4, z + .95, 1.5, 2.2)
+        ribbon(w['B'], -x1 + .4, -x0 - .4, z + .95, 1.5, 2.2)
+        for s_ in 'LR':
+            ribbon(w[s_], y0 + .5, y1 - .5, z + .95, 1.5, 2.4)
+    glass_wall(w['F'], 0, F, 3.6, 2.6, panes=2)
+    B.box(-3, 3, y0 - 3, y0, F + 3.0, F + 3.3, '#f7f7f5')
+    for x in (-2.7, 2.7):
+        B.box(x - .12, x + .12, y0 - 2.9, y0 - 2.66, F, F + 3.0, '#d8dad8')
+    hip_roof(B, x0, x1, y0, y1, F + FH * 2, .6, 16, '#6c7a74')
+    return B.finish('ns_clinic' + ('' if detail else '_lod1'))
+
+
+def university(detail):
+    """A university faculty building: three floors over a colonnade, sun-breakers on the windows, an entrance tower."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH = 46.0, 15.0, .6, 3.8
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .3, x1 + .3, y0 - 4.5, y1 + .3, F)
+    top = F + FH * 3
+    w = walls(B, x0, x1, y0, y1, F, top, '#e9e2d3', .5)
+    glass_wall(w['F'], 0, F, 14, 3.2, panes=7, frame='#3a3330')
+    for f in range(3):
+        z = F + FH * f
+        if f:
+            ribbon(w['F'], x0 + .5, x1 - .5, z + .9, 1.7, 2.3)
+            if detail:                                                                 # vertical sun-breakers
+                u = x0 + .4
+                while u < x1:
+                    w.get('F').box(u - .06, u + .06, z, z + FH, .0, .55, '#d8cfbd')
+                    u += 2.3
+        else:
+            ribbon(w['F'], x0 + .5, -8, z + .9, 1.7, 2.3); ribbon(w['F'], 8, x1 - .5, z + .9, 1.7, 2.3)
+        ribbon(w['B'], -x1 + .5, -x0 - .5, z + .9, 1.6, 2.3)
+        for s_ in 'LR':
+            ribbon(w[s_], y0 + .5, y1 - .5, z + .9, 1.6, 2.4)
+    for i in range(13):                                                                # colonnade
+        x = x0 + 1 + (W - 2) * i / 12
+        column(B, x, y0 - 3.8, F, F + FH, .5)
+    B.box(x0, x1, y0 - 4.3, y0, F + FH - .1, F + FH + .3, '#e1d8c6', bottom=True)
+    B.box(-5, 5, y0 - 1.0, y0, F, top + 4.0, '#c9b99c')                            # entrance tower
+    glass_wall(Wall(B, 'F', -5, 5, y0 - 1.0, y0), 0, F + FH + .6, 6, top - FH, panes=4, frame='#3a3330')
+    B.box(-4.5, 4.5, y0 - 1.15, y0 - 1.0, top + 1.2, top + 3.4, '#1f3b66')            # name board (label in the game)
+    flat_roof(B, x0, x1, y0, y1, top, .9, '#e9e2d3')
+    flat_roof(B, -5, 5, y0 - 1.0, y0 + 2.0, top + 4.0, .4, '#c9b99c')
+    return B.finish('ns_uni' + ('' if detail else '_lod1'))
+
+
+def hotel(detail):
+    """A hotel: glass lobby podium with a drive-in canopy, nine floors of rooms with balconies, a lit crown."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH, N = 26.0, 17.0, .4, 3.3, 9
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - 3, x1 + 3, y0 - 8, y1 + 3, F)
+    pw = walls(B, x0 - 2.5, x1 + 2.5, y0 - 1.5, y1 + 2.5, F, F + 5.0, '#d8cdb9', .0)   # podium
+    glass_wall(pw['F'], 0, F, W, 4.4, panes=12, frame='#2b2522', glass='#3a4a52')
+    flat_roof(B, x0 - 2.5, x1 + 2.5, y0 - 1.5, y1 + 2.5, F + 5.0, .4, '#d8cdb9')
+    tz = F + 5.0
+    tw = walls(B, x0, x1, y0, y1, tz, tz + FH * N, '#efe8dc', 0)
+    for f in range(N):
+        z = tz + FH * f
+        n = 8
+        for i in range(n):
+            u = x0 + W * (i + .5) / n
+            glass_wall(tw['F'], u, z + .2, 2.2, 2.6, panes=2, frame='#4a3f36')
+            tw['B'].window(-u, z + .9, 1.4, 1.6, kind='slide', bars=False)
+            if detail:                                                                  # balconies
+                B.box(u - 1.45, u + 1.45, y0 - 1.3, y0, z - .05, z + .12, '#f4efe6')
+                glass_rail(B, u - 1.45, u + 1.45, y0 - 1.3, y0, z + .12, 1.0, 'FLR')
+        for s_ in 'LR':
+            ribbon(tw[s_], y0 + .6, y1 - .6, z + .8, 1.6, 2.6)
+        B.box(x0 - .05, x1 + .05, y0 - .05, y1 + .05, z + FH - .15, z + FH, '#d8cdb9')
+    top = tz + FH * N
+    flat_roof(B, x0, x1, y0, y1, top, 1.2, '#efe8dc')
+    B.box(x0 + 2, x1 - 2, y0 + 1, y1 - 1, top, top + 3.0, '#6b1f2a')                  # crown (sign in the game)
+    B.box(-8, 8, y0 - 8, y0 - 1.5, F + 4.0, F + 4.5, '#efe8dc')                       # porte-cochère
+    for x in (-7.5, 7.5):
+        cylinder(B, x, y0 - 7.4, F, F + 4.0, .3, '#d4c6ae', 12)
+    B.box(-8, 8, y0 - 8.1, y0 - 7.95, F + 3.9, F + 4.6, '#6b1f2a')
+    return B.finish('ns_hotel' + ('' if detail else '_lod1'))
+
+
+def flats(detail, floors=3, roof='flat'):
+    """A Lagos block of flats: two flats per floor, balconies on the front, a breeze-block stair in the middle."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH = 18.0, 12.0, .45, 3.1
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .3, x1 + .3, y0 - 1.8, y1 + .3, F)
+    top = F + FH * floors
+    w = walls(B, x0, x1, y0, y1, F, top, '#efe7d6', .7)
+    st = Wall(B, 'F', -1.6, 1.6, y0 - 1.2, y0)
+    B.box(-1.6, 1.6, y0 - 1.2, y0, F, top + .5, '#e3d9c3')                            # stair core
+    breeze(st, -1.3, 1.3, F + .6, top - .3)
+    for f in range(floors):
+        z = F + FH * f
+        for side in (-1, 1):
+            c = side * 5.0
+            glass_wall(w['F'], c - 1.4 * side, z + .2, 1.6, 2.3, panes=2) if f else w['F'].door(c - 1.4 * side, z, 1.0, 2.2, '#5b3a22')
+            w['F'].window(c + 1.4 * side, z + 1.0, 1.4, 1.3)
+            if f:                                                                       # balcony
+                B.box(c - 3, c + 3, y0 - 1.4, y0, z - .15, z + .05, TRIM, bottom=True)
+                B.box(c - 3, c + 3, y0 - 1.4, y0 - 1.28, z + .05, z + 1.0, '#efe7d6')
+                B.box(c - 3.03, c + 3.03, y0 - 1.43, y0 - 1.25, z + 1.0, z + 1.08, TRIM)
+                for e in (c - 3, c + 3 - .12):
+                    B.box(e, e + .12, y0 - 1.4, y0, z + .05, z + 1.0, '#efe7d6')
+            w['B'].window(-c - 1.5, z + 1.0, 1.4, 1.3); w['B'].window(-c + 1.5, z + 1.0, 1.0, 1.0)
+        for s_ in 'LR':
+            for u in (-3.5, 0, 3.5):
+                w[s_].window(u, z + 1.0, 1.2, 1.3)
+    if roof == 'flat':
+        flat_roof(B, x0, x1, y0, y1, top, .9, '#efe7d6')
+        B.box(4, 6, 2, 4, top, top + 1.6, '#2f5fa8')                                    # water tank
+    else:
+        hip_roof(B, x0, x1, y0 - 1.4, y1, top, .5, 20, '#7a3a2a')
+    return B.finish('ns_flats%d' % floors + ('' if detail else '_lod1'))
+
+
+def flats3(detail):
+    return flats(detail, 3, 'flat')
+
+
+def flats4(detail):
+    return flats(detail, 4, 'hip')
+
+
+def shops(detail, floors=1):
+    """A row of shops: roll-up shutters (some open), awnings over the doors, blank sign boards, flats above on the two-floor one."""
+    B = Builder(detail)
+    W, D, F = 20.0, 8.0, .3
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .2, x1 + .2, y0 - 2.0, y1 + .2, F)
+    top = F + 3.6 + (3.1 if floors > 1 else 0)
+    w = walls(B, x0, x1, y0, y1, F, top, '#e5ddcd', .4)
+    n = 5
+    signs = ['#d9342b', '#1f6fb5', '#f2b705', '#16a06b', '#7b3fa0', '#e8590c']
+    for i in range(n):
+        u = x0 + W * (i + .5) / n
+        open_ = (i * 3) % 5 < 3
+        w['F'].box(u - 1.6, u + 1.6, F, F + 2.7, 0, .02, '#1f1c19' if open_ else '#9aa0a3')
+        if detail and not open_:
+            z = F + .1
+            while z < F + 2.6:
+                w['F'].box(u - 1.6, u + 1.6, z, z + .04, .02, .035, '#7d8285')
+                z += .14
+        if detail and open_:                                                           # goods on show in the doorway
+            for k in range(3):
+                w['F'].box(u - 1.4 + k * 1.0, u - .7 + k * 1.0, F, F + rr_(i, k), .02, .5, signs[(i + k) % len(signs)])
+        w['F'].box(u - 1.7, u + 1.7, F + 2.7, F + 2.85, 0, .06, TRIM)
+        w['F'].box(u - 1.75, u + 1.75, F + 2.95, F + 3.55, 0, .1, signs[i % len(signs)])       # sign board
+        w['F'].box(u - 1.75, u + 1.75, F + 2.6, F + 2.7, .1, 1.4, '#3f6f8f' if i % 2 else '#8a3a2a')   # awning
+    if floors > 1:
+        z = F + 3.6
+        B.box(x0 - .05, x1 + .05, y0 - 1.0, y0, z - .1, z + .1, TRIM, bottom=True)
+        for i in range(4):
+            u = x0 + W * (i + .5) / 4
+            w['F'].window(u, z + 1.0, 1.4, 1.3)
+        flat_roof(B, x0, x1, y0, y1, top, .8, '#e5ddcd')
+    else:
+        B.box(x0, x1, y0 - .1, y0, top, top + 1.0, '#e5ddcd')                            # tall front parapet
+        B.box(x0 - .05, x1 + .05, y0 - .15, y0 + .05, top + 1.0, top + 1.08, TRIM)
+        gable_roof(B, x0, x1, y0, y1, top, .3, 10, '#8e9292', '#e5ddcd')
+    for s_ in 'LRB':
+        w[s_].window(0, F + 1.2, 1.0, 1.0)
+    return B.finish('ns_shops%d' % floors + ('' if detail else '_lod1'))
+
+
+def rr_(i, k):
+    return .9 + ((i * 7 + k * 3) % 5) * .25
+
+
+def shops1(detail):
+    return shops(detail, 1)
+
+
+def shops2(detail):
+    return shops(detail, 2)
+
+
+def warehouse(detail):
+    """A warehouse or factory shed: block base, corrugated sheet walls and roof, big rolling doors."""
+    B = Builder(detail, simple=True)
+    W, D, E = 28.0, 18.0, 7.0
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    B.box(x0 - .5, x1 + .5, y0 - 3, y1 + .5, 0, .2, '#8b867d', bottom=True)
+    B.box(x0, x1, y0, y1, .2, 1.6, '#bdb6aa')
+    corrugated_walls(B, x0, x1, y0, y1, 1.6, E, ['#b9bdbf', '#aeb3b5', '#c3c6c7'], .25)
+    f = Wall(B, 'F', x0, x1, y0, y1)
+    for u in (-7, 7):
+        f.box(u - 2.8, u + 2.8, .2, 5.2, .03, .08, '#6f7779')
+        if detail:
+            z = .4
+            while z < 5.1:
+                f.box(u - 2.8, u + 2.8, z, z + .04, .08, .1, '#5d6466')
+                z += .2
+        f.box(u - 3.0, u + 3.0, 5.2, 5.5, .0, .12, '#e3b23c')
+    f.door(0, .2, 1.0, 2.2, '#6f7779')
+    for s_ in 'LR':
+        ribbon(Wall(B, s_, x0, x1, y0, y1), y0 + 1, y1 - 1, 5.3, .9, 2.4)
+    gable_roof(B, x0, x1, y0, y1, E, .5, 10, '#a7acae', '#b9bdbf', fascia='#8f9597', gutter=True)
+    return B.finish('ns_warehouse' + ('' if detail else '_lod1'))
+
+
+def church(detail):
+    """A church: a long nave with tall arched windows, a bell tower with a cross over the entrance."""
+    B = Builder(detail)
+    W, D, F, E = 14.0, 26.0, .6, 7.0
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .4, x1 + .4, y0 - 5.0, y1 + .4, F)
+    w = walls(B, x0, x1, y0, y1, F, E, '#f3eee2', .6)
+    for s_ in 'LR':
+        u = y0 + 2.5
+        while u < y1 - 1.5:
+            w[s_].window(u, F + 1.6, 1.3, 3.6, kind='slide', bars=False)
+            u += 3.5
+    T = Wall(B, 'F', -2.6, 2.6, y0 - 4.6, y0)
+    B.box(-2.6, 2.6, y0 - 4.6, y0, F, 17.0, '#f3eee2')                                # tower
+    T.door(0, F, 2.0, 3.4, '#5b3a22')
+    arch_window(T, 0, 6.5, 1.4, 3.0)
+    arch_window(T, 0, 11.5, 1.2, 2.4)
+    hip_roof(B, -2.6, 2.6, y0 - 4.6, y0, 17.0, .3, 55, '#4d5a63', ribs=False)
+    B.box(-.12, .12, y0 - 2.42, y0 - 2.18, 17 + 3.4, 17 + 6.0, '#c9a25a'); B.box(-.8, .8, y0 - 2.42, y0 - 2.18, 17 + 4.8, 17 + 5.1, '#c9a25a')
+    for x in (-5.8, 5.8):
+        arch_window(w['F'], x, F + 1.5, 1.3, 3.4)
+    gable_roof(B, x0, x1, y0, y1, E, .6, 38, '#4d5a63', '#f3eee2')
+    return B.finish('ns_church' + ('' if detail else '_lod1'))
+
+
+def mosque(detail):
+    """A mosque: a square prayer hall with arched openings, a green dome and a tall minaret."""
+    B = Builder(detail)
+    W, D, F, E = 18.0, 18.0, .6, 6.0
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - 3, x1 + .4, y0 - 3, y1 + .4, F)
+    w = walls(B, x0, x1, y0, y1, F, E, '#f4f0e6', .6)
+    for s_ in 'FBLR':
+        for u in (-5.5, -1.8, 1.8, 5.5):
+            if s_ == 'F' and abs(u) < 2:
+                continue
+            w[s_].window(u, F + 1.2, 1.2, 2.6, kind='slide', bars=False)
+    w['F'].door(0, F, 2.2, 3.2, '#2f6b4f')
+    flat_roof(B, x0, x1, y0, y1, E, .7, '#f4f0e6', '#2f6b4f')
+    cylinder(B, 0, 0, E, E + 2.0, 5.2, '#f4f0e6', 24)
+    dome(B, 0, 0, E + 2.0, 5.2, '#2f8a5a', 24, 7, 1.15)
+    cylinder(B, 0, 0, E + 2.0 + 5.2 * 1.15, E + 2.0 + 5.2 * 1.15 + 1.2, .08, '#c9a25a', 6)
+    mx, my = x1 + 1.8, y0 - 1.8                                                       # minaret
+    cylinder(B, mx, my, 0, 22, 1.1, '#f4f0e6', 12)
+    cylinder(B, mx, my, 16, 16.6, 1.7, '#2f6b4f', 12)
+    cylinder(B, mx, my, 22, 22.3, 1.3, '#f4f0e6', 12)
+    dome(B, mx, my, 22.3, 1.2, '#2f8a5a', 12, 4, 1.6)
+    return B.finish('ns_mosque' + ('' if detail else '_lod1'))
+
+
+def bank(detail):
+    """A bank: a polished stone and glass front, tall columns, the logo band above the door."""
+    B = Builder(detail, simple=True)
+    W, D, F, FH = 18.0, 14.0, .6, 3.8
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    slab(B, x0 - .4, x1 + .4, y0 - 2.6, y1 + .4, F)
+    top = F + FH * 3
+    w = walls(B, x0, x1, y0, y1, F, top, '#d8d2c8', 0)
+    stone(w['F'], x0, x1, F, F + FH, '#b7ad9d')
+    glass_wall(w['F'], 0, F + .1, 8, 3.3, panes=4, frame='#202224', glass='#2a3a44')
+    for f in (1, 2):
+        glass_wall(w['F'], 0, F + FH * f + .3, W - 2, 3.0, panes=8, frame='#202224', glass='#2a3a44')
+    for s_ in 'LR':
+        for f in range(3):
+            ribbon(w[s_], y0 + .6, y1 - .6, F + FH * f + .9, 1.8, 2.6)
+    for x in (-6.5, -3.5, 3.5, 6.5):
+        column(B, x, y0 - 2.0, F, F + FH * 2, .5)
+    B.box(x0, x1, y0 - 2.4, y0, F + FH * 2, F + FH * 2 + .6, '#e9e4dc', bottom=True)
+    B.box(-6, 6, y0 - 2.45, y0 - 2.4, F + FH * 2 + .05, F + FH * 2 + .55, '#7a1e2b')   # logo band
+    flat_roof(B, x0, x1, y0, y1, top, 1.0, '#d8d2c8')
+    return B.finish('ns_bank' + ('' if detail else '_lod1'))
+
+
+BUILDS = (bungalow, wide_house, storey, dup_modern, dup_colonial, dup_mono, dup_med, dup_pent, face_me, zinc_house, wood_house,
+          school2, school1, school_gate, hospital_big, clinic, university, hotel, flats3, flats4, shops1, shops2, warehouse,
+          church, mosque, bank)
 
 
 def main():
