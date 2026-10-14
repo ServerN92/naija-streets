@@ -175,6 +175,15 @@ you throwing stones, then give up and tie it again. Traffic pays and passes.
 People gisting in a group get a speech bubble over their heads, a quarrel a red one, a phone call a ringing phone.
 The dead are taken away as soon as you look away.
 
+## More vehicles
+A few seconds into the game a blue car, a black Benz, a fuel tanker (main roads only), a black power bike and a sport
+bike load in the background and join the traffic (the Benz and sport bike are rare; a Benz is also parked at the hotel).
+Take any of them like other vehicles: the sport bike is the fastest thing on the road, the tanker the slowest.
+They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by your door next to the okada: E to ride
+(you stand side-on), E to step off. It doesn't knock people over.
+Models: `assets/models/car_blue.glb`, `car_benz.glb`, `tanker.glb`, `bike_naked.glb`, `bike_sport.glb`, `skateboard.glb`
+(each with a `_lod1` far version), listed in `LATE_FILES` in `src/game.js`.
+
 ## Eko Grand Hotel
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
 bar (`assets/models/hotel_bar.glb`, downloaded only when you come near). Women dance on the floor there.
@@ -223,6 +232,11 @@ python3 tools/fbxbin.py big.fbx /tmp/big          # binary FBX -> OBJ + its text
 GLTFPACK=/path/to/gltfpack python3 tools/rebake.py /tmp/big/big.obj /tmp/big/big.jpg /tmp/small big 20000 1024   # fewer triangles, texture re-baked
 THREE_DIR=/path/to/three python3 tools/autorig.py MIXAMO_RIGGED.fbx /tmp/small/big.obj person.glb 1.75   # a person: weights from a Mixamo-rigged copy
 ```
+Tripo models made of many parts (each with its own colour picture) first go through `tools/parts_convert.py`, which
+packs every part's picture into one atlas. Vehicles keep their own textures when gltfpack can simplify them
+(`gltfpack -i model.glb -o out.glb -si R -se 0.05 -tc -tl 1024`); ones with too many UV seams are re-baked with
+`NORMALS=1 DILATE=1 python3 tools/rebake.py ...` (bake from the outward-facing surface, fill texture gutters first).
+
 `autorig.py` works best on a T-pose body; arms that touch the thighs (A-pose) stretch when the arms move (`--nocut` keeps
 the mesh whole, `--gentle` cuts less).
 
