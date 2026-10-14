@@ -384,12 +384,21 @@ const HERO_FILES=['character','idle','walk','run','enter_car']; const HERO_URL='
 function floatGeo(g){ for(const k of Object.keys(g.attributes)){ const a=g.attributes[k]; if(a.isInterleavedBufferAttribute||!(a.array instanceof Float32Array)){ const n=a.count, s=a.itemSize, f=new Float32Array(n*s);
       for(let i=0;i<n;i++){ f[i*s]=a.getX(i); if(s>1) f[i*s+1]=a.getY(i); if(s>2) f[i*s+2]=a.getZ(i); if(s>3) f[i*s+3]=a.getW(i); } g.setAttribute(k,new THREE.BufferAttribute(f,s)); } } return g; }
 function meshOf(gltf){ let mesh=null; gltf.scene.updateMatrixWorld(true); gltf.scene.traverse(o=>{ if(o.isMesh&&!mesh) mesh=o; }); return mesh; }
+/* colour grading for the Blender houses (tools/blender_houses.py): their paint is pure and bright, which burns out
+   under the Lagos sun. Whites come down to a warm, slightly weathered cream, every colour loses a little saturation
+   and gets a sun-faded warm cast, so the houses sit in the dusty street instead of shining. */
+function gradeHouse(geo){ const c=geo.attributes.color; if(!c) return;
+  for(let i=0;i<c.count;i++){ let r=c.getX(i), g=c.getY(i), b=c.getZ(i); const l=.2126*r+.7152*g+.0722*b;
+    const hi=Math.min(1,Math.max(0,(l-.45)/.45)), k=.8*(1-.2*hi*hi*(3-2*hi));            // pull the brights down hardest
+    r=(r+(l-r)*.18)*k*1.0; g=(g+(l-g)*.18)*k*.955; b=(b+(l-b)*.18)*k*.88;                // less saturated, warmer
+    c.setXYZ(i,r,g,b); } c.needsUpdate=true; }
 const modelJobs=Object.entries(MODEL_FILES).map(async([key,[file,front,size,lod]])=>{
   const get=f=>fetchBuf(murl(f)).then(b=>GLL.parseAsync(b,''));
   const res=await Promise.allSettled((lod?[file,file+'_lod1']:[file]).map(get)); if(res[0].status!=='fulfilled') throw res[0].reason;
   const parsed=res.filter(r=>r.status==='fulfilled').map(r=>r.value);
   const out={}; let T=null;
   parsed.forEach((gltf,li)=>{ const mesh=meshOf(gltf); const geo=floatGeo(mesh.geometry.clone()); geo.applyMatrix4(mesh.matrixWorld);
+    if(file.startsWith('ns_')) gradeHouse(geo);
     if(front==='-x') geo.rotateY(Math.PI); else if(front==='+z') geo.rotateY(Math.PI/2);
     geo.computeBoundingBox(); const bb=geo.boundingBox, sz=new THREE.Vector3(); bb.getSize(sz);
     if(!T) T={cx:(bb.min.x+bb.max.x)/2,cz:(bb.min.z+bb.max.z)/2,y0:bb.min.y,sc:front==='tl'?1:size/sz.x};
@@ -698,7 +707,7 @@ const MARKETS=AREAS.filter(a=>a.k==='marketplace'||a.k==='retail').map(a=>({a,na
 const houseInst={};
 function addHouse(key,x,z,ry,sx,sy,sz,col){ (houseInst[key]||(houseInst[key]=[])).push({x,z,ry,sx,sy,sz,col}); }
 const WALLC=['#e9dcc5','#d9cdb8','#efe6d6','#cfc3ae','#e3d2b6','#bfb3a0'];
-const HOUSE_TINT=['#ffffff','#fff3e6','#f2f2ff','#fff8e0','#f4ffef','#ffeef0','#ecf4ff'];
+const HOUSE_TINT=['#f4ecdc','#efdcc0','#ead6c4','#e2e6d2','#dfe2e2','#f0deb4','#e8e0d4','#f2d9c8'];   // Lagos house paints: cream, sand, peach, pale green, grey, ochre
 const norm3=(x,y,z)=>{ const l=Math.hypot(x,y,z); return [x/l,y/l,z/l]; };
 // a gable zinc roof over a turned box (ridge along the long side)
 function obZinc(b,K,top,col,hw,hd){ const oh=.4, rise=Math.min(hw,hd)*2*rr(.16,.26), zc=new THREE.Color(pick(['#ffffff','#ead8c6','#d2c9bf','#f2e4d0','#c9b8a6'])), c=b.c, s=b.s;
