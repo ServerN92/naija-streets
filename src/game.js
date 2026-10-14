@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=1484a97c88';
-import * as C2 from './char2.js?v=1484a97c88';
-import { MapView } from './mapview.js?v=1484a97c88';
+import * as CLOCK from './clock.js?v=410a4ed654';
+import * as C2 from './char2.js?v=410a4ed654';
+import { MapView } from './mapview.js?v=410a4ed654';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='1484a97c88';
+const BUILD='410a4ed654';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1624,7 +1624,7 @@ function buildMyRoom(g,texs){ const S=new THREE.Scene(); S.background=new THREE.
   let ward={x:cx,z:cz}, wardYaw=0; { const wb=boxOf(named(/wardrobe|closet|cupboard/i)), sb=boxOf(named(/^Shelf/i)), B=!wb.isEmpty()?wb:!sb.isEmpty()?sb:null;
     if(B){ const {c,n,d}=facing(B), q=nearFree(c.x+n.x*(d+.55),c.z+n.z*(d+.55)); ward=q; wardYaw=Math.atan2(n.x,n.z); } }
   const step=(nx,nz)=>{ if(free(nx,nz)){ player.x=nx; player.z=nz; return true; } return false; };
-  let home=null; try{ home=homeSpots({named,boxOf,facing,free,nearFree}); }catch(e){ console.warn('home spots',e); }   // sofas, TV, cooker, shower, bed, speaker, bucket
+  let home=null; try{ home=homeSpots({named,boxOf,facing,free,nearFree,parts}); }catch(e){ console.warn('home spots',e); }   // sofas, TV, cooker, shower, bed, speaker, bucket
   Object.assign(INT,{scene:S,cols:[],grid:{grid,gw,gd,x0:x0,z0:z0,CS},free,exit,spawn,ward,wardYaw,fan:null,home,camDist:2.3,label:floors.length>1?'Your flat · Mushin':'Your room · Mushin',
     bounds:{x0:x0+.3,x1:x1-.3,z0:z0+.3,z1:z1-.3},cam:{x0:x0+.18,x1:x1-.18,z0:z0+.18,z1:z1-.18,y0:.45,y1:H-.15},
     // walking: straight on if free; else slide along what you hit, or turn a little toward a doorway
@@ -3077,22 +3077,28 @@ const LOOK_LIST=[
    dining table, the shower, the bed, the soundbar and the bucket. Walk up and press E. Moving again (or E) stands you up.
    Moves: the real Mixamo ones when they are in moves2.glb (v2_sit, v2_eat…), else poses made in code (src/char2.js POSES). */
 const HL={act:null,music:null,tv:0,tvT:0,food:0,broom:null,dirt:[],fx:null,clips:null,clipsFor:null,danceI:0};
-function homeSpots(H){ const {named,boxOf,facing,free,nearFree}=H, V=THREE.Vector3, out={spots:[],free,nearFree};
+function homeSpots(H){ const {named,boxOf,facing,free,nearFree,parts}=H, V=THREE.Vector3, out={spots:[],free,nearFree};
+  // feel the furniture: how high the cushion is under you, and where the backrest is behind you
+  const ray=new THREE.Raycaster(), side=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}), near=(x,z,r)=>(parts||[]).filter(p=>p.bb.min.x<x+r&&p.bb.max.x>x-r&&p.bb.min.z<z+r&&p.bb.max.z>z-r&&!/^(Floor|Rug|Ceiling|Wall)/i.test(p.name)).map(p=>p.mesh||(p.mesh=new THREE.Mesh(p.geo,side)));
+  const fit=(hx,hz,n,y0)=>{ let ms=near(hx,hz,.9); if(!ms.length) return {x:hx,z:hz,y:y0};
+    const down=(x,z)=>{ ray.set(new V(x,1.05,z),new V(0,-1,0)); ray.far=.9; const h=ray.intersectObjects(ms,false).find(h=>h.point.y>.25&&h.point.y<.75); return h?h.point.y:y0; };
+    let y=down(hx,hz); ray.set(new V(hx,y+.24,hz),new V(-n.x,0,-n.z)); ray.far=.9; const b=ray.intersectObjects(ms,false)[0];
+    if(b){ const k=clamp(b.distance-.1,-.12,.4); hx-=n.x*k; hz-=n.z*k; y=down(hx,hz); } return {x:hx,z:hz,y}; };
   const bb=re=>boxOf(named(re)), ok=b=>!b.isEmpty(), ctr=b=>b.getCenter(new V()), size=b=>b.getSize(new V());
   const tvB=bb(/^TV_Screen$/), coffee=bb(/^CoffeeTable_Top$/), dining=bb(/^Dining_Top$/), desk=bb(/^Desk_Top$/);
   if(ok(tvB)){ const f=facing(tvB); out.tv={c:ctr(tvB),sz:size(tvB),n:f.n.clone()}; }
   // seats along a sofa (or one chair), facing what stands in front of it; you walk up from the front, or from behind a dining chair
-  const seats=(b,kind,target,{depth=.24,y=.47,max=3,from='front'}={})=>{ if(!ok(b)) return; const c=ctr(b), s=size(b);
+  const seats=(b,kind,target,{depth=.3,y=.47,max=3,from='front',soft=false}={})=>{ if(!ok(b)) return; const c=ctr(b), s=size(b);
     let n; if(target&&ok(target)){ const t=ctr(target), dx=t.x-c.x, dz=t.z-c.z; n=Math.abs(dx)>Math.abs(dz)?new V(Math.sign(dx),0,0):new V(0,0,Math.sign(dz)); } else n=facing(b).n.clone();
     const alongX=Math.abs(n.z)>.5, len=alongX?s.x:s.z, thin=alongX?s.z:s.x, k=Math.max(1,Math.min(max,Math.round(len/.68))), yaw=Math.atan2(n.x,n.z);
     let kd=kind; if(kind==='sit'&&out.tv){ const d=out.tv.c.clone().sub(c); d.y=0; d.normalize(); if(d.dot(n)>.8) kd='tv'; }
-    for(let i=0;i<k;i++){ const u=(i+.5)/k-.5, hx=c.x+(alongX?u*len:0)+n.x*(thin/2-depth), hz=c.z+(alongX?0:u*len)+n.z*(thin/2-depth);
-      const a=from==='back'?.48:-.62, at=nearFree(hx-n.x*a,hz-n.z*a); out.spots.push({kind:kd,x:hx,z:hz,y,yaw,at,r:.55,n:n.clone()}); } };
+    for(let i=0;i<k;i++){ const u=(i+.5)/k-.5, q=fit(c.x+(alongX?u*len:0)+n.x*(thin/2-depth),c.z+(alongX?0:u*len)+n.z*(thin/2-depth),n,y);   // back against the backrest, on the cushion
+      const a=from==='back'?.48:-.62, at=nearFree(q.x-n.x*a,q.z-n.z*a); out.spots.push({kind:kd,x:q.x,z:q.z,y:q.y,yaw,at,r:.55,n:n.clone(),soft}); } };
   const front=ok(coffee)?coffee:tvB;
-  seats(bb(/^Sofa3_Cushions$/),'sit',front); seats(bb(/^Sofa_(Base|Cushion)/),'sit',front); seats(bb(/^Armchair_Cushions$/),'sit',front,{max:1});
+  seats(bb(/^Sofa3_Cushions$/),'sit',front,{soft:true}); seats(bb(/^Sofa_(Base|Cushion)/),'sit',front,{soft:true}); seats(bb(/^Armchair_Cushions$/),'sit',front,{max:1,soft:true});
   const dc=named(/^DiningChair_.*_Seat$/); for(const p of dc) seats(p.bb,'dine',dining,{depth:.2,max:1,from:'back'});
   if(!dc.length&&ok(dining)){ const c=ctr(dining), sz=size(dining), alongX=sz.x>=sz.z, len=alongX?sz.x:sz.z, thin=alongX?sz.z:sz.x, k=Math.max(1,Math.round(len/.8));   // chairs packed together in the file: seats all round the table
-    const put=(x,z,nx,nz)=>{ const at=nearFree(x-nx*.48,z-nz*.48); out.spots.push({kind:'dine',x,z,y:.47,yaw:Math.atan2(nx,nz),at,r:.55,n:new V(nx,0,nz)}); };
+    const put=(x,z,nx,nz)=>{ const at=nearFree(x-nx*.48,z-nz*.48), n=new V(nx,0,nz), q=fit(x,z,n,.47); out.spots.push({kind:'dine',x:q.x,z:q.z,y:q.y,yaw:Math.atan2(nx,nz),at,r:.55,n}); };
     for(const sg of [1,-1]) for(let i=0;i<k;i++){ const u=((i+.5)/k-.5)*len, o=thin/2+.28; if(alongX) put(c.x+u,c.z+sg*o,0,-sg); else put(c.x+sg*o,c.z+u,-sg,0); }
     for(const sg of [1,-1]){ const o=len/2+.33; if(alongX) put(c.x+sg*o,c.z,-sg,0); else put(c.x,c.z+sg*o,0,-sg); } }
   seats(bb(/^Chair_Seat$/),'sit',desk,{depth:.2,y:.5,max:1,from:'back'});
@@ -3127,8 +3133,8 @@ function homeInfo(){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y, y
 function homeClips(){ if(HL.clipsFor===hero.cObj&&HL.clips) return HL.clips; const D=homeInfo(), C={}, names=new Set(); hero.cObj.traverse(o=>{ if(o.isBone) names.add(o.name); });
   const own=hero.look&&hero.look.clips, fit=n=>own&&own[n]?own[n]:(PEOPLE.clips[n]?fitClip(PEOPLE.clips[n],names,hero.hipsRest):null);
   const M=V2.movesDone, mv=n=>{ const c=M&&M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true}):null; };
-  for(const k of ['sit','eat','cook','sweep','bath']) C[k]=mv('v2_'+k)||C2.poseClip(D,'home_'+k,C2.POSES[k]);   // the real Mixamo move when it is in, else the made pose
-  C.tv=mv('v2_tv')||C.sit; C.sleep=mv('v2_sleep')||fit('f_lie')||fit('lie')||C.sit;
+  for(const k of ['sit','sofa','eat','cook','sweep','bath']) C[k]=mv('v2_'+k)||(k==='sofa'&&mv('v2_sit'))||C2.poseClip(D,'home_'+k,C2.POSES[k]);   // the real Mixamo move when it is in, else the made pose
+  C.tv=mv('v2_tv')||C.sofa; C.sleep=mv('v2_sleep')||fit('f_lie')||fit('lie')||C.sit;
   C.dance=['v2_dance1','v2_dance2','v2_dance3'].map(mv).filter(Boolean); if(!C.dance.length) C.dance=['dance_1','dance_salsa','dance_macarena'].map(fit).filter(Boolean);
   C.info=D; HL.clips=C; HL.clipsFor=hero.cObj; return C; }
 // where a move puts the head, hips and feet (relative to the body's own spot), to fit it on a bed or a seat
@@ -3227,6 +3233,47 @@ function homeNear(){ const R=INT.home; if(!R||ROOM!==INT||mode!=='interior'||!he
 function homePrompt(){ const A=HL.act; if(A) return A.prompt?A.prompt():A.kind==='dance'?'Stop dancing':A.kind==='bed'?'Get up':'Stand up'; const n=homeNear(); return n?n.label:''; }
 function homeAction(){ if(HL.act){ if(HL.act.stop!==false) homeStop(); return true; } const n=homeNear(); if(!n) return false; homeStart(n.s); return true; }
 
+// ---- the bath: clothes come off. Our own people (Amaka, Ada) just take their outfit off. A Mixamo person is hollow under
+// the clothes, so for the bath they get a body made from ours (Tunde for men, Amaka for women) in their own skin colour, with
+// their own head on it. A soft mosaic covers the private parts, and a woman's chest, like in The Sims.
+const SKIN_OF={p_tunde:'#6a3825',p_amaka:'#be7355',p_ada:'#6b3527',p_dayo:'#a96244',p_emeka:'#a36949',p_tobi:'#a66d3f',p_femi:'#8a5535',p_mike:'#dab6aa',p_chris:'#ddb797',p_lin:'#deb197'};
+const HEADW=n=>/(Head|HeadTop_End|LeftEye|RightEye)(_\d+)?$/.test(n), nmOf=o=>{ for(let q=o;q;q=q.parent) if(q.name&&!/^mesh_\d+(_\d+)?$/.test(q.name)) return q.name; return ''; };
+function headCut(m,keep,thr){ const g=m.geometry, I=g.index; if(!I) return g; const w=skinW(m,HEADW), out=[], groups=[];
+  const ranges=g.groups.length?g.groups:[{start:0,count:I.count,materialIndex:0}];
+  for(const r of ranges){ const st=out.length; for(let t=r.start;t<r.start+r.count;t+=3){ const a=I.getX(t), b=I.getX(t+1), c=I.getX(t+2), h=(w[a]+w[b]+w[c])/3; if((h>=thr)===keep) out.push(a,b,c); } groups.push({start:st,count:out.length-st,materialIndex:r.materialIndex}); }
+  const n=new THREE.BufferGeometry(); for(const k in g.attributes) n.setAttribute(k,g.attributes[k]); n.setIndex(out); if(g.groups.length) for(const r of groups) n.addGroup(r.start,r.count,r.materialIndex);
+  n.boundingSphere=g.boundingSphere; n.boundingBox=g.boundingBox; return n; }
+function mosaicTex(hex,cols,rows){ const B=8, [c,g]=cv(cols*B,rows*B), base={r:parseInt(hex.slice(1,3),16)/255,g:parseInt(hex.slice(3,5),16)/255,b:parseInt(hex.slice(5,7),16)/255};
+  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){ const k=.72+Math.random()*.55, edge=(x===0||y===0||x===cols-1||y===rows-1)?.7:1, col={r:base.r*k,g:base.g*k,b:base.b*k};
+    g.fillStyle=`rgba(${Math.min(255,col.r*255)|0},${Math.min(255,col.g*255)|0},${Math.min(255,col.b*255)|0},${edge})`; g.fillRect(x*B,y*B,B,B); }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; return t; }
+function bathClip(D){ const M=V2.movesDone, c=M&&M.g.animations.find(a=>a.name==='v2_bath'); return c?C2.retargetClip(c,M.S,D,{norm:true}):C2.poseClip(D,'home_bath',C2.POSES.bath); }
+async function bathBody(){ const id=WARD.cur, P=v2Of(id), f=isF(), info=homeClips().info, B={f,saved:[],sprites:[]};
+  if(P&&!P.mx){ B.own=true; B.body=hero.cObj; B.scale=1; B.skin=SKIN_OF[id]||'#7b5032'; return B; }
+  const src=f?'p_amaka':'p_tunde', C=V2.casts[src]||await loadV2(src); if(!C||!hero) return null;
+  const dbl=SkeletonUtils.clone(C.tpl); C2.setOutfit(dbl,-1); dbl.name='bathBody';
+  dbl.traverse(o=>{ if(!o.isMesh) return; const n=nmOf(o); if(/^(eyes|brows|lashes|hair|braid)/.test(n)) o.visible=false; else if(o.isSkinnedMesh&&/^body/.test(n)) o.geometry=headCut(o,false,.9); o.castShadow=true; o.frustumCulled=false; o.layers.set(1); });
+  // their skin colour: our skin picture tinted when close, a plain colour when far apart
+  const want=new THREE.Color(SKIN_OF[id]||'#8a5535'), have=new THREE.Color(SKIN_OF[src]), k=[want.r/have.r,want.g/have.g,want.b/have.b], far=Math.max(...k)>2.4||Math.min(...k)<.42, mats=new Map();
+  dbl.traverse(o=>{ if(!o.isMesh||!o.material||!/_skin$/.test(o.material.name||'')) return; let m=mats.get(o.material); if(!m){ m=o.material.clone(); if(far){ m.map=null; m.emissiveMap=null; m.color.copy(want).multiplyScalar(.82); } else m.color.setRGB(k[0],k[1],k[2]); mats.set(o.material,m); HERO_MATS.push(m); } o.material=m; });
+  const hn=info.wp.get('Neck'), dn=C.info.wp.get('Neck'); B.scale=hn&&dn?hn.y/dn.y:1; dbl.scale.setScalar(B.scale);
+  B.dbl=dbl; B.body=dbl; B.info=C.info; B.mixer=new THREE.AnimationMixer(dbl); B.action=B.mixer.clipAction(bathClip(C.info)); B.skin=SKIN_OF[id]||'#8a5535'; return B; }
+function bathUndress(B,on){ if(!B) return; const id=WARD.cur;
+  if(on){ if(B.own) C2.setOutfit(hero.cObj,-1);
+    else { const meshes=[]; hero.cObj.traverse(o=>{ if(o.isSkinnedMesh) meshes.push(o); }); const single=new Set(meshes.map(m=>nmOf(m))).size<=1;
+      for(const m of meshes){ const n=nmOf(m); B.saved.push({m,geo:m.geometry,vis:m.visible});
+        if(/hair|eyelash|beard|helmet|hat|cap|glass|mask|brow/i.test(n)) continue; if(single||/body/i.test(n)) m.geometry=headCut(m,true,.25); else m.visible=false; }
+      hero.root.add(B.dbl); B.action.reset().play(); }
+    const S=INT.scene, mk=(cols,rows,w,h)=>{ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:mosaicTex(B.skin,cols,rows),transparent:true,depthWrite:false,depthTest:false,toneMapped:false})); s.scale.set(w*B.scale,h*B.scale,1); s.renderOrder=9; s.layers.enableAll(); S.add(s); B.sprites.push(s); return s; };
+    B.groin=mk(4,4,.22,.22); if(B.f) B.chest=mk(7,4,.46,.27);
+    const bone=re=>{ let b=null; B.body.traverse(o=>{ if(!b&&o.isBone&&re.test(o.name)) b=o; }); return b; }; B.hips=bone(/Hips$/); B.sp1=bone(/Spine1$/); B.sp2=bone(/Spine2$/); }
+  else { if(B.own) C2.setOutfit(hero.cObj,fitOf(id)); else { for(const s of B.saved){ s.m.geometry=s.geo; s.m.visible=s.vis; } B.saved=[]; if(B.dbl.parent) B.dbl.parent.remove(B.dbl); B.mixer.stopAllAction(); }
+    for(const s of B.sprites){ if(s.parent) s.parent.remove(s); s.material.map.dispose(); s.material.dispose(); } B.sprites=[]; } }
+function bathTick(B,A){ if(!B) return; if(B.mixer&&A.action){ B.action.time=A.action.time; B.mixer.update(0); }
+  B.body.updateMatrixWorld(true); const yaw=rig.root.rotation.y, f=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)), s=B.scale;
+  if(B.hips&&B.groin){ B.hips.getWorldPosition(B.groin.position); B.groin.position.addScaledVector(f,.1*s).y-=.1*s; }
+  if(B.chest&&B.sp1&&B.sp2){ const a=B.sp1.getWorldPosition(new THREE.Vector3()), b=B.sp2.getWorldPosition(new THREE.Vector3()); B.chest.position.copy(a).lerp(b,.5).addScaledVector(f,.2*s).y-=.03*s; } }
+
 // ---- starting and stopping
 function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=null, A={kind:s.kind,s,t:0,lock:true,camH:1.0,yaw:s.yaw||0,at:s.at};
   if(s.kind==='music'){ const on=!HL.music; homeMusic(on); toast(on?mpick(['Music don start! Press E anywhere to dance.','Afrobeat dey play. Shake body!']):'Music off'); return; }
@@ -3235,7 +3282,7 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
   if(s.kind==='cook'&&HL.food) return;
   if(HL.broom){ dropProp(HL.broom); HL.broom=null; }
   heroQuiet(); if(PHONE.open) closePhone();
-  if(s.kind==='sit'||s.kind==='tv'||s.kind==='dine'){ const eat=s.kind==='dine'&&HL.food; clip=eat?C.eat:s.kind==='tv'?C.tv:C.sit; const m=homeMeasure(clip,0);
+  if(s.kind==='sit'||s.kind==='tv'||s.kind==='dine'){ const eat=s.kind==='dine'&&HL.food; clip=eat?C.eat:s.kind==='tv'?C.tv:s.soft?C.sofa:C.sit; const m=homeMeasure(clip,0);
     A.p1=new THREE.Vector3(s.x,s.y+.09-m.hips.y,s.z); A.camH=Math.max(.6,m.head.y+(s.y+.09-m.hips.y)-.12);
     if(s.kind==='tv'){ HL.tv=1; if(HL.fx.tv) HL.fx.tv.ch=Math.floor(Math.random()*3); }
     if(eat){ const tb=R.table, p=new THREE.Vector3(s.x+s.n.x*.42,tb?tb.max.y+.012:.78,s.z+s.n.z*.42); if(tb){ p.x=clamp(p.x,tb.min.x+.15,tb.max.x-.15); p.z=clamp(p.z,tb.min.z+.15,tb.max.z-.15); }
@@ -3251,17 +3298,20 @@ function homeStart(s){ const C=homeClips(), R=INT.home, F=homeFx(); let clip=nul
   A.p0=new THREE.Vector3(player.x,player.y,player.z); A.y0=player.yaw; HL.act=A;
   const CAMY={tv:.95,cook:.75,bath:Math.PI,bed:Math.PI+.9,dance:Math.PI+.3};   // where the camera looks from: beside you to the TV and the pot, in front for the rest
   const front=()=>{ camState.yaw=A.yaw+(CAMY[s.kind]!==undefined?CAMY[s.kind]:Math.PI+.55); camState.pitch=s.kind==='bed'?.55:s.kind==='cook'?.32:.18; camState.last=T0; };
-  if(A.fade){ fadeSwap(()=>{ A.t=1; rig.root.position.copy(A.p1); rig.root.rotation.y=A.yaw; A.action.setEffectiveWeight(1); for(const k of ['idle','walk','walk2','run']) if(hero.act[k]) hero.act[k].setEffectiveWeight(0); front(); if(s.kind==='bath'){ homeLoop('shower',true); } }); }
+  if(A.fade){ const go=()=>fadeSwap(()=>{ if(HL.act!==A) return; A.t=1; A.faded=true; rig.root.position.copy(A.p1); rig.root.rotation.y=A.yaw; A.action.setEffectiveWeight(1); for(const k of ['idle','walk','walk2','run']) if(hero.act[k]) hero.act[k].setEffectiveWeight(0); front();
+      if(s.kind==='bath'){ homeLoop('shower',true); bathUndress(A.bathB,true); } });
+    if(s.kind==='bath'){ const pr=A.prompt; A.prompt=()=>'Getting ready…'; bathBody().then(B=>{ if(HL.act!==A) return; A.bathB=B; A.prompt=pr; go(); }).catch(e=>{ console.warn('bath',e); A.prompt=pr; go(); }); } else go(); }
   else front(); }
 function homeStop(){ const A=HL.act; if(!A||A.leaving) return; A.leaving=true; A.lt=0;
-  const done=()=>{ const F=HL.fx; A.action.stop(); dropProp(F.spoon); if(A.kind!=='dine'||!HL.food) F.plate.visible=false; homeLoop('fry',false); homeLoop('shower',false); showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; if(F.fireL) F.fireL.intensity=0;
+  const done=()=>{ const F=HL.fx; A.action.stop(); if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } dropProp(F.spoon); if(A.kind!=='dine'||!HL.food) F.plate.visible=false; homeLoop('fry',false); homeLoop('shower',false); showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; if(F.fireL) F.fireL.intensity=0;
     if(A.kind==='tv') HL.tvT=8;
     Object.assign(player,{x:A.at.x,z:A.at.z,y:0,speed:0}); player.yaw=A.kind==='dance'?A.yaw:A.kind==='bed'?player.yaw:A.yaw+Math.PI*(A.kind==='bath'?0:0); rig.root.position.set(player.x,0,player.z); rig.root.rotation.y=player.yaw;
     hero.w.idle=1; hero.act.idle.setEffectiveWeight(1); HL.act=null; camState.pitch=.22; };
   if(A.fade) fadeSwap(done); else A.doneSoon=done; }
 
 // ---- every frame while doing something
-function updateHomeAct(dt){ const A=HL.act, F=HL.fx; A.t+=dt; const [f,s]=inputVec();
+function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.leaving){ hero.act.idle.setEffectiveWeight(1); hero.mixer.update(dt); return; }   // waiting to go in (the bath gets its body ready)
+  A.t+=dt; const [f,s]=inputVec();
   if(!A.leaving&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)&&!(A.kind==='cook'&&A.cookT<14)) homeStop();   // walk off and you stand up (the pot needs you to the end)
   const k=Math.min(1,A.t/.4), e=k*k*(3-2*k); let wa=Math.min(1,A.t/.35); if(A.leaving){ A.lt+=dt; wa=Math.max(0,1-A.lt/.3); }
   if(A.leaving&&!A.fade){ rig.root.position.lerpVectors(A.p1,new THREE.Vector3(A.at.x,0,A.at.z),Math.min(1,A.lt/.3)); } else if(!A.fade||A.t<1){ rig.root.position.lerpVectors(A.p0,A.p1,e); } else rig.root.position.copy(A.p1);
@@ -3275,6 +3325,7 @@ function updateHomeAct(dt){ const A=HL.act, F=HL.fx; A.t+=dt; const [f,s]=inputV
   if(A.kind==='cook'&&!A.leaving){ A.cookT+=dt; const R=INT.home; if(F.fire){ F.fire.visible=true; F.fire.children.forEach((m,i)=>{ m.scale.y=.7+Math.random()*.7; }); } if(F.fireL) F.fireL.intensity=1.2+Math.random()*.6;
     steamAt({x:R.pot.x,y:R.potTop,z:R.pot.z,w:.12,h:.7,s0:.12,s1:.4,a:.35},dt,.6);
     if(A.cookT>=14){ HL.food=1; toast('Jollof don ready! Go chop am for the dining table.',4); homeStop(); } }
+  if(A.kind==='bath'&&A.faded) bathTick(A.bathB,A);
   if(A.kind==='bath'&&A.t>=1&&!A.leaving){ A.bathT+=dt; showerWater(true,dt); const R=INT.home; steamAt({x:R.shower.c.x,y:1.2,z:R.shower.c.z,w:.4,h:1.1,s0:.3,s1:.7,a:.22},dt,.35);
     if(A.bathT>=12&&!A.told){ A.told=1; toast(mpick(['You don baff! You dey fresh like new money.','Clean body, clean mind. You dey shine!']),3.5); } }
   if(A.kind==='bed'&&A.t>=1&&!A.leaving){ A.sleepT+=dt; if(A.sleepT>=4&&!A.told){ A.told=1; FIGHT.hp=100; toast('You sleep well. Body don rest!',3.5); } }
@@ -3293,7 +3344,7 @@ function homeTick(dt){ if(ROOM!==INT||!INT.home) return; const F=homeFx();
   else HL.sweepW=Math.max(0,(HL.sweepW||0)-dt*4);
   if(HL.sweepA){ HL.sweepA.setEffectiveWeight(HL.sweepW); if(HL.sweepW<=0&&!HL.broom){ HL.sweepA.stop(); HL.sweepA=null; } } }
 // leaving the house: everything off
-function homeLeave(){ if(HL.act){ const A=HL.act; A.action.stop(); HL.act=null; hero.act.idle.setEffectiveWeight(1); } homeMusic(false); homeLoop('tv',false); homeLoop('fry',false); homeLoop('shower',false); HL.tv=0; HL.tvT=0;
+function homeLeave(){ if(HL.act){ const A=HL.act; A.action.stop(); if(A.bathB){ bathUndress(A.bathB,false); A.bathB=null; } HL.act=null; hero.act.idle.setEffectiveWeight(1); } homeMusic(false); homeLoop('tv',false); homeLoop('fry',false); homeLoop('shower',false); HL.tv=0; HL.tvT=0;
   if(HL.broom){ dropProp(HL.broom); HL.broom=null; } if(HL.sweepA){ HL.sweepA.stop(); HL.sweepA=null; } const F=HL.fx; if(F){ dropProp(F.spoon); F.plate.visible=false; showerWater(false); steamOff(null); if(F.fire) F.fire.visible=false; } }
 
 const WARD={open:false,cur:'me',busy:false,base:null,body:null,px:0};
