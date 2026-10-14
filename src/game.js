@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=c97078c11d';
-import * as C2 from './char2.js?v=c97078c11d';
-import { MapView } from './mapview.js?v=c97078c11d';
+import * as CLOCK from './clock.js?v=20da8e83ac';
+import * as C2 from './char2.js?v=20da8e83ac';
+import { MapView } from './mapview.js?v=20da8e83ac';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='c97078c11d';
+const BUILD='20da8e83ac';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1699,7 +1699,7 @@ const cloudMat=(()=>{ const [ac,ag]=cv(256,256); const gr=ag.createRadialGradien
   m.onBeforeCompile=sh=>{ sh.uniforms.cover=cover;
     sh.fragmentShader='uniform float cover;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
       vec4 sampledDiffuseColor=texture2D(map,vMapUv);
-      float cA=smoothstep(1.-cover,1.-cover+.32,sampledDiffuseColor.a);
+      float cA=max(smoothstep(1.-cover,1.-cover+.32,sampledDiffuseColor.a),smoothstep(.82,1.,cover)*.94);   // rain: a closed grey deck
       float grey=mix(1.,.55,smoothstep(.55,1.,cover));
       diffuseColor*=vec4(sampledDiffuseColor.rgb*grey,cA);
     #endif`); };
@@ -1708,17 +1708,52 @@ const cloudMat=(()=>{ const [ac,ag]=cv(256,256); const gr=ag.createRadialGradien
   return m; })();
 const veil=new THREE.Mesh(new THREE.SphereGeometry(2600,24,12),new THREE.MeshBasicMaterial({color:0xc8a273,transparent:true,opacity:0,fog:false,depthWrite:false,side:THREE.BackSide,toneMapped:false})); veil.renderOrder=-2; veil.frustumCulled=false; veil.visible=false; scene.add(veil);
 const clouds=new THREE.Mesh(new THREE.PlaneGeometry(7000,7000),cloudMat); clouds.rotation.x=Math.PI/2; clouds.position.y=520; clouds.renderOrder=-1; clouds.frustumCulled=false; scene.add(clouds);
-// rain: streaks animated on the GPU, wrapped around the camera
-const RAIN_N=Q===QUAL.low?1400:Q===QUAL.medium?2600:4200, RB=[46,26,46];
-const rain=(()=>{ const pos=new Float32Array(RAIN_N*6), sd=new Float32Array(RAIN_N*2);
-  for(let i=0;i<RAIN_N;i++){ const x=MR()*RB[0], y=MR()*RB[1], z=MR()*RB[2]; pos.set([x,y,z,x,y,z],i*6); sd[i*2]=0; sd[i*2+1]=1; }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('tip',new THREE.BufferAttribute(sd,1));
-  const m=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{time:{value:0},cam:{value:new THREE.Vector3()},box:{value:new THREE.Vector3(...RB)},op:{value:0},col:{value:new THREE.Color(.75,.8,.86)}},
-    vertexShader:`attribute float tip; uniform float time; uniform vec3 cam; uniform vec3 box; varying float vA;
-      void main(){ vec3 p=position; vec3 vel=vec3(1.4,-17.,0.6); p+=vel*time; p=mod(p-cam+box*.5,box)-box*.5+cam; p-=vel*.045*tip; vA=1.-tip*.75;
-        gl_Position=projectionMatrix*viewMatrix*vec4(p,1.); }`,
-    fragmentShader:`uniform float op; uniform vec3 col; varying float vA; void main(){ gl_FragColor=vec4(col,op*vA); }`});
-  const L=new THREE.LineSegments(g,m); L.frustumCulled=false; L.visible=false; scene.add(L); return L; })();
+/* rain, in three layers, all moved on the GPU around the camera:
+   - drops: thousands of thin streaks that face the camera, each with its own speed, length and brightness, tapered at both
+     ends like a drop smeared by motion; they slant with the wind and fade very close and far away
+   - curtain: sheets of falling rain at ~30 m, so distant streets go grey and soft behind the downpour
+   - splashes: little rings that open on the ground around you and die away, each time in a new place */
+const RAIN_N=Q===QUAL.low?2600:Q===QUAL.medium?5000:9000, SPL_N=Q===QUAL.low?140:Q===QUAL.medium?260:480, RB=[40,22,40];
+const RAINU={time:{value:0},cam:{value:new THREE.Vector3()},box:{value:new THREE.Vector3(...RB)},op:{value:0},col:{value:new THREE.Color(.75,.8,.86)},wind:{value:new THREE.Vector2(1.2,.5)}};
+const rain=(()=>{ const G=new THREE.Group(); G.visible=false; scene.add(G);
+  // drops
+  const g=new THREE.InstancedBufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute([-.5,0,0, .5,0,0, .5,1,0, -.5,1,0],3)); g.setIndex([0,1,2,0,2,3]);
+  const off=new Float32Array(RAIN_N*3), rnd=new Float32Array(RAIN_N*3); for(let i=0;i<RAIN_N;i++){ off.set([MR()*RB[0],MR()*RB[1],MR()*RB[2]],i*3); rnd.set([MR(),MR(),MR()],i*3); }
+  g.setAttribute('off',new THREE.InstancedBufferAttribute(off,3)); g.setAttribute('rnd',new THREE.InstancedBufferAttribute(rnd,3)); g.instanceCount=RAIN_N;
+  const dm=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:RAINU,
+    vertexShader:`attribute vec3 off; attribute vec3 rnd; uniform float time; uniform vec3 cam; uniform vec3 box; uniform vec2 wind; varying float vA; varying vec2 vC;
+      void main(){ float sp=7.5+rnd.x*3.5; vec3 vel=vec3(wind.x,-sp,wind.y); vec3 p=off+vel*time; p=mod(p-cam+box*.5,box)-box*.5+cam;
+        vec3 dir=normalize(vel); float len=sp*(.05+rnd.y*.035);               // a drop smeared over ~1/20 s
+        vec3 toC=normalize(cameraPosition-p); vec3 rt=normalize(cross(dir,toC));
+        float d=distance(p,cameraPosition); float w=.008+.005*rnd.z+d*.0012;   // a touch wider far away so they never vanish into single pixels
+        vec3 q=p-dir*len*position.y+rt*w*position.x*2.;
+        vA=(.45+.55*rnd.z)*smoothstep(.6,2.2,d)*(1.-smoothstep(box.x*.32,box.x*.5,d)); vC=position.xy;
+        gl_Position=projectionMatrix*viewMatrix*vec4(q,1.); }`,
+    fragmentShader:`uniform float op; uniform vec3 col; varying float vA; varying vec2 vC;
+      void main(){ float side=1.-abs(vC.x)*2.; float tip=smoothstep(0.,.25,vC.y)*smoothstep(1.,.55,vC.y); float a=op*vA*side*tip*1.6; if(a<.004) discard; gl_FragColor=vec4(col*(1.1-vC.y*.25),a); }`});
+  const drops=new THREE.Mesh(g,dm); drops.frustumCulled=false; G.add(drops);
+  // curtain: a ring of falling sheets painted with streaks
+  const [c,cg]=cv(256,512); cg.clearRect(0,0,256,512); for(let i=0;i<260;i++){ const x=rr(0,256), y=rr(-60,512), l=rr(30,110); const gr=cg.createLinearGradient(x,y,x+l*.06,y+l); gr.addColorStop(0,'rgba(255,255,255,0)'); gr.addColorStop(.5,`rgba(255,255,255,${rr(.25,.7)})`); gr.addColorStop(1,'rgba(255,255,255,0)'); cg.strokeStyle=gr; cg.lineWidth=rr(.8,1.8); cg.beginPath(); cg.moveTo(x,y); cg.lineTo(x+l*.06,y+l); cg.stroke(); }
+  const ct=new THREE.CanvasTexture(c); ct.wrapS=ct.wrapT=THREE.RepeatWrapping; ct.repeat.set(10,1.6);
+  const cm=new THREE.MeshBasicMaterial({map:ct,transparent:true,depthWrite:false,side:THREE.DoubleSide,fog:false,opacity:0,color:0xc8ccd2});
+  const curtain=new THREE.Mesh(new THREE.CylinderGeometry(30,30,60,32,1,true),cm); curtain.frustumCulled=false; curtain.renderOrder=1; G.add(curtain);
+  const ct2=ct.clone(); ct2.repeat.set(7,1.1); const cm2=cm.clone(); cm2.map=ct2; const curtain2=new THREE.Mesh(new THREE.CylinderGeometry(55,55,80,32,1,true),cm2); curtain2.frustumCulled=false; G.add(curtain2);
+  // splashes: rings opening on the ground
+  const sgeo=new THREE.InstancedBufferGeometry(); sgeo.setAttribute('position',new THREE.Float32BufferAttribute([-1,0,-1, 1,0,-1, 1,0,1, -1,0,1],3)); sgeo.setIndex([0,2,1,0,3,2]);
+  const sr=new Float32Array(SPL_N*2); for(let i=0;i<SPL_N;i++) sr.set([MR(),MR()],i*2); sgeo.setAttribute('rnd',new THREE.InstancedBufferAttribute(sr,2)); sgeo.instanceCount=SPL_N;
+  const sm=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:RAINU,polygonOffset:true,polygonOffsetFactor:-6,polygonOffsetUnits:-6,
+    vertexShader:`attribute vec2 rnd; uniform float time; uniform vec3 cam; varying float vT; varying vec2 vP;
+      float h(float n){ return fract(sin(n)*43758.5453); }
+      void main(){ float rate=2.2+rnd.y*1.6; float cyc=time*rate+rnd.x*7.; float k=floor(cyc); vT=fract(cyc);
+        vec2 at=cam.xz+(vec2(h(k*12.9+rnd.x*78.2),h(k*39.3+rnd.y*11.7))-.5)*28.;
+        float r=.05+vT*(.14+.08*rnd.y); vP=position.xz;
+        gl_Position=projectionMatrix*viewMatrix*vec4(at.x+position.x*r,.035,at.y+position.z*r,1.); }`,
+    fragmentShader:`uniform float op; uniform vec3 col; varying float vT; varying vec2 vP;
+      void main(){ float d=length(vP); float ring=smoothstep(.62,.86,d)*smoothstep(1.,.88,d); float dot=(1.-smoothstep(0.,.35,d))*(1.-smoothstep(0.,.25,vT));
+        float a=(ring*.8+dot)*(1.-vT)*op*1.1; if(a<.01) discard; gl_FragColor=vec4(col*1.15,a); }`});
+  const spl=new THREE.Mesh(sgeo,sm); spl.frustumCulled=false; G.add(spl);
+  G.userData={drops,curtain,curtain2,cm,cm2,ct,ct2,spl};
+  return G; })();
 function updateEnv(dt,force=false){
   const t=CLOCK.now(), h=CLOCK.gameHour(t), sa=CLOCK.sunAngles(h,t), w=CLOCK.weatherAt(t), e=sa.elev;
   ENV.hour=h; ENV.elev=e; ENV.w=w; ENV.label=w.label; ENV.icon=w.icon; ENV.rain=w.rain; ENV.cloud=w.cloud; ENV.haze=w.haze; ENV.dim=w.dim; ENV.storm=w.storm;
@@ -1750,9 +1785,12 @@ function updateEnv(dt,force=false){
   // clouds and rain
   cloudMat.userData.cover.value=Math.min(1,.42+w.cloud*.62); cloudMat.opacity=cloudMat.map.image&&cloudMat.map.image.width>4?.97:0; cloudMat.color.setRGB(1,1,1).multiplyScalar((1-nw*.9)*(1-w.dim*.55)+.06).lerp(_c1.copy(sun.color),dw<.5&&nw<.5?.35:0);
   cloudMat.map.offset.x+=dt*.0016; cloudMat.map.offset.y+=dt*.0007; clouds.position.x=camera.position.x; clouds.position.z=camera.position.z;
-  rain.visible=w.rain>.02&&mode!=='interior'; if(rain.visible){ const ru=rain.material.uniforms; ru.time.value=(ru.time.value+dt)%600; ru.cam.value.copy(camera.position); ru.op.value=Math.min(.78,w.rain*.62+w.storm*.2); ru.col.value.setRGB(.6,.64,.7).multiplyScalar(1-nw*.55); }
+  rain.visible=w.rain>.02&&mode!=='interior'; if(rain.visible){ const ru=RAINU, R2=rain.userData; ru.time.value=(ru.time.value+dt)%600; ru.cam.value.copy(camera.position); ru.op.value=Math.min(.95,w.rain*.75+w.storm*.3);
+    const lit=(1-nw*.6)*(1-w.dim*.25); ru.col.value.setRGB(.74,.77,.82).multiplyScalar(lit).lerp(_c1.copy(hemi.color),.15); ru.wind.value.set(1.2+w.storm*4.5,.5+w.storm*2);
+    R2.curtain.position.copy(camera.position); R2.curtain2.position.copy(camera.position); R2.ct.offset.y+=dt*.9; R2.ct.offset.x+=dt*.02*(1+w.storm*3); R2.ct2.offset.y+=dt*.7;
+    R2.cm.color.copy(scene.fog.color).lerp(_c2.setRGB(1,1,1),.35); R2.cm2.color.copy(R2.cm.color); R2.cm.opacity=Math.min(.5,w.rain*.3+w.storm*.22); R2.cm2.opacity=R2.cm.opacity*.8; }
   // wet roads shine
-  const wet=ENV.wet; for(const m of ROAD_MATS){ m.roughness=m.userData.r0*(1-wet*m.userData.k); m.color.copy(m.userData.c0).multiplyScalar(1-wet*.26); }
+  const wet=ENV.wet; for(const m of ROAD_MATS){ m.roughness=m.userData.r0*(1-wet*m.userData.k); m.color.copy(m.userData.c0).multiplyScalar(1-wet*.34); }
   // re-light reflections when the sky has changed enough
   // re-light reflections only when the sky really changed: every ~12° of sun in the day, ~5° around sunrise/sunset, or a weather change
   const key=(e>22?'d'+Math.round(e/12):'l'+Math.round(Math.max(-8,e)/5))+'|'+Math.round(w.cloud*4)+'|'+Math.round(w.haze*4);
