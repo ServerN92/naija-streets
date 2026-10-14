@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=292e998d85';
-import * as C2 from './char2.js?v=292e998d85';
-import { MapView } from './mapview.js?v=292e998d85';
+import * as CLOCK from './clock.js?v=ef09ab2083';
+import * as C2 from './char2.js?v=ef09ab2083';
+import { MapView } from './mapview.js?v=ef09ab2083';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='292e998d85';
+const BUILD='ef09ab2083';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -379,7 +379,8 @@ const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.7
   dup1:['ns_dup1','h',14.8,1],dup2:['ns_dup2','h',15.2,1],dup3:['ns_dup3','h',15.2,1],dup4:['ns_dup4','h',14.8,1],dup5:['ns_dup5','h',14.8,1],faceme:['ns_faceme','h',18.8,1],zinc:['ns_zinc','h',7.1,1],wood:['ns_wood','h',8.2,1],
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
-  church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
+  jet:['ns_jet','h',34.4,1],jetw:['ns_jet_wide','h',60.4,1],terminal:['ns_terminal','h',252.4,1],tower:['ns_tower','h',18,1],jetbridge:['ns_jetbridge','h',4,1],hangar:['ns_hangar','h',70,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -942,6 +943,70 @@ if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555
     if(M.geo1) lv.push({geo:M.geo1,mat:M.mat1,dist:Math.max(Q.lod0+30,Q.draw*.55),shadow:false});
     lv.push({geo:farBox(M,fc[0],fc[1]),mat:FAR_MAT,dist:Q.draw+40,shadow:false});
     new CullSet(lv,houseInst[key].map(h=>({x:h.x,y:0,z:h.z,ry:h.ry,sx:h.sx,sy:h.sy,sz:h.sz,col:h.col})),{shadowDist:Q.shR,name:key}); } }
+// ---- Murtala Muhammed International Airport, north of Mushin where Agege Motor Road leads (toward Ikeja).
+// Terminal with a floating roof and jet bridges, airliners at the gates, a taxiway, a 2.7 km runway with lights,
+// the control tower, hangars, a car park. One airliner lands and another takes off, over and over.
+const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
+  let st=null; for(const e of ROADS){ if(!/Agege Motor Road/i.test(e.name)) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd]; if(!st||n.z<st.z) st={x:n.x,z:n.z}; } }
+  if(!st) return null;
+  const TX=st.x, TZ=-WB.z-420, RZ=TZ-330, TWZ=TZ-205, RL=2700, z0=-WB.z-1;
+  LAND_EXTRA.push({x0:TX-1500,x1:TX+1500,z0:RZ-200,z1:z0+1});
+  const flat=(w,d,x,z,mat,y=.02,rot=0)=>{ const g=new THREE.PlaneGeometry(w,d).rotateX(-Math.PI/2); if(rot) g.rotateY(rot); const m=new THREE.Mesh(g,mat); m.position.set(x,y,z); m.receiveShadow=true; scene.add(m); return m; };
+  // grass all round, concrete aprons, asphalt runway and taxiway with painted markings
+  const gT=MAT.lawn; flat(3200,(-WB.z-300)-(RZ-260),TX,((-WB.z-300)+(RZ-260))/2,gT,-.005);
+  const mk=(W,H,fn)=>{ const [c,g]=cv(W,H); fn(g,W,H); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=maxAniso; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; };
+  const rwT=mk(1024,256,(g,W,H)=>{ asphalt(g,W,H); g.fillStyle='#f2f2ee'; for(let x=0;x<W;x+=64) g.fillRect(x,H/2-3,36,6); g.fillRect(0,10,W,5); g.fillRect(0,H-15,W,5); });
+  const rw=new THREE.MeshStandardMaterial({map:rwT,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); rwT.repeat.set(RL/120,1);
+  flat(RL,46,TX,RZ,rw,.03);
+  const thT=mk(256,256,(g,W,H)=>{ asphalt(g,W,H); g.fillStyle='#f2f2ee'; for(let i=0;i<8;i++) g.fillRect(14+i*30,14,16,H-28); });
+  const thM=new THREE.MeshStandardMaterial({map:thT,roughness:.85,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  for(const sx of [-1,1]){ const m=flat(40,40,TX+sx*(RL/2-30),RZ,thM,.035); m.rotation.y=sx>0?Math.PI/2:-Math.PI/2; }
+  const numT=n=>mk(256,256,(g,W,H)=>{ asphalt(g,W,H); g.fillStyle='#f2f2ee'; g.font='bold 170px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(n,W/2,H/2); });
+  { const a=flat(26,26,TX+RL/2-80,RZ,new THREE.MeshStandardMaterial({map:numT('27'),roughness:.85,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}),.035); a.rotation.y=Math.PI/2;
+    const b=flat(26,26,TX-RL/2+80,RZ,new THREE.MeshStandardMaterial({map:numT('09'),roughness:.85,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}),.035); b.rotation.y=-Math.PI/2; }
+  const twT=mk(512,128,(g,W,H)=>{ asphalt(g,W,H); g.fillStyle='#e8b923'; g.fillRect(0,H/2-3,W,6); });
+  const tw=new THREE.MeshStandardMaterial({map:twT,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); twT.repeat.set(2200/60,1);
+  flat(2200,24,TX,TWZ,tw,.03);
+  for(const lx of [-1100,-600,0,600,1100]){ const m=flat((TWZ-RZ)+12,20,TX+lx,(TWZ+RZ)/2,new THREE.MeshStandardMaterial({map:twT.clone(),roughness:.85,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),.025); m.rotation.y=Math.PI/2; }
+  const apT=mk(512,512,(g,W,H)=>{ g.fillStyle='#96938b'; g.fillRect(0,0,W,H); grain(g,W,H,14); g.strokeStyle='rgba(60,58,54,.5)'; g.lineWidth=2; for(let i=0;i<=W;i+=128){ g.beginPath(); g.moveTo(i,0); g.lineTo(i,H); g.stroke(); g.beginPath(); g.moveTo(0,i); g.lineTo(W,i); g.stroke(); } });
+  apT.repeat.set(560/40,170/40); const apM=new THREE.MeshStandardMaterial({map:apT,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+  flat(560,175,TX-40,TZ-110,apM,.02);
+  for(let i=-2;i<=3;i++){ const gx=TX-100+(i+2)*40; const l=flat(.4,60,gx+3,TZ-80,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); }   // lead-in lines to the gates
+  // landside: the forecourt road from Agege Motor Road, the drop-off road and the car park
+  const roadM=new THREE.MeshStandardMaterial({map:T.road4,roughness:.88,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+  { const len=st.z-(TZ+60), m=flat(len,16,TX,(st.z+TZ+60)/2,roadM,.03); m.rotation.y=Math.PI/2; T.road4.repeat; }
+  flat(300,16,TX,TZ+45,roadM,.03);
+  const cpT=mk(512,256,(g,W,H)=>{ g.fillStyle='#55585c'; g.fillRect(0,0,W,H); grain(g,W,H,20); g.fillStyle='#f2f2ee'; for(let x=0;x<W;x+=32){ g.fillRect(x,10,3,100); g.fillRect(x,146,3,100); } g.fillRect(0,124,W,4); });
+  cpT.repeat.set(4,2); flat(260,90,TX,TZ+105,new THREE.MeshStandardMaterial({map:cpT,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),.02);
+  // buildings and planes (instanced, with near/far detail)
+  const one=(k,x,z,ry=0,sc=1,col)=>{ const M=MODELS[k]; if(!M) return null; new CullSet(modelLevels(M,Q.lod0*2.5,Q.draw*2.4),[{x,y:0,z,ry,sc,...(col?{col}:{})}],{shadowDist:Q.shR,name:'air_'+k}); return M; };
+  const TM=one('terminal',TX,TZ,0,1); addOB(TX,TZ,120,23,0,22);
+  for(let i=0;i<6;i++){ const gx=TX-100+i*40; one('jetbridge',gx,TZ-23-8-11,Math.PI,1);
+    const wide=i===1||i===4, k=wide?'jetw':'jet', M=MODELS[k]; if(!M) continue; const pz=TZ-23-8-24-(wide?33:20), px=gx+(wide?4:3);
+    one(k,px,pz,0,1); addOB(px,pz,3,M.D/2-2,0,6); }
+  one('tower',TX+300,TZ-40,0,1); addOB(TX+300,TZ-40,9,7,0,62);
+  one('hangar',TX-460,TZ-110,0,1); one('hangar',TX-540,TZ-110,0,1); addOB(TX-500,TZ-110,75,30,0,20);
+  if(MODELS.sedan){ const items=[], C=['#c0392b','#f2f2f2','#1f3b66','#2b2b2b','#7f8c8d','#d4ac0d','#8e9aa6']; let k=0;
+    for(let row=0;row<4;row++) for(let i=0;i<26;i++){ if(((i*7+row*3)%5)===0) continue; const x=TX-120+i*9.6, z=TZ+68+row*22+(row%2?0:-6); items.push({x,y:0,z,ry:row%2?-Math.PI/2:Math.PI/2,sc:1,col:new THREE.Color(C[(k++)%C.length])}); }
+    new CullSet(modelLevels(MODELS.sedan,Q.lod0,Q.draw),items,{shadowDist:Q.shR,name:'air_cars'}); }
+  // runway edge lights (they glow at night)
+  const LN=Math.floor(RL/60)*2, lights=new THREE.InstancedMesh(new THREE.BoxGeometry(.5,.35,.5),new THREE.MeshStandardMaterial({color:0xfff2c0,emissive:0xffe08a,emissiveIntensity:0}),LN); let li=0; const _m4=new THREE.Matrix4();
+  for(let x=-RL/2+10;x<RL/2&&li<LN;x+=60) for(const sz of [-1,1]){ _m4.makeTranslation(TX+x,.18,RZ+sz*24); lights.setMatrixAt(li++,_m4); } lights.count=li; scene.add(lights);
+  // name on the terminal, and on the map
+  const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('MURTALA MUHAMMED INTERNATIONAL AIRPORT','#16A06B','#ffffff',2000,170),fog:false})); lab.scale.set(26,2.2,1); lab.position.set(TX,26,TZ+26); lab.layers.set(1); scene.add(lab);
+  PLACES.push({name:'Murtala Muhammed International Airport',sub:'Airport · Ikeja',kind:'place',x:TX,z:TZ+40});
+  // one airliner landing from the east and taxiing in, another taking off to the east
+  const fly=MODELS.jet?new THREE.Mesh(MODELS.jet.geo,MODELS.jet.mat):null; if(fly){ fly.castShadow=true; fly.rotation.order='YXZ'; fly.visible=false; fly.frustumCulled=false; scene.add(fly); }
+  const CYC=150, xs=TX+RL/2-200, xe=TX-RL/2+250;
+  function pose(t){ // returns [x,y,pitch] or null
+    if(t<40){ const k=t/40, x=xs+3200*(1-k), y=230*(1-k); return [x,y+.02,-.05]; }            // final approach, 3° glide
+    if(t<64){ const k=(t-40)/24, e=1-(1-k)*(1-k); return [xs-(xs-xe+300)*e,0,0]; }              // touchdown and braking
+    if(t<78) return null;
+    if(t<104){ const k=(t-78)/26, x=xe+(xs-xe)*k*k; return [x,0,0]; }                            // take-off roll
+    if(t<CYC){ const k=(t-104)/(CYC-104), x=xs+3400*k, y=420*k*k+(k*40); return [x,y,-.15]; }   // climb out
+    return null; }
+  let AT=0; return {TX,TZ,RZ,update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
+      if(!p){ fly.visible=false; return; } fly.visible=Math.hypot(p[0]-camera.position.x,RZ-camera.position.z)<Q.draw*6; fly.position.set(p[0],p[1],RZ); fly.rotation.set(p[2],(AT%CYC)<64?-Math.PI/2:Math.PI/2,0); }}; })();
 // your house, the hotel and the police station
 const STATION={x:0,z:0,label:null,front:{x:0,z:0,ry:0}};
 function placeModelOn(b,key,label,col){ const M=MODELS[key], f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]), fw=frontLen(b), dd=depthLen(b), s=Math.min(fw/M.W,dd/M.D,1.15), sc=Math.max(.6,s);
@@ -2608,7 +2673,7 @@ const SCAT=(()=>{ const CELL=3, RAD=Q===QUAL.low?20:Q===QUAL.medium?28:38, NG=Q=
   function inBld(x,z){ for(const b of bldNear(x,z,1)){ if(b.skip) continue; const dx=x-b.cx, dz=z-b.cz, u=b.c*dx+b.s*dz, v=-b.s*dx+b.c*dz; if(Math.abs(u)<b.w/2+.4&&Math.abs(v)<b.d/2+.4) return true; } return false; }
   function cellItems(i,j){ const key=i*100003+j; let it=cache.get(key); if(it) return it;
     let s=(Math.imul(i,73856093)^Math.imul(j,19349663))>>>0; const rnd=()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; };
-    const cx=(i+.5)*CELL, cz=(j+.5)*CELL; if(cx>SHORE_X-2||(cx>WB.x&&TMB&&Math.abs(cz-TMB.z)<16)){ it={g:[],s:[]}; cache.set(key,it); return it; } const ar=areaAt(cx,cz), kind=ar?ar.k:'';
+    const cx=(i+.5)*CELL, cz=(j+.5)*CELL; if(cx>SHORE_X-2||cz<-WB.z+1||(cx>WB.x&&TMB&&Math.abs(cz-TMB.z)<16)){ it={g:[],s:[]}; cache.set(key,it); return it; } const ar=areaAt(cx,cz), kind=ar?ar.k:'';
     const lawn=AREA_ACC[kind]==='lawn', yard=NO_GRASS.has(kind)||AREA_ACC[kind]==='lot';
     const nG=yard?0:lawn?5+Math.floor(rnd()*4):kind==='school'?Math.floor(rnd()*2):(rnd()<.55?Math.floor(rnd()*4):0);   // tufts come in clumps
     const nS=lawn?(rnd()<.2?1:0):yard?(rnd()<.3?1:0):Math.floor(rnd()*3);
@@ -4890,7 +4955,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
+  updateCamera(dt); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -4937,7 +5002,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     start(){ if(!started) $('#enterBtn').click(); },
     // test helper: stand next to a place from the map (name contains the text), facing it
     // test helper: a fixed camera looking at a place from `back` metres away and `h` metres up (look() with no place gives control back)
-    cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null; },
+    cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
     goto(q,back=26,yaw=null,zoom=3){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return PLACES.map(p=>p.name).slice(0,80); const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);

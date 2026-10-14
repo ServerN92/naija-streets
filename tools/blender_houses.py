@@ -21,6 +21,8 @@ OUT = os.path.join(os.path.expanduser('~'), 'Documents', 'naija_houses')
 
 def hexc(h, k=1.0):
     h = h.lstrip('#')
+    if len(h) == 3:
+        h = ''.join(ch * 2 for ch in h)
     return tuple(min(1.0, int(h[i:i + 2], 16) / 255 * k) for i in (0, 2, 4)) + (1.0,)
 
 
@@ -1323,9 +1325,205 @@ def bank(detail):
     return B.finish('ns_bank' + ('' if detail else '_lod1'))
 
 
+
+# ================================================================ the airport
+def loft(B, rings, c, cap0=True, cap1=True, shades=None):
+    """Join a list of rings (each a list of points, same count) into a tube; optional flat caps at both ends."""
+    n = len(rings[0])
+    for j in range(len(rings) - 1):
+        a, b = rings[j], rings[j + 1]
+        for i in range(n):
+            col = c if not shades else shades(j, i)
+            B.face([a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]], col)
+    if cap0:
+        B.face(rings[0][::-1], c)
+    if cap1:
+        B.face(rings[-1], c)
+
+
+def airliner(detail, length=38.0, span=34.0, wide=False, livery=('#16a06b', '#f2b705')):
+    """A twin-engine airliner (fictional 'Naija Air' livery): fuselage, swept wings, engines, tailplanes, fin, windows, wheels.
+    Nose toward -Y (the front, like the houses)."""
+    B = Builder(detail, simple=True)
+    R = (3.0 if wide else 2.0)
+    n = 14 if detail else 8
+    zc = R + 1.6                                       # fuselage axis height above the ground
+    WHITE_ = '#f2f2f0'
+    def ring(y, r, dz=0.0, sq=1.0):
+        return [(r * math.cos(2 * math.pi * i / n), y, zc + dz + r * sq * math.sin(2 * math.pi * i / n)) for i in range(n)]
+    y0, y1 = -length / 2, length / 2
+    prof = [(y0, .05, -.3), (y0 + .6, .55, -.2), (y0 + 1.6, .85, -.1), (y0 + 3.2, 1.0, 0), (y1 - 9, 1.0, 0), (y1 - 4, .7, .35), (y1 - 1.2, .35, .7), (y1, .12, .8)]
+    rings = [ring(y, R * k, R * dz) for (y, k, dz) in prof]
+    def sh(j, i):
+        z = math.sin(2 * math.pi * i / n)
+        return '#cfd2d4' if z < -.55 else WHITE_
+    loft(B, rings, WHITE_, True, True, sh)
+    # cheat line and windows along both sides
+    for sgn in (-1, 1):
+        x = sgn * (R + .01)
+        B.box(x - .02 * sgn, x + .02 * sgn, y0 + 3, y1 - 6, zc - .55, zc - .3, livery[0])
+        if detail:
+            y = y0 + 4.5
+            while y < y1 - 8:
+                B.box(min(x, x + .03 * sgn), max(x, x + .03 * sgn), y, y + .28, zc + .15, zc + .5, '#2a3138')
+                y += .9
+        B.box(min(x, x + .03 * sgn), max(x, x + .03 * sgn), y0 + 2.8, y0 + 3.7, zc - .9, zc + .9, '#c9cdd0')   # front door
+    B.box(-.9, .9, y0 + .6, y0 + 1.5, zc + .25, zc + .75, '#1d252c')                                         # cockpit glass
+    # wings: swept, root at mid-fuselage, low on the body
+    wy, wz, root, tip = -1.0, zc - R * .55, 7.0 if not wide else 10.0, 1.8 if not wide else 2.6
+    sweep = span * .22
+    for sgn in (-1, 1):
+        a = (sgn * R * .8, wy - root / 2, wz); b = (sgn * R * .8, wy + root / 2, wz)
+        c_ = (sgn * span / 2, wy + root / 2 + sweep * .6, wz + 1.2); d = (sgn * span / 2, wy + root / 2 + sweep * .6 - tip, wz + 1.2)
+        top = [a, b, c_, d] if sgn > 0 else [b, a, d, c_]
+        B.face(top, WHITE_); B.face([(p[0], p[1], p[2] - .3) for p in top][::-1], '#bfc3c6')
+        B.face([a, d, (d[0], d[1], d[2] - .3), (a[0], a[1], a[2] - .3)][::sgn], '#d9dcde')
+        B.box(c_[0] - .1 * sgn if sgn > 0 else c_[0], c_[0] if sgn > 0 else c_[0] + .1, d[1], c_[1], wz + 1.2, wz + 2.6, livery[1])   # winglet
+        # engine
+        ex, ey, ez = sgn * (span * .17 + R * .5), wy - root * .35, wz - 1.1
+        er = 1.0 if not wide else 1.6
+        el = 4.2 if not wide else 6.0
+        cylinder_y(B, ex, ey - el / 2, ey + el / 2, ez, er, '#dfe1e2', 12 if detail else 8)
+        B.box(ex - .15, ex + .15, ey - .5, ey + 1.2, ez + er - .1, wz, '#cfd2d4')                            # pylon
+        B.face([(ex + er * .8 * math.cos(2 * math.pi * i / 10), ey - el / 2 - .01, ez + er * .8 * math.sin(2 * math.pi * i / 10)) for i in range(10)][::-1], '#222222')
+    # tailplanes and fin
+    ty = y1 - 3.5
+    for sgn in (-1, 1):
+        a = (sgn * .5, ty - 2.5, zc + R * .55); b = (sgn * .5, ty + 2.0, zc + R * .55)
+        c_ = (sgn * span * .2, ty + 3.2, zc + R * .55 + .5); d = (sgn * span * .2, ty + 1.8, zc + R * .55 + .5)
+        top = [a, b, c_, d] if sgn > 0 else [b, a, d, c_]
+        B.face(top, WHITE_); B.face(top[::-1], '#c9cdd0')
+    fb, ft = (0, ty - 3.5, zc + R * .8), (0, ty + 2.5, zc + R * .8)
+    fin = [fb, ft, (0, ty + 5.0, zc + R + 6.5 + (2 if wide else 0)), (0, ty + 2.6, zc + R + 6.5 + (2 if wide else 0))]
+    for sgn in (-1, 1):
+        B.face([(p[0] + sgn * .12, p[1], p[2]) for p in fin][::sgn], livery[0])
+    B.box(-.13, .13, ty + 1.0, ty + 4.0, zc + R + 3.0, zc + R + 4.2, livery[1])                                # tail stripe
+    # landing gear
+    for (gx, gy) in ((0, y0 + 4), (-R * .9, wy + 1), (R * .9, wy + 1)):
+        B.box(gx - .1, gx + .1, gy - .1, gy + .1, .6, zc - R + .3, '#555')
+        cylinder_x(B, gx - .35, gx + .35, gy, .55, .55, '#1c1c1c', 10)
+    return B.finish(('ns_jet_wide' if wide else 'ns_jet') + ('' if detail else '_lod1'))
+
+
+def cylinder_y(B, x, y0, y1, z, r, c, n=12):
+    rings = [[(x + r * math.cos(2 * math.pi * i / n), y, z + r * math.sin(2 * math.pi * i / n)) for i in range(n)] for y in (y0, y1)]
+    loft(B, rings, c, False, True)
+
+
+def cylinder_x(B, x0, x1, y, z, r, c, n=10):
+    rings = [[(x, y + r * math.cos(2 * math.pi * i / n), z + r * math.sin(2 * math.pi * i / n)) for i in range(n)] for x in (x0, x1)]
+    loft(B, rings, c, True, True)
+
+
+def jet(detail):
+    return airliner(detail, 38, 34, False)
+
+
+def jet_wide(detail):
+    return airliner(detail, 63, 60, True, ('#1f6fb5', '#16a06b'))
+
+
+def terminal(detail):
+    """The passenger terminal: a long glass hall under a floating roof, departures road on columns in front,
+    a concrete base with arrivals doors below, a name band. Landside (front) toward -Y, airside behind."""
+    B = Builder(detail, simple=True)
+    W, D = 240.0, 46.0
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    B.box(x0, x1, y0, y1, 0, 6.0, '#d9d4ca', bottom=True)                                    # arrivals level
+    a = Wall(B, 'F', x0, x1, y0, y1)
+    u = x0 + 8
+    while u < x1 - 6:
+        glass_wall(a, u, .2, 9, 4.6, panes=3, frame='#40464b', glass='#334450')
+        u += 14
+    B.box(x0 + 4, x1 - 4, y0 + 2, y1 - 2, 6.0, 20.0, '#cfd6da')                              # departures hall
+    g = Wall(B, 'F', x0 + 4, x1 - 4, y0 + 2, y1 - 2)
+    glass_wall(g, 0, 6.3, W - 12, 13.2, panes=40, frame='#3c4247', glass='#3e5866')
+    gb = Wall(B, 'B', x0 + 4, x1 - 4, y0 + 2, y1 - 2)
+    glass_wall(gb, 0, 6.3, W - 12, 13.2, panes=40, frame='#3c4247', glass='#3e5866')
+    # the floating roof: a thin slab with a deep overhang over the departures road, tree columns underneath
+    B.box(x0 - 6, x1 + 6, y0 - 22, y1 + 6, 21.0, 22.2, '#e9ebec', bottom=True)
+    B.box(x0 - 6.2, x1 + 6.2, y0 - 22.2, y0 - 21.6, 20.6, 22.4, '#9aa3a8')
+    for x in range(int(x0) + 10, int(x1) - 5, 20):
+        cylinder(B, x, y0 - 18, 7.0, 21.0, .5, '#bfc6ca', 10)
+        for dx in (-2.4, 2.4):
+            B.face([(x - .3, y0 - 18, 15.5), (x + .3, y0 - 18, 15.5), (x + dx + .2, y0 - 18, 21.0), (x + dx - .2, y0 - 18, 21.0)], '#bfc6ca')
+    # departures road: a deck on piers in front of the glass
+    B.box(x0, x1, y0 - 20, y0 - 2, 6.0, 7.0, '#b9b4ab', bottom=True)
+    B.box(x0, x1, y0 - 20.4, y0 - 20, 7.0, 8.1, '#d9d4ca')
+    for x in range(int(x0) + 6, int(x1), 18):
+        B.box(x - .6, x + .6, y0 - 12, y0 - 10.8, 0, 6.0, '#b9b4ab')
+    # name band (the name is a label in the game) and the airside piers for the jet bridges
+    B.box(-60, 60, y0 - 22.4, y0 - 22.2, 18.6, 20.4, '#16a06b')
+    for x in range(-100, 101, 40):
+        B.box(x - 4, x + 4, y1 - 2, y1 + 8, 0, 6.5, '#d9d4ca')
+        B.box(x - 4.2, x + 4.2, y1 - 2.2, y1 + 8.2, 6.5, 7.0, '#9aa3a8')
+    B.box(-12, 12, y0 + 6, y1 - 6, 22.2, 25, '#c9cfd2')                                       # plant room on the roof
+    return B.finish('ns_terminal' + ('' if detail else '_lod1'))
+
+
+def control_tower(detail):
+    """Control tower: a tall concrete shaft, a flared top with a ring of slanted glass, a mast with a beacon."""
+    B = Builder(detail, simple=True)
+    B.box(-9, 9, -7, 7, 0, 8, '#d9d4ca', bottom=True)                                       # base building
+    ribbon(Wall(B, 'F', -9, 9, -7, 7), -8, 8, 2.5, 2.0, 3.0)
+    cylinder(B, 0, 0, 8, 46, 3.2, '#e2e0db', 16)
+    for z in range(12, 44, 6):
+        B.box(-.5, .5, -3.25, -3.1, z, z + 2.2, '#34454f')                                    # stair windows
+    rings = []
+    for (z, r) in ((46, 3.2), (48, 6.5), (49, 6.8)):
+        rings.append([(r * math.cos(2 * math.pi * i / 16), r * math.sin(2 * math.pi * i / 16), z) for i in range(16)])
+    loft(B, rings, '#e2e0db', False, False)
+    g0 = [(6.8 * math.cos(2 * math.pi * i / 16), 6.8 * math.sin(2 * math.pi * i / 16), 49) for i in range(16)]
+    g1 = [(7.6 * math.cos(2 * math.pi * i / 16), 7.6 * math.sin(2 * math.pi * i / 16), 53) for i in range(16)]
+    loft(B, [g0, g1], '#2c4250', False, False)
+    cylinder(B, 0, 0, 53, 54.2, 7.8, '#d0cfca', 16)
+    cylinder(B, 0, 0, 54.2, 62, .25, '#b0b0b0', 6)
+    cylinder(B, 0, 0, 62, 62.6, .5, '#d22b2b', 8)
+    return B.finish('ns_tower' + ('' if detail else '_lod1'))
+
+
+def jet_bridge(detail):
+    """An airbridge: a boxy telescopic tunnel on a wheeled leg, a rotunda at the terminal end. Terminal end at +Y."""
+    B = Builder(detail, simple=True)
+    L = 22.0
+    cylinder(B, 0, L / 2, 0, 6.6, 2.0, '#cfd3d5', 12)
+    B.box(-1.6, 1.6, -L / 2, L / 2 - 1.5, 4.6, 7.4, '#d9dcde', bottom=True)
+    if detail:
+        for y in range(int(-L / 2) + 1, int(L / 2) - 2, 2):
+            B.box(-1.62, 1.62, y, y + .08, 4.6, 7.4, '#aeb3b6')
+        ribbon(Wall(B, 'R', -1.6, 1.6, -L / 2, L / 2 - 1.5), -L / 2 + 1, L / 2 - 2, 5.5, 1.0, 2.2)
+    B.box(-2.0, 2.0, -L / 2 - 2.0, -L / 2, 4.4, 7.6, '#8f979b')                                # cab
+    B.box(-.35, .35, -L / 2 + 3, -L / 2 + 3.7, 0, 4.6, '#7d8285')                                # leg
+    for x in (-1.2, 1.2):
+        cylinder_x(B, x - .25, x + .25, -L / 2 + 3.35, .5, .5, '#1c1c1c', 10)
+    return B.finish('ns_jetbridge' + ('' if detail else '_lod1'))
+
+
+def hangar(detail):
+    """A maintenance hangar: a curved steel roof, huge sliding doors on the front."""
+    B = Builder(detail, simple=True)
+    W, D, H = 70.0, 60.0, 14.0
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    B.box(x0, x1, y0, y1, 0, H, '#c4c8ca', bottom=True)
+    n = 12
+    arch = lambda y: [(x0 + W * i / n, y, H + 6 * math.sin(math.pi * i / n)) for i in range(n + 1)]
+    for j in range(n):
+        p0, p1 = arch(y0)[j], arch(y0)[j + 1]
+        B.face([(p0[0], y0, p0[2]), (p1[0], y0, p1[2]), (p1[0], y1, p1[2]), (p0[0], y1, p0[2])][::-1], '#9da4a8' if j % 2 else '#a7aeb2')
+    for y, flip in ((y0, False), (y1, True)):
+        pts = [(x1, y, H), (x0, y, H)] + [(p[0], y, p[2]) for p in arch(y)[1:-1]][::-1] if False else [(x0, y, H)] + [(p[0], y, p[2]) for p in arch(y)[1:-1]] + [(x1, y, H)]
+        B.face(pts if flip else pts[::-1], '#c4c8ca')
+    f = Wall(B, 'F', x0, x1, y0, y1)
+    for i in range(6):
+        u = x0 + 3 + i * (W - 6) / 6
+        f.box(u + .2, u + (W - 6) / 6 - .2, 0, H - 1.2, .02, .1, '#8b9397' if i % 2 else '#959da1')
+    f.box(-20, 20, H - 1.0, H - .2, .02, .2, '#1f6fb5')
+    return B.finish('ns_hangar' + ('' if detail else '_lod1'))
+
+
 BUILDS = (bungalow, wide_house, storey, dup_modern, dup_colonial, dup_mono, dup_med, dup_pent, face_me, zinc_house, wood_house,
           school2, school1, school_gate, hospital_big, clinic, university, hotel, flats3, flats4, shops1, shops2, warehouse,
-          church, mosque, bank)
+          church, mosque, bank, jet, jet_wide, terminal, control_tower, jet_bridge, hangar)
 
 
 def main():
