@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=1e4eda7c6f';
-import * as C2 from './char2.js?v=1e4eda7c6f';
-import { MapView } from './mapview.js?v=1e4eda7c6f';
+import * as CLOCK from './clock.js?v=0ccf8716cd';
+import * as C2 from './char2.js?v=0ccf8716cd';
+import { MapView } from './mapview.js?v=0ccf8716cd';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='1e4eda7c6f';
+const BUILD='0ccf8716cd';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -34,6 +34,8 @@ const frameWait = () => new Promise(r => { let done=false; const f=()=>{ if(!don
 function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const R = mulberry32(90210);
 const rr = (a,b) => a + R()*(b-a), ri = (a,b) => Math.floor(rr(a,b+1)), pick = a => a[Math.floor(R()*a.length)];
+const naira=n=>'₦'+n.toLocaleString('en-NG');
+const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
 const sm = t => { t = clamp(t,0,1); return t*t*(3-2*t); };
@@ -380,7 +382,8 @@ const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.7
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
-  jet:['ns_jet','h',34.4,1],jetw:['ns_jet_wide','h',60.4,1],terminal:['ns_terminal','h',252.4,1],tower:['ns_tower','h',18,1],jetbridge:['ns_jetbridge','h',4,1],hangar:['ns_hangar','h',70,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  jet:['ns_jet','h',34.4,1],jetw:['ns_jet_wide','h',60.4,1],terminal:['ns_terminal','h',252.4,1],tower:['ns_tower','h',18,1],jetbridge:['ns_jetbridge','h',4,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],stadium:['ns_stadium','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
+  tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -398,6 +401,9 @@ function gradeHouse(geo){ const c=geo.attributes.color; if(!c) return;
     const hi=Math.min(1,Math.max(0,(l-.45)/.45)), k=.76*(1-.22*hi*hi*(3-2*hi));            // pull the brights down hardest
     r=(r+(l-r)*.18)*k*1.0; g=(g+(l-g)*.18)*k*.94; b=(b+(l-b)*.18)*k*.84;                // less saturated, warmer
     c.setXYZ(i,r,g,b); } c.needsUpdate=true; }
+// spots a model marks in Blender (B.mark: doors, signs, seats...), saved in the node's extras by tools/glb_build.py
+function nodeMarks(gltf){ let mk=null; gltf.scene.traverse(o=>{ if(!mk&&o.userData&&o.userData.marks) mk=o.userData.marks; }); return mk; }
+const FACE_YAW={'-y':0,'+y':Math.PI,'+x':Math.PI/2,'-x':-Math.PI/2};   // Blender facing -> yaw in the game (yaw 0 looks toward +z)
 const modelJobs=Object.entries(MODEL_FILES).map(async([key,[file,front,size,lod]])=>{
   const get=f=>fetchBuf(murl(f)).then(b=>GLL.parseAsync(b,''));
   const res=await Promise.allSettled((lod?[file,file+'_lod1']:[file]).map(get)); if(res[0].status!=='fulfilled') throw res[0].reason;
@@ -407,11 +413,12 @@ const modelJobs=Object.entries(MODEL_FILES).map(async([key,[file,front,size,lod]
     if(file.startsWith('ns_')) gradeHouse(geo);
     if(front==='-x') geo.rotateY(Math.PI); else if(front==='+z') geo.rotateY(Math.PI/2);
     geo.computeBoundingBox(); const bb=geo.boundingBox, sz=new THREE.Vector3(); bb.getSize(sz);
-    if(!T) T={cx:(bb.min.x+bb.max.x)/2,cz:(bb.min.z+bb.max.z)/2,y0:bb.min.y,sc:front==='tl'?1:size/sz.x};
+    if(!T) T={cx:(bb.min.x+bb.max.x)/2,cz:(bb.min.z+bb.max.z)/2,y0:bb.min.y,sc:front==='tl'||!size?1:size/sz.x};   // size 0: keep the size it was built at
+    if(li===0){ const mk=nodeMarks(gltf); if(mk){ out.marks={}; for(const [k,v] of Object.entries(mk)) out.marks[k]={...v,x:(v.x-T.cx)*T.sc,y:(v.y-T.y0)*T.sc,z:(v.z-T.cz)*T.sc}; } }
     geo.translate(-T.cx,-T.y0,-T.cz); if(front==='tl') geo.translate(T.cx,0,T.cz); geo.scale(T.sc,T.sc,T.sc); geo.computeBoundingBox(); geo.computeBoundingSphere(); geo.boundingBox.getSize(sz);
     const mat=mesh.material; if(mat.map){ mat.map.anisotropy=maxAniso; mat.map.colorSpace=THREE.SRGBColorSpace; }
     const bld=front==='h'; mat.side=bld&&li>0?THREE.FrontSide:THREE.DoubleSide; mat.roughness=bld?.9:(front==='tl'?.6:.55); mat.metalness=bld?0:(front==='tl'?.3:.15);
-    if(li===0) Object.assign(out,{geo,mat,W:sz.x,D:sz.z,H:sz.y,cz0:T.cz,sc0:T.sc}); else Object.assign(out,{geo1:geo,mat1:mat}); });
+    if(li===0) Object.assign(out,{geo,mat,W:sz.x,D:sz.z,H:sz.y,cx0:T.cx,cz0:T.cz,sc0:T.sc}); else Object.assign(out,{geo1:geo,mat1:mat}); });
   return [key,out]; });
 modelJobs.forEach(p=>p.catch(()=>{}));
 // trees: one picture strip per kind, the real tree seen from 8 sides (tools/impostor.py)
@@ -654,6 +661,8 @@ function obWalls(acc,K,y0,y1,tw,th,u0,v0,col){ let u=u0; for(let i=0;i<4;i++){ c
 function obTop(acc,K,y,col,ts=8){ acc.quad([K[0][0],y,K[0][1]],[K[1][0],y,K[1][1]],[K[2][0],y,K[2][1]],[K[3][0],y,K[3][1]],[0,1,0],K.map(p=>[p[0]/ts,-p[1]/ts]),col); }
 // rectangles that must stay clear (your house, the hotel, the police station, the motor park, footbridge stairs)
 const KEEP=[];
+const SCAT_OFF=[];   // paved or built-over ground where no grass tufts or stones grow: {x,z,ry,hw,hd}
+const scatOff=(x,z)=>SCAT_OFF.some(r=>{ const dx=x-r.x, dz=z-r.z, c=Math.cos(r.ry), s=Math.sin(r.ry); return Math.abs(dx*c-dz*s)<r.hw&&Math.abs(dx*s+dz*c)<r.hd; });
 function rectHit(b,r){ // two turned rectangles overlap? (separating axis test)
   const A1=bCorners(b), B1=obCorners(r.cx,r.cz,r.hw,r.hd,Math.cos(r.ang),Math.sin(r.ang));
   for(const [P,Qp] of [[A1,B1],[B1,A1]]) for(let i=0;i<4;i++){ const p0=P[i], p1=P[(i+1)%4], nx=-(p1[1]-p0[1]), nz=p1[0]-p0[0]; let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;
@@ -679,6 +688,42 @@ SITES.hotel=siteNear(HOME,140,700,4,15,(b,d)=>d*.6-b.w*b.d*.15);
 SITES.station=siteNear(HOME,250,900,3,18,(b,d)=>Math.abs(d-450)-b.w*b.d*.05);
 for(const k of ['hotel','station']) if(SITES[k]){ const b=SITES[k]; b.skip=true; b.special=k; }
 if(HOME) HOME.special='home';
+// more places to go: two more hotels, two night clubs and a car stand, on main roads and away from each other
+{ const taken=()=>Object.values(SITES).filter(Boolean);
+  const pickSite=(k,minD,maxD,cls,minFront,score,gap=220)=>{ const b=siteNear(HOME,minD,maxD,cls,minFront,(b,d)=>score(b,d)+(taken().some(o=>o!==HOME&&Math.hypot(o.cx-b.cx,o.cz-b.cz)<gap)?1e6:0));
+    if(b&&!taken().some(o=>o!==HOME&&Math.hypot(o.cx-b.cx,o.cz-b.cz)<gap)){ SITES[k]=b; b.skip=true; b.special=k; } };
+  pickSite('hotel2',500,1500,3,22,(b,d)=>Math.abs(d-850)*.4-b.w*b.d*.12,400);
+  pickSite('hotel3',500,1700,3,22,(b,d)=>-Math.hypot(b.cx-(SITES.hotel2?SITES.hotel2.cx:0),b.cz-(SITES.hotel2?SITES.hotel2.cz:0))*.5-b.w*b.d*.1,400);
+  pickSite('club1',200,800,3,17,(b,d)=>Math.abs(d-420)*.5-b.w*b.d*.08);
+  pickSite('club2',500,1500,3,17,(b,d)=>-Math.hypot(b.cx-(SITES.club1?SITES.club1.cx:0),b.cz-(SITES.club1?SITES.club1.cz:0))*.4-b.w*b.d*.06,500);
+  pickSite('carstand',250,1100,3,20,(b,d)=>Math.abs(d-600)*.4-b.w*b.d*.1); }
+// the university: the College of Medicine of the University of Lagos stands in the LUTH grounds at Idi-Araba,
+// so the biggest hospital-ground building becomes the faculty block
+const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
+// open ground near the university for a football field and the township stadium: no road, rail, market or school
+// inside, facing a road; the houses that stood there are cleared. Returns {cx,cz,ry,hw,hd} or null.
+const RAILSEG=[]; for(const pts of WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([r.p[i],r.p[i+1]]); return o; })) for(let i=0;i+1<pts.length;i++) RAILSEG.push([...pts[i],...pts[i+1]]);
+const railD=(x,z)=>{ let d=1e9; for(const [x0,z0,x1,z1] of RAILSEG){ const dx=x1-x0, dz=z1-z0, L2=dx*dx+dz*dz||1, t=clamp(((x-x0)*dx+(z-z0)*dz)/L2,0,1); d=Math.min(d,Math.hypot(x0+dx*t-x,z0+dz*t-z)); } return d; };
+// the nearest drivable street within R metres (looks through all road cells around, not just the one you stand in)
+function roadWide(x,z,R){ let best=null, bd=1e9; const seen=new Set();
+  for(let i=Math.floor((x-R)/RGC);i<=Math.floor((x+R)/RGC);i++) for(let j=Math.floor((z-R)/RGC);j<=Math.floor((z+R)/RGC);j++) for(const e of RG.get(rgk(i,j))||[]){ if(seen.has(e)) continue; seen.add(e); if(!e.drive||e.c>6) continue; const d=segD(e,x,z)-e.hw; if(d<bd){ bd=d; best=e; } }
+  return bd<=R?[best,bd]:[null,1e9]; }
+function openGround(o,rMin,rMax,hw,hd,step=25,far=16){ if(!o) return null; let best=null, bs=1e18;
+  const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school');   // the LUTH grounds are fine: real playing fields lie inside
+  for(let gx=o.cx-rMax;gx<=o.cx+rMax;gx+=step) for(let gz=o.cz-rMax;gz<=o.cz+rMax;gz+=step){ const dd=Math.hypot(gx-o.cx,gz-o.cz); if(dd<rMin||dd>rMax) continue;
+    if(!onLand(gx,gz,Math.max(hw,hd)+6)) continue;
+    const [e,de]=roadWide(gx,gz,hd+far+30); if(!e) continue; const A0=nodes[e.a], t=clamp((gx-A0.x)*e.fx+(gz-A0.z)*e.fz,0,e.len), px=A0.x+e.fx*t, pz=A0.z+e.fz*t;
+    let nx=-e.fz, nz=e.fx; if((px-gx)*nx+(pz-gz)*nz<0){ nx=-nx; nz=-nz; }   // the front faces the road
+    const sep=(px-gx)*nx+(pz-gz)*nz-e.hw; if(sep<hd+2||sep>hd+far) continue;   // close to the road, not on it
+    const ry=Math.atan2(nx,nz), c=Math.cos(ry), sn=Math.sin(ry); let ok=true;
+    const su=2*hw/Math.ceil(2*hw/5), sv=2*hd/Math.ceil(2*hd/5); for(let u=-hw;u<=hw+.1&&ok;u+=su) for(let v=-hd;v<=hd+.1;v+=sv){ const x=gx+c*u+sn*v, z=gz-sn*u+c*v; if(roadAt(x,z,1.5)||railD(x,z)<8||noGo.some(a=>inPoly(a.pts,x,z))){ ok=false; break; } }
+    if(!ok) continue; const rect={cx:gx,cz:gz,hw:hw+1,hd:hd+1,ang:-ry};
+    if(KEEP.some(k=>Math.hypot(k.cx-gx,k.cz-gz)<Math.hypot(k.hw,k.hd)+Math.hypot(hw,hd))) continue;
+    let cost=0, bad=false; for(const b of bldNear(gx,gz,Math.hypot(hw,hd)+20)) if(rectHit(b,rect)){ if(b.special||b===UNI_SITE||b===HOME){ bad=true; break; } cost+=b.w*b.d; } if(bad) continue;
+    const sc=cost+dd*4; if(sc<bs){ bs=sc; best={cx:gx,cz:gz,ry,hw,hd}; } }
+  if(best) keepOut({cx:best.cx,cz:best.cz,hw:best.hw+2,hd:best.hd+2,ang:-best.ry}); return best; }
+const PITCH_SITE=HOUSES?openGround(UNI_SITE,30,500,36.5,24.5):null;
+const STADIUM_SITE=HOUSES?(openGround(UNI_SITE,100,800,61,47,20,40)||openGround(UNI_SITE,100,1500,61,47,25,90)):null;
 
 // ---- footbridges over the big roads: the real ones from the map, plus a few where crowds cross (market, bus stops)
 const FOOTB=[];
@@ -715,6 +760,7 @@ const FLYOVERS=[];
   const conc=new THREE.MeshStandardMaterial({map:T.conc,color:0xc9c3b8,roughness:.92}), dark=new THREE.MeshStandardMaterial({color:0x6f6a63,roughness:.95});
   const tarpC=[0x2f5fa8,0xd9822b,0x3f7f4a,0x9b2f2a,0x5a6f7f,0xc9b26a], tarpM=tarpC.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8,side:THREE.DoubleSide}));
   const stuff=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.9});
+  if(MODELS.flyover&&MODELS.tent_dome){} else   // the Blender flyovers are put up after CullSet exists (flyoverModels)
   for(const fo of FLYOVERS){ const {cx,cz,L,V0,V1}=fo, H=7.6, W=V1-V0, vm=(V0+V1)/2, M=new THREE.Matrix4().makeRotationY(Math.atan2(-fo.fz,fo.fx)).setPosition(cx,0,cz);
     const C=[], D=[], P=[], stuffG=[], tarps=tarpM.map(()=>[]);
     const put=(list,g)=>{ g.applyMatrix4(M); list.push(g); };
@@ -743,6 +789,22 @@ const FLYOVERS=[];
     tarps.forEach((l,i)=>add(l,tarpM[i])); add(stuffG,stuff,false);
     for(const su of [-1,1]){ const x=cx+fo.fx*su*(L/2-.6), z=cz+fo.fz*su*(L/2-.6); const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('FLYOVER UNDER CONSTRUCTION','#d23a2a','#ffffff',1400,170),fog:false})); lab.scale.set(7,.85,1); lab.position.set(x+fo.rx*vm,H+3.2,z+fo.rz*vm); lab.layers.set(1); scene.add(lab); }
     PLACES.push({name:fo.name,sub:'Under the bridge',kind:'place',x:cx,z:cz}); } }
+// the flyovers made in Blender (tools/blender_sports.py): one concrete flyover stretched to fit the road, and the camp
+// under it made of separate pieces (dome tents, tarpaulin shacks, a kitchen, mattresses, a washing line)
+function flyoverModels(){ const KIT=['tent_dome','tent_shack','camp_kitchen','camp_bed','tent_dome','camp_line','tent_shack','camp_bed'].filter(k=>MODELS[k]), items={};
+  for(const fo of FLYOVERS){ const M=MODELS.flyover, {cx,cz,L,V0,V1}=fo, W=V1-V0, vm=(V0+V1)/2, ry=Math.atan2(-fo.fz,fo.fx), sx=L/M.W, sz=W/M.D, x=cx+fo.rx*vm, z=cz+fo.rz*vm;
+    new CullSet(modelLevels(M,Q.lod0*2,Q.draw+140),[{x,y:0,z,ry,sx,sy:1,sz}],{shadowDist:Q.shR,name:'flyover'}); SCAT_OFF.push({x,z,ry,hw:L/2+1,hd:W/2});
+    for(const sd of [-1,1]){ const o=sd*14*M.sc0*sz; addOB(x+fo.rx*o,z+fo.rz*o,L/2*.97,.75,-ry,8.6); }   // the rows of piers
+    for(const [k,m] of Object.entries(M.marks||{})) if(/^sign_/.test(k)){ const lx=m.x*sx, lz=m.z*sz, c=Math.cos(ry), s2=Math.sin(ry);
+      signAt(scene,{...m,x:x+lx*c+lz*s2,z:z-lx*s2+lz*c,y:m.y,yaw:ry+(FACE_YAW[m.face]??0)},'FLYOVER UNDER CONSTRUCTION','#d23a2a','#ffffff'); }
+    for(const [a,b,face] of [[V0+2.2,fo.l0-.8,1],[fo.l1+.8,V1-2.2,-1]]){ if(b-a<1.8) continue; const v=(a+b)/2, kry=Math.atan2(fo.rx*face,fo.rz*face);
+      for(let u=-L/2+8,k=0;u<L/2-8;k++){ const h=Math.abs(Math.sin((u*7.13+v*3.7+k)*12.9898)*43758.5453)%1, key=KIT[Math.floor(h*KIT.length)], KM=MODELS[key], len=KM.W;
+        if(u+len>L/2-8) break; const uc=u+len/2, wx=cx+fo.fx*uc+fo.rx*v, wz=cz+fo.fz*uc+fo.rz*v; (items[key]||(items[key]=[])).push({x:wx,y:0,z:wz,ry:kry,sc:1});
+        if(key!=='camp_line') addOB(wx,wz,len/2*.8,KM.D/2*.7,-kry,1.2);
+        if(k%2===0&&fo.camps.length<10){ const pm=KM.marks&&KM.marks.person; const c=Math.cos(kry), s2=Math.sin(kry); fo.camps.push(pm?{x:wx+pm.x*c+pm.z*s2,z:wz-pm.x*s2+pm.z*c}:{x:wx+fo.rx*face*2,z:wz+fo.rz*face*2}); }
+        u+=len+1.2+h*2; } }
+    PLACES.push({name:fo.name,sub:'People live under the bridge',kind:'place',x:cx,z:cz}); }
+  for(const [k,list] of Object.entries(items)) new CullSet(modelLevels(MODELS[k],Q.lod0,Q.draw*.7),list,{shadowDist:Q.shR,name:k}); }
 function colBox(w,h,d,x,y,z,hex,M){ const g=box(w,h,d,x,y,z); g.applyMatrix4(M); const c=new THREE.Color(hex), n=g.attributes.position.count, a=new Float32Array(n*3); for(let i=0;i<n;i++){ a[i*3]=c.r; a[i*3+1]=c.g; a[i*3+2]=c.b; } g.setAttribute('color',new THREE.BufferAttribute(a,3)); return g; }
 
 // ---- the Third Mainland Bridge: from the end of Western Avenue across the lagoon toward Lagos Island.
@@ -873,10 +935,7 @@ const BLOCK_PICK=[['flats3',1],['flats4',.8],['storey',.25],['dup5',.08]], SHOP_
   HOSP_PICK=[['clinic',1],['hospital',.6]], GREY_TINT=['#ffffff','#eef0f0','#e4e6e6'];
 const SCHOOL_N=['Mushin Community Primary School','Ansar-Ud-Deen Primary School','St. Agnes Primary School','Olateju Junior Grammar School','Ishaga Grammar School'];
 const SCHOOLS=AREAS.filter(a=>a.k==='school'&&a.a>2000).map((a,i)=>({a,name:SCHOOL_N[i%SCHOOL_N.length],signed:false}));
-// the university: the College of Medicine of the University of Lagos stands in the LUTH grounds at Idi-Araba,
-// so the biggest hospital-ground building becomes the faculty block
 let WORSHIP_N=0;
-const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
 let builtN=0;
 for(const b of BLD){ if(b.skip||b.special) continue; const ar=b.w*b.d;
   switch(b.kind){
@@ -928,6 +987,7 @@ for(const [g,m,l] of PH_SETS) new CullSet([{geo:g,mat:m,dist:Math.min(140,Q.draw
 function updateCulls(){ camera.updateMatrixWorld(); _pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm); const cx=camera.position.x, cz=camera.position.z; for(const c of CULLS) c.update(cx,cz);
   if(typeof WIRES!=='undefined') for(const w of WIRES){ const sp=w.geometry.boundingSphere; w.visible=Math.hypot(sp.center.x-cx,sp.center.z-cz)-sp.radius<Math.min(170,Q.draw*.6); } }
 function modelLevels(M,near,far,shadowNear=true){ return M.geo1?[{geo:M.geo,mat:M.mat,dist:near,shadow:shadowNear},{geo:M.geo1,mat:M.mat1,dist:far,shadow:false}]:[{geo:M.geo,mat:M.mat,dist:far,shadow:shadowNear}]; }
+if(MODELS.flyover&&MODELS.tent_dome) flyoverModels();
 
 // far away, a house is just a box with a roof (same footprint, same tint): thousands of houses for very little
 function farBox(M,wallHex,roofHex){ const W=M.W, D=M.D, H=M.H*.7, Y=M.H, g=new THREE.BufferGeometry(), P=[], N=[], C=[], wc=new THREE.Color(wallHex), rc=new THREE.Color(roofHex);
@@ -1018,8 +1078,56 @@ function placeModelOn(b,key,label,col){ const M=MODELS[key], f=FACE_DIR(b), ry=M
   const fp=frontPoint(b,0), hd=M.D*sc/2, door={x:b.cx+f[0]*(hd+1.8),z:b.cz+f[1]*(hd+1.8),ry:Math.atan2(-f[0],-f[1])};
   if(label){ const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(label,col,'#ffffff'),fog:false})); lab.scale.set(5.5,1.05,1); lab.position.set(b.cx+f[0]*(hd+.3),M.H*sc+2.2,b.cz+f[1]*(hd+.3)); lab.layers.set(1); scene.add(lab); }
   return {x:b.cx,z:b.cz,ry,sc,M,door,face:f,hd}; }
-if(HOUSES&&SITES.station){ const r=placeModelOn(SITES.station,'station','POLICE STATION','#1d3a8a'); Object.assign(STATION,{x:r.x,z:r.z,front:{x:r.door.x,z:r.door.z,ry:r.ry}}); }
+// a placed model's marked spot in the world (marks come from tools/blender_*.py, see nodeMarks)
+function markAt(r,name){ const m=r.M.marks&&r.M.marks[name]; if(!m) return null; const c=Math.cos(r.ry), s=Math.sin(r.ry), sc=r.sc;
+  return {...m,x:r.x+(m.x*c+m.z*s)*sc,y:(r.y||0)+m.y*sc,z:r.z+(-m.x*s+m.z*c)*sc,yaw:r.ry+(FACE_YAW[m.face]??0)}; }
+const marksOf=(r,re)=>Object.keys(r.M.marks||{}).filter(k=>re.test(k)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(k=>({k,...markAt(r,k)}));
+// a painted board with words (vertex colours can't carry text, so the models leave blank boards with a sign_ mark)
+function texSign(text,bg,fg,wm,hm,font='Bungee'){ const lines=String(text).split('\n'), H=Math.round(clamp(110*lines.length,110,520)), W=Math.round(clamp(H*wm/hm,64,2048)); const [c,g]=cv(W,H);
+  g.fillStyle=bg; g.fillRect(0,0,W,H); g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=H*.04; g.strokeRect(0,0,W,H); g.fillStyle=fg; g.textAlign='center'; g.textBaseline='middle';
+  const lh=H/lines.length; lines.forEach((t,i)=>{ let fs=lh*.62; g.font=`${fs}px ${font}, sans-serif`; const w=g.measureText(t).width; if(w>W*.92){ fs*=W*.92/w; g.font=`${fs}px ${font}, sans-serif`; } g.fillText(t,W/2,lh*(i+.54)); });
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=Math.min(4,maxAniso); return t; }
+function signAt(parent,m,text,bg='#14171c',fg='#f2c94c',o={}){ if(!m) return null; const w=o.w||m.w||2, h=o.h||m.h||.6;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texSign(text??m.text??'',bg,fg,w,h,o.font),toneMapped:false,fog:o.fog??true}));
+  const yaw=m.yaw??(FACE_YAW[m.face]??0); mesh.position.set(m.x+Math.sin(yaw)*.04,m.y,m.z+Math.cos(yaw)*.04); mesh.rotation.y=yaw; parent.add(mesh); return mesh; }
+// a big Blender building on a site: walls you bump into only where the building really stands (solids, Blender
+// coordinates [x0,x1,y0,y1,height]), so you can walk onto its forecourt, lot or porch
+function placeVenue(b,key,solids,o={}){ const M=MODELS[key]; if(!M) return null; const f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]), sc=clamp(Math.min(frontLen(b)/M.W,depthLen(b)/M.D,o.max||1.1),o.min||.6,2);
+  new CullSet(modelLevels(M,Q.lod0*1.6,Q.draw+60),[{x:b.cx,y:0,z:b.cz,ry,sc}],{shadowDist:Q.shR,name:key});
+  const r={x:b.cx,z:b.cz,y:0,ry,sc,M,face:f}; solidsAt(r,solids); SCAT_OFF.push({x:r.x,z:r.z,ry,hw:M.W*sc/2,hd:M.D*sc/2}); return r; }
+function solidsAt(r,solids){ const M=r.M, c=Math.cos(r.ry), s=Math.sin(r.ry);
+  for(const [x0,x1,y0,y1,h] of solids){ const lx=((x0+x1)/2-M.cx0)*M.sc0, lz=(-(y0+y1)/2-M.cz0)*M.sc0, hw=(x1-x0)/2*M.sc0*r.sc, hd=(y1-y0)/2*M.sc0*r.sc;
+    addOB(r.x+(lx*c+lz*s)*r.sc,r.z+(-lx*s+lz*c)*r.sc,hw,hd,-r.ry,h*r.sc); } }
+// a glowing ring on the ground where you press E to go in
+function doorRing(x,z){ const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1.15,40),new THREE.MeshBasicMaterial({color:0xF2B705,transparent:true,opacity:.7,depthWrite:false,fog:false})); ring.rotation.x=-Math.PI/2; ring.position.set(x,groundY(x,z)+.04,z); ring.layers.set(1); scene.add(ring); return ring; }
+const DOORS=[];   // places you walk into: {x,z,r,label,act}
+const VENUES={hotels:[],clubs:[],carstand:null};
+if(HOUSES&&SITES.station){ const M=MODELS.station, r=M.marks?placeVenue(SITES.station,'station',[[-12,12,-7,7,9]],{max:1}):placeModelOn(SITES.station,'station','POLICE STATION','#1d3a8a');
+  const d=M.marks?markAt(r,'door'):null, door=d?{x:d.x,z:d.z}:r.door; Object.assign(STATION,{x:r.x,z:r.z,front:{x:door.x,z:door.z,ry:r.ry},r});
+  if(M.marks) signAt(scene,markAt(r,'sign_name'),'NIGERIA POLICE · MUSHIN DIVISION','#13306b','#ffffff'); }
 let HOTEL_SITE=null; if((MODELS.hotel||MODELS.office)&&SITES.hotel){ const r=placeModelOn(SITES.hotel,MODELS.hotel?'hotel':'office',null); HOTEL_SITE={x:r.x,z:r.z,door:{x:r.door.x,z:r.door.z,ry:r.ry},hx:r.M.W*r.sc/2,hz:r.M.D*r.sc/2}; }
+// two more hotels (same Blender hotel, their own names), two night clubs and the car stand
+const HOTEL_NAMES=[['Eko Grand Hotel','#6b1f2a'],['Oduduwa Royal Hotel','#1f3d6b'],['Idi-Araba Suites','#24533a']];
+if(MODELS.hotel) [SITES.hotel2,SITES.hotel3].forEach((b,i)=>{ if(!b) return; const r=placeModelOn(b,'hotel',null), [nm,col]=HOTEL_NAMES[i+1], d=r.door;
+  const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(nm.toUpperCase(),col,'#F7EFDF'),fog:false})); lab.scale.set(6,1.15,1); lab.position.set(d.x,SLAB+4.6,d.z); lab.layers.set(1); scene.add(lab); doorRing(d.x,d.z);
+  VENUES.hotels.push({name:nm,col,x:r.x,z:r.z,door:{x:d.x,z:d.z,ry:r.ry}}); });
+const CLUB_NAMES=['CLUB GBEDU','OWAMBE LOUNGE'];
+if(MODELS.club) [SITES.club1,SITES.club2].forEach((b,i)=>{ if(!b) return; const r=placeVenue(b,'club',[[-11,11,-8,8,10]],{max:1.05}); const d=markAt(r,'door')||{x:r.x+r.face[0]*12,z:r.z+r.face[1]*12};
+  signAt(scene,markAt(r,'sign_name'),CLUB_NAMES[i],'#0c0a12','#ff4fd8',{fog:false}); doorRing(d.x,d.z);
+  VENUES.clubs.push({name:CLUB_NAMES[i].replace(/\b\w+/g,w=>w[0]+w.slice(1).toLowerCase()),x:r.x,z:r.z,door:{x:d.x,z:d.z,ry:r.ry},r,i}); });
+if(MODELS.carstand&&SITES.carstand){ const r=placeVenue(SITES.carstand,'carstand',[[-10,10,2,14,7]],{max:1}); const d=markAt(r,'door');
+  signAt(scene,markAt(r,'sign_name'),'OLUWASEUN MOTORS · TOKUNBO & BRAND NEW','#0f3d2a','#ffd54a'); doorRing(d.x,d.z);
+  VENUES.carstand={name:'Oluwaseun Motors',x:r.x,z:r.z,door:{x:d.x,z:d.z,ry:r.ry},r,lots:marksOf(r,/^lot_\d/)}; }
+// the township stadium and a football field near the university (tools/blender_sports.py)
+function placeOpen(site,key,solids){ const M=MODELS[key]; if(!site||!M) return null; const r={x:site.cx,z:site.cz,y:0,ry:site.ry,sc:1,M};
+  new CullSet(modelLevels(M,Q.lod0*2.2,Q.draw+260),[{x:r.x,y:0,z:r.z,ry:r.ry,sc:1}],{shadowDist:Q.shR,name:key}); solidsAt(r,solids); SCAT_OFF.push({x:r.x,z:r.z,ry:r.ry,hw:M.W/2+1,hd:M.D/2+1}); return r; }
+const STADIUM=placeOpen(STADIUM_SITE,'stadium',[[-45,45,38,48,12],[-59,-53,-26,26,10],[53,59,-26,26,10],[-54,-3.5,-46,-39,5],[3.5,54,-46,-39,5],
+  [-60.5,60.5,45.6,46.4,4],[-60.5,-59.6,-46,46,4],[59.6,60.5,-46,46,4],[-60.5,-4,-46.4,-45.6,4],[4,60.5,-46.4,-45.6,4]]);
+const PITCH=placeOpen(PITCH_SITE,'pitch',[]);
+for(const [r,nm,sub] of [[STADIUM,'Mushin Township Stadium','Football · Naija Streets FC'],[PITCH,'UNILAG Medicine Football Field','Football field']]){ if(!r) continue;
+  for(const m of marksOf(r,/^sign_/)) signAt(scene,m,m.k==='sign_score'?'NAIJA STREETS FC  2 - 1  EKO UNITED':m.text,m.k==='sign_score'?'#0b0d10':'#123d26',m.k==='sign_score'?'#ffcf3a':'#ffffff',{fog:false});
+  const g=markAt(r,'gate'); PLACES.push({name:nm,sub,kind:'sport',x:g?g.x:r.x,z:g?g.z:r.z,r:40}); }
+if(STADIUM){ for(const m of marksOf(STADIUM,/^light_/)){ const s2=new THREE.Mesh(new THREE.PlaneGeometry(5,2.4),new THREE.MeshBasicMaterial({color:0xfdfdf0,toneMapped:false})); s2.position.set(m.x,m.y,m.z); s2.lookAt(STADIUM.x,0,STADIUM.z); s2.visible=false; scene.add(s2); (STADIUM.lamps||(STADIUM.lamps=[])).push(s2); } }
 
 /* apartment entrance details: your house is a real Mushin house, with a canopy, a lit door and a ring to walk into */
 const APT={door:{x:0,z:0},front:{x:0,z:0},ry:0};
@@ -1629,6 +1737,20 @@ function kerbSpot(x,z,len,filter=e=>e.c>=4&&e.c<9){ const [e]=nearestRoad(x,z,fi
   if(e.len<A0.r+nodes[e.b].r+len+2) return null; const sd=((x-A0.x)*-e.fz+(z-A0.z)*e.fx)>=0?1:-1, o=e.hw-1.05;
   return {x:A0.x+e.fx*t-e.fz*o*sd,z:A0.z+e.fz*t+e.fx*o*sd,h:Math.atan2(-e.fz,e.fx)+(sd<0?Math.PI:0)}; }
 const myCar=newVehicle('okada','#b3261e',true); { const k=kerbSpot(APT.front.x+APT.nx*1.5,APT.front.z+APT.nz*1.5,2.2); Object.assign(myCar,k?{x:k.x,z:k.z,h:k.h}:{x:APT.front.x+3,z:APT.front.z,h:0},{y:0,keep:1}); }
+const LOT_CARS=[{type:'sedan',color:'#c9ccd1',name:'Toyota Corolla 2010 (tokunbo)',price:180000},{type:'suv',color:'#1d1f22',name:'Toyota Highlander 2012 (tokunbo)',price:420000},
+  {type:'sedan',color:'#7a1e22',name:'Toyota Camry "Muscle" 2009 (tokunbo)',price:250000},{type:'sedan',color:'#f2f2f0',name:'Honda Accord 2011 (tokunbo)',price:230000},
+  {type:'suv',color:'#3b4a5a',name:'Lexus RX 350 2013 (tokunbo)',price:450000},{type:'sedan',color:'#2f5d3a',name:'Nissan Altima 2012 (tokunbo)',price:200000},
+  {type:'suv',color:'#b7a27a',name:'Toyota Sienna 2010 (tokunbo)',price:300000},{type:'danfo',color:'#e8b923',name:'Danfo bus (tokunbo)',price:350000}];
+const SHOW_CARS=[{type:'suv',color:'#0e0f12',name:'Lexus LX 600 (brand new)',price:1500000},{type:'sedan',color:'#e9e7e2',name:'Mercedes-Benz E-Class (brand new)',price:1200000},
+  {type:'suv',color:'#8c1d1d',name:'Toyota Land Cruiser (brand new)',price:1350000},{type:'sedan',color:'#1f3f73',name:'Toyota Camry 2024 (brand new)',price:850000}];
+const OWNED=(()=>{ try{ const a=JSON.parse(localStorage.getItem('naija-cars')||'[]'); return Array.isArray(a)?a.slice(0,6):[]; }catch(e){ return []; } })();
+function saveOwned(){ try{ localStorage.setItem('naija-cars',JSON.stringify(OWNED.slice(-6))); }catch(e){} }
+const carYaw=yaw=>yaw-Math.PI/2;   // a car's heading from the way its nose looks
+// the car stand's lot: tokunbo cars for sale with their prices on top; the cars you bought wait near your house
+if(VENUES.carstand) VENUES.carstand.lots.forEach((m,i)=>{ const spec=LOT_CARS[i%LOT_CARS.length]; const v=newVehicle(spec.type,spec.color,true); if(v.type!==spec.type) return;
+  Object.assign(v,{x:m.x,z:m.z,y:m.y||0,h:carYaw(m.yaw),keep:1,parked:true,forSale:spec});
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(naira(spec.price),'#0f3d2a','#ffd54a',600,170),fog:false})); tag.scale.set(1.9,.54,1); tag.position.set(m.x,(m.y||0)+2.6,m.z); tag.layers.set(1); scene.add(tag); v.tag=tag; });
+OWNED.forEach((o,i)=>{ const v=spawnOwned(o,{x:APT.front.x+APT.nx*1.5+(i+1)*5.5*APT.nz,z:APT.front.z+APT.nz*1.5-(i+1)*5.5*APT.nx}); void v; });
 { const rx=-APT.nz, rz=APT.nx, sx=-Math.cos(STATION.front.ry), sz=Math.sin(STATION.front.ry);
   const spots=[['keke',APT.front.x+rx*14+APT.nx*2,APT.front.z+rz*14+APT.nz*2],['sedan',APT.front.x-rx*16+APT.nx*2,APT.front.z-rz*16+APT.nz*2],['police',STATION.front.x+sx*7,STATION.front.z+sz*7],['police',STATION.front.x-sx*7,STATION.front.z-sz*7]];
   if(HOTEL_SITE) spots.push(['sedan',HOTEL_SITE.door.x+4,HOTEL_SITE.door.z]);
@@ -2118,6 +2240,10 @@ function drawWorldMap(g,x0,z0,x1,z1,all=false){ g.fillStyle='#2a2d31'; g.fillRec
   g.fillStyle='#F2B705'; g.beginPath(); g.arc(APT.door.x,APT.door.z,7,0,7); g.fill(); }
 // outside the map square: the lagoon and the Third Mainland Bridge, the airport and its runway
 function drawExtras(g){
+  const rot=(r,u0,u1,v0,v1,fill)=>{ const c=Math.cos(r.ry), sn=Math.sin(r.ry), P=(u,v)=>[r.x+u*c+v*sn,r.z-u*sn+v*c]; g.fillStyle=fill; g.beginPath(); [[u0,v0],[u1,v0],[u1,v1],[u0,v1]].forEach(([u,v],i)=>{ const [x,z]=P(u,v); i?g.lineTo(x,z):g.moveTo(x,z); }); g.closePath(); g.fill(); };
+  if(STADIUM){ rot(STADIUM,-60,60,-46,46,'#8d8a84'); rot(STADIUM,-54,54,-38,38,'#b5523b'); rot(STADIUM,-46,46,-30,30,'#3f8f3a'); }   // stands, track, pitch
+  if(PITCH){ rot(PITCH,-35,35,-23,23,'#e8e8e0'); rot(PITCH,-33,33,-21,21,'#4c9a3f'); }
+  for(const fo of FLYOVERS){ const vm=(fo.V0+fo.V1)/2; rot({x:fo.cx+fo.rx*vm,z:fo.cz+fo.rz*vm,ry:Math.atan2(-fo.fz,fo.fx)},-fo.L/2,fo.L/2,-(fo.V1-fo.V0)/2,(fo.V1-fo.V0)/2,'rgba(150,146,140,.85)'); }
   if(TMB){ g.fillStyle='#1d3846'; g.fillRect(SHORE_X,-WB.z-400,TMB.xBlock+2000-SHORE_X,2*WB.z+800);
     g.fillStyle='#4a4d52'; g.fillRect(TMB.xEnd,TMB.z-700,900,1400);
     g.strokeStyle='#d9b45a'; g.lineWidth=26; g.lineCap='butt'; g.beginPath(); g.moveTo(TMB.x0,TMB.z); g.lineTo(TMB.xBlock,TMB.z); g.stroke();
@@ -2181,8 +2307,8 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':'Get out'; } else if(mode==='interior'){ if(WARD.open) txt=''; else if(HL.act) txt=homePrompt(); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+    else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
@@ -2221,6 +2347,7 @@ const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
 addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;   // typing your name
   const k=keyOf(e); if(k===' '||k==='tab'||k.startsWith('arrow')) e.preventDefault(); if(!started||e.repeat) return;
   if(DEALER.open&&(k==='escape'||k==='e')){ closeShop(); K[k]=true; return; }
+  if(MENU.open&&(k==='escape'||k==='e')){ closeMenu(); K[k]=true; return; }
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
@@ -2240,7 +2367,7 @@ document.addEventListener('mouseup',e=>{ if(e.button===0) ARMS.trig=false; else 
 document.addEventListener('mousemove',e=>{ if(!started||mapView.isOpen) return; if(document.pointerLockElement===cvs||(dragging&&e.buttons)) look(e.movementX,e.movementY); });
 cvs.addEventListener('wheel',e=>{ e.preventDefault(); camState.zoom=clamp(camState.zoom+(e.deltaY>0?.08:-.08),.55,1.8); },{passive:false});
 $('#setBtn').addEventListener('click',()=>{ $('#settings').hidden=!$('#settings').hidden; if(!$('#settings').hidden) closePhone(); });
-$('#phoneBtn').addEventListener('click',()=>togglePhone()); $('#shopDone').addEventListener('click',()=>closeShop()); $('#weap').addEventListener('click',()=>cycleWeapon()); $('#phClose').addEventListener('click',()=>closePhone()); document.querySelectorAll('.ph-tab').forEach(t=>t.addEventListener('click',()=>{ PHONE.tab=t.dataset.tab; phoneUI(); }));
+$('#phoneBtn').addEventListener('click',()=>togglePhone()); $('#shopDone').addEventListener('click',()=>closeShop()); $('#menuDone').addEventListener('click',()=>closeMenu()); $('#weap').addEventListener('click',()=>cycleWeapon()); $('#phClose').addEventListener('click',()=>closePhone()); document.querySelectorAll('.ph-tab').forEach(t=>t.addEventListener('click',()=>{ PHONE.tab=t.dataset.tab; phoneUI(); }));
 $('#mmWrap').addEventListener('click',()=>{ if(started) openMap(); });
 $('#prompt').addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); action(); });
 document.querySelectorAll('#qual button').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.q===qKey?'true':'false');
@@ -2283,10 +2410,10 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 /* ================= actions ================= */
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
-function action(){ if(busy||!started) return;
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterHotel(); if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v) return v.ai?carjack(v):enterCar(v); }
+function action(){ if(busy||!started) return; if(MENU.open) return closeMenu();
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
-  else if(mode==='interior'){ if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
+  else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
   for(let i=0;i<n&&i<far.length;i++){ const p=far[i], side=i%2?-1:1; Object.assign(p,{x:v.x+lx*1.6*side+hx*mrr(-1,1),z:v.z+lz*1.6*side+hz*mrr(-1,1),y:SLAB,state:'flee',timer:mrr(4,6),fall:0,phone:false,yaw:Math.atan2(lx*side,lz*side)+mrr(-.6,.6)}); } }
@@ -2693,13 +2820,13 @@ const SCAT=(()=>{ const CELL=3, RAD=Q===QUAL.low?20:Q===QUAL.medium?28:38, NG=Q=
   function inBld(x,z){ for(const b of bldNear(x,z,1)){ if(b.skip) continue; const dx=x-b.cx, dz=z-b.cz, u=b.c*dx+b.s*dz, v=-b.s*dx+b.c*dz; if(Math.abs(u)<b.w/2+.4&&Math.abs(v)<b.d/2+.4) return true; } return false; }
   function cellItems(i,j){ const key=i*100003+j; let it=cache.get(key); if(it) return it;
     let s=(Math.imul(i,73856093)^Math.imul(j,19349663))>>>0; const rnd=()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; };
-    const cx=(i+.5)*CELL, cz=(j+.5)*CELL; if(cx>SHORE_X-2||cz<-WB.z+1||(cx>WB.x&&TMB&&Math.abs(cz-TMB.z)<16)){ it={g:[],s:[]}; cache.set(key,it); return it; } const ar=areaAt(cx,cz), kind=ar?ar.k:'';
+    const cx=(i+.5)*CELL, cz=(j+.5)*CELL; if(cx>SHORE_X-2||cz<-WB.z+1||scatOff(cx,cz)||(cx>WB.x&&TMB&&Math.abs(cz-TMB.z)<16)){ it={g:[],s:[]}; cache.set(key,it); return it; } const ar=areaAt(cx,cz), kind=ar?ar.k:'';
     const lawn=AREA_ACC[kind]==='lawn', yard=NO_GRASS.has(kind)||AREA_ACC[kind]==='lot';
     const nG=yard?0:lawn?5+Math.floor(rnd()*4):kind==='school'?Math.floor(rnd()*2):(rnd()<.55?Math.floor(rnd()*4):0);   // tufts come in clumps
     const nS=lawn?(rnd()<.2?1:0):yard?(rnd()<.3?1:0):Math.floor(rnd()*3);
     it={g:[],s:[]}; const ccx=cx+(rnd()-.5)*CELL*.6, ccz=cz+(rnd()-.5)*CELL*.6;
-    for(let k=0;k<nG;k++){ const x=lawn?cx+(rnd()-.5)*CELL:ccx+(rnd()-.5)*1.6, z=lawn?cz+(rnd()-.5)*CELL:ccz+(rnd()-.5)*1.6; if(roadAt(x,z,.9)||inBld(x,z)) continue; it.g.push(x,z,rnd()*6.28,.55+rnd()*.9); }
-    for(let k=0;k<nS;k++){ const x=cx+(rnd()-.5)*CELL, z=cz+(rnd()-.5)*CELL; if(roadAt(x,z,.5)||inBld(x,z)) continue; const big=rnd()<.15; it.s.push(x,z,rnd()*6.28,big?.12+rnd()*.16:.04+rnd()*.07,.45+rnd()*.5,Math.floor(rnd()*SCOL.length)); }
+    for(let k=0;k<nG;k++){ const x=lawn?cx+(rnd()-.5)*CELL:ccx+(rnd()-.5)*1.6, z=lawn?cz+(rnd()-.5)*CELL:ccz+(rnd()-.5)*1.6; if(roadAt(x,z,.9)||inBld(x,z)||(SCAT_OFF.length&&scatOff(x,z))) continue; it.g.push(x,z,rnd()*6.28,.55+rnd()*.9); }
+    for(let k=0;k<nS;k++){ const x=cx+(rnd()-.5)*CELL, z=cz+(rnd()-.5)*CELL; if(roadAt(x,z,.5)||inBld(x,z)||(SCAT_OFF.length&&scatOff(x,z))) continue; const big=rnd()<.15; it.s.push(x,z,rnd()*6.28,big?.12+rnd()*.16:.04+rnd()*.07,.45+rnd()*.5,Math.floor(rnd()*SCOL.length)); }
     if(cache.size>30000) cache.clear(); cache.set(key,it); return it; }
   const _M=new THREE.Matrix4(), _P=new THREE.Vector3(), _Q=new THREE.Quaternion(), _S=new THREE.Vector3(), _Y=new THREE.Vector3(0,1,0);
   function update(dt){ wind.value=(wind.value+dt*(1+ENV.storm*2.5+ENV.rain))%1000; const on=mode!=='interior'; tufts.visible=stones.visible=on; if(!on) return;
@@ -4065,7 +4192,7 @@ function quietHere(){ const [e,d]=nearestRoad(player.x,player.z,e=>e.drive); if(
 // the main road nearest you: where an okada drops you to find cars and buses
 function mainRoadPlace(){ let best=null, bd=1e9; for(const e of ROADS){ if(!e.drive||e.c>2||e.br) continue; const A0=nodes[e.a], t=clamp((player.x-A0.x)*e.fx+(player.z-A0.z)*e.fz,0,e.len), x=A0.x+e.fx*t, z=A0.z+e.fz*t, d=Math.hypot(x-player.x,z-player.z); if(d<bd&&d>60){ bd=d; best={x,z,name:e.name||'the main road'}; } }
   return best?{name:'Main road · '+best.name,sub:'Drop me at the big road',x:best.x,z:best.z,kind:'place'}:null; }
-const naira=n=>'₦'+n.toLocaleString('en-NG');
+
 const kmOf=d=>d<950?Math.round(d/10)*10+' m':(d/1000).toFixed(1)+' km';
 const POPULAR=/^(Your house|Eko Grand Hotel|Mushin Motor Park|Mushin Police Station|Mushin Station|LUTH gate)$|Market$/;
 function phoneUI(){ const b=$('#phBody'); if(!b) return; b.textContent=''; const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
@@ -4916,6 +5043,227 @@ async function enterHotel(){ if(busy) return;
 let hotelPeek=0; function hotelPrefetch(dt){ if(!MYROOM.loading&&MANIFEST['assets/models/room.glb']&&Math.hypot(player.x-APT.front.x,player.z-APT.front.z)<60) loadMyRoom();
   if(HOTEL.loading||!HOTEL.door||(hotelPeek-=dt)>0) return; hotelPeek=1; if(Math.hypot(player.x-HOTEL.door.x,player.z-HOTEL.door.z)<70) loadHotel(); }
 
+/* ================= walk-in places made in Blender =================
+   tools/blender_hotel.py (hotel lobby, the corridor upstairs, five kinds of rooms) and tools/blender_venues.py (night club,
+   police station, car showroom). Each loads the first time you go in. The models mark where things are (doors, the
+   desk, beds, lamps, signs), so the game puts people, lights, words and the E spots there. */
+const INTS={}, INT_ENV={t:null};
+function intLoad(name){ const I=INTS[name]||(INTS[name]={}); if(I.p) return I.p; const u=murl(name); DL.exp[u]=MANIFEST[`assets/models/${name}.glb`]||600000;
+  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ I.room=buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
+async function intGet(name,msg){ const I=INTS[name]; if(I&&I.room) return I.room; if(msg) toast(msg,4); busy=true; let R=null; try{ R=await intLoad(name); }catch(e){} busy=false; if(!R) toast('E no open now. Try again small time.'); return R; }
+function buildRoom(name,g){
+  const S=new THREE.Scene(); S.background=new THREE.Color(0x0d0b0a);
+  if(!INT_ENV.t) INT_ENV.t=pmrem.fromScene(new RoomEnvironment(),.04).texture; S.environment=INT_ENV.t; S.environmentIntensity=.42;
+  const hemi=new THREE.HemisphereLight(0xfff1de,0x3a2c20,.8), sun=new THREE.DirectionalLight(0xfff0dc,.75); sun.position.set(3,10,6); S.add(hemi,sun);
+  const mesh=meshOf(g), geo=floatGeo(mesh.geometry.clone()); geo.applyMatrix4(mesh.matrixWorld); geo.computeBoundingBox(); geo.computeBoundingSphere(); const bb=geo.boundingBox;
+  const mat=mesh.material; mat.side=THREE.DoubleSide; mat.roughness=.6; mat.metalness=0;
+  S.add(new THREE.Mesh(geo,mat));
+  const MK=nodeMarks(g)||{}; for(const k in MK){ const m=MK[k]; m.k=k; m.yaw=FACE_YAW[m.face]??0; }
+  // walking: anything between knee and head height blocks a 25 cm cell; the camera stops at walls (anything taller than 2.4 m)
+  const P=geo.attributes.position, I=geo.index, nT=(I?I.count:P.count)/3, x0=bb.min.x, z0=bb.min.z, CS=.25, gw=Math.ceil((bb.max.x-x0)/CS)+1, gd=Math.ceil((bb.max.z-z0)/CS)+1,
+    grid=new Uint8Array(gw*gd), wall=new Uint8Array(gw*gd), vi=(t,k)=>I?I.getX(t*3+k):t*3+k;
+  for(let t=0;t<nT;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
+    for(let k=0;k<3;k++){ const i=vi(t,k), x=P.getX(i), y=P.getY(i), z=P.getZ(i); if(x<ax) ax=x; if(x>bx) bx=x; if(y<ay) ay=y; if(y>by) by=y; if(z<az) az=z; if(z>bz) bz=z; }
+    const blk=by>.3&&ay<1.7, wl=ay<1.2&&by>2.4; if(!blk&&!wl) continue;
+    const i0=Math.max(0,Math.floor((ax-x0)/CS)), i1=Math.min(gw-1,Math.floor((bx-x0)/CS)), j0=Math.max(0,Math.floor((az-z0)/CS)), j1=Math.min(gd-1,Math.floor((bz-z0)/CS));
+    if((i1-i0+1)*(j1-j0+1)>600) continue;   // a big slanted face (a staircase seen from the side): it would block a whole area
+    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){ if(blk) grid[j*gw+i]=1; if(wl) wall[j*gw+i]=1; } }
+  const cell=(G,x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:G[j*gw+i]; };
+  const free=(x,z,r=.28)=>!cell(grid,x-r,z)&&!cell(grid,x+r,z)&&!cell(grid,x,z-r)&&!cell(grid,x,z+r)&&!cell(grid,x,z);
+  const top=bb.max.y;
+  const R={name,scene:S,marks:MK,free,label:'',camDist:2.7,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights:[],signs:{},tick:null,
+    bounds:{x0:bb.min.x+.3,x1:bb.max.x-.3,z0:bb.min.z+.3,z1:bb.max.z-.3},cam:{x0:bb.min.x+.25,x1:bb.max.x-.25,z0:bb.min.z+.25,z1:bb.max.z-.25,y0:.45,y1:Math.max(2.2,Math.min(top,6.5)-.35)},
+    out:()=>STATION.front,
+    move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
+    camHit(t,d,dist){ for(let s=.25;s<dist;s+=.1) if(cell(wall,t.x+d.x*s,t.z+d.z*s)) return s; return dist; },
+    nearFree(x,z){ if(free(x,z,.3)) return {x,z}; for(let r=.25;r<4;r+=.25) for(let a=0;a<16;a++){ const px=x+Math.sin(a/16*6.283)*r, pz=z+Math.cos(a/16*6.283)*r; if(free(px,pz,.3)) return {x:px,z:pz}; } return {x,z}; },
+    spot(m,label,act,r=1.4){ if(!m) return null; const s={x:m.x,z:m.z,r,label,act}; R.spots.push(s); return s; },
+    update(dt){ for(const f of R.folk) f.mixer.update(dt); if(R.tick) R.tick(dt); } };
+  for(const [k,m] of Object.entries(MK)){
+    if(/^light_/.test(k)){ const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),(m.power||20)*1.1,m.range||10,1.6); L.position.set(m.x,m.y,m.z); S.add(L); R.lights.push(L); L.userData.base=L.intensity; L.userData.col=L.color.clone(); }
+    else if(/^(sign|plate)_/.test(k)) R.signs[k]=signAt(S,m,m.text||'','#1a1410','#e9c46a',{fog:false}); }
+  return R; }
+function setSign(mesh,text,bg='#1a1410',fg='#e9c46a'){ if(!mesh) return; const g=mesh.geometry.parameters, old=mesh.material.map; mesh.material.map=texSign(text,bg,fg,g.width,g.height); mesh.material.needsUpdate=true; if(old) old.dispose(); }
+// a person standing (or dancing) at a spot inside a room or out in the street
+function folk(parent,cast,at,clips,list){ const C=PEOPLE.casts[cast]; if(!C||!at) return null; const inner=cloneCast(C), root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(inner); inner.position.y=C.y0;
+  root.position.set(at.x,(at.y>.1&&at.y<.6?at.y:0),at.z); root.rotation.y=at.yaw??0; parent.add(root); const mixer=new THREE.AnimationMixer(inner);
+  const nm=[].concat(clips||[]).find(n=>C.clips[n])||C.idle0, clip=C.clips[nm]; if(clip){ const a=mixer.clipAction(clip); a.play(); a.time=Math.random()*clip.duration; inner.position.y=C.y0+(C.off[nm]||0); }
+  const f={root,mixer,inner,C,cast}; if(list) list.push(f); return f; }
+function folkDo(f,clips){ if(!f) return; const C=f.C, nm=[].concat(clips).find(n=>C.clips[n]); if(!nm) return; f.mixer.stopAllAction(); const a=f.mixer.clipAction(C.clips[nm]); a.reset().play(); f.inner.position.y=C.y0+(C.off[nm]||0); }
+function roomSpot(){ if(mode!=='interior'||!ROOM.spots||!ROOM.spots.length) return null; let best=null, bd=1e9;
+  for(const s of ROOM.spots){ const d=Math.hypot(player.x-s.x,player.z-s.z); if(d<s.r&&d<bd){ bd=d; best=s; } } return best; }
+const spotLabel=s=>typeof s.label==='function'?s.label():s.label;
+function goRoom(R,at,msg){ if(!R) return; if(WARD.open) closeWard(); if(ROOM===INT&&mode==='interior') homeLeave();
+  fadeSwap(()=>{ const p=typeof at==='string'?R.marks[at]:at, q=R.nearFree(p.x,p.z); ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
+    Object.assign(player,{x:q.x,z:q.z,y:0,yaw:p.yaw??0,speed:0}); Object.assign(camState,{yaw:player.yaw,pitch:.2,dist:R.camDist}); setScene(R.scene); if(R.onEnter) R.onEnter(); if(msg) toast(msg,3.2); }); }
+function leaveRoom(o){ if(!o) return; fadeSwap(()=>{ mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
+const backOf=m=>m&&{x:m.x,z:m.z,yaw:m.yaw+Math.PI};   // standing at a door, turned away from it
+// people in a room come once the townspeople have loaded
+function fillRoom(R){ if(R.filled||!PEOPLE.n||!R.fill) return; R.filled=true; R.fill(R); }
+
+// a little menu (hotel rooms, drinks): same look as the black market
+function openMenu(title,note,rows){ MENU.open=true; closePhone(); if(document.pointerLockElement) document.exitPointerLock(); MENU.rows=rows; MENU.title=title; MENU.note=note; menuUI(); $('#menu').hidden=false; lastPrompt=null; }
+function closeMenu(){ if(!MENU.open) return; MENU.open=false; $('#menu').hidden=true; lastPrompt=null; }
+function menuUI(){ const b=$('#menuBody'); b.textContent=''; $('#menuTitle').textContent=MENU.title; $('#menuNote').textContent=(MENU.note?MENU.note+' · ':'')+'You have '+naira(CASH.n);
+  const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
+  for(const r of (typeof MENU.rows==='function'?MENU.rows():MENU.rows)){ const row=el('div','sh-row'), t=el('span'); t.append(el('b',null,r.name),el('small',null,r.sub||'')); const btn=el('button','sh-buy',r.btn||naira(r.price)); btn.type='button';
+    btn.disabled=!!r.off||(r.price>0&&CASH.n<r.price); btn.addEventListener('click',()=>{ if(btn.disabled) return; if(r.price>0){ if(CASH.n<r.price) return; addCash(-r.price); cashHUD(); } r.act(); if(MENU.open) menuUI(); }); row.append(t,btn); b.append(row); } }
+
+/* ---- hotels: the lobby with the receptionist, the lift, the corridor upstairs with numbered doors, and the rooms.
+   Book at reception, take the lift to your floor, open your door. The booking lasts a day (saved on this phone). */
+const HTIERS=[
+  {f:1,m:'int_room_standard',name:'Standard Room',price:15000,what:'Double bed, shower, TV, AC'},
+  {f:2,m:'int_room_deluxe',name:'Deluxe Room',price:30000,what:'King bed, bathtub, minibar'},
+  {f:3,m:'int_suite_exec',name:'Executive Suite',price:55000,what:'Room and parlour, bathroom'},
+  {f:4,m:'int_suite_family',name:'Family Suite',price:80000,what:'Room, parlour, kitchen and bathroom'},
+  {f:5,m:'int_suite_presidential',name:'Presidential Suite',price:150000,what:'Top floor: grand parlour, kitchen, jacuzzi'}];
+const HOTELS=[...(HOTEL_SITE?[{name:'Eko Grand Hotel',col:'#6b1f2a',x:HOTEL_SITE.x,z:HOTEL_SITE.z,door:HOTEL_SITE.door}]:[]),...VENUES.hotels];
+HOTELS.forEach((h,i)=>{ h.i=i; if(i) PLACES.push({name:h.name,sub:'Hotel · rooms from '+naira(HTIERS[0].price),kind:'hotel',x:h.x,z:h.z}); });
+if(HOTEL.place){ HOTEL.place.kind='hotel'; HOTEL.place.sub='Hotel · rooms and lounge bar'; }
+let STAY=null; try{ const s=JSON.parse(localStorage.getItem('naija-hotel')||'null'); if(s&&s.until>Date.now()&&HOTELS[s.h]) STAY=s; }catch(e){}
+const H={cur:0,floor:1};
+const doorsOn=f=>f===5?2:8;   // the top floor has only the two presidential suites
+const roomNo=(f,n)=>f*100+n;
+function freeDoor(h,f){ const day=Math.floor(Date.now()/864e5), n=doorsOn(f); return 1+Math.floor(Math.abs(Math.sin((h*7+f*13+day)*12.9898)*43758.5453)%1*n); }
+function hotelRows(){ const h=H.cur; return HTIERS.map((t,ti)=>{ const mine=STAY&&STAY.h===h&&STAY.t===ti, n=mine?STAY.n:freeDoor(h,t.f);
+  return {name:`${t.name} · ${roomNo(t.f,n)}`,sub:t.what+` · floor ${t.f}`,price:mine?0:t.price,btn:mine?'Your room':naira(t.price),off:mine,
+    act:()=>{ const was=STAY; STAY={h,t:ti,n,until:Date.now()+864e5}; try{ localStorage.setItem('naija-hotel',JSON.stringify(STAY)); }catch(e){}
+      closeMenu(); toast(`${was?'You don change room. ':''}Here is your key card for Room ${roomNo(t.f,n)}. Take the lift to floor ${t.f}.`,4); } }; }); }
+function hotelMenu(){ openMenu(HOTELS[H.cur].name.toUpperCase()+' · RECEPTION','A night in Lagos',hotelRows); toast(mpick(['"Welcome! Which room would you like?"','"Good evening sir/ma. We have rooms available."','"Welcome to our hotel. How many nights?"']),2.6); }
+async function enterLobby(i){ if(busy) return; const R=await intGet('int_hotel_lobby','Opening the hotel…'); if(!R) return; H.cur=i; setupLobby(R); R.label=HOTELS[i].name;
+  goRoom(R,'spawn',`Welcome to ${HOTELS[i].name}.`+(STAY&&STAY.h===i?` Your room ${roomNo(HTIERS[STAY.t].f,STAY.n)} is ready.`:' Reception is ahead.')); }
+function setupLobby(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2;
+  R.fill=R=>{ folk(R.scene,'suit_lady',M.receptionist,['idle_suit','f_talk'],R.folk);
+    const rnd=seeded(31), who=[['baba',['talk','idle_baba']],['lady_red',['phone','idle_3']],['p_tunde',['idle_1','text']],['mama',['talk']]];
+    for(let k=0,t=0;k<who.length&&t<400;t++){ const x=R.bounds.x0+rnd()*(R.bounds.x1-R.bounds.x0), z=R.bounds.z0+rnd()*(R.bounds.z1-R.bounds.z0);
+      if(!R.free(x,z,.7)||Math.hypot(x-M.spawn.x,z-M.spawn.z)<5||Math.hypot(x-M.desk.x,z-M.desk.z)<3||Math.hypot(x-M.lift.x,z-M.lift.z)<3) continue; folk(R.scene,who[k][0],{x,z,yaw:rnd()*6.28},who[k][1],R.folk); k++; } };
+  fillRoom(R);
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(HOTELS[H.cur].door),1.8);
+  R.spot(M.desk,'Talk to the receptionist',hotelMenu,1.8);
+  R.spot(M.lift,()=>STAY&&STAY.h===H.cur?`Take the lift to floor ${HTIERS[STAY.t].f}`:'Take the lift',()=>{ if(!(STAY&&STAY.h===H.cur)){ toast('"You need a key card for the lift. Book a room at reception."',3); return; } goFloor(HTIERS[STAY.t].f); },1.8);
+  R.spot(M.bar_door,'Go to the lounge bar',enterLounge,1.8);
+  setSign(R.signs.sign_reception,'RECEPTION','#2a1d14','#e9c46a');
+  setSign(R.signs.sign_bar,'LOUNGE BAR','#2a1d14','#e9c46a');
+  setSign(R.signs.sign_prices,'ROOMS & SUITES · PER NIGHT\n'+HTIERS.map(t=>`${t.name}  ${naira(t.price)}`).join('\n'),'#1d1712','#f3e3c3'); }
+async function goFloor(f,door){ if(busy) return; const R=await intGet('int_hotel_corridor','Going up…'); if(!R) return; H.floor=f; setupCorridor(R);
+  for(let n=1;n<=8;n++) setSign(R.signs['plate_'+n],n<=doorsOn(f)?String(roomNo(f,n)):'STAFF','#b08a3e','#1b140c');
+  setSign(R.signs.sign_floor,`FLOOR ${f}\n${HTIERS[f-1].name.toUpperCase()}S`,'#1d1712','#f3e3c3'); R.label=`${HOTELS[H.cur].name} · floor ${f}`;
+  goRoom(R,door?backOf(R.marks['door_'+door]):'spawn',door?null:`Floor ${f}.`+(STAY&&STAY.h===H.cur&&HTIERS[STAY.t].f===f?` Your room is ${roomNo(f,STAY.n)}.`:'')); }
+function setupCorridor(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
+  R.fill=R=>{ const d=M.door_6||M.door_2; if(d){ const q=R.nearFree(d.x-Math.sin(d.yaw)*1.2,d.z-Math.cos(d.yaw)*1.2); folk(R.scene,'mama',{...q,yaw:d.yaw},['idle_2','idle_1'],R.folk); } };   // housekeeping by a door
+  fillRoom(R);
+  R.spot(M.lift,'Take the lift down to the lobby',()=>enterLobbyFrom('lift'),1.8);
+  for(let n=1;n<=8;n++){ const m=M['door_'+n]; if(!m) continue;
+    R.spot(m,()=>{ const f=H.floor; if(n>doorsOn(f)) return 'Staff only'; const mine=STAY&&STAY.h===H.cur&&HTIERS[STAY.t].f===f&&STAY.n===n; return mine?`Open Room ${roomNo(f,n)} (your room)`:`Room ${roomNo(f,n)}`; },
+      ()=>{ const f=H.floor; if(n>doorsOn(f)){ toast('Staff only. Locked.'); return; } const mine=STAY&&STAY.h===H.cur&&HTIERS[STAY.t].f===f&&STAY.n===n;
+        if(mine) openHotelRoom(); else toast(mpick(['Locked. Someone dey inside.','"Do not disturb" dey the door.','Locked. Book this room at reception.']),2.4); },1.1); } }
+async function enterLobbyFrom(at){ const R=await intGet('int_hotel_lobby'); if(!R) return; setupLobby(R); goRoom(R,backOf(R.marks[at])); }
+async function openHotelRoom(){ if(busy||!STAY) return; const t=HTIERS[STAY.t], R=await intGet(t.m,'Opening the door…'); if(!R) return; setupHotelRoom(R,STAY.t);
+  R.label=`${HOTELS[H.cur].name} · Room ${roomNo(t.f,STAY.n)}`; goRoom(R,'spawn',mpick([`Room ${roomNo(t.f,STAY.n)}. Enjoy your stay!`,`Room ${roomNo(t.f,STAY.n)}. Na correct room be this!`])); }
+function setupHotelRoom(R,ti){ if(R.ready) return; R.ready=true; const M=R.marks, t=HTIERS[ti];
+  R.spot(M.exit,'Go out to the corridor',()=>goFloor(t.f,STAY?STAY.n:1),1.4);
+  R.spot(M.bed,'Sleep',()=>{ fadeSwap(()=>{ FIGHT.hp=100; }); toast(mpick(['You sleep well well. Your body don strong again.','Sweet sleep in a soft bed. Health full.']),3.2); },1.4);
+  if(M.tv) R.spot(M.tv,'Watch TV',()=>toast(mpick(['Super Eagles highlights dey show. Goal!','Nollywood film: the mother-in-law don enter.','Lagos traffic report: Third Mainland Bridge still dey close.']),3),1.2);
+  if(M.tv_bedroom) R.spot(M.tv_bedroom,'Watch TV',()=>toast('Late night news. Rain go fall tomorrow.',3),1.2);
+  if(M.bar) R.spot(M.bar,'Pour yourself a drink',()=>toast('Chilled Chapman in a crystal glass. Big boy life!',3),1.3);
+  if(M.piano) R.spot(M.piano,'Play the piano',()=>toast('You play small tune. E sweet!',2.5),1.3); }
+async function enterLounge(){ if(busy) return; if(!HOTEL.ready){ toast('Opening the lounge…',4); busy=true; try{ await loadHotel(); }catch(e){} busy=false; if(!HOTEL.ready){ toast('The lounge is closed for now.'); return; } }
+  addGuests(); if(!HOTEL.lobbyLink){ HOTEL.lobbyLink=true; HOTEL.spots=[{x:HOTEL.exit.x,z:HOTEL.exit.z,r:1.8,label:'Back to the hotel lobby',act:()=>enterLobbyFrom('bar_door')}]; HOTEL.exit={x:1e9,z:1e9}; }
+  HOTEL.label=HOTELS[H.cur].name+' · lounge bar'; goRoom(HOTEL,{x:HOTEL.spawn.x,z:HOTEL.spawn.z,yaw:Math.PI},'The lounge is open. Music dey play.'); }
+
+/* ---- night clubs: gate fee at the door, the bar, the DJ and the dance floor */
+const CLUB={fee:2000,paid:-1,cur:0,danceI:0};
+async function enterClub(c){ if(busy) return; if(CLUB.paid!==c.i){ if(CASH.n<CLUB.fee){ toast(`Bouncer: "Gate fee na ${naira(CLUB.fee)}. No money, no entry!"`,3); return; } }
+  const R=await intGet('int_club','Opening the club…'); if(!R) return; if(CLUB.paid!==c.i){ addCash(-CLUB.fee); cashHUD(); CLUB.paid=c.i; } CLUB.cur=c; setupClub(R); R.label=c.name; setSign(R.signs.sign_name,c.name.toUpperCase(),'#0c0a12','#ff4fd8');
+  goRoom(R,'spawn',mpick([`${c.name}! The DJ dey on fire tonight.`,`Welcome to ${c.name}. Gbedu dey play!`])); }
+function setupClub(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x07060a); R.scene.environmentIntensity=.15;
+  for(const o of R.scene.children) if(o.isHemisphereLight) o.intensity=.35; else if(o.isDirectionalLight) o.intensity=.12;
+  R.fill=R=>{ const D=['dance_salsa','dance_macarena','dance_1'], who=['lady_red','areaboy','lady_black','p_tunde','girl','p_amaka','baba','p_ada'];
+    for(let i=1;i<=8;i++){ const m=M['dance_'+i]; if(m) folk(R.scene,who[i-1],{...m,yaw:Math.random()*6.28},[D[i%3],D[(i+1)%3]],R.folk); }
+    folk(R.scene,'areaboy',M.bartender,['idle_1','talk'],R.folk); folk(R.scene,'p_tunde',M.dj,['talk','idle_1'],R.folk);
+    for(let i=1;i<=6;i+=2){ const m=M['seat_'+i]; if(m) folk(R.scene,i===3?'lady_black':'suit_lady',m,['f_talk','idle_suit','text'],R.folk); } };
+  fillRoom(R);
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(CLUB.cur.door),1.8);
+  R.spot(M.bar,'Buy a drink',()=>openMenu('THE BAR','Cold drinks',[['Chapman',1500],['Chilled beer',1200],['Palm wine',800],['Zobo',500],['Bottle of champagne',35000]].map(([n,p])=>({name:n,sub:n==='Bottle of champagne'?'For the whole table. Big man!':'Cold one',price:p,
+    act:()=>{ closeMenu(); toast(n==='Bottle of champagne'?'"Oya, pop am!" Everybody dey hail you!':mpick([`Cold ${n}. E enter body well.`,`${n} don land. Enjoy!`]),3); }}))),1.6);
+  if(M.dj) R.spot(M.dj,'Request a song',()=>toast(mpick(['DJ: "Your song dey come next!"','DJ: "Make I play Afrobeats? E don set!"','DJ: "Shout out to the big boss for the house!"']),3),2.2);
+  const dc=['dance_1','dance_2','dance_3','dance_4'].map(k=>M[k]).filter(Boolean); if(dc.length){ const x=dc.reduce((a,m)=>a+m.x,0)/dc.length, z=dc.reduce((a,m)=>a+m.z,0)/dc.length; R.spot({x,z},'Dance',clubDance,3.2); }
+  const hues=R.lights.map((L,i)=>i/R.lights.length); let T=0;
+  R.tick=dt=>{ T+=dt; const beat=.55+.45*Math.max(0,Math.cos(T*Math.PI*2*2.05)); R.lights.forEach((L,i)=>{ hues[i]=(hues[i]+dt*.05)%1; L.color.setHSL(hues[i],.85,.55); L.intensity=L.userData.base*(.5+beat*.9); }); }; }
+function clubDance(){ if(!hero) return; let C={}; try{ C=homeClips(); }catch(e){} if(!C.dance||!C.dance.length){ toast('Shake body!'); return; } const clip=C.dance[CLUB.danceI++%C.dance.length], key='club_dance_'+(CLUB.danceI%C.dance.length);
+  hero.act[key]=hero.act[key]||hero.mixer.clipAction(clip); heroDo(key,{lock:true,to:Math.min(1,14/clip.duration)}); toast(mpick(['You don enter the dance floor. Gbe body e!','Everybody dey look you. You sabi dance!']),2.5); }
+
+/* ---- the police station: the charge room counter, offices and two cells facing each other across the corridor */
+async function enterPolice(){ if(busy) return; const R=await intGet('int_police','Opening the station…'); if(!R) return; setupPolice(R); R.label='Mushin police station';
+  goRoom(R,'spawn',starCount()>0?'Police station. You get wahala o: they dey look for you!':'Police station. Charge room is ahead.'); }
+function setupPolice(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
+  R.fill=R=>{ folk(R.scene,'police_m',M.officer,['idle_1','phone'],R.folk); const cast=['areaboy','baba','areaboy','schoolboy','areaboy','baba'];
+    ['a1','a2','a3','b1','b2','b3'].forEach((k,i)=>{ const m=M['inmate_'+k]; if(!m||(k==='a1'&&JAIL.left>0)) return; const pose=m.pose; folk(R.scene,cast[i],{...m,y:0},pose==='stand'?['argue','talk','idle_1']:pose==='lie'?['idle_baba','idle_2']:['idle_2','idle_1','talk'],R.folk); }); };
+  fillRoom(R);
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(STATION.front),1.8);
+  R.spot(M.counter,()=>starCount()>0?'Turn yourself in':'Talk to the officer',()=>{ if(starCount()>0){ toast('"Na you we dey find! Enter cell."',3); FIGHT.heat=0; enterJail(); return; }
+    toast(mpick(['Officer: "Wetin you wan report? Write your statement."','Officer: "Bail is free. Na our own you go settle."','Officer: "Move from my counter if you no get case."']),3.2); },1.6);
+  setSign(R.signs.sign_counter,'CHARGE ROOM','#13306b','#ffffff'); }
+// the cell when you are caught: the left cell of the station, with the other cell across the corridor
+function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x1:Math.max(a.x0,a.x1),z0:Math.min(-a.y0,-a.y1),z1:Math.max(-a.y0,-a.y1)};
+  // the cell bounds are in Blender numbers (x, y): turn them into game x, z
+  return {scene:R.scene,marks:M,free:R.free,label:'Cell · Mushin police station',camDist:2.6,exit:{x:1e9,z:1e9},cols:[],spots:[],cam:R.cam,camHit:R.camHit,nearFree:R.nearFree,
+    bounds:{x0:b.x0+.35,x1:b.x1-.35,z0:b.z0+.35,z1:b.z1-.35},out:()=>STATION.front,
+    move(nx,nz){ nx=clamp(nx,b.x0+.35,b.x1-.35); nz=clamp(nz,b.z0+.35,b.z1-.35); R.move(nx,nz); },
+    update(dt){ R.update(dt); jailTick(dt); } }; }
+
+/* ---- the car stand: tokunbo cars on the lot outside, brand new ones in the showroom. Cars you buy are yours: they
+   wait for you near your house every time you come back. */
+function buyLotCar(v){ const s=v.forSale; if(!s) return; if(CASH.n<s.price){ toast(`Salesman: "This one na ${naira(s.price)}. Go hustle come back!"`,3); return; }
+  addCash(-s.price); cashHUD(); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
+  toast(`${s.name} na your own now! Press E to drive. Congrats!`,3.5); }
+async function enterShowroom(){ if(busy) return; const R=await intGet('int_showroom','Opening the showroom…'); if(!R) return; setupShowroom(R); R.label='Oluwaseun Motors showroom'; goRoom(R,'spawn','Welcome to Oluwaseun Motors. Brand new cars!'); }
+function setupShowroom(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
+  R.fill=R=>{ folk(R.scene,'suit_lady',M.salesman,['idle_suit','f_talk'],R.folk); };
+  fillRoom(R);
+  SHOW_CARS.forEach((s,i)=>{ const m=M['car_'+(i+1)]; if(!m) return; const c=makeCar(s.type,s.color,true); c.g.position.set(m.x,m.y,m.z); c.g.rotation.set(0,carYaw(m.yaw),0); R.scene.add(c.g);
+    const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(`${s.name.replace(' (brand new)','')} · ${naira(s.price)}`,'#0f3d2a','#ffd54a',1400,170)})); tag.scale.set(3.6,.44,1); tag.position.set(m.x,2.6,m.z); R.scene.add(tag);
+    R.spot(m,`Buy the ${s.name.replace(' (brand new)','')} · ${naira(s.price)}`,()=>buyShowCar(s),3); });
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(VENUES.carstand.door),1.8);
+  R.spot(M.desk,'Talk to the sales lady',()=>toast(mpick(['"All our cars get papers and full warranty."','"Tokunbo dey outside, brand new dey inside. Cash or transfer."','"We fit register the plate for you today."']),3),1.6);
+  setSign(R.signs.sign_name,'OLUWASEUN MOTORS','#0f3d2a','#ffd54a'); }
+function buyShowCar(s){ if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)}. Come back when you ready."`,3); return; }
+  addCash(-s.price); cashHUD(); OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned(); const v=spawnOwned(OWNED[OWNED.length-1],VENUES.carstand.door);
+  toast(`Congrats! Your ${s.name.replace(' (brand new)','')} dey wait for you outside${v?'':' your house'}.`,4); }
+function spawnOwned(o,near){ const k=kerbSpot(near.x,near.z,2.2)||{x:near.x+3,z:near.z,h:0}; const v=newVehicle(o.type,o.color,true); Object.assign(v,{x:k.x,z:k.z,h:k.h||0,y:0,keep:1,mine:true,parked:true}); return v; }
+
+/* ---- out in the street: who stands at the doors, footballers and fans at the stadium and the field */
+const WFOLK={groups:[]};
+function worldGroup(x,z,make){ WFOLK.groups.push({x,z,make,list:null,on:false}); }
+function updateWorldFolk(dt){ if(!PEOPLE.n) return; for(const G of WFOLK.groups){ const d=Math.hypot(G.x-player.x,G.z-player.z);
+    if(!G.list&&d<230){ G.list=[]; G.make(G); } if(!G.list) continue; const on=d<260; if(on!==G.on){ G.on=on; for(const f of G.list) f.root.visible=on; } if(!on) continue;
+    if(G.tick) G.tick(dt); for(const f of G.list) if(Math.hypot(f.root.position.x-camera.position.x,f.root.position.z-camera.position.z)<120) f.mixer.update(dt); } }
+for(const c of VENUES.clubs){ const r=c.r; worldGroup(c.x,c.z,G=>{ folk(scene,'areaboy',markAt(r,'bouncer_1'),['fight_idle','idle_1'],G.list); folk(scene,'areaboy',markAt(r,'bouncer_2'),['idle_1','phone'],G.list); }); }
+if(STATION.r&&STATION.r.M.marks) worldGroup(STATION.x,STATION.z,G=>folk(scene,'police_m',markAt(STATION.r,'guard'),['idle_1','phone'],G.list));
+if(VENUES.carstand) worldGroup(VENUES.carstand.x,VENUES.carstand.z,G=>folk(scene,'baba',markAt(VENUES.carstand.r,'salesman'),['talk','idle_baba'],G.list));
+// football: players walk after the ball, the ball goes from foot to foot; fans wave in the stands
+for(const r of [STADIUM,PITCH]){ if(!r) continue; worldGroup(r.x,r.z,G=>{ const pm=markAt(r,'pitch'), c=Math.cos(r.ry), s=Math.sin(r.ry), hw=Math.abs(pm.x1-pm.x0)/2*.9, hd=Math.abs(pm.y1-pm.y0)/2*.9;
+    const toW=(u,v)=>({x:pm.x+u*c+v*s,z:pm.z-u*s+v*c}), kit=['schoolboy','areaboy','p_tunde','areaboy','schoolboy','areaboy','p_tunde','schoolboy','areaboy','areaboy'];
+    const pl=marksOf(r,/^player_/).map((m,i)=>{ const f=folk(scene,kit[i%kit.length],m,['walk'],G.list); if(f){ f.u=(m.x-pm.x)*c-(m.z-pm.z)*s; f.v=(m.x-pm.x)*s+(m.z-pm.z)*c; f.home={u:f.u,v:f.v}; } return f; }).filter(Boolean);
+    for(const m of marksOf(r,/^fan_/)){ const f=folk(scene,mpick(['areaboy','mama','baba','lady_red','schoolboy','p_ada']),{...m,y:0},['hail','idle_1','talk','f_idle'],G.list); if(f) f.root.position.y=m.y; }
+    const ballM=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8),new THREE.MeshStandardMaterial({color:0xf5f5f5,roughness:.6})); scene.add(ballM);
+    const B={u:0,v:0,tu:0,tv:0,to:pl[0]||null}; G.list.push({root:ballM,mixer:{update(){}}});
+    G.tick=dt=>{ if(!pl.length) return; if(B.to){ const du=B.to.u-B.u, dv=B.to.v-B.v, d=Math.hypot(du,dv); if(d<.6){ B.to=pl[Math.floor(Math.random()*pl.length)]; } else { const st=Math.min(d,9*dt); B.u+=du/d*st; B.v+=dv/d*st; } }
+      for(const f of pl){ const near=f===B.to, tu=near?B.u:f.home.u+(B.u-f.home.u)*.35, tv=near?B.v:f.home.v+(B.v-f.home.v)*.35, du=tu-f.u, dv=tv-f.v, d=Math.hypot(du,dv);
+        if(d>.8){ const st=Math.min(d,(near?2.2:1.4)*dt); f.u=clamp(f.u+du/d*st,-hw,hw); f.v=clamp(f.v+dv/d*st,-hd,hd); }
+        const w=toW(f.u,f.v); f.root.position.set(w.x,0,w.z); f.root.rotation.y=Math.atan2(du*c+dv*s,-du*s+dv*c); }
+      const w=toW(B.u,B.v); ballM.position.set(w.x,.12,w.z); }; }); }
+// the doors you walk into from the street
+for(const h of HOTELS) if(h.i) DOORS.push({x:h.door.x,z:h.door.z,r:2.2,label:'Enter '+h.name,act:()=>enterLobby(h.i)});
+for(const c of VENUES.clubs){ DOORS.push({x:c.door.x,z:c.door.z,r:2.2,label:()=>CLUB.paid===c.i?'Enter '+c.name:`Enter ${c.name} (gate fee ${naira(CLUB.fee)})`,act:()=>enterClub(c)});
+  PLACES.push({name:c.name,sub:'Night club · DJ, bar and dance floor',kind:'club',x:c.x,z:c.z}); }
+if(STATION.r&&STATION.r.M.marks) DOORS.push({x:STATION.front.x,z:STATION.front.z,r:2.2,label:'Enter the police station',act:enterPolice});
+if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x,z:V.door.z,r:2.2,label:'Enter the car showroom',act:enterShowroom});
+  PLACES.push({name:'Oluwaseun Motors',sub:'Car stand · tokunbo and brand new cars',kind:'cars',x:V.x,z:V.z}); }
+const doorNear=()=>{ if(mode!=='walk') return null; let best=null, bd=1e9; for(const d of DOORS){ const e=Math.hypot(player.x-d.x,player.z-d.z); if(e<d.r&&e<bd){ bd=e; best=d; } } return best; };
+// the police station opens at once when you are caught
+setTimeout(()=>{ if(STATION.r&&STATION.r.M.marks) intLoad('int_police'); },25000);
+
 /* ================= the cell at Mushin police station: three minutes, with whoever else was picked up ================= */
 const JAIL={room:null,left:0,taken:[],people:[],talkT:0};
 JAIL.add=c=>{ if(!c) return; JAIL.taken.unshift(c); if(JAIL.taken.length>5) JAIL.taken.length=5; };
@@ -4947,10 +5295,11 @@ function buildJail(){ const S=new THREE.Scene(); S.background=new THREE.Color(0x
   const bulbM=new THREE.Mesh(new THREE.SphereGeometry(.06,10,8),new THREE.MeshBasicMaterial({color:0xfff0c8})); bulbM.position.set(0,2.8,0); S.add(bulbM);
   const room={scene:S,bounds:{x0:-W/2+.35,x1:W/2-.35,z0:-D/2+.85,z1:D/2-.3},cam:{x0:-W/2+.25,x1:W/2-.25,z0:-D/2+.25,z1:D/2+2.3,y0:.6,y1:H-.25},cols:[],
     label:'Cell · Mushin police station',camDist:2.8,exit:{x:1e9,z:1e9},out:()=>({x:STATION.front.x,z:STATION.front.z,ry:STATION.front.ry}),
-    update(dt){ for(const q of JAIL.people) q.mixer.update(dt); JAIL.left-=dt; if((JAIL.saveT-=dt)<=0){ JAIL.saveT=1; jailSave(); } const s2=Math.max(0,Math.ceil(JAIL.left)); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`;
-      if((JAIL.talkT-=dt)<=0&&JAIL.people.length){ JAIL.talkT=mrr(16,26); toast(mpick(['"Wetin you do wey dem carry you?"','"Na wrong place dem carry me o!"','"Officer, I no do anything!"','"Who get credit? Make I call my mama."','"This cell hot like oven."','"Dem go release us soon. Calm down."']),3); }
-      if(JAIL.left<=0&&!busy) leaveJail(); } };
+    update(dt){ for(const q of JAIL.people) q.mixer.update(dt); jailTick(dt); } };
   return room; }
+function jailTick(dt){ { JAIL.left-=dt; if((JAIL.saveT-=dt)<=0){ JAIL.saveT=1; jailSave(); } const s2=Math.max(0,Math.ceil(JAIL.left)); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`;
+      if((JAIL.talkT-=dt)<=0&&(JAIL.people.length||ROOM===JAIL.cell)){ JAIL.talkT=mrr(16,26); toast(mpick(['"Wetin you do wey dem carry you?"','"Na wrong place dem carry me o!"','"Officer, I no do anything!"','"Who get credit? Make I call my mama."','"This cell hot like oven."','"Dem go release us soon. Calm down."']),3); }
+      if(JAIL.left<=0&&!busy) leaveJail(); } }
 // the people inside: whoever was picked up with you, then a few others (men with men, women with women)
 function jailInmates(){ const R=JAIL.room, S=R.scene; for(const q of JAIL.people) S.remove(q.root); JAIL.people.length=0;
   const pool=isF()?['mama','lady_red','lady_black','hawker','suit_lady']:['areaboy','baba','areaboy','schoolboy']; const who=[];
@@ -4968,8 +5317,11 @@ const JAIL_TIMES=[20,40,60,70,120,180];
 const jailWords=t=>{ const m=Math.floor(t/60), s=Math.round(t%60); return [m?`${m} minute${m>1?'s':''}`:'',s?`${s} seconds`:''].filter(Boolean).join(' '); };
 function jailSave(){ try{ if(JAIL.left>0) localStorage.setItem('naija-jail',String(Math.ceil(JAIL.left))); else localStorage.removeItem('naija-jail'); }catch(e){} }
 function jailSaved(){ let v=0; try{ v=+localStorage.getItem('naija-jail')||0; }catch(e){} return v>0&&v<=600?v:0; }
-function enterJail(resume=0){ if(!JAIL.room) JAIL.room=buildJail(); jailInmates(); const R=JAIL.room; ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
-  Object.assign(player,{x:0,z:1.6,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.24,dist:2.8}); setScene(R.scene);
+function enterJail(resume=0){ const PR=INTS.int_police&&INTS.int_police.room; let R;
+  if(PR&&PR.marks.cell_a&&PR.marks.cell_a_in){ setupPolice(PR); if(!JAIL.cell) JAIL.cell=policeCell(PR); R=JAIL.cell; const m=PR.marks.cell_a_in, q=PR.nearFree(m.x,m.z);   // the real station: your cell faces the other one
+    ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root); Object.assign(player,{x:q.x,z:q.z,y:0,yaw:m.yaw,speed:0}); Object.assign(camState,{yaw:m.yaw,pitch:.22,dist:2.6}); setScene(R.scene); }
+  else { if(!JAIL.room) JAIL.room=buildJail(); jailInmates(); R=JAIL.room; ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
+  Object.assign(player,{x:0,z:1.6,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.24,dist:2.8}); setScene(R.scene); }
   let left=resume, fresh=false; try{ fresh=localStorage.getItem('naija-jail-new')==='1'; localStorage.removeItem('naija-jail-new'); }catch(e){}
   if(resume&&fresh){ try{ localStorage.setItem('naija-arrests',String((+localStorage.getItem('naija-arrests')||0)+1)); }catch(e){} }   // caught, then reloaded before the cell: it still counts
   if(!left){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; localStorage.setItem('naija-arrests',String(n)); }catch(e){} left=JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]; JAIL.n=n; }
@@ -4994,7 +5346,7 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
+  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
@@ -5026,6 +5378,13 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     requestAnimationFrame(tick); })(performance.now());
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
+    venues:()=>({hotels:HOTELS.map(h=>({n:h.name,...h.door})),clubs:VENUES.clubs.map(c=>({n:c.name,...c.door})),cars:VENUES.carstand&&VENUES.carstand.door,police:STATION.front,stadium:STADIUM&&{x:STADIUM.x,z:STADIUM.z,ry:STADIUM.ry},pitch:PITCH&&{x:PITCH.x,z:PITCH.z,ry:PITCH.ry},fly:FLYOVERS.map(f=>({x:f.cx,z:f.cz,camps:f.camps.length}))}),
+    act(){ action(); return {mode,label:ROOM&&ROOM.label,prompt:$('#promptTxt').textContent,busy}; },
+    here:()=>({mode,label:mode==='interior'?ROOM.label:null,x:player.x,z:player.z,yaw:player.yaw,prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,cash:CASH.n,stay:STAY,menu:MENU.open}),
+    spots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>({l:spotLabel(s),x:s.x,z:s.z})):[],
+    at(x,z,yaw){ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } return true; },
+    menuPick(i){ const b=[...document.querySelectorAll('#menuBody .sh-buy')][i]; if(b) b.click(); return !!b; },
+    cash(n){ CASH.n=n; return n; },
     setPR(v){ PR=v; applyPR(); }, lockPR(v){ Q.prMin=Q.pr=v; PR=v; applyPR(); },
     shadows(b){ renderer.shadowMap.enabled=b; sun.castShadow=b; scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); },
     post(b){ usePost=b; }, bloom(b){ if(bloom) bloom.enabled=b; },

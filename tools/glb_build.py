@@ -2,6 +2,11 @@
 
     python3 tools/glb_build.py                      # every model in BUILDS
     python3 tools/glb_build.py dup_modern zinc_house  # just these (function names)
+    python3 tools/glb_build.py -m blender_venues club   # models from another script in tools/ (same Builder)
+
+A script can list BUILDS (made twice: detail and a light _lod1) and INTERIORS (inside views, made once).
+Spots a model marks with B.mark(...) are saved in the node's extras as {"marks": {name: {x, y, z, ...}}} in game
+coordinates (Y up, front toward +Z).
 
 blender_houses.py only uses a small part of Blender (bmesh faces with a colour per corner), so this file stands in
 for that part, collects the faces and writes the same kind of .glb the Blender exporter makes: one mesh, one
@@ -78,7 +83,7 @@ def lin(c):
     return c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4
 
 
-def write_glb(name, faces):
+def write_glb(name, faces, marks=None):
     """Triangulate (fan), flat normals, convert Z-up to Y-up, weld identical corners, write a .glb."""
     verts, index, idx = [], {}, []
     for pts, cols in faces:
@@ -121,7 +126,7 @@ def write_glb(name, faces):
     mx = [max(v[0][i] for v in verts) for i in range(3)]
     gl = {
         'asset': {'version': '2.0', 'generator': 'naija-streets glb_build.py'},
-        'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [{'mesh': 0, 'name': name}],
+        'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [dict({'mesh': 0, 'name': name}, **({'extras': {'marks': {k: dict(v, x=round(v['x'], 3), y=round(v['z'], 3), z=round(-v['y'], 3)) for k, v in marks.items()}}} if marks else {}))],
         'materials': [{'name': 'NS_House', 'doubleSided': True, 'pbrMetallicRoughness': {'baseColorFactor': [1, 1, 1, 1], 'metallicFactor': 0, 'roughnessFactor': .85}}],
         'meshes': [{'name': name, 'primitives': [{'attributes': {'POSITION': 0, 'NORMAL': 1, 'COLOR_0': 2}, 'indices': 3, 'material': 0}]}],
         'buffers': [{'byteLength': len(binb)}],
@@ -142,17 +147,36 @@ def write_glb(name, faces):
     return path, nv, len(idx) // 3, len(out)
 
 
-def main(names):
-    spec = importlib.util.spec_from_file_location('blender_houses', os.path.join(ROOT, 'tools', 'blender_houses.py'))
+def load(mod):
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    spec = importlib.util.spec_from_file_location(mod, os.path.join(ROOT, 'tools', mod + '.py'))
     m = importlib.util.module_from_spec(spec)
+    sys.modules[mod] = m
     spec.loader.exec_module(m)
     m.make_material = lambda: types.SimpleNamespace(name='NS_House')
-    builds = [f for f in m.BUILDS if not names or f.__name__ in names]
-    for fn in builds:
-        for detail in (True, False):
+    if 'blender_houses' in sys.modules:
+        sys.modules['blender_houses'].make_material = m.make_material
+    return m
+
+
+def main(args):
+    mod = 'blender_houses'
+    if args[:1] == ['-m']:
+        mod, args = args[1], args[2:]
+    m = load(mod)
+    jobs = [(f, (True, False)) for f in getattr(m, 'BUILDS', ())] + [(f, (True,)) for f in getattr(m, 'INTERIORS', ())]
+    for fn, levels in jobs:
+        if args and fn.__name__ not in args:
+            continue
+        for detail in levels:
             ob = fn(detail)
-            path, nv, nt, size = write_glb(ob.name, ob.data.faces)
-            print(f'{ob.name:18s} {nv:6d} verts {nt:6d} tris {size // 1024:5d} KB')
+            marks = getattr(ob, 'marks', None)
+            if marks is None and hasattr(ob, 'get'):
+                marks = ob.get('marks')
+            if isinstance(marks, str):
+                marks = json.loads(marks)
+            path, nv, nt, size = write_glb(ob.name, ob.data.faces, marks)
+            print(f'{ob.name:18s} {nv:6d} verts {nt:6d} tris {size // 1024:5d} KB' + (f'  {len(marks)} marks' if marks else ''))
 
 
 if __name__ == '__main__':
