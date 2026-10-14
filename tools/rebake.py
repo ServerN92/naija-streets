@@ -104,6 +104,13 @@ def pack(P, F, ch, A, pad):
 
 def bake(Pl, Fl, Tl, Vh, Th, FVh, FTh, tex, A):
     img = np.asarray(Image.open(tex).convert('RGB'), dtype=np.float32); H, W, _ = img.shape
+    if os.environ.get('DILATE'):   # paint the empty gutters around each UV island with the island's own edge colour (no white seams)
+        from PIL import ImageDraw
+        from scipy import ndimage
+        mk = Image.new('L', (W, H), 0); dr = ImageDraw.Draw(mk); uvt = Th[FTh] % 1
+        for t in uvt: dr.polygon([(t[0, 0] * (W - 1), (1 - t[0, 1]) * (H - 1)), (t[1, 0] * (W - 1), (1 - t[1, 1]) * (H - 1)), (t[2, 0] * (W - 1), (1 - t[2, 1]) * (H - 1))], fill=255)
+        used = ndimage.binary_erosion(np.asarray(mk) > 0, iterations=1)
+        _, (iy, ix) = ndimage.distance_transform_edt(~used, return_indices=True); img = img[iy, ix]
     cen = (Vh[FVh[:, 0]] + Vh[FVh[:, 1]] + Vh[FVh[:, 2]]) / 3; tree = cKDTree(cen)
     out = np.zeros((A, A, 3), np.float32); has = np.zeros((A, A), bool); pix = []; pts = []; fis = []
     for fi in range(len(Fl)):
@@ -119,7 +126,13 @@ def bake(Pl, Fl, Tl, Vh, Th, FVh, FTh, tex, A):
         L = np.stack([l1[ins], l2[ins], l3[ins]], 1); L = np.clip(L, 0, None); L /= L.sum(1, keepdims=True)
         pix.append(np.stack([gx.ravel()[ins], gy.ravel()[ins]], 1)); pts.append(L @ p); fis.append(np.full(len(L), fi))
     pix = np.concatenate(pix); pts = np.concatenate(pts); fis = np.concatenate(fis)
-    _, ti = tree.query(pts, k=1, workers=-1)
+    if os.environ.get('NORMALS'):   # thin shells (car bodies): of the nearest few, take the one facing the same way, not the inside of the panel
+        dk, tk = tree.query(pts, k=8, workers=-1)
+        fl = np.cross(Pl[Fl[:, 1]] - Pl[Fl[:, 0]], Pl[Fl[:, 2]] - Pl[Fl[:, 0]]); fl /= np.maximum(1e-12, np.linalg.norm(fl, axis=1))[:, None]
+        fh = np.cross(Vh[FVh[:, 1]] - Vh[FVh[:, 0]], Vh[FVh[:, 2]] - Vh[FVh[:, 0]]); fh /= np.maximum(1e-12, np.linalg.norm(fh, axis=1))[:, None]
+        dot = np.einsum('nj,nkj->nk', fl[fis], fh[tk]); score = dk * (1 + 3 * (1 - np.clip(dot, -1, 1))) + (dot < -.2) * dk.max()
+        ti = tk[np.arange(len(tk)), np.argmin(score, 1)]
+    else: _, ti = tree.query(pts, k=1, workers=-1)
     a = Vh[FVh[ti, 0]]; b = Vh[FVh[ti, 1]]; c = Vh[FVh[ti, 2]]; v0 = b - a; v1 = c - a; v2 = pts - a
     d00 = (v0 * v0).sum(1); d01 = (v0 * v1).sum(1); d11 = (v1 * v1).sum(1); d20 = (v2 * v0).sum(1); d21 = (v2 * v1).sum(1); den = np.maximum(1e-20, d00 * d11 - d01 * d01)
     bv = (d11 * d20 - d01 * d21) / den; bw = (d00 * d21 - d01 * d20) / den; bu = 1 - bv - bw
