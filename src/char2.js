@@ -140,3 +140,51 @@ export function shapeBody(root, D, k = 1) {
     Q.needsUpdate = true; g.computeBoundingSphere(); });
   return true;
 }
+
+// a pose made from where the bones point, in the body's own space (+Z forward, +Y up, +X the body's left), so it fits
+// any Mixamo skeleton whatever its rest pose (T or A). keys: [{t, d:{Bone:[x,y,z], ...}}]; bones without a direction keep
+// the turn of their parent. Several keys make a looping move (the first key is repeated at the end).
+export function poseClip(D, name, keys, { loop = true, dur = null } = {}) {
+  const ks = loop && keys.length > 1 ? [...keys, { ...keys[0], t: dur || (keys[keys.length - 1].t + (keys[1].t - keys[0].t)) }] : keys;
+  const out = new Map(); for (const n of D.order) out.set(n, []);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), S = new THREE.Quaternion();
+  for (const k of ks) {
+    const acc = new Map(), W = new Map();
+    for (const n of D.order) {
+      const p = D.parent.get(n), Ap = p ? acc.get(p) : new THREE.Quaternion(); let A = Ap.clone(); const tg = k.d[n];
+      if (tg) { const c = childOf(D, n); if (c) { a.copy(D.wp.get(c)).sub(D.wp.get(n)).normalize().applyQuaternion(Ap); b.set(tg[0], tg[1], tg[2]).normalize(); S.setFromUnitVectors(a, b); A = S.clone().multiply(Ap); } }
+      acc.set(n, A); const w = A.clone().multiply(D.wq.get(n)); W.set(n, w);
+      const l = (p ? W.get(p) : D.base.get(n)).clone().invert().multiply(w); const arr = out.get(n);
+      if (arr.length >= 4) { const q0 = new THREE.Quaternion(arr[arr.length - 4], arr[arr.length - 3], arr[arr.length - 2], arr[arr.length - 1]); if (q0.dot(l) < 0) l.set(-l.x, -l.y, -l.z, -l.w); }
+      arr.push(l.x, l.y, l.z, l.w); } }
+  const times = Float32Array.from(ks.map(k => k.t)), tracks = [];
+  for (const n of D.order) tracks.push(new THREE.QuaternionKeyframeTrack(D.nodes.get(n).name + '.quaternion', times, Float32Array.from(out.get(n))));
+  return new THREE.AnimationClip(name, ks[ks.length - 1].t || 1, tracks);
+}
+// mirror a pose spec: left <-> right (x flips)
+export function mirrorDirs(d) { const o = {}; for (const k in d) { const v = d[k]; const n = k.startsWith('Left') ? 'Right' + k.slice(4) : k.startsWith('Right') ? 'Left' + k.slice(5) : k; o[n] = [-v[0], v[1], v[2]]; } return o; }
+
+// the house moves, until real ones arrive: where each bone points (+Z forward, +Y up, +X the body's left)
+const LEGS_SIT = { LeftUpLeg: [.14, -.06, 1], RightUpLeg: [-.14, -.06, 1], LeftLeg: [.02, -1, .12], RightLeg: [-.02, -1, .12], LeftFoot: [.05, -.45, 1], RightFoot: [-.05, -.45, 1] };
+const ARMS_LAP = { LeftArm: [.22, -.92, .3], LeftForeArm: [.02, -.42, 1], LeftHand: [0, -.35, 1], RightArm: [-.22, -.92, .3], RightForeArm: [-.02, -.42, 1], RightHand: [0, -.35, 1] };
+const UP = (f = 0, s = 0) => [s, 1, f];
+export const POSES = {
+  sit: [{ t: 0, d: { ...LEGS_SIT, ...ARMS_LAP, Spine: UP(-.18), Spine1: UP(-.12), Spine2: UP(-.08), Neck: UP(.12), Head: UP(.06) } },
+        { t: 2, d: { ...LEGS_SIT, ...ARMS_LAP, Spine: UP(-.2), Spine1: UP(-.14), Spine2: UP(-.06), Neck: UP(.14), Head: UP(.1) } }],
+  eat: [{ t: 0, d: { ...LEGS_SIT, Spine: UP(.08), Spine1: UP(.1), Spine2: UP(.1), Neck: UP(.25), Head: UP(.3), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.16, -.72, .66], RightForeArm: [.2, -.35, 1], RightHand: [.1, -.5, 1] } },
+        { t: .9, d: { ...LEGS_SIT, Spine: UP(.1), Spine1: UP(.12), Spine2: UP(.1), Neck: UP(.2), Head: UP(.15), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.12, -.62, .78], RightForeArm: [.45, .85, .3], RightHand: [.4, .5, -.2] } },
+        { t: 1.5, d: { ...LEGS_SIT, Spine: UP(.1), Spine1: UP(.12), Spine2: UP(.1), Neck: UP(.2), Head: UP(.15), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.12, -.62, .78], RightForeArm: [.45, .85, .3], RightHand: [.4, .5, -.2] } },
+        { t: 2.4, d: { ...LEGS_SIT, Spine: UP(.08), Spine1: UP(.1), Spine2: UP(.1), Neck: UP(.25), Head: UP(.3), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.16, -.72, .66], RightForeArm: [.2, -.35, 1], RightHand: [.1, -.5, 1] } }],
+  cook: [0, 1, 2, 3].map(i => { const a = i * Math.PI / 2; return { t: i * .3, d: { Spine: UP(.12), Spine1: UP(.1), Spine2: UP(.06), Neck: UP(.3), Head: UP(.35),
+          LeftArm: [.3, -.78, .55], LeftForeArm: [-.35, -.35, .85], LeftHand: [-.2, -.4, 1],
+          RightArm: [-.24, -.74, .62], RightForeArm: [-.05 + .18 * Math.cos(a), -.7 + .12 * Math.sin(a), .7], RightHand: [0, -.85, .5] } }; }),
+  sweep: [0, 1].map(i => { const s = i ? 1 : -1; return { t: i * .55, d: { Spine: UP(.3, .05 * s), Spine1: UP(.22), Spine2: UP(.12), Neck: UP(.2), Head: UP(.4),
+          LeftArm: [.05 + .2 * s, -.8, .45], LeftForeArm: [-.3 + .35 * s, -.55, .75], LeftHand: [.2 * s, -.7, .6],
+          RightArm: [-.15 + .2 * s, -.85, .3], RightForeArm: [-.15 + .35 * s, -.75, .55], RightHand: [.2 * s, -.8, .4] } }; }),
+  bath: [{ t: 0, d: { Head: UP(-.25), Neck: UP(-.1), LeftArm: [.55, .35, .45], LeftForeArm: [-.45, .7, .1], LeftHand: [-.6, .5, -.3], RightArm: [-.45, -.6, .55], RightForeArm: [.55, .35, .75], RightHand: [.6, .2, .3] } },
+         { t: .8, d: { Head: UP(-.25, .05), Neck: UP(-.1), LeftArm: [.45, -.6, .55], LeftForeArm: [-.55, .35, .75], LeftHand: [-.6, .2, .3], RightArm: [-.55, .35, .45], RightForeArm: [.45, .7, .1], RightHand: [.6, .5, -.3] } }],
+};
