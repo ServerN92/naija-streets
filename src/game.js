@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=4ed87630ae';
-import * as C2 from './char2.js?v=4ed87630ae';
-import { MapView } from './mapview.js?v=4ed87630ae';
+import * as CLOCK from './clock.js?v=1484a97c88';
+import * as C2 from './char2.js?v=1484a97c88';
+import { MapView } from './mapview.js?v=1484a97c88';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='4ed87630ae';
+const BUILD='1484a97c88';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -389,8 +389,8 @@ function meshOf(gltf){ let mesh=null; gltf.scene.updateMatrixWorld(true); gltf.s
    and gets a sun-faded warm cast, so the houses sit in the dusty street instead of shining. */
 function gradeHouse(geo){ const c=geo.attributes.color; if(!c) return;
   for(let i=0;i<c.count;i++){ let r=c.getX(i), g=c.getY(i), b=c.getZ(i); const l=.2126*r+.7152*g+.0722*b;
-    const hi=Math.min(1,Math.max(0,(l-.45)/.45)), k=.8*(1-.2*hi*hi*(3-2*hi));            // pull the brights down hardest
-    r=(r+(l-r)*.18)*k*1.0; g=(g+(l-g)*.18)*k*.955; b=(b+(l-b)*.18)*k*.88;                // less saturated, warmer
+    const hi=Math.min(1,Math.max(0,(l-.45)/.45)), k=.76*(1-.22*hi*hi*(3-2*hi));            // pull the brights down hardest
+    r=(r+(l-r)*.18)*k*1.0; g=(g+(l-g)*.18)*k*.94; b=(b+(l-b)*.18)*k*.84;                // less saturated, warmer
     c.setXYZ(i,r,g,b); } c.needsUpdate=true; }
 const modelJobs=Object.entries(MODEL_FILES).map(async([key,[file,front,size,lod]])=>{
   const get=f=>fetchBuf(murl(f)).then(b=>GLL.parseAsync(b,''));
@@ -840,7 +840,7 @@ const APT={door:{x:0,z:0},front:{x:0,z:0},ry:0};
 { const b=HOME; let f=[0,1];
   if(b){ f=FACE_DIR(b); const key=MODELS.storey?'storey':'bungalow';
     if(HOUSES){ const M=MODELS[key], fw=frontLen(b), dd=depthLen(b), s=clamp(Math.min(fw/M.W,dd/M.D),.7,1.2), ry=Math.atan2(f[0],f[1]);
-      new CullSet(modelLevels(M,Q.lod0*1.6,Q.draw+60),[{x:b.cx,y:0,z:b.cz,ry,sc:s}],{shadowDist:Q.shR,name:'home'}); addOB(b.cx,b.cz,M.W*s/2,M.D*s/2,-ry,M.H*s);
+      new CullSet(modelLevels(M,Q.lod0*1.6,Q.draw+60),[{x:b.cx,y:0,z:b.cz,ry,sc:s,col:new THREE.Color('#efe0c4')}],{shadowDist:Q.shR,name:'home'});   // your house: warm cream paint addOB(b.cx,b.cz,M.W*s/2,M.D*s/2,-ry,M.H*s);
       // the Blender storey house has its own front door, steps and balcony: the lit door sits on its real front wall
       const own=MODEL_FILES[key][0]==='ns_storey', k=own?M.sc0*s:1, hd=own?(6.75-M.cz0)*k:M.D*s/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; APT.own=own?k:0; }
     else { obBuilding(b,{type:'resi',h:6.8,zinc:true}); const hd=depthLen(b)/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; } }
