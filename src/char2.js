@@ -171,6 +171,10 @@ const UP = (f = 0, s = 0) => [s, 1, f];
 export const POSES = {
   sit: [{ t: 0, d: { ...LEGS_SIT, ...ARMS_LAP, Spine: UP(-.18), Spine1: UP(-.12), Spine2: UP(-.08), Neck: UP(.12), Head: UP(.06) } },
         { t: 2, d: { ...LEGS_SIT, ...ARMS_LAP, Spine: UP(-.2), Spine1: UP(-.14), Spine2: UP(-.06), Neck: UP(.14), Head: UP(.1) } }],
+  sofa: [{ t: 0, d: { ...LEGS_SIT, LeftForeArm: [.06, -.72, .7], RightForeArm: [-.06, -.72, .7], LeftArm: [.26, -.96, -.02], RightArm: [-.26, -.96, -.02], LeftHand: [.05, -.8, .6], RightHand: [-.05, -.8, .6],
+          Spine: UP(-.42), Spine1: UP(-.22), Spine2: UP(-.1), Neck: UP(.3), Head: UP(.28) } },
+        { t: 2.2, d: { ...LEGS_SIT, LeftForeArm: [.06, -.7, .72], RightForeArm: [-.06, -.72, .7], LeftArm: [.26, -.96, -.02], RightArm: [-.26, -.96, -.02], LeftHand: [.05, -.8, .6], RightHand: [-.05, -.8, .6],
+          Spine: UP(-.45), Spine1: UP(-.24), Spine2: UP(-.08), Neck: UP(.32), Head: UP(.3, .04) } }],
   eat: [{ t: 0, d: { ...LEGS_SIT, Spine: UP(.08), Spine1: UP(.1), Spine2: UP(.1), Neck: UP(.25), Head: UP(.3), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
           RightArm: [-.16, -.72, .66], RightForeArm: [.2, -.35, 1], RightHand: [.1, -.5, 1] } },
         { t: .9, d: { ...LEGS_SIT, Spine: UP(.1), Spine1: UP(.12), Spine2: UP(.1), Neck: UP(.2), Head: UP(.15), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
