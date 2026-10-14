@@ -6,18 +6,18 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=19eaf515b5';
-import * as C2 from './char2.js?v=19eaf515b5';
-import { MapView } from './mapview.js?v=19eaf515b5';
+import * as CLOCK from './clock.js?v=c97078c11d';
+import * as C2 from './char2.js?v=c97078c11d';
+import { MapView } from './mapview.js?v=c97078c11d';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='19eaf515b5';
+const BUILD='c97078c11d';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -447,6 +447,30 @@ const MAT={
   conc:new THREE.MeshStandardMaterial({map:T.conc,roughness:.85,color:0xe4e0d8}),
   base:new THREE.MeshStandardMaterial({color:0x3a3b3e,roughness:.95}),
 };
+/* Real ground pictures (tools/ground_tex.py): red laterite with gravel, stones and dry grass, and a tropical lawn,
+   each with a bump picture so stones catch the sun. They load in the background; the painted ground shows until they arrive.
+   The shader hides the repeat: a second, much bigger copy of the same picture is blended in by a slow blotchy mask,
+   and the whole ground is lightened and darkened in wide patches, so no two 16 m squares look alike. */
+const GTEX=(()=>{ const tl=new THREE.TextureLoader(), u=f=>{ const p=`assets/models/${f}`, k=AV[p]||MANIFEST[p]; return k?p+'?v='+k:p; };
+  const load=(f,srgb)=>tl.loadAsync(u(f)).then(t=>{ if(srgb) t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=maxAniso; return t; }).catch(()=>null);
+  return {ground:Promise.all([load('ground_laterite.jpg',true),load('ground_laterite_n.jpg',false)]), lawn:Promise.all([load('grass_lawn.jpg',true),load('grass_lawn_n.jpg',false)]), clouds:load('clouds.png',true)}; })();
+function antiTile(m,big=.19,mac=.045){ m.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
+    vec4 sampledDiffuseColor=texture2D(map,vMapUv);
+    vec2 uvB=mat2(.8,-.6,.6,.8)*vMapUv*${big.toFixed(3)}+vec2(.37,.11);
+    vec4 farC=texture2D(map,uvB);
+    float macro=texture2D(map,vMapUv*${mac.toFixed(3)}+vec2(.21,.63)).g;
+    float k=smoothstep(.3,.6,texture2D(map,vMapUv*${(mac*.6).toFixed(3)}).r);
+    sampledDiffuseColor=mix(sampledDiffuseColor,farC,k*.5);
+    sampledDiffuseColor.rgb*=.8+.5*smoothstep(.2,.7,macro);
+    diffuseColor*=sampledDiffuseColor;
+  #endif`); }; m.customProgramCacheKey=()=>'antitile'+big+mac; }
+GTEX.ground.then(([c,n])=>{ if(!c) return; for(const m of [MAT.ground]){ m.map=c; if(n){ m.normalMap=n; m.normalScale.set(.9,.9); } m.color.setHex(0xffffff); m.userData.c0=m.color.clone(); antiTile(m); m.needsUpdate=true; } });
+// dirt roads keep their ruts and grassy edges, and get the real earth's grain and bumps on top
+GTEX.ground.then(([c,n])=>{ if(!c) return; const m=MAT.dirt; m.userData.detail=c; if(n){ m.normalMap=n; m.normalScale.set(.8,.8); }
+  m.onBeforeCompile=sh=>{ sh.uniforms.detailMap={value:c}; sh.fragmentShader='uniform sampler2D detailMap;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+    float dl=dot(texture2D(detailMap,vMapUv*vec2(1.,2.)).rgb,vec3(.2126,.7152,.0722))/.138; diffuseColor.rgb*=clamp(mix(1.,dl,.8),.55,1.45);`); };
+  m.customProgramCacheKey=()=>'dirt-detail'; m.needsUpdate=true; });
+GTEX.lawn.then(([c,n])=>{ if(!c) return; for(const m of [MAT.lawn,MAT.grass]){ m.map=c; if(n){ m.normalMap=n; m.normalScale.set(.7,.7); } antiTile(m,.23,.05); m.needsUpdate=true; } });
 const FAC_KEYS=['glass','bronze','office','resi','oldmid','shop'];
 const TILE={glass:[12.8,28.8],bronze:[12.8,28.8],office:[12,28.8],resi:[12.8,25.6],oldmid:[12,27.2],shop:[20,4.4]};
 const TINTS={glass:['#ffffff','#e2f2ff','#dcfff2','#eef0ff'],bronze:['#ffffff','#fff0dc'],office:['#ffffff','#f1ece2','#e6e1d8','#fff6e6'],
@@ -1667,15 +1691,21 @@ const ENV={hour:12,elev:40,lamp:0,win:0,sign:0,head:.15,tail:.3,spot:0,wet:0,rai
 const envScene=new THREE.Scene(); envScene.add(sky); let envRT=null, envKey='', envT=-99, skyT=-99;
 const mixK=(f,dw,nw)=>{ const g=LK.golden[f]; const a=g+(LK.day[f]-g)*dw; return a+(LK.night[f]-a)*nw; };
 const mixC=(out,f,dw,nw)=>out.copy(LK.golden[f]).lerp(LK.day[f],dw).lerp(LK.night[f],nw);
-// clouds: one big soft layer high above the city
-const cloudMat=(()=>{ const S=512,[c,g]=cv(S,S); const img=g.createImageData(S,S); const d=img.data; const oct=[[4,.5],[8,.25],[16,.14],[32,.07]];
-  const lat={}, LT=f=>lat[f]||(lat[f]=Float32Array.from({length:f*f},()=>R()));
-  const vn=(x,y,f)=>{ const A=LT(f), X=x/S*f, Y=y/S*f, xi=Math.floor(X), yi=Math.floor(Y), xf=X-xi, yf=Y-yi, q=(i,j)=>A[((j%f+f)%f)*f+((i%f+f)%f)], u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
-    return (q(xi,yi)*(1-u)+q(xi+1,yi)*u)*(1-v)+(q(xi,yi+1)*(1-u)+q(xi+1,yi+1)*u)*v; };
-  for(let y=0;y<S;y++) for(let x=0;x<S;x++){ let n=0; for(const [f,a] of oct) n+=vn(x,y,f)*a; const i=(y*S+x)*4; d[i]=d[i+1]=d[i+2]=255; d[i+3]=Math.max(0,Math.min(255,(n-.42)*520)); }
-  g.putImageData(img,0,0); const t=tx(c,true,true,512); t.repeat.set(5,5);
-  const [ac,ag]=cv(256,256); const gr=ag.createRadialGradient(128,128,20,128,128,128); gr.addColorStop(0,'#fff'); gr.addColorStop(.7,'#fff'); gr.addColorStop(1,'#000'); ag.fillStyle=gr; ag.fillRect(0,0,256,256);
-  return new THREE.MeshBasicMaterial({map:t,alphaMap:tx(ac,false,false),transparent:true,depthWrite:false,fog:false,opacity:0,color:0xffffff}); })();
+// clouds: one big soft layer of cumulus high above the city (assets/models/clouds.png, tools/ground_tex.py).
+// "cover" decides how much of the sky they fill: scattered fair-weather clouds on a sunny day, a closed grey deck in the rain.
+const cloudMat=(()=>{ const [ac,ag]=cv(256,256); const gr=ag.createRadialGradient(128,128,20,128,128,128); gr.addColorStop(0,'#fff'); gr.addColorStop(.7,'#fff'); gr.addColorStop(1,'#000'); ag.fillStyle=gr; ag.fillRect(0,0,256,256);
+  const [pc]=cv(4,4); const m=new THREE.MeshBasicMaterial({map:tx(pc,true,true,4),alphaMap:tx(ac,false,false),transparent:true,depthWrite:false,fog:false,opacity:0,color:0xffffff});
+  const cover={value:.45}; m.userData.cover=cover;
+  m.onBeforeCompile=sh=>{ sh.uniforms.cover=cover;
+    sh.fragmentShader='uniform float cover;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
+      vec4 sampledDiffuseColor=texture2D(map,vMapUv);
+      float cA=smoothstep(1.-cover,1.-cover+.32,sampledDiffuseColor.a);
+      float grey=mix(1.,.55,smoothstep(.55,1.,cover));
+      diffuseColor*=vec4(sampledDiffuseColor.rgb*grey,cA);
+    #endif`); };
+  m.customProgramCacheKey=()=>'clouds-cover';
+  GTEX.clouds.then(t=>{ if(!t) return; t.repeat.set(4,4); m.map=t; m.needsUpdate=true; });
+  return m; })();
 const veil=new THREE.Mesh(new THREE.SphereGeometry(2600,24,12),new THREE.MeshBasicMaterial({color:0xc8a273,transparent:true,opacity:0,fog:false,depthWrite:false,side:THREE.BackSide,toneMapped:false})); veil.renderOrder=-2; veil.frustumCulled=false; veil.visible=false; scene.add(veil);
 const clouds=new THREE.Mesh(new THREE.PlaneGeometry(7000,7000),cloudMat); clouds.rotation.x=Math.PI/2; clouds.position.y=520; clouds.renderOrder=-1; clouds.frustumCulled=false; scene.add(clouds);
 // rain: streaks animated on the GPU, wrapped around the camera
@@ -1718,7 +1748,7 @@ function updateEnv(dt,force=false){
   stars.visible=nw>.4&&w.cloud<.6; stars.material.opacity=.8*Math.min(1,(nw-.4)*3)*(1-w.cloud)*(1-veil.material.opacity);
   if(bloom){ bloom.strength=mixK('b0',dw,nw)+ENV.flash; bloom.radius=mixK('b1',dw,nw); bloom.threshold=mixK('b2',dw,nw); }
   // clouds and rain
-  cloudMat.opacity=Math.min(.96,w.cloud*1.05); cloudMat.color.setRGB(1,1,1).multiplyScalar((1-nw*.9)*(1-w.dim*.55)+.06).lerp(_c1.copy(sun.color),dw<.5&&nw<.5?.35:0);
+  cloudMat.userData.cover.value=Math.min(1,.42+w.cloud*.62); cloudMat.opacity=cloudMat.map.image&&cloudMat.map.image.width>4?.97:0; cloudMat.color.setRGB(1,1,1).multiplyScalar((1-nw*.9)*(1-w.dim*.55)+.06).lerp(_c1.copy(sun.color),dw<.5&&nw<.5?.35:0);
   cloudMat.map.offset.x+=dt*.0016; cloudMat.map.offset.y+=dt*.0007; clouds.position.x=camera.position.x; clouds.position.z=camera.position.z;
   rain.visible=w.rain>.02&&mode!=='interior'; if(rain.visible){ const ru=rain.material.uniforms; ru.time.value=(ru.time.value+dt)%600; ru.cam.value.copy(camera.position); ru.op.value=Math.min(.78,w.rain*.62+w.storm*.2); ru.col.value.setRGB(.6,.64,.7).multiplyScalar(1-nw*.55); }
   // wet roads shine
@@ -2238,6 +2268,56 @@ function updateBlood(dt){ const D=BLOOD.d, a=BLOOD.drops.instanceMatrix.array; l
   for(const o of P){ const life=o.small?70:150, k=Math.min(1,o.t/o.grow), fade=o.t>life?Math.max(0,1-(o.t-life)/8):1, sz=o.size*Math.sqrt(k)*fade;
     _q.setFromAxisAngle(_up,o.ry); _p.set(o.x,.035,o.z); _s.set(sz,1,sz*.8); _m.compose(_p,_q,_s); _m.toArray(b,m*16); m++; }
   BLOOD.pools.count=m; BLOOD.pools.instanceMatrix.needsUpdate=true; }
+/* ---- stones and grass tufts in 3D on the open ground around you
+   The ground is cut into 3 m cells; each cell always gets the same stones and tufts (seeded by its position), never on a
+   road, a building or a market yard, thicker grass on lawns and school fields. Only the cells near the camera are drawn,
+   as two instanced meshes (two draw calls). The tufts sway in the wind on the GPU. */
+const SCAT=(()=>{ const CELL=3, RAD=Q===QUAL.low?20:Q===QUAL.medium?28:38, NG=Q===QUAL.low?500:Q===QUAL.medium?1100:2200, NS=Q===QUAL.low?220:Q===QUAL.medium?420:800;
+  const offs=[]; const rc=Math.ceil(RAD/CELL); for(let i=-rc;i<=rc;i++) for(let j=-rc;j<=rc;j++){ const d=Math.hypot(i,j)*CELL; if(d<=RAD+CELL) offs.push([i,j,d]); } offs.sort((a,b)=>a[2]-b[2]);
+  // grass tuft: three crossed cards with a painted clump of blades
+  const [c,g]=cv(128,128); for(let k=0;k<46;k++){ const x0=rr(18,110), h=rr(55,122), lean=rr(-26,26), w=rr(2.2,4.6), dry=R()<.35;
+    g.strokeStyle=dry?`hsl(${ri(38,52)},${ri(28,42)}%,${ri(38,54)}%)`:`hsl(${ri(68,95)},${ri(26,42)}%,${ri(20,34)}%)`; g.lineWidth=w; g.lineCap='round';
+    g.beginPath(); g.moveTo(x0,128); g.quadraticCurveTo(x0+lean*.3,128-h*.6,x0+lean,128-h); g.stroke(); }
+  const gt=tx(c,true,false,128); gt.wrapS=gt.wrapT=THREE.ClampToEdgeWrapping;
+  const parts=[]; for(let k=0;k<3;k++){ const p=new THREE.PlaneGeometry(.62,.42); p.translate(0,.21,0); p.rotateY(k*Math.PI/3); parts.push(p); }
+  const tg=mergeGeometries(parts); const nrm=tg.attributes.normal; for(let i=0;i<nrm.count;i++) nrm.setXYZ(i,0,1,0);   // lit like the ground it grows from
+  const wind={value:0};
+  const tm=new THREE.MeshStandardMaterial({map:gt,alphaTest:.42,side:THREE.DoubleSide,roughness:1,color:0xcfc8b8});
+  tm.onBeforeCompile=sh=>{ sh.uniforms.wtime=wind; sh.vertexShader='uniform float wtime;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+    #ifdef USE_INSTANCING
+      vec3 iw=instanceMatrix[3].xyz; float sway=sin(wtime*1.6+iw.x*.35+iw.z*.27)*.5+sin(wtime*2.7+iw.z*.5)*.25;
+      transformed.x+=sway*.07*uv.y; transformed.z+=sway*.04*uv.y;
+    #endif`); };
+  tm.customProgramCacheKey=()=>'tufts';
+  const tufts=new THREE.InstancedMesh(tg,tm,NG); tufts.count=0; tufts.frustumCulled=false; tufts.receiveShadow=Q.shadows; scene.add(tufts);
+  // stones: a lumpy, flattened ball; every stone gets its own size, squash and colour
+  const sg0=new THREE.IcosahedronGeometry(1,1); sg0.deleteAttribute('normal'); sg0.deleteAttribute('uv'); const sg=mergeVertices(sg0); const sp=sg.attributes.position;
+  for(let i=0;i<sp.count;i++){ const k=.78+R()*.4; sp.setXYZ(i,sp.getX(i)*k,Math.max(-.25,sp.getY(i))*k,sp.getZ(i)*k); } sg.computeVertexNormals();
+  const stones=new THREE.InstancedMesh(sg,new THREE.MeshStandardMaterial({roughness:.92,metalness:0}),NS); stones.count=0; stones.frustumCulled=false; stones.receiveShadow=Q.shadows; scene.add(stones);
+  stones.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(NS*3),3);
+  const SCOL=[0x8a4a2c,0x9c5a36,0x7a6e62,0xa59a8c,0x5e5650,0xb0805a].map(h=>new THREE.Color(h));
+  const cache=new Map(); let lastK=null, lastT=-9;
+  const NO_GRASS=new Set(['marketplace','retail','parking','fuel','industrial']);
+  function inBld(x,z){ for(const b of bldNear(x,z,1)){ if(b.skip) continue; const dx=x-b.cx, dz=z-b.cz, u=b.c*dx+b.s*dz, v=-b.s*dx+b.c*dz; if(Math.abs(u)<b.w/2+.4&&Math.abs(v)<b.d/2+.4) return true; } return false; }
+  function cellItems(i,j){ const key=i*100003+j; let it=cache.get(key); if(it) return it;
+    let s=(Math.imul(i,73856093)^Math.imul(j,19349663))>>>0; const rnd=()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; };
+    const cx=(i+.5)*CELL, cz=(j+.5)*CELL, ar=areaAt(cx,cz), kind=ar?ar.k:'';
+    const lawn=AREA_ACC[kind]==='lawn', yard=NO_GRASS.has(kind)||AREA_ACC[kind]==='lot';
+    const nG=yard?0:lawn?5+Math.floor(rnd()*4):kind==='school'?Math.floor(rnd()*2):(rnd()<.55?Math.floor(rnd()*4):0);   // tufts come in clumps
+    const nS=lawn?(rnd()<.2?1:0):yard?(rnd()<.3?1:0):Math.floor(rnd()*3);
+    it={g:[],s:[]}; const ccx=cx+(rnd()-.5)*CELL*.6, ccz=cz+(rnd()-.5)*CELL*.6;
+    for(let k=0;k<nG;k++){ const x=lawn?cx+(rnd()-.5)*CELL:ccx+(rnd()-.5)*1.6, z=lawn?cz+(rnd()-.5)*CELL:ccz+(rnd()-.5)*1.6; if(roadAt(x,z,.9)||inBld(x,z)) continue; it.g.push(x,z,rnd()*6.28,.55+rnd()*.9); }
+    for(let k=0;k<nS;k++){ const x=cx+(rnd()-.5)*CELL, z=cz+(rnd()-.5)*CELL; if(roadAt(x,z,.5)||inBld(x,z)) continue; const big=rnd()<.15; it.s.push(x,z,rnd()*6.28,big?.12+rnd()*.16:.04+rnd()*.07,.45+rnd()*.5,Math.floor(rnd()*SCOL.length)); }
+    if(cache.size>30000) cache.clear(); cache.set(key,it); return it; }
+  const _M=new THREE.Matrix4(), _P=new THREE.Vector3(), _Q=new THREE.Quaternion(), _S=new THREE.Vector3(), _Y=new THREE.Vector3(0,1,0);
+  function update(dt){ wind.value=(wind.value+dt*(1+ENV.storm*2.5+ENV.rain))%1000; const on=mode!=='interior'; tufts.visible=stones.visible=on; if(!on) return;
+    const ci=Math.floor(camera.position.x/CELL), cj=Math.floor(camera.position.z/CELL), k=ci+','+cj; if(k===lastK&&T0-lastT<1.5) return; lastK=k; lastT=T0;
+    let ng=0, ns=0; const ta=tufts.instanceMatrix.array, sa=stones.instanceMatrix.array, scol=stones.instanceColor.array;
+    for(const [di,dj] of offs){ if(ng>=NG&&ns>=NS) break; const it=cellItems(ci+di,cj+dj);
+      for(let n=0;n<it.g.length&&ng<NG;n+=4){ _Q.setFromAxisAngle(_Y,it.g[n+2]); const sc=it.g[n+3]; _P.set(it.g[n],0,it.g[n+1]); _S.set(sc,sc*(.8+.4*((n*7)%5)/4),sc); _M.compose(_P,_Q,_S).toArray(ta,ng*16); ng++; }
+      for(let n=0;n<it.s.length&&ns<NS;n+=6){ _Q.setFromAxisAngle(_Y,it.s[n+2]); const sc=it.s[n+3]; _P.set(it.s[n],sc*.18,it.s[n+1]); _S.set(sc,sc*it.s[n+4],sc*(.7+it.s[n+4]*.5)); _M.compose(_P,_Q,_S).toArray(sa,ns*16); SCOL[it.s[n+5]].toArray(scol,ns*3); ns++; } }
+    tufts.count=ng; stones.count=ns; tufts.instanceMatrix.needsUpdate=true; stones.instanceMatrix.needsUpdate=true; stones.instanceColor.needsUpdate=true; }
+  return {update,tufts,stones}; })();
 function updateBlobs(){ if(!BLOBS) return; let n=0; const cx=camera.position.x, cz=camera.position.z, a=BLOBS.instanceMatrix.array;
   const put=(x,y,z,sx,sz,ry)=>{ if(n>=96) return; _q.setFromAxisAngle(_up,ry); _p.set(x,y+.03,z); _s.set(sx,1,sz); _m.compose(_p,_q,_s); _m.toArray(a,n*16); n++; };
   if(mode!=='interior'){
@@ -4023,7 +4103,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); updateBlobs(); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
+  updateCamera(dt); updateBlobs(); SCAT.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
