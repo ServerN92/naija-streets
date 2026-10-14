@@ -13,3 +13,10 @@ How `assets/people/p_tunde.glb`, `p_amaka.glb`, `p_ada.glb` and `moves2.glb` wer
 
 In the game, `src/char2.js` fits moves onto them and switches outfits; `src/game.js` (look for `V2`) wears them.
 The scripts still point at the folders they were made in; change the paths at the top before running them again.
+
+## Mixamo people (Dayo, Tobi, Emeka, Femi, Mike, Chris, Lin)
+
+`mixamo/mxconvert.py OUT_DIR` turns Mixamo FBX files (character with skin) into `assets/people/p_<name>.glb`: the browser
+(three.js) does the shape and skin from a copy of the FBX without pictures (`fbxstrip.py`), and Python adds each material's
+diffuse, normal and roughness pictures (`fbxtex.py`). Then `gltfpack -i out/mx_x.glb -o p_x.glb -tc -tl 1024 -cc -kn -km`.
+Women's body shape (slim / curvy / thick) is made in the game (`shapeBody` in `src/char2.js`).

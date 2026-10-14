@@ -19,8 +19,14 @@ export function skeletonInfo(root) {
     if (!I.parent.get(n)) { const bq = new THREE.Quaternion(); if (p) p.matrixWorld.decompose(_v, bq, _s); I.base.set(n, bq); } });
   return I;
 }
-const CHAIN = { Hips: 'Spine', Spine2: 'Neck', LeftHand: 'LeftHandMiddle1', RightHand: 'RightHandMiddle1', LeftFoot: 'LeftToeBase', RightFoot: 'RightToeBase' };
-function childOf(I, n) { if (CHAIN[n] && I.nodes.has(CHAIN[n])) return CHAIN[n]; let c = null, k = 0; for (const m of I.order) if (I.parent.get(m) === n) { c = m; k++; } return k === 1 ? c : null; }
+// the bone each bone points at (by Mixamo names, so extra bones such as hair or heel bones don't confuse it)
+const NEXT = { Hips: 'Spine', Spine: 'Spine1', Spine1: 'Spine2', Spine2: 'Neck', Neck: 'Head', Head: 'HeadTop_End', Shoulder: 'Arm', Arm: 'ForeArm', ForeArm: 'Hand', Hand: 'HandMiddle1',
+  UpLeg: 'Leg', Leg: 'Foot', Foot: 'ToeBase', ToeBase: 'Toe_End' };
+function childOf(I, n) {
+  const m = /^(Left|Right)(.*)$/.exec(n), side = m ? m[1] : '', base = m ? m[2] : n;
+  let c = NEXT[base] ? side + NEXT[base] : null; if (!c) { const d = /^(.*?)(\d)$/.exec(n); if (d) c = d[1] + (+d[2] + 1); }   // fingers: Index1 -> Index2
+  if (c && I.nodes.has(c)) return c;
+  let only = null, k = 0; for (const x of I.order) if (I.parent.get(x) === n) { only = x; k++; } return k === 1 ? only : null; }
 
 // turns that line our rest bones up with the source's rest bones (by bone direction)
 function alignments(S, D) {
@@ -88,6 +94,7 @@ export function setOutfit(root, i) {
 // the character as it comes out of the file, ready for the street
 export function prepChar(gltf, { maxAniso = 4, layer = 1, shadows = true } = {}) {
   const root = gltf.scene, meta = root.userData || {}, mats = [];
+  root.traverse(o => { if (/mixamorig\d+:?/.test(o.name)) o.name = o.name.replace(/mixamorig\d+:?/, 'mixamorig'); });   // some Mixamo files say mixamorig9Hips: one name for every move
   root.traverse(o => { if (!o.isMesh) return; o.frustumCulled = false; o.castShadow = shadows; o.receiveShadow = true; if (layer != null) o.layers.set(layer);
     const ms = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of ms) { if (mats.includes(m)) continue; mats.push(m);
@@ -96,3 +103,88 @@ export function prepChar(gltf, { maxAniso = 4, layer = 1, shadows = true } = {})
       m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map || null; m.emissiveIntensity = 0; } });   // the game lifts dark bodies at night with a little emissive
   return { root, meta, mats, info: skeletonInfo(root) };
 }
+
+// body shape for a woman: 0 slim (as she comes) .. 1 thick. Bust forward, hips wider, a fuller bottom and thighs. Works on the
+// rest pose (T-pose) and moves the clothes with the body, so they stay on top. The geometry is shared by every copy of her.
+const _sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+export function shapeBody(root, D, k = 1) {
+  const J = n => D.wp.get(n), H = J('Hips'), S1 = J('Spine1'), S2 = J('Spine2'), N = J('Neck'), UL = J('LeftUpLeg'), LL = J('LeftLeg'), SH = J('LeftShoulder');
+  if (!H || !S2 || !UL || !LL || !N) return false;
+  const height = N.y - LL.y, s = height / .95;   // proportions of this body (about 1 for a 1.7 m woman)
+  const yB = S2.y - .02 * s, yG = H.y - .045 * s, yHip = H.y - .1 * s, legX = Math.abs(UL.x - H.x), shoulder = SH ? Math.abs(SH.x - H.x) + .05 : .2;
+  const zB = (S1 ? (S1.z + S2.z) / 2 : S2.z), zH = H.z;
+  const v = new THREE.Vector3(), inv = new THREE.Matrix4();
+  root.updateMatrixWorld(true);
+  root.traverse(o => { if (!o.isMesh || !o.geometry) return; const g = o.geometry, P = g.attributes.position; if (!P) return;
+    if (!g.userData.base) { const b = new Float32Array(P.count * 3); for (let i = 0; i < P.count; i++) { b[i * 3] = P.getX(i); b[i * 3 + 1] = P.getY(i); b[i * 3 + 2] = P.getZ(i); } g.userData.base = b;
+      if (!(P.array instanceof Float32Array) || P.isInterleavedBufferAttribute) g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(b), 3)); }   // packed integer positions can't grow past their box
+    const B = g.userData.base, Q = g.attributes.position;
+    inv.copy(o.matrixWorld).invert(); const m = o.matrixWorld;
+    for (let i = 0; i < P.count; i++) {
+      v.set(B[i * 3], B[i * 3 + 1], B[i * 3 + 2]).applyMatrix4(m); const x = v.x - H.x, ax = Math.abs(x), y = v.y, z = v.z;
+      let dx = 0, dz = 0;
+      if (k > 0 && ax < shoulder) {
+        // bust: two rounded mounds in front of the chest
+        const wb = Math.exp(-(((y - yB) / (.075 * s)) ** 2)) * Math.exp(-(((ax - .09 * s) / (.075 * s)) ** 2)) * _sm(zB + .02 * s, zB + .09 * s, z);
+        dz += .06 * s * k * wb; dx += Math.sign(x) * .01 * s * k * wb;
+        // bottom: two mounds behind the hips
+        const wg = Math.exp(-(((y - yG) / (.1 * s)) ** 2)) * Math.exp(-(((ax - .075 * s) / (.085 * s)) ** 2)) * _sm(zH - .0, zH - .08 * s, z);
+        dz -= .075 * s * k * wg;
+        // hips and thighs: wider at the sides, fuller all round down to the knee
+        const wh = Math.exp(-(((y - yHip) / (.11 * s)) ** 2)) * _sm(.07 * s, .15 * s, ax);
+        dx += Math.sign(x) * .05 * s * k * wh;
+        if (y < H.y && y > LL.y) { const t = (H.y - y) / (H.y - LL.y), lx = Math.sign(x) * legX, wl = (1 - t) * (1 - t) * _sm(.0, .03, ax) * .14 * k;
+          dx += (x - lx) * wl; dz += (z - zH) * wl; }
+      }
+      v.x += dx; v.z += dz; v.applyMatrix4(inv); Q.setXYZ(i, v.x, v.y, v.z); }
+    Q.needsUpdate = true; g.computeBoundingSphere(); });
+  return true;
+}
+
+// a pose made from where the bones point, in the body's own space (+Z forward, +Y up, +X the body's left), so it fits
+// any Mixamo skeleton whatever its rest pose (T or A). keys: [{t, d:{Bone:[x,y,z], ...}}]; bones without a direction keep
+// the turn of their parent. Several keys make a looping move (the first key is repeated at the end).
+export function poseClip(D, name, keys, { loop = true, dur = null } = {}) {
+  const ks = loop && keys.length > 1 ? [...keys, { ...keys[0], t: dur || (keys[keys.length - 1].t + (keys[1].t - keys[0].t)) }] : keys;
+  const out = new Map(); for (const n of D.order) out.set(n, []);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), S = new THREE.Quaternion();
+  for (const k of ks) {
+    const acc = new Map(), W = new Map();
+    for (const n of D.order) {
+      const p = D.parent.get(n), Ap = p ? acc.get(p) : new THREE.Quaternion(); let A = Ap.clone(); const tg = k.d[n];
+      if (tg) { const c = childOf(D, n); if (c) { a.copy(D.wp.get(c)).sub(D.wp.get(n)).normalize().applyQuaternion(Ap); b.set(tg[0], tg[1], tg[2]).normalize(); S.setFromUnitVectors(a, b); A = S.clone().multiply(Ap); } }
+      acc.set(n, A); const w = A.clone().multiply(D.wq.get(n)); W.set(n, w);
+      const l = (p ? W.get(p) : D.base.get(n)).clone().invert().multiply(w); const arr = out.get(n);
+      if (arr.length >= 4) { const q0 = new THREE.Quaternion(arr[arr.length - 4], arr[arr.length - 3], arr[arr.length - 2], arr[arr.length - 1]); if (q0.dot(l) < 0) l.set(-l.x, -l.y, -l.z, -l.w); }
+      arr.push(l.x, l.y, l.z, l.w); } }
+  const times = Float32Array.from(ks.map(k => k.t)), tracks = [];
+  for (const n of D.order) tracks.push(new THREE.QuaternionKeyframeTrack(D.nodes.get(n).name + '.quaternion', times, Float32Array.from(out.get(n))));
+  return new THREE.AnimationClip(name, ks[ks.length - 1].t || 1, tracks);
+}
+// mirror a pose spec: left <-> right (x flips)
+export function mirrorDirs(d) { const o = {}; for (const k in d) { const v = d[k]; const n = k.startsWith('Left') ? 'Right' + k.slice(4) : k.startsWith('Right') ? 'Left' + k.slice(5) : k; o[n] = [-v[0], v[1], v[2]]; } return o; }
+
+// the house moves, until real ones arrive: where each bone points (+Z forward, +Y up, +X the body's left)
+const LEGS_SIT = { LeftUpLeg: [.14, -.06, 1], RightUpLeg: [-.14, -.06, 1], LeftLeg: [.02, -1, .12], RightLeg: [-.02, -1, .12], LeftFoot: [.05, -.45, 1], RightFoot: [-.05, -.45, 1] };
+const ARMS_LAP = { LeftArm: [.22, -.92, .3], LeftForeArm: [.02, -.42, 1], LeftHand: [0, -.35, 1], RightArm: [-.22, -.92, .3], RightForeArm: [-.02, -.42, 1], RightHand: [0, -.35, 1] };
+const UP = (f = 0, s = 0) => [s, 1, f];
+export const POSES = {
+  sit: [{ t: 0, d: { ...LEGS_SIT, ...ARMS_LAP, Spine: UP(-.18), Spine1: UP(-.12), Spine2: UP(-.08), Neck: UP(.12), Head: UP(.06) } },
+        { t: 2, d: { ...LEGS_SIT, ...ARMS_LAP, Spine: UP(-.2), Spine1: UP(-.14), Spine2: UP(-.06), Neck: UP(.14), Head: UP(.1) } }],
+  eat: [{ t: 0, d: { ...LEGS_SIT, Spine: UP(.08), Spine1: UP(.1), Spine2: UP(.1), Neck: UP(.25), Head: UP(.3), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.16, -.72, .66], RightForeArm: [.2, -.35, 1], RightHand: [.1, -.5, 1] } },
+        { t: .9, d: { ...LEGS_SIT, Spine: UP(.1), Spine1: UP(.12), Spine2: UP(.1), Neck: UP(.2), Head: UP(.15), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.12, -.62, .78], RightForeArm: [.45, .85, .3], RightHand: [.4, .5, -.2] } },
+        { t: 1.5, d: { ...LEGS_SIT, Spine: UP(.1), Spine1: UP(.12), Spine2: UP(.1), Neck: UP(.2), Head: UP(.15), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.12, -.62, .78], RightForeArm: [.45, .85, .3], RightHand: [.4, .5, -.2] } },
+        { t: 2.4, d: { ...LEGS_SIT, Spine: UP(.08), Spine1: UP(.1), Spine2: UP(.1), Neck: UP(.25), Head: UP(.3), LeftArm: [.18, -.75, .62], LeftForeArm: [-.3, -.25, 1], LeftHand: [-.3, -.3, 1],
+          RightArm: [-.16, -.72, .66], RightForeArm: [.2, -.35, 1], RightHand: [.1, -.5, 1] } }],
+  cook: [0, 1, 2, 3].map(i => { const a = i * Math.PI / 2; return { t: i * .3, d: { Spine: UP(.12), Spine1: UP(.1), Spine2: UP(.06), Neck: UP(.3), Head: UP(.35),
+          LeftArm: [.3, -.78, .55], LeftForeArm: [-.35, -.35, .85], LeftHand: [-.2, -.4, 1],
+          RightArm: [-.24, -.74, .62], RightForeArm: [-.05 + .18 * Math.cos(a), -.7 + .12 * Math.sin(a), .7], RightHand: [0, -.85, .5] } }; }),
+  sweep: [0, 1].map(i => { const s = i ? 1 : -1; return { t: i * .55, d: { Spine: UP(.3, .05 * s), Spine1: UP(.22), Spine2: UP(.12), Neck: UP(.2), Head: UP(.4),
+          LeftArm: [.05 + .2 * s, -.8, .45], LeftForeArm: [-.3 + .35 * s, -.55, .75], LeftHand: [.2 * s, -.7, .6],
+          RightArm: [-.15 + .2 * s, -.85, .3], RightForeArm: [-.15 + .35 * s, -.75, .55], RightHand: [.2 * s, -.8, .4] } }; }),
+  bath: [{ t: 0, d: { Head: UP(-.25), Neck: UP(-.1), LeftArm: [.55, .35, .45], LeftForeArm: [-.45, .7, .1], LeftHand: [-.6, .5, -.3], RightArm: [-.45, -.6, .55], RightForeArm: [.55, .35, .75], RightHand: [.6, .2, .3] } },
+         { t: .8, d: { Head: UP(-.25, .05), Neck: UP(-.1), LeftArm: [.45, -.6, .55], LeftForeArm: [-.55, .35, .75], LeftHand: [-.6, .2, .3], RightArm: [-.55, .35, .45], RightForeArm: [.45, .7, .1], RightHand: [.6, .5, -.3] } }],
+};
