@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=75a87a7bf2';
-import * as C2 from './char2.js?v=75a87a7bf2';
-import { MapView } from './mapview.js?v=75a87a7bf2';
+import * as CLOCK from './clock.js?v=215c8527b4';
+import * as C2 from './char2.js?v=215c8527b4';
+import { MapView } from './mapview.js?v=215c8527b4';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='75a87a7bf2';
+const BUILD='215c8527b4';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -788,7 +788,7 @@ const TMB=(()=>{ let st=null; for(const e of ROADS){ if(e.c>2||!/Western Avenue/
     const g=new THREE.BoxGeometry(w,h,d); const uv=g.attributes.uv, nr=g.attributes.normal; for(let j=0;j<uv.count;j++){ const ax=Math.abs(nr.getX(j))>.5?d:w; uv.setXY(j,uv.getX(j)*ax/12.8,uv.getY(j)*h/28.8); } g.translate(x,h/2,zz); towers[k].push(g); }
   for(const k of Object.keys(towers)){ if(!towers[k].length) continue; const g=mergeGeometries(towers[k]); const c=g.attributes.position.count, col=new Float32Array(c*3).fill(1); g.setAttribute('color',new THREE.BufferAttribute(col,3)); const me=new THREE.Mesh(g,MAT[k==='resi'?'resi':k]); me.castShadow=false; me.receiveShadow=true; scene.add(me); }
   PLACES.push({name:'Third Mainland Bridge',sub:'Closed near Lagos Island for now',kind:'place',x:xs+200,z});
-  let t=0; return {z,xs,xBlock,heads,update(dt){ t+=dt; wn.offset.set(t*.004,t*.0025); heads.material.emissiveIntensity=ENV.lamp>0?Math.min(3,ENV.lamp*.6):0; }}; })();
+  let t=0; return {z,x0,xs,xEnd,xBlock,heads,update(dt){ t+=dt; wn.offset.set(t*.004,t*.0025); heads.material.emissiveIntensity=ENV.lamp>0?Math.min(3,ENV.lamp*.6):0; }}; })();
 // ---- motor park by Mushin station: danfos load here for Oshodi, Yaba, Ojota and Ikeja
 { const st=WD.pois.station[0]||[1167,-541]; let best=null, bs=1e18;
   for(const e of ROADS){ if(e.c>4||!e.drive||e.len<40) continue; const A0=nodes[e.a], t=clamp((st[0]-A0.x)*e.fx+(st[1]-A0.z)*e.fz,20,e.len-20), px=A0.x+e.fx*t, pz=A0.z+e.fz*t;
@@ -948,6 +948,8 @@ if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555
 // the control tower, hangars, a car park. One airliner lands and another takes off, over and over.
 const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
   let st=null; for(const e of ROADS){ if(!/Agege Motor Road/i.test(e.name)) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd]; if(!st||n.z<st.z) st={x:n.x,z:n.z}; } }
+  // where taxis leave and join the street network: the drivable street end nearest the airport road (the expressway ramps there are not for taxis)
+  let hand=null, hd=1e9; for(const e of ROADS){ if(!e.drive) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd], d=Math.hypot(n.x-st.x,n.z-st.z)+Math.max(0,n.z+WB.z)*2; if(d<hd){ hd=d; hand={x:n.x,z:n.z}; } } }
   if(!st) return null;
   const TX=st.x, TZ=-WB.z-420, RZ=TZ-330, TWZ=TZ-205, RL=2700, z0=-WB.z-1;
   LAND_EXTRA.push({x0:TX-1500,x1:TX+1500,z0:RZ-200,z1:z0+1});
@@ -974,7 +976,8 @@ const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
   for(let i=-2;i<=3;i++){ const gx=TX-100+(i+2)*40; const l=flat(.4,60,gx+3,TZ-80,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); }   // lead-in lines to the gates
   // landside: the forecourt road from Agege Motor Road, the drop-off road and the car park
   const roadM=new THREE.MeshStandardMaterial({map:T.road4,roughness:.88,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
-  { const len=st.z-(TZ+60), m=flat(len,16,TX,(st.z+TZ+60)/2,roadM,.03); m.rotation.y=Math.PI/2; T.road4.repeat; }
+  { const len=st.z-(TZ+60), m=flat(len,16,TX,(st.z+TZ+60)/2,roadM,.03); m.rotation.y=Math.PI/2; }
+  const HZ=-WB.z-30; if(hand&&Math.abs(hand.x-TX)>8){ const m1=flat(Math.abs(hand.z-HZ)+8,8,hand.x,(hand.z+HZ)/2,roadM,.028); m1.rotation.y=Math.PI/2; flat(Math.abs(hand.x-TX),8,(hand.x+TX)/2,HZ,roadM,.028); }   // the link road from the street end
   flat(300,16,TX,TZ+45,roadM,.03);
   const cpT=mk(512,256,(g,W,H)=>{ g.fillStyle='#55585c'; g.fillRect(0,0,W,H); grain(g,W,H,20); g.fillStyle='#f2f2ee'; for(let x=0;x<W;x+=32){ g.fillRect(x,10,3,100); g.fillRect(x,146,3,100); } g.fillRect(0,124,W,4); });
   cpT.repeat.set(4,2); flat(260,90,TX,TZ+105,new THREE.MeshStandardMaterial({map:cpT,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),.02);
@@ -994,7 +997,7 @@ const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
   for(let x=-RL/2+10;x<RL/2&&li<LN;x+=60) for(const sz of [-1,1]){ _m4.makeTranslation(TX+x,.18,RZ+sz*24); lights.setMatrixAt(li++,_m4); } lights.count=li; scene.add(lights);
   // name on the terminal, and on the map
   const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('MURTALA MUHAMMED INTERNATIONAL AIRPORT','#16A06B','#ffffff',2000,170),fog:false})); lab.scale.set(26,2.2,1); lab.position.set(TX,26,TZ+26); lab.layers.set(1); scene.add(lab);
-  PLACES.push({name:'Murtala Muhammed International Airport',sub:'Airport · Ikeja',kind:'place',x:TX,z:TZ+40});
+  PLACES.push({name:'Murtala Muhammed International Airport',sub:'Airport · Ikeja',kind:'place',x:TX,z:TZ+40,airport:true});
   // one airliner landing from the east and taxiing in, another taking off to the east
   const fly=MODELS.jet?new THREE.Mesh(MODELS.jet.geo,MODELS.jet.mat):null; if(fly){ fly.castShadow=true; fly.rotation.order='YXZ'; fly.visible=false; fly.frustumCulled=false; scene.add(fly); }
   const CYC=150, xs=TX+RL/2-200, xe=TX-RL/2+250;
@@ -1005,7 +1008,7 @@ const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
     if(t<104){ const k=(t-78)/26, x=xe+(xs-xe)*k*k; return [x,0,0]; }                            // take-off roll
     if(t<CYC){ const k=(t-104)/(CYC-104), x=xs+3400*k, y=420*k*k+(k*40); return [x,y,-.15]; }   // climb out
     return null; }
-  let AT=0; return {TX,TZ,RZ,update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
+  let AT=0; return {TX,TZ,RZ,TWZ,RL,st,hand:hand||{x:st.x,z:st.z+6},HZ,drop:{x:TX+20,z:TZ+45},update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
       if(!p){ fly.visible=false; return; } fly.visible=Math.hypot(p[0]-camera.position.x,RZ-camera.position.z)<Q.draw*6; fly.position.set(p[0],p[1],RZ); fly.rotation.set(p[2],(AT%CYC)<64?-Math.PI/2:Math.PI/2,0); }}; })();
 // your house, the hotel and the police station
 const STATION={x:0,z:0,label:null,front:{x:0,z:0,ry:0}};
@@ -2060,7 +2063,7 @@ function updateClockHUD(){ $('#clockT').textContent=CLOCK.fmtHour(ENV.hour); $('
   const ic=ENV.icon==='sun'&&ENV.night?'moon':ENV.icon; if(ic!==lastIcon){ lastIcon=ic; $('#wIcon').innerHTML=ICONS[ic]||ICONS.sun; } }
 const mm=$('#mm'), mg=mm.getContext('2d');
 // the whole map as one picture for the big map (sharp detail is drawn on top when you zoom in)
-const MMB={x0:-WB.x-20,z0:-WB.z-20,x1:WB.x+20,z1:WB.z+20,ppm:.45}; let mmCache=null;
+const MMB={x0:-WB.x-20,z0:AIRPORT?AIRPORT.RZ-140:-WB.z-20,x1:TMB?TMB.xBlock+260:WB.x+20,z1:WB.z+20,ppm:.45}; let mmCache=null;   // the map reaches the airport and the bridge
 const COND_COL={good:'#8d939e',bad:'#7b7468',dirt:'#9a6440'};
 const AREA_COL={pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
 function buildMinimapCache(){ const W=Math.ceil((MMB.x1-MMB.x0)*MMB.ppm), H=Math.ceil((MMB.z1-MMB.z0)*MMB.ppm); mmCache=document.createElement('canvas'); mmCache.width=W; mmCache.height=H;
@@ -2076,7 +2079,24 @@ function drawWorldMap(g,x0,z0,x1,z1,all=false){ g.fillStyle='#2a2d31'; g.fillRec
   for(const cls of [9,8,7,6,5,4,3,2,1,0]) for(const e of ROADS){ if(e.c!==cls) continue; const A0=nodes[e.a],B0=nodes[e.b]; if(!all&&(Math.max(A0.x,B0.x)<x0-20||Math.min(A0.x,B0.x)>x1+20||Math.max(A0.z,B0.z)<z0-20||Math.min(A0.z,B0.z)>z1+20)) continue;
     g.strokeStyle=e.c<=2?'#d9b45a':e.c<=4?'#b9bec6':COND_COL[e.cond]; g.lineWidth=Math.max(e.w,all?5:2); g.beginPath(); g.moveTo(A0.x,A0.z); g.lineTo(B0.x,B0.z); g.stroke(); }
   if(SITES.park){ const pk=SITES.park, K=obCorners(pk.cx,pk.cz,pk.hw,pk.hd,Math.cos(pk.ang),Math.sin(pk.ang)); g.fillStyle='#5a5f66'; g.beginPath(); K.forEach(([x,z],i)=>i?g.lineTo(x,z):g.moveTo(x,z)); g.closePath(); g.fill(); }
+  drawExtras(g);
   g.fillStyle='#F2B705'; g.beginPath(); g.arc(APT.door.x,APT.door.z,7,0,7); g.fill(); }
+// outside the map square: the lagoon and the Third Mainland Bridge, the airport and its runway
+function drawExtras(g){
+  if(TMB){ g.fillStyle='#1d3846'; g.fillRect(SHORE_X,-WB.z-400,TMB.xBlock+2000-SHORE_X,2*WB.z+800);
+    g.fillStyle='#4a4d52'; g.fillRect(TMB.xEnd,TMB.z-700,900,1400);
+    g.strokeStyle='#d9b45a'; g.lineWidth=26; g.lineCap='butt'; g.beginPath(); g.moveTo(TMB.x0,TMB.z); g.lineTo(TMB.xBlock,TMB.z); g.stroke();
+    g.strokeStyle='#5d5a55'; g.setLineDash([18,14]); g.beginPath(); g.moveTo(TMB.xBlock,TMB.z); g.lineTo(TMB.xEnd,TMB.z); g.stroke(); g.setLineDash([]);
+    g.strokeStyle='#d23a2a'; g.lineWidth=10; g.beginPath(); g.moveTo(TMB.xBlock,TMB.z-16); g.lineTo(TMB.xBlock,TMB.z+16); g.stroke(); }
+  if(AIRPORT){ const A=AIRPORT; g.fillStyle='#2c4a30'; g.fillRect(A.TX-1600,A.RZ-120,3200,(-WB.z-1)-(A.RZ-120));
+    g.fillStyle='#5a5f66'; g.fillRect(A.TX-320,A.TZ-200,560,175); g.fillRect(A.TX-130,A.TZ+60,260,90);
+    g.fillStyle='#7d8288'; g.fillRect(A.TX-A.RL/2,A.RZ-23,A.RL,46); g.fillRect(A.TX-1100,A.TWZ-12,2200,24);
+    for(const lx of [-1100,-600,0,600,1100]) g.fillRect(A.TX+lx-10,A.RZ,20,A.TWZ-A.RZ);
+    g.fillStyle='#f2f2ee'; for(let x=A.TX-A.RL/2+60;x<A.TX+A.RL/2-60;x+=70) g.fillRect(x,A.RZ-2,36,4);
+    g.fillStyle='#8a8f96'; g.fillRect(A.TX-126,A.TZ-23,252,46); g.fillRect(A.TX+291,A.TZ-47,18,14);
+    g.strokeStyle='#b9bec6'; g.lineWidth=8; g.beginPath(); g.moveTo(A.hand.x,A.hand.z); g.lineTo(A.hand.x,A.HZ); g.lineTo(A.TX,A.HZ); g.stroke();
+    g.strokeStyle='#d9b45a'; g.lineWidth=16; g.lineCap='butt'; g.beginPath(); g.moveTo(A.st.x,A.st.z); g.lineTo(A.TX,A.TZ+50); g.lineTo(A.TX-150,A.TZ+45); g.moveTo(A.TX,A.TZ+45); g.lineTo(A.TX+150,A.TZ+45); g.stroke();
+    g.font='bold 60px sans-serif'; g.fillStyle='#e9eef2'; g.textAlign='center'; g.fillText('✈',A.TX,A.TZ-110); } }
 // the minimap: a sharp picture of the 700 m around you, redrawn when you get near its edge
 const MINI={c:document.createElement('canvas'),x:1e9,z:1e9,R:350,ppm:1.4}; MINI.g=MINI.c.getContext('2d',{willReadFrequently:true});   // drawn on the processor (fast for many small shapes)
 function miniTile(px,pz){ if(Math.abs(px-MINI.x)<160&&Math.abs(pz-MINI.z)<160) return; const S=Math.ceil(MINI.R*2*MINI.ppm); MINI.c.width=MINI.c.height=S; MINI.x=px; MINI.z=pz;
@@ -3914,23 +3934,42 @@ function pickCab(g){ const ok=v=>v.ai&&(v.type==='sedan'||v.type==='suv')&&!v.ai
   return placeCar(c[0],110,190,true)?c[0]:null; }
 function rideSign(v,on){ if(RIDE.sign){ RIDE.sign.parent&&RIDE.sign.parent.remove(RIDE.sign); RIDE.sign.material.map.dispose(); RIDE.sign.material.dispose(); RIDE.sign=null; }
   if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('OYA RIDE','#F2B705','#0E1014'),fog:false})); sp.scale.set(1.6,.3,1); sp.position.set(0,((v.c.def.roof&&v.c.def.roof[2])||1.45)+.32,0); sp.layers.set(1); v.c.g.add(sp); RIDE.sign=sp; } }
+// the airport lies beyond the street map: rides to it follow the streets to the end of Agege Motor Road, then the
+// driver takes the airport road himself (and the other way round when you book a ride from the airport)
+const atAirport=()=>!!AIRPORT&&player.z<-WB.z+2;
+function airportPath(toAirport){ const A=AIRPORT, h=A.hand, c1={x:h.x,z:A.HZ}, c2={x:A.TX,z:A.HZ}, m={x:A.TX,z:A.TZ+62}, d={x:A.drop.x,z:A.drop.z}; return toAirport?[c1,c2,m,d]:[m,c2,c1,{x:h.x,z:h.z+4}]; }
 function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book your ride when you are on foot.'); return; } if(CASH.n<fareOf(pl)){ toast(`You no get enough money for this ride (${naira(fareOf(pl))}). Do some OYA WORK first.`,3); return; }
-  const g=goalAt(player.x,player.z), dk=kerbPoint(pl.x,pl.z), v=pickCab(g); if(!v){ toast('"No driver dey around now. Try again small time."',2.6); return; }
+  const air=atAirport(); if(air&&pl.airport){ toast('You dey the airport already!',2.4); return; }
+  const g=air?goalAt(AIRPORT.hand.x,AIRPORT.hand.z):goalAt(player.x,player.z), dk=pl.airport&&AIRPORT?{x:AIRPORT.hand.x,z:AIRPORT.hand.z}:kerbPoint(pl.x,pl.z), v=air?vehicles.find(c=>c.ai&&(c.type==='sedan'||c.type==='suv')&&!c.ai.chase&&!c.ai.goal&&c!==drive.v&&!c.jacked&&!c.raid&&c!==RAID.v):pickCab(g); if(!v){ toast('"No driver dey around now. Try again small time."',2.6); return; }
   Object.assign(RIDE,{v,state:'coming',dest:{...pl,rx:dk.x,rz:dk.z},goal:g,t:0,hint:false,fare:fareOf(pl),who:mpick(RIDE_WHO),car:mpick(RIDE_CAR),plate:mpick(['LND','KJA','AAA','EKY','MUS','APP'])+' '+(100+Math.floor(MR()*899))+' '+mpick(['XA','GH','KT','BD','FE'])});
+  RIDE.fromAir=air; RIDE.leg=null; RIDE.legDone=false;
+  if(air){ // a taxi from the airport rank pulls up beside you on the forecourt road
+    v.ai=null; v.parked=false; v.x=clamp(player.x,AIRPORT.TX-130,AIRPORT.TX+130); v.z=AIRPORT.drop.z; v.y=0; v.h=0; v.speed=0; RIDE.state='waiting'; RIDE.t=0;
+    v.taxi=true; rideSign(v,true); toast(`${RIDE.who} dey the taxi rank. The car with the OYA RIDE sign is on the road in front of the terminal. Press E to enter.`,3.2); phoneUI(); return; }
   v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); }
 function cancelRide(msg){ const v=RIDE.v; if(!v) return; if(RIDE.state==='riding'){ rideExit(true); return; }
-  if(v.ai){ v.ai.goal=null; v.ai.wait=0; } v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
+  if(v.ai){ v.ai.goal=null; v.ai.wait=0; } else v.parked=true; v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null,leg:null,fromAir:false,legDone:false}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
 const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<4.4;
-function rideEnter(){ const v=RIDE.v, d=RIDE.dest; if(!v||!v.ai) return; closeWard(); RIDE.state='riding'; RIDE.t=0; RIDE.goal=goalAt(d.rx,d.rz); v.ai.goal=RIDE.goal; v.ai.wait=1.2;
+function rideEnter(){ const v=RIDE.v, d=RIDE.dest; if(!v||(!v.ai&&!RIDE.fromAir)) return; closeWard(); RIDE.state='riding'; RIDE.t=0; RIDE.goal=goalAt(d.rx,d.rz);
+  if(RIDE.fromAir){ const G=RIDE.goal; RIDE.leg={pts:airportPath(false),i:-1,cb:()=>{ v.x=AIRPORT.hand.x; v.z=AIRPORT.hand.z+4; player.x=v.x; player.z=v.z; if(!(placeCar(v,0,60)||placeCar(v,0,160))||!v.ai){ cancelRide(); return; }   /* back on the street network at the end of Agege Motor Road */ v.ai.goal=G; v.ai.wait=0; }}; }
+  else { v.ai.goal=RIDE.goal; v.ai.wait=1.2; }
   drive.v=v; drive.ride=true; drive.speed=0; drive.steer=0; mode='drive'; rig.root.visible=false; carryDrop(true); player.speed=0; camState.last=-10; lastMode=null;
   mapView.setDest(d.x,d.z,d); toast(`Oya, we dey go ${d.name}. Sit back, relax.`,2.6); if(PHONE.open) phoneUI(); }
 function rideExit(early){ const v=RIDE.v; if(!v) return; drive.ride=false; if(mode==='drive'&&drive.v===v) exitCar();
-  v.parked=false; if(v.ai){ v.ai.goal=null; v.ai.wait=2.5; } v.taxi=false; rideSign(v,false); if(early) mapView.clearRoute();
-  Object.assign(RIDE,{v:null,state:null,dest:null,goal:null}); lastMode=null; if(PHONE.open) phoneUI(); }
+  v.parked=!v.ai; if(v.ai){ v.ai.goal=null; v.ai.wait=2.5; } v.taxi=false; rideSign(v,false); if(early) mapView.clearRoute();
+  Object.assign(RIDE,{v:null,state:null,dest:null,goal:null,leg:null,fromAir:false,legDone:false}); lastMode=null; if(PHONE.open) phoneUI(); }
 function arriveRide(){ const d=RIDE.dest, f=Math.min(CASH.n,RIDE.fare), w=RIDE.who; rideExit(false); mapView.clearRoute(); addCash(-f); if(JOB.state) jobRoute(); toast(`You don reach ${d.name}! ${w} collect ${naira(f)}. "Thank you o, safe journey!"`,3.6); }
 function skipRide(){ const v=RIDE.v, G=RIDE.goal; if(!v||RIDE.state!=='riding') return;
+  if(RIDE.dest&&RIDE.dest.airport){ if(RIDE.skipping) return; RIDE.skipping=true; fadeSwap(()=>{ RIDE.skipping=false; if(RIDE.v!==v||!RIDE.dest) return; RIDE.leg=null; v.ai=null; v.x=AIRPORT.drop.x; v.z=AIRPORT.drop.z; v.h=0; v.speed=0; player.x=v.x; player.z=v.z; camState.last=-10; RIDE.legDone=true; arriveRide(); }); return; }
+  if(RIDE.leg){ RIDE.leg.i=RIDE.leg.pts.length; }
   fadeSwap(()=>{ if(!placeCar(v,12,45,true,{x:G.x,z:G.z})){ v.x=G.x; v.z=G.z; } v.ai.goal=G; G.near=false; v.ai.wait=0; player.x=v.x; player.z=v.z; camState.last=-10; }); }
 function updateRide(dt){ const R=RIDE, v=R.v; if(!v) return; R.t+=dt;
+  if(R.leg){ const L=R.leg, P=L.pts[L.i+1];   // the airport road, driven by hand: follow the points, speed up, slow for the stop
+    if(!P){ const cb=L.cb; R.leg=null; v.speed=0; if(cb) cb(); return; }
+    const dx=P.x-v.x, dz=P.z-v.z, d=Math.hypot(dx,dz)||1, last=L.i+2>=L.pts.length, want=last?Math.min(15,d*.55+1):15;
+    v.speed+=(want-v.speed)*Math.min(1,dt*1.2); const step=Math.min(d,Math.max(0,v.speed)*dt); v.x+=dx/d*step; v.z+=dz/d*step; v.y=0;
+    v.h=lerpA(v.h,Math.atan2(-dz,dx),Math.min(1,dt*3)); if(d<2) L.i++; if(mode==='drive'&&drive.v===v){ player.x=v.x; player.z=v.z; } if(PHONE.open) phoneLive(); return; }
+  if(R.fromAir&&R.state==='waiting'){ v.speed=0; if(R.t>120) cancelRide(`${R.who} don wait tire. He don go.`); return; }
   if(R.state!=='riding'&&!v.ai){ cancelRide('Your driver had to go. Book again.'); return; }   // someone took the car
   if(v.ai&&v.ai.goal!==R.goal) v.ai.goal=R.goal;   // keep the destination if the car was moved
   if(R.state==='coming'){ const G=R.goal;
@@ -3939,7 +3978,7 @@ function updateRide(dt){ const R=RIDE, v=R.v; if(!v) return; R.t+=dt;
     else if(Math.hypot(player.x-G.x,player.z-G.z)>30){ Object.assign(G,goalAt(player.x,player.z)); } }   // you walked off: he comes to where you are now
   else if(R.state==='waiting'){ v.speed=0; if(v.ai) v.ai.wait=1; if(R.t>80) cancelRide(`${R.who} don wait tire. He don go.`); else if(Math.hypot(player.x-v.x,player.z-v.z)>60){ R.state='coming'; v.ai.wait=0; Object.assign(R.goal,goalAt(player.x,player.z)); } }
   else if(R.state==='riding'){ if(mode!=='drive'||drive.v!==v){ rideExit(true); return; } player.x=v.x; player.z=v.z;
-    if(R.goal.near&&Math.abs(v.speed)<.5&&R.t>2) arriveRide(); else if(R.t>300) skipRide();
+    if(R.goal.near&&Math.abs(v.speed)<.5&&R.t>2){ if(R.dest.airport&&!R.legDone){ v.ai=null; R.leg={pts:airportPath(true),i:-1,cb:()=>{ R.legDone=true; arriveRide(); }}; } else arriveRide(); } else if(R.t>300) skipRide();
     else if(R.t>18&&!R.hint&&!PHONE.open){ R.hint=true; toast(`Long ride? Open your phone (${touchUI?'phone button':'P'}) to skip it.`,3); } }
   if(PHONE.open) phoneLive(); }
 
@@ -4757,6 +4796,10 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     start(){ if(!started) $('#enterBtn').click(); },
     // test helper: stand next to a place from the map (name contains the text), facing it
     // test helper: a fixed camera looking at a place from `back` metres away and `h` metres up (look() with no place gives control back)
+    ride(q){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; CASH.n=Math.max(CASH.n,50000); bookRide(pl); return {state:RIDE.state,dest:RIDE.dest&&RIDE.dest.name}; },
+    mapAt(x,z,sc){ if(!mapView.isOpen) openMap(); mapView.view.cx=x; mapView.view.cz=z; mapView.view.s=sc; mapView.draw(); return true; },
+    enter(){ rideEnter(); return RIDE.state; }, skip(){ skipRide(); return RIDE.state; }, rideInfo(){ const v=RIDE.v; return {state:RIDE.state,leg:!!RIDE.leg,legI:RIDE.leg&&RIDE.leg.i,ai:!!(v&&v.ai),x:v&&+v.x.toFixed(1),z:v&&+v.z.toFixed(1),px:+player.x.toFixed(1),pz:+player.z.toFixed(1),mode}; },
+    tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
