@@ -3,8 +3,9 @@
 // global timeline (server time from the HTTP Date header, device clock as fallback),
 // so day, night, rain and harmattan change for everyone at the same moment.
 
-export const DAY_MINUTES = 48;          // one full game day lasts 48 real minutes
-export const WEATHER_SLOT_MIN = 16;     // weather can change every 16 real minutes
+export const DAY_MINUTES = 120;         // one full game day lasts 2 real hours
+export const WEATHER_SLOT_MIN = 40;     // weather can change every 40 real minutes
+const RAIN_MIN = 9;                     // a shower lasts about 9 real minutes, then it clears to cloud
 const BLEND_MS = 100 * 1000;            // weather changes fade in over 100 seconds
 const LAT = 6.5 * Math.PI / 180;        // Lagos
 
@@ -48,9 +49,9 @@ export function keepSynced(everyMin = 5) { setInterval(() => { if (!document.hid
 export const isSynced = () => synced;
 export const now = () => Date.now() + offset;
 
-// game hour 0..24 ; each cycle starts at 06:00. Days are long and nights are very short:
+// game hour 0..24 ; each cycle starts at 06:00. Morning, afternoon and evening are long; night comes late and is short:
 // real minutes spent on each part of the day (they add up to DAY_MINUTES)
-const PARTS = [[6, 18, 36], [18, 20, 5], [20, 29, 3], [29, 30, 4]];   // [from hour, to hour (past midnight = +24), real minutes]
+const PARTS = [[6, 12, 35], [12, 16, 35], [16, 19, 35], [19, 20, 3], [20, 29, 8], [29, 30, 4]];   // [from hour, to hour (past midnight = +24), real minutes]
 export function gameHour(t = now()) {
   if (devHour !== null && isFinite(devHour)) return ((devHour % 24) + 24) % 24;
   const day = DAY_MINUTES * 60000; let m = ((((t % day) + day) % day) / day) * DAY_MINUTES;   // real minutes into this cycle
@@ -87,20 +88,24 @@ function weatherForSlot(slot) {
   const r = hash(slot);
   const rainy = month >= 3 && month <= 9;            // April–October
   const harm = month === 11 || month <= 1;           // December–February
-  if (rainy) return r < .40 ? 'clear' : r < .62 ? 'cloudy' : r < .88 ? 'rain' : 'storm';
-  if (harm) return r < .45 ? 'harmattan' : r < .82 ? 'clear' : r < .95 ? 'cloudy' : 'rain';
-  return r < .6 ? 'clear' : r < .85 ? 'cloudy' : r < .97 ? 'rain' : 'storm';
+  // rain hardly falls: a short shower in about 1 slot in 11 in the rainy season, 1 in 33 the rest of the year
+  if (rainy) return r < .62 ? 'clear' : r < .91 ? 'cloudy' : r < .985 ? 'rain' : 'storm';
+  if (harm) return r < .45 ? 'harmattan' : r < .85 ? 'clear' : r < .99 ? 'cloudy' : 'rain';
+  return r < .7 ? 'clear' : r < .97 ? 'cloudy' : 'rain';
+}
+// the weather from one moment to the next: a rainy slot rains only for its first few minutes, then stays cloudy
+function segAt(t) {
+  const slotMs = WEATHER_SLOT_MIN * 60000, slot = Math.floor(t / slotMs), start = slot * slotMs, key = weatherForSlot(slot);
+  if (!devWeather && (key === 'rain' || key === 'storm') && t - start >= RAIN_MIN * 60000) return { key: 'cloudy', start: start + RAIN_MIN * 60000 };
+  return { key, start };
 }
 // blended weather state at time t
 export function weatherAt(t = now()) {
-  const slotMs = WEATHER_SLOT_MIN * 60000, slot = Math.floor(t / slotMs), into = t - slot * slotMs;
-  const cur = weatherForSlot(slot), prev = weatherForSlot(slot - 1);
+  const C = segAt(t), P = segAt(C.start - 1), P2 = segAt(P.start - 1), into = t - C.start, cur = C.key, prev = P.key;
   const k = Math.min(1, into / BLEND_MS), s = k * k * (3 - 2 * k);
   const A = WEATHERS[prev], B = WEATHERS[cur], mix = f => A[f] + (B[f] - A[f]) * s;
-  // roads stay wet for a while after rain (two slots back counts too)
-  const prev2 = WEATHERS[weatherForSlot(slot - 2)];
-  // roads dry over ~1.7 slots after the rain stops: one smooth decay across slot boundaries
-  const wetFromPast = Math.max(A.rain * Math.max(0, 1 - into / (slotMs * 1.7)), prev2.rain * Math.max(0, 1 - (into + slotMs) / (slotMs * 1.7)));
+  // roads stay wet for a while after rain, drying over about 25 minutes
+  const DRY = 25 * 60000, wetFromPast = Math.max(A.rain * Math.max(0, 1 - into / DRY), WEATHERS[P2.key].rain * Math.max(0, 1 - (t - P.start) / DRY));
   const rain = mix('rain');
   return { key: s > .5 ? cur : prev, label: WEATHERS[s > .5 ? cur : prev].label, icon: WEATHERS[s > .5 ? cur : prev].icon,
     cloud: mix('cloud'), rain, haze: mix('haze'), dim: mix('dim'), wet: Math.min(1, Math.max(rain * 1.4, wetFromPast)),
