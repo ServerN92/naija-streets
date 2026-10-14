@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=410a4ed654';
-import * as C2 from './char2.js?v=410a4ed654';
-import { MapView } from './mapview.js?v=410a4ed654';
+import * as CLOCK from './clock.js?v=17b3a8a1f0';
+import * as C2 from './char2.js?v=17b3a8a1f0';
+import { MapView } from './mapview.js?v=17b3a8a1f0';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='410a4ed654';
+const BUILD='17b3a8a1f0';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -374,7 +374,8 @@ let MANIFEST={}; try{ const r=await fetch('assets/manifest.json',{cache:'no-cach
 const clockSync=CLOCK.syncClock();
 // key: [file, front direction, real size (m) along x after turning, has a low-detail file]
 const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.75,1],bus:['citybus','+z',10.5,1],police:['police_pickup','-x',5.3,1],okada:['red_motorcycle','-x',2.05,1],sedan:['sedancar','-x',4.55,1],
-  bungalow:['ns_bungalow','h',12.5,1],house:['ns_house','h',16,1],storey:['ns_storey','h',12.5,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  bungalow:['ns_bungalow','h',12.5,1],house:['ns_house','h',16,1],storey:['ns_storey','h',12.5,1],
+  dup1:['ns_dup1','h',14.8,1],dup2:['ns_dup2','h',15.2,1],dup3:['ns_dup3','h',15.2,1],dup4:['ns_dup4','h',14.8,1],dup5:['ns_dup5','h',14.8,1],faceme:['ns_faceme','h',18.8,1],zinc:['ns_zinc','h',7.1,1],wood:['ns_wood','h',8.2,1],station:['police_station','h',26,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -751,15 +752,20 @@ function obShed(b){ const hw=b.w/2, hd=b.d/2, h=3.1, W3=(u,y,v)=>[b.cx+b.c*u-b.s
 const SHED_POSTS=[], MARKET_SHEDS=[];
 
 // the three house models are fitted to each real footprint: front to the street, scaled to the plot
-const MODEL_PICK=[['bungalow',.42],['storey',.33],['house',.25]];
+// the street houses (all made with tools/blender_houses.py): each plot gets one whose natural size suits it, weighted so
+// plain bungalows are the most common, luxury duplexes take the big plots now and then, zinc and plank houses the small ones
+const MODEL_PICK=[['bungalow',1],['storey',.8],['house',.55],['faceme',.55],['zinc',.45],['wood',.35],['dup1',.22],['dup2',.22],['dup3',.22],['dup4',.22],['dup5',.22]];
+const PLAIN_TINT=['#ffffff','#f1ede6','#e8e3dc'];
 function fitHouse(b){ if(!HOUSES) return false; const fw=frontLen(b), dd=depthLen(b), f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]);
-  let r=R(), key='bungalow'; for(const [k,p] of MODEL_PICK){ if(r<p){ key=k; break; } r-=p; }
-  if(key==='house'&&fw<12) key='storey';
-  const M=MODELS[key]; let s=Math.min(fw/M.W,dd/M.D);
-  if(s<.55||s>1.5){ for(const k of ['bungalow','storey','house']){ const M2=MODELS[k], s2=Math.min(fw/M2.W,dd/M2.D); if(s2>=.55&&s2<=1.5){ key=k; s=s2; break; } } }
-  const MM=MODELS[key]; if(s<.55||s>1.5) return false;
+  const fits=[]; let tot=0;
+  for(const [k,w] of MODEL_PICK){ const M=MODELS[k]; if(!M) continue; const s=Math.min(fw/M.W,dd/M.D); if(s<.55||s>1.5) continue;
+    const near=Math.max(.08,1-Math.abs(Math.log(s))*1.6);   // best when the house keeps its real size
+    fits.push([k,s,w*near]); tot+=w*near; }
+  if(!fits.length) return false;
+  let r=R()*tot, key=fits[0][0], s=fits[0][1]; for(const [k,sk,w] of fits){ if(r<w){ key=k; s=sk; break; } r-=w; }
+  const MM=MODELS[key];
   const sx=Math.min(fw/MM.W,s*1.22), sz=Math.min(dd/MM.D,s*1.22), sy=clamp(Math.sqrt(sx*sz)*rr(.95,1.08),.6,1.45);
-  const col=new THREE.Color(pick(HOUSE_TINT)); addHouse(key,b.cx,b.cz,ry,sx,sy,sz,col);
+  const col=new THREE.Color(pick(key==='zinc'||key==='wood'?PLAIN_TINT:HOUSE_TINT)); addHouse(key,b.cx,b.cz,ry,sx,sy,sz,col);
   addOB(b.cx,b.cz,MM.W*sx/2,MM.D*sz/2,-ry,MM.H*sy);
   b.model=key; b.mh=MM.H*sy; return true; }
 const SCHOOL_N=['Mushin Community Primary School','Ansar-Ud-Deen Primary School','St. Agnes Primary School','Olateju Junior Grammar School','Ishaga Grammar School'];
@@ -819,7 +825,7 @@ function farBox(M,wallHex,roofHex){ const W=M.W, D=M.D, H=M.H*.7, Y=M.H, g=new T
   for(const s of [-1,1]){ const a=[s*hw,H,s*hd], b2=[s*hw,H,-s*hd], c=[s*hw,Y,0]; for(const p of [a,b2,c]){ P.push(...p); N.push(s,0,0); C.push(wc.r,wc.g,wc.b); } }
   g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(C,3)); g.computeBoundingSphere(); return g; }
 const FAR_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95});
-if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555c'],house:['#ece6da','#3e5f6f']};   // walls and roof of the Blender houses (tools/blender_houses.py)
+if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555c'],house:['#ece6da','#3e5f6f'],dup1:['#ece9e2','#8f8a84'],dup2:['#ece2cc','#4e3427'],dup3:['#e3dfd8','#4f5458'],dup4:['#e6d2ab','#b0552f'],dup5:['#ece9e2','#8f8a84'],faceme:['#d6d9c0','#9aa1a4'],zinc:['#85725f','#7b6250'],wood:['#7f6448','#8a7a6a']};   // walls and roof of the Blender houses (tools/blender_houses.py)
   for(const key in houseInst){ const M=MODELS[key], fc=farC[key]||['#ddd','#777'], lv=[{geo:M.geo,mat:M.mat,dist:Q.lod0,shadow:true}];
     if(M.geo1) lv.push({geo:M.geo1,mat:M.mat1,dist:Math.max(Q.lod0+30,Q.draw*.55),shadow:false});
     lv.push({geo:farBox(M,fc[0],fc[1]),mat:FAR_MAT,dist:Q.draw+40,shadow:false});
