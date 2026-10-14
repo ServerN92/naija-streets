@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=57aaba7130';
-import * as C2 from './char2.js?v=57aaba7130';
-import { MapView } from './mapview.js?v=57aaba7130';
+import * as CLOCK from './clock.js?v=9b411fa7c2';
+import * as C2 from './char2.js?v=9b411fa7c2';
+import { MapView } from './mapview.js?v=9b411fa7c2';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='57aaba7130';
+const BUILD='9b411fa7c2';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -693,6 +693,54 @@ function addFootbridge(e,t){ const A0=nodes[e.a], cx=A0.x+e.fx*t, cz=A0.z+e.fz*t
 { const mainNear=(x,z,R2)=>{ let best=null,bd=1e9; for(const e of ROADS){ if(e.c>2||e.len<26) continue; const A0=nodes[e.a], t=clamp((x-A0.x)*e.fx+(z-A0.z)*e.fz,10,e.len-10), px=A0.x+e.fx*t, pz=A0.z+e.fz*t, d=Math.hypot(px-x,pz-z); if(d<bd&&d<R2){ bd=d; best=[e,t]; } } return best; };
   for(const f of WD.foot){ if(!f.br) continue; const p=f.p, x=(p[0]+p[p.length-2])/2, z=(p[1]+p[p.length-1])/2, [e,d]=nearestRoad(x,z,q=>q.c<=4); if(e&&d<4){ const A0=nodes[e.a]; addFootbridge(e,clamp((x-A0.x)*e.fx+(z-A0.z)*e.fz,8,e.len-8)); } }
   for(const [x,z] of [[828,16],[1150,512],[HOME?HOME.cx:0,HOME?HOME.cz:0],[343,-170],[-300,-650],[600,-1250],[494,1000]]){ const r=mainNear(x,z,450); if(r) addFootbridge(r[0],r[1]); } }
+
+// ---- two flyovers over the big roads, with people living under them (tents, mattresses, a cooking fire, washing on a line)
+// The decks stand on piers outside the carriageway, so traffic passes underneath; the ends are fenced off with
+// "under construction" barriers until the roads beyond them are built.
+const FLYOVERS=[];
+{ const near=(x,z,list,d)=>list.some(o=>Math.hypot(o.cx-x,o.cz-z)<d);
+  const cands=ROADS.filter(e=>e.c<=2&&e.len>=110).sort((a,b)=>b.len-a.len);
+  for(const e of cands){ if(FLYOVERS.length>=2) break; const A0=nodes[e.a], L=Math.min(130,e.len-14), t=e.len/2, cx=A0.x+e.fx*t, cz=A0.z+e.fz*t, rx=-e.fz, rz=e.fx;
+    if(near(cx,cz,FOOTB,140)||near(cx,cz,FLYOVERS,700)||(HOME&&Math.hypot(HOME.cx-cx,HOME.cz-cz)<180)) continue;
+    let l0=-e.hw, l1=e.hw; for(let sd=e.hw;sd<40;sd+=.5){ if(roadAt(cx+rx*sd,cz+rz*sd,.2)) l1=sd; else if(sd>l1+3) break; } for(let sd=e.hw;sd<40;sd+=.5){ if(roadAt(cx-rx*sd,cz-rz*sd,.2)) l0=-sd; else if(sd>-l0+3) break; }
+    const V0=l0-5.5, V1=l1+5.5, ang=Math.atan2(e.fz,e.fx);
+    // no crossing road may run through the camp strips
+    let bad=false; for(let u=-L/2;u<=L/2&&!bad;u+=4) for(const v of [V0+1.5,V1-1.5]){ const x=cx+e.fx*u+rx*v, z=cz+e.fz*u+rz*v; if(roadAt(x,z,.3)) { bad=true; break; } }
+    if(bad) continue;
+    const fo={e,cx,cz,L,V0,V1,l0,l1,ang,fx:e.fx,fz:e.fz,rx,rz,name:(e.name||'Mushin')+' Flyover',camps:[]}; FLYOVERS.push(fo);
+    keepOut({cx:cx+rx*(V0+V1)/2,cz:cz+rz*(V0+V1)/2,hw:L/2+3,hd:(V1-V0)/2+1.5,ang}); }
+  const conc=new THREE.MeshStandardMaterial({map:T.conc,color:0xc9c3b8,roughness:.92}), dark=new THREE.MeshStandardMaterial({color:0x6f6a63,roughness:.95});
+  const tarpC=[0x2f5fa8,0xd9822b,0x3f7f4a,0x9b2f2a,0x5a6f7f,0xc9b26a], tarpM=tarpC.map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.8,side:THREE.DoubleSide}));
+  const stuff=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.9});
+  for(const fo of FLYOVERS){ const {cx,cz,L,V0,V1}=fo, H=7.6, W=V1-V0, vm=(V0+V1)/2, M=new THREE.Matrix4().makeRotationY(Math.atan2(-fo.fz,fo.fx)).setPosition(cx,0,cz);
+    const C=[], D=[], P=[], stuffG=[], tarps=tarpM.map(()=>[]);
+    const put=(list,g)=>{ g.applyMatrix4(M); list.push(g); };
+    put(C,box(L,1.1,W,0,H+.55,vm));                                                      // deck
+    for(const v of [V0+.2,V1-.2]) put(C,box(L,1.1,.4,0,H+1.65,v));                           // parapets
+    for(const v of [V0+2,vm,V1-2]) put(D,box(L,.9,.7,0,H-.45,v));                             // girders
+    for(let u=-L/2+6;u<=L/2-6+.1;u+=(L-12)/Math.max(1,Math.round((L-12)/18))){                 // piers and cross-beams
+      for(const v of [V0+1.3,V1-1.3]){ put(C,box(1.4,H-1,1.4,u,(H-1)/2,v)); const x=cx+fo.fx*u+fo.rx*v, z=cz+fo.fz*u+fo.rz*v; addOB(x,z,.75,.75,0,H); }
+      put(C,box(1.8,1.1,W-1,u,H-.45,vm)); }
+    for(let u=-L/2+10;u<L/2-5;u+=24) for(const v of [V0+.35,V1-.35]){ put(D,box(.14,5,.14,u,H+1.1+2.5,v)); put(D,box(.9,.18,.3,u,H+1.1+5,v+(v<vm?.4:-.4))); }   // lamp poles
+    for(const su of [-1,1]) for(let v=V0+1;v<V1-1;v+=1.6){ put(P,box(1.4,.8,.5,su*(L/2-.6),H+1.5,v)); }   // red and white barriers on the deck ends
+    // the camp: both strips between the piers and the road
+    for(const [a,b] of [[V0+2.2,fo.l0-.8],[fo.l1+.8,V1-2.2]]){ if(b-a<1.6) continue; const vMid=(a+b)/2;
+      for(let u=-L/2+9,k=0;u<L/2-9;u+=6.5,k++){ const r=(Math.sin((u+vMid)*12.9898)*43758.5453)%1, rr2=Math.abs(r), kind=Math.floor(rr2*6), v=vMid+(rr2-.5)*(b-a-1.4);
+        const wx=cx+fo.fx*u+fo.rx*v, wz=cz+fo.fz*u+fo.rz*v;
+        if(kind<=1){ const g=new THREE.SphereGeometry(1,10,5,0,Math.PI*2,0,Math.PI/2); g.scale(1.35,1.0,1.05); g.translate(u,0,v); put(tarps[k%tarps.length],g); addOB(wx,wz,1.2,1.2,0,1); }   // dome tent
+        else if(kind===2){ const g=new THREE.CylinderGeometry(1,1,2.4,3,1); g.rotateZ(Math.PI/2); g.rotateX(-Math.PI/2); g.scale(1,.9,1.05); g.translate(u,.45,v); put(tarps[(k+2)%tarps.length],g); addOB(wx,wz,1.2,.9,0,1); }   // A-frame tarpaulin tent
+        else if(kind===3){ stuffG.push(colBox(1.9,.16,.95,u,.08,v,0xb7a58a,M)); stuffG.push(colBox(1.7,.05,.9,u+.05,.18,v,0x7a3f5c,M)); stuffG.push(colBox(1.9,.16,.95,u,.08,v+1.1,0x9c9c8a,M)); }   // mattresses
+        else if(kind===4){ for(const [du,dv] of [[-.25,0],[.2,.18],[.1,-.22]]) stuffG.push(colBox(.22,.18,.22,u+du,.09,v+dv,0x6d6a64,M)); stuffG.push(colBox(.42,.32,.42,u,.34,v,0x2a2522,M)); stuffG.push(colBox(.25,.35,.18,u+.9,.17,v+.4,0xe8b923,M)); stuffG.push(colBox(.25,.35,.18,u+1.2,.17,v+.3,0xe8b923,M)); }   // cooking fire, pot, jerrycans
+        else { stuffG.push(colBox(1.4,.04,1.0,u,.02,v,0x9b7b55,M)); stuffG.push(colBox(.45,.45,.45,u+.9,.22,v-.3,0xf2f2f2,M)); stuffG.push(colBox(.45,.06,.45,u-.9,.45,v+.2,0xc0392b,M)); }   // cardboard bed, plastic chair, stool
+        if(k%2===0&&fo.camps.length<10) fo.camps.push({x:wx+fo.fx*2.6,z:wz+fo.fz*2.6}); }
+      // washing on a line between two piers
+      const vl=(a+b)/2; put(D,box(13,.03,.03,0,2.1,vl)); for(let i=0;i<9;i++){ stuffG.push(colBox(.55,.7,.03,-5.6+i*1.4,1.72,vl,[0xd9342b,0xf2f2f2,0x1f6fb5,0xf2b705,0x16a06b,0x7b3fa0][i%6],M)); } }
+    const add=(list,mat,shadow=true)=>{ if(!list.length) return; const g=mergeGeometries(list.map(g=>{ const n=g.index?g.toNonIndexed():g; for(const k of Object.keys(n.attributes)) if(!['position','normal','uv','color'].includes(k)) n.deleteAttribute(k); if(!n.attributes.uv) n.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(n.attributes.position.count*2),2)); return n; })); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=true; scene.add(m); return m; };
+    add(C,conc); add(D,dark); add(P,new THREE.MeshStandardMaterial({color:0xd23a2a,roughness:.7}));
+    tarps.forEach((l,i)=>add(l,tarpM[i])); add(stuffG,stuff,false);
+    for(const su of [-1,1]){ const x=cx+fo.fx*su*(L/2-.6), z=cz+fo.fz*su*(L/2-.6); const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('FLYOVER UNDER CONSTRUCTION','#d23a2a','#ffffff',1400,170),fog:false})); lab.scale.set(7,.85,1); lab.position.set(x+fo.rx*vm,H+3.2,z+fo.rz*vm); lab.layers.set(1); scene.add(lab); }
+    PLACES.push({name:fo.name,sub:'Under the bridge',kind:'place',x:cx,z:cz}); } }
+function colBox(w,h,d,x,y,z,hex,M){ const g=box(w,h,d,x,y,z); g.applyMatrix4(M); const c=new THREE.Color(hex), n=g.attributes.position.count, a=new Float32Array(n*3); for(let i=0;i<n;i++){ a[i*3]=c.r; a[i*3+1]=c.g; a[i*3+2]=c.b; } g.setAttribute('color',new THREE.BufferAttribute(a,3)); return g; }
 
 // ---- motor park by Mushin station: danfos load here for Oshodi, Yaba, Ojota and Ikeja
 { const st=WD.pois.station[0]||[1167,-541]; let best=null, bs=1e18;
@@ -2491,6 +2539,9 @@ const SPOTS=[];
     for(let g=0;g<3;g++){ const u=(g-1)*9, x=qx+c*u, z=qz+s2*u, n=4, m=[]; for(let i=0;i<n;i++){ const who=pk(RIDERS); m.push([who,WAIT[who]]); }
       addSpot('park',x,z,m,{row:true,ex:c,ez:s2,face:Math.atan2(s2*pk2.fs,-c*pk2.fs),skipFree:true,park:pk2}); }
     for(const bay of pk2.bays.filter((b,i)=>i%2===0)){ const x=bay.x+c*3.2, z=bay.z+s2*3.2; addSpot('tout',x,z,[['areaboy',['hail','talk','hail','argue']]],{face:Math.atan2(-bay.fwx,-bay.fwz),skipFree:true,park:pk2}); } }
+  // under the flyovers: people who live there, gisting by their tents day and night
+  for(const fo of FLYOVERS) for(const c of fo.camps){ const m=[[pk(['baba','areaboy','mama','hawker','areaboy']),null],[pk(['areaboy','lady_black','baba','mama']),null]]; if(SR()<.4) m.push([pk(['schoolboy','girl','areaboy']),null]);
+    for(const q of m) q[1]=WAIT[q[0]]||ACT[q[0]]||['idle_1','talk']; addSpot('camp',c.x,c.z,m,{rot:SR()*6.28,skipFree:true}); }
   // school compounds: pupils in groups in the yard during school hours
   for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; const span=Math.min(60,Math.sqrt(sc.a.a)*.45), want=Math.min(12,4+Math.floor(sc.a.a/2500)); for(let t=0;t<260&&n<want;t++){ const x=sc.x+rr(-span,span), z=sc.z+rr(-span,span); if(!inPoly(sc.a.pts,x,z)) continue;
       const m=[['schoolboy',['talk','idle_1','no','text']],['schoolboy',['idle_1','talk','idle_2']],['schoolboy',['talk','no','idle_1']]]; if(addSpot('pupils',x,z,m,{rot:SR()*6.28,hours:[7.3,13.4]})) n++; } } }
