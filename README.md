@@ -16,7 +16,8 @@ python3 tools/stamp.py      # always: ties index.html and src/*.js to one releas
 Then commit and push. GitHub Pages serves the `main` branch.
 
 ## Folders
-- `index.html`, `src/game.js` – the game; `src/clock.js` – shared world clock and weather; `src/mapview.js` – big map
+- `index.html`, `src/game.js` – the game; `src/clock.js` – shared world clock and weather; `src/mapview.js` – big map;
+  `src/skater.js` – the skateboarders' bodies (yours and the street skaters')
 - `sw.js`, `manifest.webmanifest` – offline cache and "Add to Home Screen"
 - `assets/models/` – vehicles and buildings (.glb with meshopt geometry and KTX2 textures, plus `_lod1` far versions)
 - `assets/characters/` – the player (`hero.glb`; the original Mixamo .fbx files are a fallback)
@@ -38,6 +39,9 @@ Life on the streets: traffic moves fast on the highways and big roads, so people
 red and run back on green; at the motor park conductors call out, the queue climbs into a danfo and it leaves full,
 then another rolls in; pupils stand at the school gates in school hours; in the markets the mallams and market women
 sell from their stalls and crowds of shoppers go from stall to stall. People only dance at the hotel.
+A few young people skate along the edge of the road (2 on Low, 3 otherwise), with the same body physics as you: they push,
+carve and ollie now and then, keep off the highways, wait for people and cars in their way, and cars wait for them. Drive
+into one and he falls off, gets up and rides on.
 
 ## Shared time and weather
 Every player computes the same game time and weather from the server clock (the HTTP Date header), so day, night,
@@ -188,11 +192,29 @@ Take any of them like other vehicles: the sport bike is the fastest thing on the
 They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by your door next to the okada: E to ride
 (you stand side-on), E to step off. It doesn't knock people over.
 
+## Phone controls and full screen
+The buttons show only what you can do right now. On foot with your fists: CROUCH and JUMP. Running, CROUCH becomes
+SLIDE (like CODM: you slide along the ground and end crouched; keep running and you come straight up). Crouched you
+creep about; tap again (or jump) to stand. GRAB and ATTACK come up when someone is right by you or a fight is on; E when
+there is a vehicle, a door or a place to use (the prompt says what); a gun or a throw gives AIM and FIRE/THROW. On a
+keyboard X crouches or slides. The minimap sits small in the top right, away from the move pad. On phones and tablets the
+game goes full screen when you tap ENTER (Settings → Full screen to turn it off); on an iPhone, Add to Home Screen.
+The two on-foot buttons sit one above the other on the right. Settings → Phone buttons → Move and size buttons lets you
+drag every button where your thumb likes it, make them bigger or smaller (they spread apart so they never overlap) and
+more see-through; Reset puts them back. The layout is kept on that phone, upright and sideways separately.
+
 ## Skating, bike and car skills
 - **Skateboard:** W pushes with the back foot (hold Shift or push the stick all the way for faster pushes), S or BRAKE
   drags the foot, A/D carve. Space (OLLIE on phones) pops an ollie; in the air J kickflip, K heelflip, L shove-it,
   I 360 flip (on phones FLIP, FLIP with the stick left = heelflip, up = 360 flip, SPIN = shove-it). Tricks in one jump make
   a combo (DOUBLE, TRIPLE…); land it straight or you bail and fall. Rough roads slow you, walls and people throw you off.
+  The skater's body is not a set of fixed poses: `src/skater.js` works it out every frame from the ride. To push he turns
+  to face the nose, the back foot comes down on the road and stays on that spot while the board rolls past it (the board
+  only gains speed while the foot is down), then it swings forward for the next push or back onto the tail. Carving, he
+  leans as far as the speed and the turn need (tan lean = speed × turn rate / g; the board leans about half as much).
+  The ollie is a quick squat, the tail snapping down so the board pivots on its back wheels, the front foot dragging it
+  level, the legs tucking at the top and then giving like a spring on the landing. The arms swing like damped pendulums
+  from the body's real pushes, turns, pop and landing. The feet stay on the deck by two-bone IK, so it fits any body.
 - **Bikes:** Shift (WHEELIE) lifts the front wheel, handbrake while straight is a stoppie, J (HOP) is a bunny hop.
 - **Drifts:** handbrake (Space/BRAKE) while turning at speed slides cars and bikes with tyre smoke; hold it for DRIFT points.
 - Every skill shows its name and points; big ones (300+) pay a little cash. Your best combo is kept.
@@ -200,6 +222,12 @@ They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by
   bikes fewer, buses and the tanker more; a tanker blast is bigger).
 Models: `assets/models/car_blue.glb`, `car_benz.glb`, `tanker.glb`, `bike_naked.glb`, `bike_sport.glb`, `skateboard.glb`
 (each with a `_lod1` far version), listed in `LATE_FILES` in `src/game.js`.
+
+## Doors and the way to your hotel room
+Every door you can walk into (hotels, clubs, the police station, the car stand) has a pulsing ring on the ground and a
+bobbing arrow; hotels also say ENTER · name, and your hotel says YOUR HOTEL · ROOM 203 once you book. Inside a hotel a
+gold trail of arrows on the floor leads to where you go next: reception if you have no room, then the lift, then your
+room's door on your floor.
 
 ## Eko Grand Hotel
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge

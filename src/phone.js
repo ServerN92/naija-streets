@@ -133,7 +133,7 @@ const CSS = `
 .camflash{position:fixed;inset:0;background:#fff;z-index:13;pointer-events:none;animation:camFl .35s ease-out forwards}
 @keyframes camFl{from{opacity:.95}to{opacity:0}}
 body.ph-cam .hud>*:not(.camui):not(#touch):not(#toast){visibility:hidden}
-body.ph-cam #mmWrap,body.ph-cam #phoneBtn{visibility:hidden}
+body.ph-cam #mmWrap,body.ph-cam #phoneBtn,body.ph-cam #touch .tbtns{visibility:hidden}
 #phoneBtn.badge::after{content:'';position:absolute;right:4px;top:4px;width:10px;height:10px;border-radius:50%;background:#ff3b30;border:2px solid var(--ink)}
 #phoneBtn{position:relative}
 @media (max-height:420px){.iph-wrap{bottom:calc(6px + var(--sb))}}

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="72bea994ab">
+<meta name="ns-build" content="fdd9a83565">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -166,14 +166,21 @@ body.touchui .ward .kb{display:none}
 .joy{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(0,0,0,.2)}
 .joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(247,239,223,.85)}
 .tbtns{position:absolute;right:calc(16px + var(--sr));bottom:calc(18px + var(--sb));display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:10px;pointer-events:auto;z-index:4}
-.tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
+.tbtns{--bs:1;--bo:1}.tbtns button{opacity:var(--bo);width:calc(64px * var(--bs));height:calc(64px * var(--bs));border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
 .tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
-#tE{grid-column:3;grid-row:2}#tGrab,#tHorn{grid-column:2;grid-row:1}#tJump{grid-column:1;grid-row:2}#tPunch,#tBrake{grid-column:2;grid-row:3}#tSk1{grid-column:1;grid-row:2}#tSk2{grid-column:2;grid-row:2}#tSk3{grid-column:1;grid-row:1}
+#tE{grid-column:3;grid-row:1}#tHorn{grid-column:2;grid-row:1}#tGrab{grid-column:2;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tBrake{grid-column:2;grid-row:3}#tJump{grid-column:3;grid-row:2}#tCrouch{grid-column:3;grid-row:3}#tSk1{grid-column:1;grid-row:2}#tSk2{grid-column:2;grid-row:2}#tSk3{grid-column:1;grid-row:1}
+.tbtns #tPunch.fire{background:rgba(190,40,30,.85);border-color:rgba(255,200,190,.6);font-size:14px}.tbtns #tCrouch{font-size:12px}
 .trick{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;font-family:var(--fd);color:var(--danfo);text-shadow:0 2px 0 #0E1014,0 4px 14px rgba(0,0,0,.6);white-space:nowrap;z-index:6}
 .trick b{display:block;font-weight:400;font-size:clamp(18px,3.4vw,30px);letter-spacing:.02em}.trick span{display:block;font-size:clamp(15px,2.4vw,22px);color:#F7EFDF}
 .trick.pop{animation:trickpop .35s ease-out}@keyframes trickpop{0%{transform:translateX(-50%) scale(.6);opacity:0}60%{transform:translateX(-50%) scale(1.12);opacity:1}100%{transform:translateX(-50%) scale(1)}}
-.tbtns .tbig{width:76px;height:76px;margin:-6px;font-size:13px}
+.tbtns .tbig{width:calc(76px * var(--bs));height:calc(76px * var(--bs));margin:calc(-6px * var(--bs));font-size:13px}
+.tbtns button.free{position:fixed;margin:0;z-index:5}
+.bedit{position:fixed;inset:0;z-index:40;pointer-events:none}
+.bedit .bar{pointer-events:auto;position:absolute;left:50%;top:calc(10px + var(--st));transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px;background:rgba(12,14,18,.92);border:1px solid var(--line);border-radius:14px;padding:10px 14px;max-width:calc(100vw - 24px);box-sizing:border-box;font-weight:700;font-size:14px}
+.bedit .bar label{display:flex;align-items:center;gap:6px;color:var(--muted)}.bedit .bar input{width:96px;accent-color:var(--danfo)}
+.bedit .bar button{background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:9px 14px;font-family:var(--fd);font-size:14px;min-height:40px}.bedit .bar button.ghost{background:rgba(255,255,255,.12);color:var(--cream)}
+body.btnedit .zone{pointer-events:none}body.btnedit #touch::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,.38)}body.btnedit .tbtns button{outline:2px dashed rgba(247,239,223,.75);outline-offset:3px;cursor:grab}body.btnedit .tbtns button.drag{outline-color:var(--danfo)}
 .tbtns #tJump.fightb{font-size:12px}
 .joy.run{border-color:var(--danfo)}.joy.run i{background:var(--danfo)}
 .touchui .weap{min-height:38px;padding:6px 13px;font-size:14px}
@@ -198,6 +205,7 @@ body.touchui .prompt{bottom:calc(24px + var(--sb))}
 body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:112px;height:112px}
 @media (max-height:500px),(max-width:760px){ body.touchui #mmWrap{width:96px;height:96px} body.touchui #mm{border-radius:9px;border-width:2px} body.touchui #mmWrap .mmtag{font-size:10px;padding:3px 7px 2px;bottom:3px;right:-4px} }
 body.touchui.vit #mmWrap{top:calc(122px + var(--st))}
+body.touchui #mmWrap,body.touchui.vit #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(62px + var(--st));bottom:auto;width:88px;height:88px}   /* top right, clear of the move pad */
 @media (orientation:landscape){ body.touchui.vit .toast{left:calc(50% + 50px);max-width:calc(100vw - 360px)} }   /* keep messages clear of the health bars */
 body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 .ctxlost{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(10,11,14,.9);padding:24px;text-align:center}
@@ -237,7 +245,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   .tl{max-width:calc(100vw - 230px - var(--sl) - var(--sr))}
 }
 @media (orientation:portrait) and (max-width:760px){
-  body.touchui #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:96px;height:96px}
+  body.touchui #mmWrap,body.touchui.vit #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:84px;height:84px}
   body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
   body.touchui .prompt{bottom:calc(172px + var(--sb))}
   body.touchui .toast{top:calc(196px + var(--st));max-width:calc(100vw - 32px)}
@@ -245,7 +253,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 }
 @media (max-height:520px){
   #mmWrap{width:132px;height:132px}
-  body.touchui #mmWrap{width:96px;height:96px;top:calc(60px + var(--st))}
+  body.touchui #mmWrap,body.touchui.vit #mmWrap{width:78px;height:78px;top:calc(58px + var(--st))}
   .loc{font-size:17px}
   .speedo b{font-size:46px}
   body.touchui .speedo{bottom:calc(162px + var(--sb))}
@@ -305,13 +313,22 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" data-q="high" aria-pressed="false">High</button>
     </div>
     <p class="note" id="qualNote">Low is smoothest on older phones. The game restarts to apply a change.</p>
+    <div id="fsSet" hidden><h3>Full screen</h3>
+    <div class="seg" id="fs" role="group" aria-label="Full screen">
+      <button type="button" data-f="on" aria-pressed="true">On</button>
+      <button type="button" data-f="off" aria-pressed="false">Off</button>
+    </div>
+    <p class="note" id="fsNote">Hides the browser bars while you play.</p></div>
+    <div id="btnSet" hidden><h3>Phone buttons</h3>
+    <div class="seg"><button type="button" id="btnEdit" aria-pressed="false">Move and size buttons</button></div>
+    <p class="note">Drag each button where your thumb likes it, set the size and how see-through they are. Kept for this phone, upright and sideways separately.</p></div>
     <h3>Sound</h3>
     <div class="seg" id="snd" role="group" aria-label="Sound">
       <button type="button" data-s="on" aria-pressed="true">On</button>
       <button type="button" data-s="off" aria-pressed="false">Off</button>
     </div>
     <h3>Time and weather</h3>
-    <p class="note" style="margin-top:0">Day, night, rain and harmattan change by themselves, at the same moment for every player in Lagos. One game day lasts 48 minutes, and the night only a few of them.</p>
+    <p class="note" style="margin-top:0">Day, night, rain and harmattan change by themselves, at the same moment for every player in Lagos. One game day lasts 2 hours: long mornings, afternoons and evenings, and a short night.</p>
     <div id="keys">
       <h3>Keyboard</h3>
       <dl>
@@ -320,6 +337,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>Mouse</dt><dd>Look around (click the city first)</dd>
         <dt>E</dt><dd>Enter or leave a vehicle or house (at a moving car: take it from the driver)</dd>
         <dt>Space</dt><dd>Jump on foot, brake when driving</dd>
+        <dt>X</dt><dd>Crouch (walking), or slide (running); X again to stand</dd>
         <dt>J or click</dt><dd>Punch: jab, cross, jab… (while running: takedown)</dd>
         <dt>K or right click</dt><dd>Kick (after two punches it floors him; while running: drop kick)</dd>
         <dt>L or Q</dt><dd>Dodge (hit straight after for a harder blow)</dd>
@@ -345,6 +363,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" id="tJump" hidden aria-label="Jump, or dodge in a fight">JUMP</button>
       <button type="button" class="act" id="tE">E</button>
       <button type="button" id="tBrake" hidden>BRAKE</button>
+      <button type="button" id="tCrouch" hidden aria-label="Crouch, or slide when running">CROUCH</button>
       <button type="button" id="tSk1" hidden>FLIP</button>
       <button type="button" id="tSk2" class="tbig" hidden>OLLIE</button>
       <button type="button" id="tSk3" hidden>SPIN</button>
@@ -353,6 +372,10 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   </div>
 </div>
 
+<div class="bedit" id="bedit" hidden><div class="bar"><span>Drag the buttons</span>
+  <label>Size <input type="range" id="beSize" min="70" max="140" step="5" value="100"></label>
+  <label>See-through <input type="range" id="beOp" min="35" max="100" step="5" value="100"></label>
+  <button type="button" class="ghost" id="beReset">Reset</button><button type="button" id="beDone">Done</button></div></div>
 <div class="bigmap" id="bigmap" hidden>
   <canvas id="bmCanvas"></canvas>
   <div class="bm-top">
@@ -410,7 +433,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=72bea994ab"></script>
+<script type="module" src="src/game.js?v=fdd9a83565"></script>
 
 </body>
 </html>
