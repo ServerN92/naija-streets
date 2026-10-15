@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=22ffca8ccb';
-import * as C2 from './char2.js?v=22ffca8ccb';
-import { MapView } from './mapview.js?v=22ffca8ccb';
+import * as CLOCK from './clock.js?v=9c218ae85b';
+import * as C2 from './char2.js?v=9c218ae85b';
+import { MapView } from './mapview.js?v=9c218ae85b';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='22ffca8ccb';
+const BUILD='9c218ae85b';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -5136,17 +5136,25 @@ function buildSimsRoom(name,g){
       for(let k=0;k<3;k++){ a.fromBufferAttribute(P,I?I.getX(t*3+k):t*3+k).applyMatrix4(M); if(a.x<ax) ax=a.x; if(a.x>bx) bx=a.x; if(a.y<ay) ay=a.y; if(a.y>by) by=a.y; if(a.z<az) az=a.z; if(a.z>bz) bz=a.z; }
       if(by<.3||ay>1.7) continue; const i0=Math.max(0,Math.floor((ax-x0)/CS)), i1=Math.min(gw-1,Math.floor((bx-x0)/CS)), j0=Math.max(0,Math.floor((az-z0)/CS)), j1=Math.min(gd-1,Math.floor((bz-z0)/CS));
       if((i1-i0+1)*(j1-j0+1)>900) continue; for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) grid[j*gw+i]=1; } }
+  // the camera stops at walls: faces of the walls that reach from low down to above head height
+  const tall=new Uint8Array(gw*gd); for(const w of W){ const o=w.o, P=o.geometry.attributes.position, I=o.geometry.index, n=(I?I.count:P.count)/3; o.updateMatrixWorld(true);
+    for(let t=0;t<n;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9; for(let k=0;k<3;k++){ a.fromBufferAttribute(P,I?I.getX(t*3+k):t*3+k).applyMatrix4(o.matrixWorld); if(a.x<ax) ax=a.x; if(a.x>bx) bx=a.x; if(a.y<ay) ay=a.y; if(a.y>by) by=a.y; if(a.z<az) az=a.z; if(a.z>bz) bz=a.z; }
+      if(!(ay<1.2&&by>2.4)) continue; const i0=Math.max(0,Math.floor((ax-x0)/CS)), i1=Math.min(gw-1,Math.floor((bx-x0)/CS)), j0=Math.max(0,Math.floor((az-z0)/CS)), j1=Math.min(gd-1,Math.floor((bz-z0)/CS)); if((i1-i0+1)*(j1-j0+1)>900) continue;
+      for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) tall[j*gw+i]=1; } }
+  // a ceiling (the Blender room leaves it off)
+  { let top=0; for(const w of W) top=Math.max(top,w.o.position.y+w.h); const c=new THREE.Mesh(new THREE.PlaneGeometry(bb.max.x-bb.min.x,bb.max.z-bb.min.z).rotateX(Math.PI/2),new THREE.MeshStandardMaterial({color:0xf3efe8,roughness:.95})); c.position.set((bb.min.x+bb.max.x)/2,top||3.2,(bb.min.z+bb.max.z)/2); S.add(c); }
   const cell=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:grid[j*gw+i]; };
   const free=(x,z,r=.26)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z);
   // lights from the Blender lamps (watts turned into game light)
   const lights=[]; for(const [k,m] of Object.entries(MK)){ if(!/^light_/.test(k)) continue; const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),Math.min(40,(m.power||60)*(m.kind==='AREA'?.11:.3)),m.kind==='AREA'?11:6,1.7); L.position.set(m.x,m.y-.15,m.z); S.add(L); lights.push(L); }
-  const R={name,scene:S,marks:MK,free,sims:true,label:'',camDist:10,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs:{},tick:null,walls:W,
-    bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:-1e4,x1:1e4,z0:-1e4,z1:1e4,y0:.5,y1:1e4},out:()=>STATION.front,
+  const R={name,scene:S,marks:MK,free,sims:false,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs:{},tick:null,walls:W,
+    bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:bb.min.x+.2,x1:bb.max.x-.2,z0:bb.min.z+.2,z1:bb.max.z-.2,y0:.5,y1:2.9},
+    camHit(t,d,dist){ for(let q=.25;q<dist;q+=.08){ const x=t.x+d.x*q, z=t.z+d.z*q, i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); if(i<0||j<0||i>=gw||j>=gd||tall[j*gw+i]) return q; } return dist; },out:()=>STATION.front,
     move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
     nearFree(x,z){ if(free(x,z,.3)) return {x,z}; for(let r=.2;r<4;r+=.2) for(let q=0;q<16;q++){ const px=x+Math.sin(q/16*6.283)*r, pz=z+Math.cos(q/16*6.283)*r; if(free(px,pz,.3)) return {x:px,z:pz}; } return {x,z}; },
     spot(m,label,act,r=1.4){ if(!m) return null; const s2={x:m.x,z:m.z,r,label,act}; R.spots.push(s2); return s2; },
     update(dt){ const cx=camera.position.x, cz=camera.position.z;
-      for(const w of W){ const side=(w.alongX?cz-w.cz:cx-w.cx), me=(w.alongX?player.z-w.cz:player.x-w.cx), along=w.alongX?Math.abs(player.x-w.cx)-w.len/2:Math.abs(player.z-w.cz)-w.len/2;
+      if(R.sims) for(const w of W){ const side=(w.alongX?cz-w.cz:cx-w.cx), me=(w.alongX?player.z-w.cz:player.x-w.cx), along=w.alongX?Math.abs(player.x-w.cx)-w.len/2:Math.abs(player.z-w.cz)-w.len/2;
         const cut=side*me<0&&Math.abs(side)>.2&&along<7;   // the camera and you on different sides of this wall: it drops
         const want=cut?(w.low?Math.min(1,.32/w.h):0):1; w.k+=(want-w.k)*Math.min(1,dt*8); w.o.scale.y=Math.max(.001,w.k); w.o.visible=w.k>.01; }
       for(const f of R.folk) f.mixer.update(dt); if(R.tick) R.tick(dt); } };
