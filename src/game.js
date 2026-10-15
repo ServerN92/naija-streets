@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=3a0ac93580';
-import * as C2 from './char2.js?v=3a0ac93580';
-import { MapView } from './mapview.js?v=3a0ac93580';
+import * as CLOCK from './clock.js?v=84e7562b38';
+import * as C2 from './char2.js?v=84e7562b38';
+import { MapView } from './mapview.js?v=84e7562b38';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='3a0ac93580';
+const BUILD='84e7562b38';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2032,7 +2032,7 @@ try{
   hero={root,mixer,act,w:{idle:1,walk:0,run:0,text:0,phone:0,fight:0},ov:null,carT:0,hips:hips||cObj,cObj,hipsRest:hips?hips.position.clone():null,still:0,fid:null,rest:snapRest(cObj)};
   scene.remove(rig.root); rig={root}; scene.add(root); WALK_V=1.7; RUN_V=4.9; { let l2=null; try{ l2=localStorage.getItem('naija-look2'); }catch(e){} if(isF()||(PROFILE&&l2!=='me')) root.visible=false; }   // you appear once your own person (Tunde, Amaka, Ada) is on
 }catch(e){ console.warn('Character files could not load, using the built-in model.',e); }
-function heroQuiet(){ const a=hero.act; for(const k of ['idle','walk','walk2','run','text','phone']) if(a[k]){ a[k].setEffectiveWeight(0); hero.w[k]=0; } hero.fid=null; hero.still=0;
+function heroQuiet(){ crOff(); const a=hero.act; for(const k of ['idle','walk','walk2','run','text','phone']) if(a[k]){ a[k].setEffectiveWeight(0); hero.w[k]=0; } hero.fid=null; hero.still=0;
   if(a.fight_idle) a.fight_idle.setEffectiveWeight(0); hero.w.fight=0; if(hero.ov){ hero.ov.a.stop(); hero.ov=null; } FIGHT.cx=FIGHT.cz=0; }
 function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   // stand still for a while and you take out your phone (moves arrive with the people files)
@@ -2042,7 +2042,8 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
   const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
   { const o=hero.ov, b=FIGHT.buf; if(b&&(T0-b.t>.5)) FIGHT.buf=null; else if(b&&(!o||(o.atk&&o.t>=o.cancel*o.dur))){ FIGHT.buf=null; playerAttack(b.kind); } }   // a press made during a blow comes out as soon as it can
-  const ow=heroOverlay(hd), base=1-ow;   // a punch, kick, jump or hit plays over the walk
+  const ow=heroOverlay(hd), base=(1-ow)*(1-CR.w);   // a punch, kick, jump or hit plays over the walk (and a crouch under it)
+  if(CR.w>0&&CR.acts.idle) for(const k in CR.acts) CR.acts[k].setEffectiveWeight(CR.acts[k].getEffectiveWeight()*(1-ow));
   // fists up while a fight is on
   w.fight+=((((FIGHT.near||T0-FIGHT.lastAtk<4)&&!FIGHT.ko&&a.fight_idle&&mode==='walk')?1:0)-w.fight)*(1-Math.exp(-6*dt)); if(w.fight>.05) hero.fid=null;
   let f=0; for(const n of ['text','phone']) if(a[n]){ w[n]+=((hero.fid===n?1:0)-w[n])*(1-Math.exp(-4*dt)); a[n].setEffectiveWeight(w[n]*base); f+=w[n]; }
@@ -2327,10 +2328,10 @@ function updateHUD(dt){ if(!started) return;
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
   let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?'Ride your skateboard':v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
-  if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; }
+  if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
-  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); for(const id of ['#tPunch','#tJump']) $(id).hidden=!fb; if(!fb) $('#tGrab').hidden=true; TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
+  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ const job=pl&&pl.job; mapView.clearRoute(); if(!job) toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
@@ -2370,7 +2371,7 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='6') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crPress(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='6') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
 addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
@@ -2392,7 +2393,18 @@ $('#prompt').addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropa
 document.querySelectorAll('#qual button').forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.q===qKey?'true':'false');
   b.addEventListener('click',()=>{ if(b.dataset.q===qKey){ toast(b.textContent+' graphics already on'); return; } try{ localStorage.setItem('naija-quality',b.dataset.q); }catch(e){} toast('Restarting with '+b.textContent.toLowerCase()+' graphics…'); setTimeout(()=>location.reload(),700); }); });
 document.querySelectorAll('#snd button').forEach(b=>b.addEventListener('click',()=>setSound(b.dataset.s==='on'))); setSound(soundOn);
-function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#keys').hidden=true; $('#lookhint').hidden=true;
+// ---- full screen on phones and tablets: the browser's bars go away while you play (Android, iPad). On an iPhone the
+// browser doesn't allow it; added to the Home Screen the game opens full screen (manifest + apple-mobile-web-app-capable).
+const FS={want:true}; try{ FS.want=localStorage.getItem('naija-fs')!=='off'; }catch(e){}
+const fsEl=document.documentElement, fsReq=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen, fsOn=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+const standalone=()=>!!(navigator.standalone||(matchMedia&&matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches));
+function goFull(){ if(!FS.want||!fsReq||fsOn()||standalone()) return; try{ const p=fsReq.call(fsEl,{navigationUI:'hide'}); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
+function setFull(on){ FS.want=on; try{ localStorage.setItem('naija-fs',on?'on':'off'); }catch(e){} document.querySelectorAll('#fs button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.f==='on')===on)));
+  if(on) goFull(); else if(fsOn()){ try{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }catch(e){} } }
+document.querySelectorAll('#fs button').forEach(b=>{ b.addEventListener('click',()=>setFull(b.dataset.f==='on')); b.setAttribute('aria-pressed',String((b.dataset.f==='on')===FS.want)); });
+function fsSettings(){ const box=$('#fsSet'); if(!box) return; box.hidden=!touchUI||standalone(); if(!fsReq){ $('#fs').hidden=true; $('#fsNote').textContent='On iPhone: tap Share, then "Add to Home Screen", and open Naija Streets from there for full screen.'; } }
+addEventListener('pointerdown',()=>{ if(started&&touchUI) goFull(); },{passive:true});   // swiped out of full screen by mistake: the next tap brings it back
+function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=!lastPrompt; if(typeof fsSettings==='function') fsSettings(); $('#keys').hidden=true; $('#lookhint').hidden=true;
   const zl=$('#zoneL'), zr=$('#zoneR'), jo=$('#joy'), jk=$('#joyK'); let jid=null,jx=0,jy=0; const lp=new Map(); let pinch=0;
   zl.addEventListener('pointerdown',e=>{ $('#settings').hidden=true; jid=e.pointerId; jx=e.clientX; jy=e.clientY; jo.hidden=false; jo.style.left=jx+'px'; jo.style.top=jy+'px'; try{ zl.setPointerCapture(jid); }catch(_){} });
   zl.addEventListener('pointermove',e=>{ if(e.pointerId!==jid) return; let dx=e.clientX-jx, dy=e.clientY-jy; const d=Math.hypot(dx,dy), m=50; if(d>m){ dx*=m/d; dy*=m/d; } joy.x=dx/m; joy.y=dy/m; jk.style.transform=`translate(${dx}px,${dy}px)`; jo.classList.toggle('run',Math.hypot(joy.x,joy.y)>.88); });
@@ -2410,7 +2422,8 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   [['#tSk1','b1'],['#tSk2','b2'],['#tSk3','b3']].forEach(([id,k])=>{ const b=$(id); let n=0, t0=0; b.addEventListener('pointerdown',e=>{ e.preventDefault(); TSK[k]=true; n++; t0=performance.now(); b.classList.add('on'); });
     for(const ev of ['pointerup','pointercancel','pointerleave']) b.addEventListener(ev,()=>{ const my=n; setTimeout(()=>{ if(n===my) TSK[k]=false; },Math.max(0,110-(performance.now()-t0))); b.classList.remove('on'); }); });
   $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); tapAttack(); }); for(const ev of ['pointerup','pointercancel','pointerleave']) $('#tPunch').addEventListener(ev,()=>{ ARMS.trig=false; });
-  $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); if(fightNear()) playerDodge(); else playerJump(); }); }
+  $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); if(fightNear()) playerDodge(); else playerJump(); });
+  $('#tCrouch').addEventListener('pointerdown',e=>{ e.preventDefault(); crPress(); TB.k=null; }); }
 // one ATTACK button: tap, tap, tap = jab, cross and the kick that floors him (running: a takedown); with a gun it fires
 function tapAttack(){ if(gunOut()){ ARMS.trig=true; return; } const nxt=T0-FIGHT.swingT<1.05?FIGHT.chain+1:0; playerAttack(nxt>=2&&FIGHT.chain>=0?'kick':'punch'); }
 // a fight going on around you: JUMP becomes DODGE
@@ -2422,8 +2435,13 @@ function touchButtons(dt){ if(!touchUI||mode!=='walk'||!fightReady()) return; if
   if(gunOut()){ g='AIM'; cls=ARMS.aim?'on':''; }
   else if(CARRY.p) g='DROP';
   else { const f=pickFoe(2.4,1.6); if(f&&f.state!=='down'&&f.state!=='dead'){ g=ARMS.cur!=='fists'&&!f.cop&&!f.dealer&&!f.looted&&!(f.state==='fight'||f.state==='hurt')?'ROB':'GRAB'; } else { let n=null; for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.carried) continue; if(Math.abs(p.x-player.x)<1.9&&Math.abs(p.z-player.z)<1.9&&Math.hypot(p.x-player.x,p.z-player.z)<1.9){ n=p; break; } } if(n) g='GRAB'; } }
-  const j=fightNear()?'DODGE':'JUMP', k=g+'|'+cls+'|'+j; if(k===TB.k) return; TB.k=k;
+  // ATTACK only with a weapon in hand, someone right by you or a fight on; with a gun: AIM and FIRE
+  const W=WEAPONS[ARMS.cur]||{}, gun=gunOut(), at=gun?(W.throw?'THROW':'FIRE'):(ARMS.cur!=='fists'||g==='GRAB'||g==='ROB'||fightNear()||T0-FIGHT.lastAtk<3)?'ATTACK':'';
+  const c=CR.sl>0?'SLIDE':CR.on?'CROUCH':player.speed>WALK_V+.35?'SLIDE':'CROUCH', con=CR.on||CR.sl>0;
+  const j=fightNear()?'DODGE':'JUMP', k=g+'|'+cls+'|'+j+'|'+at+'|'+c+con; if(k===TB.k) return; TB.k=k;
   const b=$('#tGrab'); b.hidden=!g; if(g){ b.textContent=g; b.classList.toggle('on',cls==='on'); b.classList.toggle('fightb',g==='ROB'); }
+  const P=$('#tPunch'); P.hidden=!at; P.classList.toggle('fire',gun); P.classList.toggle('fightb',!gun);
+  const C=$('#tCrouch'); C.textContent=c; C.classList.toggle('on',con);
   const J=$('#tJump'); J.textContent=j; J.classList.toggle('fightb',j==='DODGE'); }
 if(isTouch) enableTouchUI(); else addEventListener('touchstart',()=>enableTouchUI(),{once:true,passive:true});
 let rotateSeen=false; function checkRotate(){ if(started&&innerWidth>innerHeight) rotateSeen=true; const show=touchUI&&started&&!rotateSeen&&innerHeight>innerWidth&&innerWidth<700; $('#rotate').hidden=!show; }
@@ -2502,6 +2520,10 @@ function updateWalk(dt,inside){
   let mx=fx*f+rx*s, mz=fz*f+rz*s, jd=0;
   const jg=JACK.go; if(jg&&!inside){ jg.t+=dt; const dx=jg.x-player.x, dz=jg.z-player.z; jd=Math.hypot(dx,dz); if(jd<.2||jg.t>1.6||FIGHT.ko){ JACK.go=null; jackThreaten(jg.v); jd=0; } else { mx=dx/jd; mz=dz/jd; } }   // walking up to the driver's door
   const len=Math.hypot(mx,mz), jl=Math.hypot(joy.x,joy.y), run=K.shift||touchRun||jl>.88; let target=len>.12?(run?RUN_V:WALK_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len)):0; if(CARRY.p) target=Math.min(target,RUN_V*.55); if(jd) target=Math.min(RUN_V*.75,jd*6);
+  if(CR.on&&!(CR.sl>0)) target=Math.min(target,1.15);   // crouched: you creep
+  if(CR.sl>0){ CR.sl-=dt; const k=1-Math.max(0,CR.sl)/CR.dur; target=CR.v0*Math.pow(1-k,.8); player.speed=target; if(len>.12) CR.yaw=lerpA(CR.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-1.6*dt)); player.yaw=CR.yaw;
+    if(CR.sl<=0){ CR.sl=0; if(run&&len>.5) CR.on=false; } }   // keep running and you come straight up
+  if(CR.on&&(FIGHT.ko||CARRY.p||inside&&false)) crReset();
   const ov=hero&&hero.ov, held=FIGHT.ko||(ov&&ov.lock);
   if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1){ target=v; player.speed=v; } }
     else if(ov&&ov.foe&&ov.foe.state!=='off'){ const q=ov.foe, k=ov.t/ov.dur, dx=q.x-player.x, dz=q.z-player.z, d=Math.hypot(dx,dz);   // a blow carries you onto your man, turning with him
@@ -2510,7 +2532,7 @@ function updateWalk(dt,inside){
   player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:(held?16:10)));
   const strafe=!inside&&aimingNow();
   if(strafe){ player.yaw=lerpA(player.yaw,Math.atan2(AIM.dir.x,AIM.dir.z),1-Math.exp(-(ARMS.aim?30:14)*dt)); target=Math.min(target,WALK_V*.85); }
-  else if(len>.12&&!held) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
+  else if(len>.12&&!held&&!(CR.sl>0)) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
   else if(!held&&!inside&&(FIGHT.near||T0-FIGHT.lastAtk<3)){ const t=lockFoe(); if(t) player.yaw=lerpA(player.yaw,Math.atan2(t.x-player.x,t.z-player.z),1-Math.exp(-10*dt)); }   // in a fight you keep facing your man
   let ex=0, ez=0; const DS=FIGHT.dash; if(DS){ DS.t+=dt; const k=Math.max(0,1-DS.t/DS.dur)*1.6; ex=DS.vx*k*dt; ez=DS.vz*k*dt; if(DS.t>=DS.dur) FIGHT.dash=null; }   // a dodge slides you aside
   if(strafe&&len>.12){ ex+=mx/len*player.speed*dt; ez+=mz/len*player.speed*dt; }
@@ -2523,7 +2545,8 @@ function updateWalk(dt,inside){
     if(player.y<1.2){ playerPeds(dt); const c2={x:player.x,z:player.z}; if(resolveCircle(c2,.34,null,player.y)){ player.x=c2.x; player.z=c2.z; } }   // people push you, but never into a wall
     const gy=walkY(player.x,player.z,player.y); player.y+=(gy-player.y)*Math.min(1,dt*14); }
   player.ph+=dt*(player.speed<3?player.speed*4.3:10+(player.speed-3)*.3);
-  rig.root.position.set(player.x,player.y,player.z); rig.root.rotation.y=player.yaw;
+  if(hero) crTick(dt,player.speed);
+  rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw;
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
 function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
@@ -3583,7 +3606,39 @@ function carHitPlayer(v,sp){ FIGHT.carT=1.5; const fx=Math.cos(v.h), fz=-Math.si
   hitPlayer((sp-4)*9,v,'car'); if(FIGHT.dead) return;
   FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})});
   if(sayT<=0){ sayT=5; toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"']),2.4); } }
-function playerJump(){ if(mode!=='walk'||!hero||!hero.act.jump||FIGHT.ko||busy) return; if(hero.ov) return; heroDo('jump',{ts:1.35,lock:false}); }
+function playerJump(){ if(mode!=='walk'||!hero||!hero.act.jump||FIGHT.ko||busy) return; if(hero.ov) return; if(CR.on||CR.sl>0){ CR.on=false; CR.sl=0; } heroDo('jump',{ts:1.35,lock:false}); }
+// ---- crouch and slide (like CODM): walking, CROUCH bends you low and you creep about; running, SLIDE drops you into a
+// slide along the ground that ends crouched (keep running and you come straight up). Poses are made for your own body.
+const CR={on:false,sl:0,dur:.8,v0:0,yaw:0,w:0,sw:0,wk:0,yo:0,clips:null,for:null,acts:{},foot:{},ref:0};
+function crClips(){ if(CR.for===hero.cObj&&CR.clips) return CR.clips; for(const k in CR.acts) CR.acts[k].stop(); CR.acts={};
+  const D=homeInfo(), U=(f=0,sd=0)=>[sd,1,f];
+  const arms={LeftArm:[.3,-.9,.26],LeftForeArm:[.06,-.12,1],LeftHand:[.02,-.2,1],RightArm:[-.3,-.9,.26],RightForeArm:[-.06,-.12,1],RightHand:[-.02,-.2,1]};   // elbows bent, hands up and ready
+  const body={Spine:U(.36),Spine1:U(.22),Spine2:U(.1),Neck:U(-.08),Head:U(-.12)};
+  const legs=(l1,l2,r1,r2)=>({LeftUpLeg:l1,LeftLeg:l2,LeftFoot:[0,-.35,1],RightUpLeg:r1,RightLeg:r2,RightFoot:[0,-.35,1]});
+  const FWD=[[.1,-.32,.95],[.04,-1,-.38]], MID=[[.1,-.48,.86],[.04,-1,-.62]], BACK=[[.1,-.82,.2],[.04,-1,-.9]], mir=a=>a.map(v=>[-v[0],v[1],v[2]]);
+  const idle={...body,...arms,...legs(MID[0],MID[1],...mir(MID))};
+  const walk=[{t:0,d:{...body,...arms,...legs(FWD[0],FWD[1],...mir(BACK))}},{t:.25,d:{...body,...arms,...legs(MID[0],MID[1],...mir(MID))}},
+    {t:.5,d:{...body,...arms,...legs(BACK[0],BACK[1],...mir(FWD))}},{t:.75,d:{...body,...arms,...legs(MID[0],MID[1],...mir(MID))}}];
+  // sliding: lean back, the front leg out straight along the ground, the back leg folded under, a hand down behind
+  const slide={Spine:U(-.3),Spine1:U(-.16),Spine2:U(-.04),Neck:U(.3),Head:U(.28),LeftArm:[.78,-.22,.5],LeftForeArm:[.45,-.1,.88],LeftHand:[.35,-.1,.93],
+    RightArm:[-.3,-.88,-.36],RightForeArm:[-.12,-1,-.08],RightHand:[-.05,-1,.15],LeftUpLeg:[.06,-.28,1],LeftLeg:[.04,-.22,1],LeftFoot:[0,.45,1],RightUpLeg:[-.2,-.78,.6],RightLeg:[-.1,-.32,-.94],RightFoot:[0,-.25,-1]};
+  const C={idle:C2.poseClip(D,'cr_idle',[{t:0,d:idle}]),walk:C2.poseClip(D,'cr_walk',walk,{loop:true,dur:1}),slide:C2.poseClip(D,'cr_slide',[{t:0,d:slide}])};
+  // how low each pose puts you: the lowest foot (or knee, or hand when sliding) back on the ground
+  const low=(clip,re)=>{ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(clip).play(); m.setTime(0); r.updateMatrixWorld(true);
+    let lo=1e9; hero.cObj.traverse(o=>{ if(o.isBone&&re.test(o.name)) lo=Math.min(lo,o.getWorldPosition(_fv).y); }); m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; r.updateMatrixWorld(true); return lo<1e8?lo:0; };
+  const FEET=/(Foot|ToeBase)$/; CR.ref=low(hero.act.idle.getClip(),FEET); CR.foot={idle:low(C.idle,FEET),walk:low(C.walk,FEET),slide:low(C.slide,/(Foot|ToeBase|Leg|Hand)$/)};
+  for(const k in C){ const a=hero.mixer.clipAction(C[k]); a.play(); a.setEffectiveWeight(0); CR.acts[k]=a; } hero.mixer.update(0);
+  CR.for=hero.cObj; return CR.clips=C; }
+function crPress(){ if(mode!=='walk'||!hero||FIGHT.ko||busy||CARRY.p||(hero.ov&&hero.ov.lock)) return; try{ crClips(); }catch(e){ console.warn('crouch',e); return; }
+  if(CR.sl>0) return; if(!CR.on&&player.speed>WALK_V+.35&&!aimingNow()){ CR.sl=CR.dur; CR.v0=Math.max(player.speed,RUN_V)*1.18; CR.yaw=player.yaw; CR.on=true; burst(.12,260,.18,5); return; }   // running: slide
+  CR.on=!CR.on; }
+function crReset(){ CR.on=false; CR.sl=0; }
+function crOff(){ crReset(); CR.w=CR.sw=CR.yo=0; for(const k in CR.acts) CR.acts[k].setEffectiveWeight(0); }
+function crTick(dt,speed){ const want=(CR.on||CR.sl>0)&&mode!=='drive'?1:0; if(!want&&CR.w<.002){ CR.w=0; CR.yo=0; return; } if(!CR.clips||CR.for!==hero.cObj){ try{ crClips(); }catch(e){ crReset(); return; } }
+  const k=1-Math.exp(-12*dt); CR.w+=(want-CR.w)*k; CR.sw+=((CR.sl>0?1:0)-CR.sw)*(1-Math.exp(-16*dt)); CR.wk+=((speed>.12?1:0)-CR.wk)*k;
+  const A=CR.acts, c=CR.w, sw=CR.sw, wk=CR.wk; A.idle.setEffectiveWeight(c*(1-sw)*(1-wk)); A.walk.setEffectiveWeight(c*(1-sw)*wk); A.slide.setEffectiveWeight(c*sw);
+  A.walk.timeScale=clamp(speed/1.05,.5,1.7);
+  CR.yo=c*((1-sw)*((1-wk)*(CR.ref-CR.foot.idle)+wk*(CR.ref-CR.foot.walk))+sw*(CR.ref-CR.foot.slide)); }
 // paired move ("jack" him): you grab them by the legs and slam them on the floor, and you are down there with them to keep hitting
 const TK=.34;   // the part of the takedown up to the slam
 function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
@@ -5853,7 +5908,7 @@ const eb=$('#enterBtn');
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
 eb.addEventListener('click',()=>{ if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
-  started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
+  if(touchUI) goFull(); started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);   // the new vehicles come in the background
   { const left=jailSaved(); if(left){ busy=true; setTimeout(()=>{ fadeSwap(()=>{ enterJail(left); }); },300); } } });   // you left the game in the cell: straight back in
