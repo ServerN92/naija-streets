@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=f60984d938';
-import * as C2 from './char2.js?v=f60984d938';
-import { MapView } from './mapview.js?v=f60984d938';
+import * as CLOCK from './clock.js?v=481abb0938';
+import * as C2 from './char2.js?v=481abb0938';
+import { MapView } from './mapview.js?v=481abb0938';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='f60984d938';
+const BUILD='481abb0938';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1416,11 +1416,9 @@ function animHuman(h,ph,s,t,phone){
   h.hips.position.y=.93-.035*run+Math.abs(Math.cos(ph))*(.022*a+.035*run);
   h.torso.rotation.set(.03*a+.2*run,-sw*(.06*a+.1*run),0); h.hips.rotation.y=sw*.05*a; h.head.rotation.y=0;
 }
-function randomHuman(){ const f=MR()<.45, ai=()=>Math.floor(MR()*ANK.length);
-  return makeHuman({f,skin:skinMat(mpick(SKINS)),top:MR()<.45?ankMat(ai()):clothMat(mpick(TOPS)),bottom:f?(MR()<.6?ankMat(ai()):clothMat(mpick(BOTS))):clothMat(mpick(BOTS)),shoe:clothMat(mpick(SHOES)),hairM:clothMat('#141110'),gele:f&&MR()<.45?ankMat(ai()):null}); }
 
 // ---- the cast: real people made in Mixamo (assets/people). Up close each one is the real body with real moves;
-// farther away the same person is drawn as a cheap look-alike in the same colours, so nobody "changes clothes".
+// farther away the same person is drawn from a few frozen frames of the same body (the crowd), so nobody "changes clothes".
 // h: height (m); w: how common; idle: what they do standing alone; tw: chance to text while walking;
 // look (far look-alike): skin, top, bottom, shoes, hair/cap/tray
 const CAST={
@@ -1441,15 +1439,10 @@ Object.assign(CAST,{   // our own people (Tunde, Amaka, Ada): each copy wears on
   p_amaka:{f:1,h:1.70,w:.45,idle:['f_idle','f_talk','text','f_think'],tw:.3,look:['#7b5032','#f5f1ea','#4a6492','#eeeeee','#141110'],v2:1},
   p_ada:  {f:1,h:1.66,w:.45,idle:['f_idle','f_talk','text','f_bashful'],tw:.3,look:['#3f2616','#561869','#e9b004','#111111','#141110'],v2:1}});
 if(isF()) CAST.girl.w=0;   // she is you: no copies of you walking the streets
-function castHuman(id){ const c=CAST[id], L=c.look; const h=makeHuman({f:!!c.f,skin:skinMat(L[0]),top:clothMat(L[1]),bottom:clothMat(L[2]),shoe:clothMat(L[3]),hairM:clothMat(L[4]),gele:c.tray?clothMat(L[4]):null});
-  h.root.scale.setScalar((c.tray?c.h-.12:c.h)/1.76); return h; }
 // school runs (07:00–08:30, 13:30–15:30 game time) bring out the schoolboys; late night has fewer hawkers and babas
 function pickCast(hour){ const school=hour!=null&&((hour>=7&&hour<8.5)||(hour>=13.5&&hour<15.5)), night=hour!=null&&(hour>=21||hour<5.5); let tot=0; const w={};
   for(const k in CAST){ let x=CAST[k].w; if(k==='schoolboy') x*=school?5:night?0:.5; if(night&&(k==='baba'||k==='hawker')) x*=.3; if(night&&k==='areaboy') x*=1.6; w[k]=x; tot+=x; }
   let r=MR()*tot; for(const k in w){ r-=w[k]; if(r<=0) return k; } return 'mama'; }
-const LOOKS={};   // spare look-alikes per cast, reused when people come and go
-function getLook(id){ const L=LOOKS[id]; if(L&&L.length) return L.pop(); const h=castHuman(id); h.root.visible=false; scene.add(h.root); return h; }
-function returnLook(p){ if(!p.h) return; p.h.root.visible=false; p.h.root.rotation.x=0; (LOOKS[p.cast]||(LOOKS[p.cast]=[])).push(p.h); p.h=null; }
 
 const player={x:APT.front.x+APT.nx*1.2,z:APT.front.z+APT.nz*1.2,y:SLAB,yaw:APT.ry,speed:0,ph:0};
 let mode='walk', started=false, busy=false, T0=0;
@@ -1486,7 +1479,7 @@ function pedPlan(p){ const all=nodes[p.b].wadj.filter(n=>n!==p.a), opts=all.filt
 function replanPed(p){ const [e]=nearestRoad(p.x,p.z,walkable); if(!e){ placePed(p,20,140); return; } const A0=nodes[e.a], B0=nodes[e.b], toB=(p.x-A0.x)*e.fx+(p.z-A0.z)*e.fz<e.len/2;
   p.a=toB?e.a:e.b; p.b=toB?e.b:e.a; const dx=nodes[p.b].x-nodes[p.a].x, dz=nodes[p.b].z-nodes[p.a].z; p.side=(-dz*(p.x-nodes[p.a].x)+dx*(p.z-nodes[p.a].z))>=0?1:-1;   // the pavement they are already on
   p.q=sidewalkPts(nodes[p.a],nodes[p.b],p.side); p.state='walk'; p.carried=false; }
-const newPed=(cast,state)=>({h:cast?getLook(cast):null,cast,body:null,x:0,z:0,y:SLAB,yaw:0,speed:0,v:mrr(1.15,1.6),ph:MR()*6,state,q:[],a:0,b:0,side:MR()<.5?-1:1,timer:0,phone:false,fall:0,vx:0,vz:0,lod:-1,cool:0,startT:0,tw:false,act:null,spot:null,dc:1e9});
+const newPed=(cast,state)=>({h:null,far:false,cast,body:null,x:0,z:0,y:SLAB,yaw:0,speed:0,v:mrr(1.15,1.6),ph:MR()*6,state,q:[],a:0,b:0,side:MR()<.5?-1:1,timer:0,phone:false,fall:0,vx:0,vz:0,lod:-1,cool:0,startT:0,tw:false,act:null,spot:null,dc:1e9});
 // walkers on the pavements
 for(let i=0;i<Q.peds;i++){ const p=newPed(pickCast(),'walk'); p.tw=MR()<CAST[p.cast].tw; peds.push(p); if(!placePed(p,4,140)) placePed(p,0,3000); }
 // people who stand in groups at shop fronts, corners, gates and bus stops (given a place when the player comes near)
@@ -1573,18 +1566,11 @@ const SEATS={okada:[{x:-.12,y:.86,z:0,k:'bike',drv:1},{x:-.62,y:.92,z:0,k:'bike'
   sedan:[{x:.1,y:.62,z:-.38,k:'seat',drv:1},{x:.1,y:.62,z:.38,k:'seat',p:.35},{x:-.85,y:.62,z:0,k:'seat',p:.25}]};
 const POLICE_TOP=paintCloth('#2d3b2a'), POLICE_BOT=paintCloth('#20261d');
 function paintCloth(c){ return clothMat(c); }
-function bakePose(h){ const sm=h.mesh; h.root.updateMatrixWorld(true); const g=sm.geometry, P=g.attributes.position, n=P.count, out=new Float32Array(n*3), v=new THREE.Vector3();
-  for(let i=0;i<n;i++){ v.fromBufferAttribute(P,i); sm.applyBoneTransform(i,v); out[i*3]=v.x; out[i*3+1]=v.y; out[i*3+2]=v.z; }
-  const ng=new THREE.BufferGeometry(); ng.setAttribute('position',new THREE.BufferAttribute(out,3)); ng.setAttribute('uv',g.attributes.uv); ng.setAttribute('color',g.attributes.color); ng.setIndex(g.index); ng.computeVertexNormals(); ng.computeBoundingSphere();
-  const m=new THREE.Mesh(ng,HUMAN_MAT); m.receiveShadow=true; m.layers.set(1); h.root.remove(sm); h.root.add(m); h.mesh=m; return h; }
-// seated people are baked once into a handful of looks per pose and then shared (fast loading, little memory)
-const SEAT_LOOKS={}, SEAT_VARIANTS={seat:10,bike:6,stand:4,bed:4};
-function seatLook(kind,police){ const key=kind+(police?'P':''), list=SEAT_LOOKS[key]||(SEAT_LOOKS[key]=[]), max=police?3:(SEAT_VARIANTS[kind]||6);
-  if(list.length<max&&(list.length===0||MR()<.6)){ const h=police?makeHuman({f:false,skin:skinMat(mpick(SKINS)),top:POLICE_TOP,bottom:POLICE_BOT,shoe:clothMat('#141414'),hairM:clothMat('#141110')}):randomHuman();
-    poseSeat(h,kind); bakePose(h); list.push(h.mesh.geometry); }
-  return mpick(list); }
-function seatHuman(seat,police){ const root=new THREE.Group(); root.rotation.order='YXZ'; const m=new THREE.Mesh(seatLook(seat.k,police),HUMAN_MAT); m.receiveShadow=true; m.castShadow=false; m.layers.set(1); root.add(m);
-  root.rotation.y=Math.PI/2+(seat.ry||0); root.position.set(seat.x,seat.y-.86,seat.z); if(seat.k==='stand') root.position.y=seat.y; return {root,mesh:m}; }
+// people in vehicles: one of the real casts, posed once for the seat and shared (filled in as the casts load)
+const CROWD={c:{},seat:{},wait:[],used:[],list:[],hide:false,queue:[],busy:false,cap:0};   // the crowd (see crowdBake)
+function seatKind(seat){ return seat.k==='bike'?(seat.drv?'bike':'bikeP'):seat.k==='seat'?(seat.drv?'seat':'pass'):seat.k; }
+function seatHuman(seat,police,cast){ const root=new THREE.Group(); root.rotation.order='YXZ'; root.rotation.y=Math.PI/2+(seat.ry||0); root.position.set(seat.x,seat.y,seat.z);
+  const o={root,mesh:null,k:seatKind(seat),police:!!police,cast:cast||null}; if(!crowdSeat(o)){ CROWD.wait.push(o); if(CROWD.wait.length>300) CROWD.wait.shift(); } return o; }
 function makeCar(type,color,empty=false){
   if(MODELS[type]){ const M=MODELS[type], S=splitVehicle(type), g=new THREE.Group(); g.rotation.order='YZX';
     const hi=new THREE.Group(), lo=new THREE.Group(); g.add(hi,lo); const mk=(geo,mat,par)=>{ const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); par.add(m); return m; };
@@ -2220,7 +2206,7 @@ const camState={yaw:APT.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0};
 const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
 let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
 function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
-  if(mode==='drive'){ const v=drive.v; _t.set(v.x,v.y+1.5,v.z); dist=7.8+Math.abs(drive.speed)*.04;
+  if(mode==='drive'){ const v=drive.v, sk=v.type==='skate'; _t.set(v.x,v.y+(sk?1.3+(v.lift||0)*.5:1.5),v.z); dist=sk?4.4+Math.abs(drive.speed)*.1:7.8+Math.abs(drive.speed)*.04;   // on the board the camera stays close, like on foot
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
   else { _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
   dist*=camState.zoom; const cp=Math.cos(camState.pitch); _d.set(-Math.sin(camState.yaw)*cp,Math.sin(camState.pitch),-Math.cos(camState.yaw)*cp);
@@ -2284,6 +2270,9 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   $('#tGrab').addEventListener('pointerdown',e=>{ e.preventDefault(); if(gunOut()) ARMS.aim=!ARMS.aim; else carryGrab(); });
   const tb=$('#tBrake'); tb.addEventListener('pointerdown',e=>{ e.preventDefault(); touchBrake=true; tb.classList.add('on'); }); for(const ev of ['pointerup','pointercancel','pointerleave']) tb.addEventListener(ev,()=>{ touchBrake=false; tb.classList.remove('on'); });
   $('#tHorn').addEventListener('pointerdown',e=>{ e.preventDefault(); horn(); hornHeard(); });
+  // a quick tap is held for a few frames, so the game always sees it
+  [['#tSk1','b1'],['#tSk2','b2'],['#tSk3','b3']].forEach(([id,k])=>{ const b=$(id); let n=0, t0=0; b.addEventListener('pointerdown',e=>{ e.preventDefault(); TSK[k]=true; n++; t0=performance.now(); b.classList.add('on'); });
+    for(const ev of ['pointerup','pointercancel','pointerleave']) b.addEventListener(ev,()=>{ const my=n; setTimeout(()=>{ if(n===my) TSK[k]=false; },Math.max(0,110-(performance.now()-t0))); b.classList.remove('on'); }); });
   $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); tapAttack(); }); for(const ev of ['pointerup','pointercancel','pointerleave']) $('#tPunch').addEventListener(ev,()=>{ ARMS.trig=false; });
   $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); if(fightNear()) playerDodge(); else playerJump(); }); }
 // one ATTACK button: tap, tap, tap = jab, cross and the kick that floors him (running: a takedown); with a gun it fires
@@ -2318,7 +2307,7 @@ function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx
 function pullOut(v){ const p=freePed(); if(!p) return; const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx, ow=v.c.def.W/2+.7;
   wakePed(p,MR()<.45?'areaboy':mpick(['baba','areaboy','schoolboy'])); const c={x:v.x+lx*ow+hx*.4,z:v.z+lz*ow+hz*.4}; resolveCircle(c,.3);
   Object.assign(p,{x:c.x,z:c.z,y:0,state:'down',timer:mrr(2,3),downT:.5,got:0,fall:0,vx:lx*1.6,vz:lz*1.6,yaw:Math.atan2(-lx,-lz),carjacked:true,hp:HP0(p.cast)}); p.seq=(p.seq||0)+1; }
-function enterCar(v){
+function enterCar(v){ drive.skl=null; SKILL.timers={}; v.mh=v.h; v.wh=0; v.lift=0; if(v.type==='skate'){ skReset(); camState.yaw=Math.atan2(Math.cos(v.h),-Math.sin(v.h)); camState.pitch=.2; }   // the camera goes straight behind the board
   if(v.ai){ v.ai=null; v.speed=0; v.jacked=true; pullOut(v); fleeFrom(v,Math.max(0,Math.min(5,(v.c.seats||[]).length-1)));
     addHeat(.45); incident(v.x,v.z,'carjack');
     toast(v.type==='danfo'?'Danfo don change hand! Driver and passengers ran off.':v.type==='okada'?'"My okada!" The rider ran off.':BIKE[v.type]?'"My bike! Ah, my bike!" The rider ran off.':v.type==='benz'?'"My Benz! Ah, you don finish me!" The driver ran off.':v.type==='tanker'?'"Thief! Leave my tanker!" The driver ran off.':v.type==='keke'?'"Ah, my keke!" The driver ran off.':v.type==='police'?'You took a police van. Wahala dey!':mpick(['"Oga, no wahala!" The driver bolted.','"Take am, take am!" The driver ran off.'])); }
@@ -2345,8 +2334,8 @@ function jackOut(v){ if(v.out) return; v.out=true; const p=freePed(); fleeFrom(v
   if(p.cast==='areaboy'&&MR()<.35) p.fightAfter=true; else p.fleeAfter=true;
   setTimeout(()=>toast(p.fightAfter?'"Ehen? You wan take my motor? I go show you!"':v.type==='okada'?'"Take am! Na only okada I get o!"':v.type==='danfo'?'"Everybody come down! Run!"':mpick(['"Take am! Take am! No wahala!"','"Oga abeg, no kill me!"','"Ah! Na my daily bread o!"']),2.2),450); }
 // the player sits on okada / in keke and is seen riding
-function seatHero(v,idx=0){ if(v.type==='skate'&&hero&&v.c.hi){ const a=hero.act; heroQuiet(); a.car.stop(); a.idle.reset().play(); a.idle.setEffectiveWeight(1); hero.w.idle=1; hero.mixer.update(0);   // feet on the deck, side-on like a skater
-    v.c.hi.add(rig.root); rig.root.position.set(0,(MODELS.skate?MODELS.skate.H:.2)-.015,0); rig.root.rotation.set(0,.12,0); rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); return; }
+function seatHero(v,idx=0){ if(v.type==='skate'&&hero&&v.c.hi){ const a=hero.act; heroQuiet(); a.car.stop(); a.idle.setEffectiveWeight(0); hero.w.idle=0; skPoses(true);   // feet on the deck, side-on like a skater
+    v.c.g.add(rig.root); rig.root.position.set(0,skDeck(),0); rig.root.rotation.set(0,.1,0); rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPose(0); return; }
   const st=(SEATS[v.type]||[])[idx]||(SEATS[v.type]||[])[0]; if(!st||!v.c.hi){ rig.root.visible=false; return; }
   if(hero){ const a=hero.act; heroQuiet(); a.car.reset(); a.car.setEffectiveWeight(1); a.car.play(); a.car.time=a.car.getClip().duration-.02; a.car.paused=true; hero.mixer.update(0);
     v.c.hi.add(rig.root); rig.root.position.set(0,0,0); rig.root.rotation.set(0,0,0); rig.root.updateMatrixWorld(true);
@@ -2355,13 +2344,14 @@ function seatHero(v,idx=0){ if(v.type==='skate'&&hero&&v.c.hi){ const a=hero.act
     rig.root.position.set(st.x+RS.x-hp2.x,(st.y+RS.y)-hp2.y,st.z+RS.z-hp2.z); }
   else { v.c.hi.add(rig.root); poseSeat(rig,st.k); rig.root.position.set(st.x,st.y-.86,st.z); rig.root.rotation.set(0,Math.PI/2,0); }
   rig.root.visible=true; }
-function unseatHero(){ if(rig.root.parent!==scene){ scene.add(rig.root); rig.root.rotation.set(0,0,0); } rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); if(hero){ const a=hero.act; a.car.stop(); a.car.paused=false; a.idle.setEffectiveWeight(1); hero.w.idle=1; hero.w.walk=hero.w.run=0; } }
+function unseatHero(){ if(rig.root.parent!==scene){ scene.add(rig.root); rig.root.rotation.set(0,0,0); } rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPoses(false); if(hero){ const a=hero.act; a.car.stop(); a.car.paused=false; a.idle.setEffectiveWeight(1); hero.w.idle=1; hero.w.walk=hero.w.run=0; } }
 function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let placed=false;
   for(const [lx,lz] of [[hz,-hx],[-hz,hx]]){ for(const dd of [v.c.def.W/2+.8,v.c.def.W/2+1.4]){ const c={x:v.x+lx*dd,z:v.z+lz*dd}; let clear=onLand(c.x,c.z)&&!resolveCircle({...c},.34);
       if(clear) for(const o of vehicles){ if(o!==v&&Math.hypot(o.x-c.x,o.z-c.z)<o.c.def.L/2+.4){ clear=false; break; } }
       if(clear){ player.x=c.x; player.z=c.z; placed=true; break; } } if(placed) break; }
   if(!placed){ for(const s of [1,-1]){ const c={x:v.x+hx*(v.c.def.L/2+1)*s,z:v.z+hz*(v.c.def.L/2+1)*s}; if(onLand(c.x,c.z)&&!resolveCircle({...c},.34)){ player.x=c.x; player.z=c.z; placed=true; break; } } }
   if(!placed){ player.x=v.x; player.z=v.z; }
+  v.wh=0; v.lift=0; if(v.c.hi&&v.type==='skate'){ v.c.hi.rotation.set(0,0,0); v.c.hi.position.set(0,0,0); } drive.skl=null;
   unseatHero(); player.y=groundY(player.x,player.z); player.yaw=Math.atan2(hx,hz); player.speed=0; v.speed=0; v.parked=true; drive.v=null; drive.speed=0; drive.ride=false; mode='walk'; rig.root.visible=true; headSpot.intensity=0; BEAM.visible=false; }
 async function enterApt(){ if(busy) return;
   if(!MYROOM.ready&&!MYROOM.failed&&MANIFEST['assets/models/room.glb']){ toast('Opening your room…',4); busy=true; try{ await loadMyRoom(); }catch(e){} busy=false; }
@@ -2401,21 +2391,41 @@ function updateWalk(dt,inside){
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
 function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
-  const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40],car2:[1.1,42],benz:[1.3,52],tanker:[.38,21],bike2:[1.45,42],sbike:[1.9,60],skate:[.55,7.5]})[v.type]||[1,38];
+  if(v.type==='skate'){ updateSkate(dt); return; }
+  const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
+  // drift: handbrake while turning at speed slides the back out (big buses and tankers just brake)
+  const drifting=hb&&Math.abs(sp)>7&&Math.abs(s)>.15&&!big&&SKL.st<.05;
+  const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40],car2:[1.1,42],benz:[1.3,52],tanker:[.38,21],bike2:[1.45,40],sbike:[1.8,48],skate:[.55,7.5]})[v.type]||[1,38];
   if(f>.1) sp+=(sp<-.2?18:9.5*DT[0]*Math.max(0,1-sp/DT[1]))*dt*f; else if(f<-.1){ sp+=(sp>.4?-20:-6)*dt*(-f); if(sp<-9) sp=-9; } else { const dec=(1.6+Math.abs(sp)*.1)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
-  if(hb){ const dec=24*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
-  const maxSt=.6/(1+Math.abs(sp)/14); drive.steer+=(-s*maxSt-drive.steer)*Math.min(1,dt*6);
-  v.h+=sp/2.7*Math.tan(drive.steer)*(hb&&Math.abs(sp)>4?1.5:1)*dt;
+  if(hb){ const dec=(drifting?3.4:B&&SKL.st>.05?12:24)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
+  // bikes: wheelie (Shift / WHEELIE), stoppie (brake hard going straight), bunny hop (J / HOP)
+  if(B){ const wantW=(K.shift||TSK.b1)&&f>.2&&sp>2.5&&SKL.hop<=0, wantS=hb&&sp>8&&Math.abs(s)<.3&&!wantW&&SKL.hop<=0;
+    SKL.wh=wantW?Math.min(.5,SKL.wh+dt*(.9+.4*Math.sin(T0*3))):Math.max(0,SKL.wh-dt*1.6); SKL.st=wantS?Math.min(.3,SKL.st+dt*1.1):Math.max(0,SKL.st-dt*1.6);
+    if(SKL.wh>.04) sp+=dt*.6*f;   // a wheelie pulls you on
+    const jp=!!(K.j||TSK.b2); if(jp&&!SKL.prevJ&&SKL.hop<=0&&SKL.wh<.1){ SKL.hv=3.4; SKL.hop=.001; } SKL.prevJ=jp;
+    if(SKL.hop>0){ SKL.hv-=10.5*dt; SKL.hop+=SKL.hv*dt; if(SKL.hop<=0){ SKL.hop=0; SKL.hv=0; bump(5); skillAdd('BUNNY HOP',drifting?180:90); } }
+    skillTime('WHEELIE',SKL.wh>.22,dt,45); skillTime('STOPPIE',SKL.st>.16,dt,80); }
+  const maxSt=.6/(1+Math.abs(sp)/14)*(B?1-SKL.wh*1.1:1); drive.steer+=(-s*maxSt-drive.steer)*Math.min(1,dt*6);
+  v.h+=sp/2.7*Math.tan(drive.steer)*(drifting?1.75:hb&&Math.abs(sp)>4?1.5:1)*dt;
+  // the way you move lags the way you point while you slide
+  if(v.mh===undefined) v.mh=v.h; { let dh=v.h-v.mh; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); v.mh+=dh*Math.min(1,dt*(drifting?1.5:SKL.dr>0&&Math.abs(dh)>.06?4.5:14)); dh=v.h-v.mh; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); if(Math.abs(dh)>.8){ v.h=v.mh+Math.sign(dh)*.8; dh=Math.sign(dh)*.8; } v.slip=dh;   // a big slide, never a spin-out
+    if(Math.abs(dh)>.1) sp-=Math.sign(sp)*Math.abs(Math.sin(dh))*2.2*dt;
+    const sliding=Math.abs(dh)>.2&&Math.abs(sp)>5&&(drifting||SKL.dr>0);   // a handbrake slide (and its tail), not a plain turn
+    if(sliding){ SKL.dr+=dt; SKL.drOff=0; SKL.drPts+=dt*Math.abs(dh)*Math.abs(sp)*9; const hx=Math.cos(v.h), hz=-Math.sin(v.h), L=v.c.def.L*.38, W=v.c.def.W*.4;   // tyre smoke off the back wheels
+      if(MR()<dt*(B?14:24)) for(const sd of B?[0]:[-1,1]) emit('smoke',v.x-hx*L+hz*W*sd,.15,v.z-hz*L-hx*W*sd,mrr(-.3,.3),mrr(.3,.7),mrr(-.3,.3),mrr(1.2,1.9),.25,1.1,.78,.78,.8,.35);
+      if(!SKL.sq||T0-SKL.sq>.35){ SKL.sq=T0; skid(Math.min(1,Math.abs(dh)*1.6)); } }
+    else if(SKL.dr>0&&(SKL.drOff+=dt)>.5){ if(SKL.dr>.7) skillShow(`DRIFT ${SKL.dr.toFixed(1)}s`,Math.round(SKL.drPts)); SKL.dr=0; SKL.drPts=0; } }
+  v.lift=B?SKL.hop+(SKL.wh>0?v.c.def.L*.36*Math.sin(SKL.wh):0)+(SKL.st>0?v.c.def.L*.4*Math.sin(SKL.st):0):0; v.wh=B?SKL.wh-SKL.st:0;
   const surf=condAt(v.x,v.z), lim=surf==='dirt'?(BIKE[v.type]||v.type==='skate'?.72:.55):surf==='bad'?.85:1; if(Math.abs(sp)>DT[1]*lim) sp-=Math.sign(sp)*Math.min(Math.abs(sp)-DT[1]*lim,dt*(surf==='dirt'?7:4));
-  const fx=Math.cos(v.h), fz=-Math.sin(v.h); let nx=v.x+fx*sp*dt, nz=v.z+fz*sp*dt;
+  const fx=Math.cos(v.h), fz=-Math.sin(v.h), mfx=Math.cos(v.mh), mfz=-Math.sin(v.mh); let nx=v.x+mfx*sp*dt, nz=v.z+mfz*sp*dt;
   { const ph=bumpPothole(v,fx,fz,Math.abs(sp),true); if(ph){ const hit=ph.depth*Math.min(Math.abs(sp),16); camState.shake=Math.min(1.4,camState.shake+hit*.08); if(hit>3){ clunk(Math.min(1,hit/10)); sp*=1-Math.min(.22,hit*.012); } if(hit>9&&!ph.told){ ph.told=1; toast(mpick(['Ehn! This pothole no get mercy','Lagos road wahala!','Small small, this road don spoil'])); } } }
-  if(!onLand(nx,nz,1.2)||!onLand(nx+fx*2.2,nz+fz*2.2,1.2)||!onLand(nx-fx*2.2,nz-fz*2.2,1.2)){ nx=v.x; nz=v.z; if(Math.abs(sp)>4) bump(Math.abs(sp)); if(Math.abs(sp)>8) carDamage(v,(Math.abs(sp)-8)*3); sp*=-.25; }
+  if(!onLand(nx,nz,1.2)||!onLand(nx+fx*2.2,nz+fz*2.2,1.2)||!onLand(nx-fx*2.2,nz-fz*2.2,1.2)){ nx=v.x; nz=v.z; if(Math.abs(sp)>4) bump(Math.abs(sp)); crashDamage(v,Math.abs(sp)); sp*=-.25; }
   const P={x:nx,z:nz}; let hit=false;
   const cr=v.c.def.W/2*.95, ck=Math.max(0,v.c.def.L/2-cr);
   for(const k of (ck>.2?[ck,-ck]:[0])){ const c={x:P.x+fx*k,z:P.z+fz*k}, ox=c.x, oz=c.z; if(resolveCircle(c,cr)){ hit=true; P.x+=c.x-ox; P.z+=c.z-oz; } }
-  if(hit){ if(Math.abs(sp)>6){ bump(Math.abs(sp)); carDamage(v,(Math.abs(sp)-6)*4.5); sp*=.55; } sp*=Math.max(0,1-dt*5); }
+  if(hit){ if(Math.abs(sp)>6){ bump(Math.abs(sp)); crashDamage(v,Math.abs(sp)); sp*=.55; SKL.wh=0; } sp*=Math.max(0,1-dt*5); }
   for(const o of vehicles){ if(o===v) continue; const dx=o.x-P.x, dz=o.z-P.z; if(Math.abs(dx)>5||Math.abs(dz)>5) continue; const d=Math.hypot(dx,dz), lim=(v.c.def.L+o.c.def.L)/2*.7;
-    if(d<lim&&d>.01){ const push=lim-d; P.x-=dx/d*push; P.z-=dz/d*push; if(Math.abs(sp)>4){ bump(Math.abs(sp)); if(Math.abs(sp)>7){ carDamage(v,(Math.abs(sp)-7)*3.5); carDamage(o,(Math.abs(sp)-7)*4); } if(o.ai){ o.ai.wait=3; if(MR()<.7) setTimeout(horn,250); } } sp*=.5; } }
+    if(d<lim&&d>.01){ const push=lim-d; P.x-=dx/d*push; P.z-=dz/d*push; if(Math.abs(sp)>4){ bump(Math.abs(sp)); if(Math.abs(sp)>7){ crashDamage(v,Math.abs(sp)); crashDamage(o,Math.abs(sp)*1.1); } if(o.ai){ o.ai.wait=3; if(MR()<.7) setTimeout(horn,250); } } sp*=.5; } }
   v.x=P.x; v.z=P.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z;
   headSpot.intensity=ENV.spot; const bo=Math.min(.7,ENV.spot/220); BEAM.visible=bo>.03; if(BEAM.visible){ const d=v.c.def.L/2+9; BEAM.position.set(v.x+fx*d,groundY(v.x+fx*d,v.z+fz*d)+.06,v.z+fz*d); BEAM.rotation.set(-Math.PI/2,Math.atan2(-fx,-fz),0); BEAM.material.opacity=bo; } }
 function pickTurn(ai,opts){ if(opts.length===1) return opts[0]; const a=nodes[ai.a], b=nodes[ai.b], fx=(b.x-a.x), fz=(b.z-a.z), L=Math.hypot(fx,fz)||1; let tot=0; const w=[];
@@ -2471,7 +2481,7 @@ function syncCar(v,dt){ const c=v.c, fx=Math.cos(v.h), fz=-Math.sin(v.h), d2=(v.
   let w=(v.h-v.lastH); w=((w+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; v.lastH=v.h; const om=dt>0?w/dt:0;
   const steer=v===drive.v?drive.steer:clamp(Math.atan(om*c.def.L*.62/Math.max(sp,1.5)),-.55,.55); v.steerVis+=(steer-v.steerVis)*Math.min(1,dt*8);
   const leanT=BIKE[v.type]||v.type==='keke'||v.type==='skate'?clamp(-om*sp*(BIKE[v.type]?.075:v.type==='skate'?.05:.02),-.5,.5):0; v.lean+=(leanT-v.lean)*Math.min(1,dt*5);
-  c.g.position.set(v.x,v.y+v.bob-(v.wreck?.12:0),v.z); c.g.rotation.set(v.lean+(v.wreck?.07:0),v.h,Math.atan((yA-yB)/4)*.9+v.pitch+(v.wreck?.03:0));
+  c.g.position.set(v.x,v.y+v.bob-(v.wreck?.12:0)+(v.lift||0),v.z); c.g.rotation.set(v.lean+(v.wreck?.07:0),v.h,Math.atan((yA-yB)/4)*.9+v.pitch+(v.wreck?.03:0)+(v.wh||0));
   const near=d2<HI_D*HI_D||v===drive.v; if(c.hi){ c.hi.visible=near||!c.lo.children.length; c.lo.visible=!c.hi.visible; }
   if(c.occ){ c.occ.visible=c.hi.visible&&d2<OCC_D*OCC_D&&!!v.ai; }
   if(!near&&c.lo&&c.lo.children.length) return;
@@ -2504,7 +2514,7 @@ const FARE={trip:null,hailT:14,stopT:0};
 function farePay(d,type){ const k=type==='benz'?1.6:BIKE[type]?.8:type==='danfo'||type==='bus'?.6:type==='keke'?.7:1; return Math.max(150,Math.round((150+d*1.05)*k/50)*50); }
 function fareSeat(v,i){ const S=SEATS[v.type]||SEATS.sedan, free=S.filter(st=>!st.drv&&st.k!=='stand'&&st.k!=='bed'); return free[i]||null; }
 function fareIn(cast,v){ let T=FARE.trip; const n=T?T.pax.length:0, st=fareSeat(v,n); if(n>=FARE_V[v.type]) return;
-  const h=st?seatHuman(st,false):null; if(h) (v.c.hi||v.c.g).add(h.root);
+  const h=st?seatHuman(st,false,cast):null; if(h) (v.c.hi||v.c.g).add(h.root);
   if(!T){ const all=PLACES.filter(pl=>pl.name&&pl.kind!=='guns'&&!(pl.minor&&pl.sub!=='Neighbourhood')&&pl.name!=='Footbridge'), here={x:v.x,z:v.z}; let dest=null;
       for(let t=0;t<60&&!dest;t++){ const pl=mpick(all), d=Math.hypot(pl.x-here.x,pl.z-here.z); if(d>180&&d<950) dest=pl; } if(!dest) dest=mpick(all);
       const dk=kerbPoint(dest.x,dest.z), d=Math.hypot(dk.x-v.x,dk.z-v.z);
@@ -2555,7 +2565,7 @@ function pedSeparate(dt){ SEP.length=0; for(const p of peds){ if(p.state==='off'
 const SHOVE=['"Comot for my road!"','"You dey blind? Shift!"','"Who you dey push?!"','"Oya move! You no see me?"'];
 function playerPeds(dt){ if(mode!=='walk'||!started||FIGHT.dead) return; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
   const stand=player.speed<.35&&!FIGHT.near&&!(hero&&hero.ov)&&!PHONE.open&&!DEALER.open&&!mapView.isOpen, cy=camState.yaw, cfx=Math.sin(cy), cfz=Math.cos(cy);
-  for(const p of peds){ if(p.state==='off'||p.carried) continue; const dx=p.x-player.x, dz=p.z-player.z; if(Math.abs(dx)>6||Math.abs(dz)>6){ if(p.stare) p.stare=Math.max(0,p.stare-dt); continue; }
+  for(const p of peds){ if(p.state==='off'||p.carried||!(p.body||CROWD.c[p.cast])) continue; const dx=p.x-player.x, dz=p.z-player.z; if(Math.abs(dx)>6||Math.abs(dz)>6){ if(p.stare) p.stare=Math.max(0,p.stare-dt); continue; }
     const d=Math.hypot(dx,dz)||.01;
     if(SOLID.has(p.state)&&p.y<1.2&&d<.64){ const o=.64-d, ux=dx/d, uz=dz/d, share=HEAVY.has(p.state)||p.state==='fight'||p.cop?.1:.35;
       player.x-=ux*o*(1-share); player.z-=uz*o*(1-share); p.x+=ux*o*share; p.z+=uz*o*share;
@@ -2578,12 +2588,12 @@ function stareAt(p,dt,d){ p.stare=(p.stare||0)+dt*(d<2.5?1.3:1);
   if(p.stare>5.5){ p.staring=false; p.stare=0;
     if(hotHead(p)&&!p.beaten){ p.state='fight'; p.atk=null; p.atkT=.4; sayT=5; toast(mpick(['"You still dey look? Na fight you want!"','"Okay o! Since you no wan stop looking!"']),2.4); }
     else { replanPed(p); p.state='walk'; p.startT=.4; p.cool=10; if(sayT<=0){ sayT=4; toast('"This one no well o!"',2); } } } }
-function updatePeds(dt){ NPCF++; if(NPCF%30===0){ NWALK=0; for(const p of peds) if(p.state==='walk'&&!p.spot) NWALK++; }
+function updatePeds(dt){ NPCF++; CROWD.list.length=0; if(NPCF%30===0){ NWALK=0; for(const p of peds) if(p.state==='walk'&&!p.spot) NWALK++; }
   for(const p of peds){ if(p.state==='off') continue;
     const dxp=p.x-player.x, dzp=p.z-player.z, d2=dxp*dxp+dzp*dzp;
     if(d2>230*230&&!p.spot&&p.state!=='xbr'&&p.state!=='tsell'&&p.state!=='shop'&&!p.carried){ if(p.cop||p.toll){ offPed(p); continue; } if(p.body) freeBody(p);
       if(NWALK>Q.peds){ offPed(p); NWALK--; continue; }   // people who ran off after a fight go back to the pool
-      p.h.root.visible=false; recast(p); placePed(p,70,170); continue; }
+      p.far=false; recast(p); placePed(p,70,170); continue; }
     if(p.cool>0) p.cool-=dt;
     if(p.state!=='down'&&p.state!=='dead'&&p.state!=='board'&&p.state!=='getup'&&p.state!=='takedown'&&p.state!=='arrest'&&!p.carried&&p.y<1) for(const v of vehicles){ const sp=Math.abs(v.speed); if(sp<2.5||v.type==='skate') continue; const dx=p.x-v.x, dz=p.z-v.z; if(Math.abs(dx)>4||Math.abs(dz)>4) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
       if(Math.abs(dx*fx+dz*fz)<v.c.def.L/2+.3&&Math.abs(-dx*fz+dz*fx)<v.c.def.W/2+.35){ knock(p,v,fx,fz,sp); break; } }
@@ -2615,15 +2625,13 @@ function updatePeds(dt){ NPCF++; if(NPCF%30===0){ NWALK=0; for(const p of peds) 
       else { let vt=p.tw?Math.min(p.v,1.05):p.v; if(p.startT>0){ p.startT-=dt; vt*=clamp(1-p.startT/1.6,.15,1); }   // getting going after standing
         p.speed+=(vt-p.speed)*Math.min(1,dt*3); p.x+=dx/d*p.speed*dt; p.z+=dz/d*p.speed*dt; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*6)); } }
     // walk into someone and they answer you
-    if(mode==='walk'&&started&&d2<1.8*1.8&&!(p.cool>0)&&!p.dealer&&(p.state==='walk'||p.state==='idle'||p.state==='spot')) bumped(p);
+    if(mode==='walk'&&started&&d2<1.8*1.8&&!(p.cool>0)&&!p.dealer&&(p.body||CROWD.c[p.cast])&&(p.state==='walk'||p.state==='idle'||p.state==='spot')) bumped(p);
     if(p.state!=='xbr'&&!p.carried){ const gy=groundY(p.x,p.z); p.y+=(gy-p.y)*Math.min(1,dt*12); }
-    if(p.body){ p.h.root.visible=false; poseBody(p,dt); if(p.cop) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); pedPhone(p); continue; }
-    const vis=d2<150*150; p.h.root.visible=vis; if(!vis) continue;
-    const lod=d2<45*45?1:0; if(lod!==p.lod){ p.lod=lod; p.h.root.traverse(o=>{ if(o.isMesh) o.castShadow=!!lod; }); }
-    p.h.root.position.set(p.x,p.y+p.fall*.12,p.z); p.h.root.rotation.y=p.yaw; p.h.root.rotation.x=-p.fall*1.45;
-    const still=p.state==='down'||p.state==='dead'||p.state==='spot'||p.state==='react'||p.state==='hurt'||p.state==='getup'||p.state==='takedown';
-    const sn=p.state==='flee'?2:still?0:p.speed/1.4; p.ph+=dt*(p.state==='flee'?10:p.speed*4.4);
-    animHuman(p.h,p.ph,sn,T0+p.v*7,(p.phone&&p.state==='idle')||((p.state==='spot'||p.state==='react')&&(p.act==='text'||p.act==='phone'))); }
+    p.far=false;
+    if(p.body){ poseBody(p,dt); if(p.cop) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); pedPhone(p); continue; }
+    if(d2>150*150) continue;
+    p.ph+=dt*(p.state==='flee'?10:p.speed*4.4);   // where they are in their step
+    if(CROWD.c[p.cast]&&!CROWD.hide) CROWD.list.push(p); }   // drawn by crowdDraw, once the camera has moved
   pedSeparate(dt); }
 function updateWorld(dt){ WU.time.value=(WU.time.value+dt*.6)%1000; if(WU._n){ WU._n.offset.x+=dt*.004; WU._n.offset.y+=dt*.0025; }
   { const on=Math.floor(T0*4)%2===0; polRed.color.setRGB(on?3:.2,on?.15:.02,on?.1:.02); polBlue.color.setRGB(on?.1:.15,on?.2:.35,on?.3:3); }
@@ -2741,7 +2749,7 @@ function updateBlobs(){ if(!BLOBS) return; let n=0; const cx=camera.position.x, 
   if(mode!=='interior'){
     if(mode!=='drive') put(player.x,player.y,player.z,1.1,1.1,0);
     for(const v of vehicles){ if(!v.c.g.visible) continue; const dx=v.x-cx, dz=v.z-cz; if(dx*dx+dz*dz>90*90) continue; put(v.x,v.y,v.z,v.c.def.L*1.05,v.c.def.W*1.25,v.h); }
-    for(const p of peds){ if(p.state==='off'||p.state==='down'||p.state==='dead'||p.carried||!(p.body||p.h.root.visible)) continue; const dx=p.x-cx, dz=p.z-cz; if(dx*dx+dz*dz>60*60) continue; put(p.x,p.y,p.z,.95,.95,0); } }
+    for(const p of peds){ if(p.state==='off'||p.state==='down'||p.state==='dead'||p.carried||!(p.body||p.far)) continue; const dx=p.x-cx, dz=p.z-cz; if(dx*dx+dz*dz>60*60) continue; put(p.x,p.y,p.z,.95,.95,0); } }
   BLOBS.count=n; BLOBS.instanceMatrix.needsUpdate=true; }
 let recycleT=0;
 function recycleCars(dt){ recycleT-=dt; if(recycleT>0) return; recycleT=2;
@@ -2874,7 +2882,7 @@ async function loadPeople(){
     PEOPLE.clipsIn=true; applySavedLook();
     let mine=null; try{ mine=localStorage.getItem('naija-look2'); }catch(e){} if(isF()&&!(mine&&LOOK_LIST.some(l=>l.id===mine&&l.f===1&&!l.file))) mine='girl';
     for(const id of Object.keys(CAST).sort((a,b)=>(b===mine)-(a===mine)||(isV2(a)-isV2(b))||CAST[b].w-CAST[a].w)){   // our big people files come last
-      try{ if(isV2(id)){ if(await loadV2(id)) npcV2(id); } else setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),'')); }catch(e){ console.warn('person '+id+' could not load',e); }
+      try{ if(isV2(id)){ if(await loadV2(id)){ npcV2(id); crowdQueue(id); } } else { setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),'')); crowdQueue(id); } }catch(e){ console.warn('person '+id+' could not load',e); }
       if(id===mine) applySavedLook();   // you get your own body as soon as it is in
       await new Promise(r=>setTimeout(r,30)); }
   }catch(e){ console.warn('people files could not load; the city keeps its simple walkers',e); }
@@ -2931,6 +2939,125 @@ function assignBodies(){ if(!PEOPLE.n) return; const R=Q.npcR, cx=camera.positio
     const pool=BODY_POOL[p.cast]; let b=pool&&pool.length?pool.pop():null; if(!b&&made<1){ made++; b=takeBody(p.cast); } if(!b) continue;   // at most one new body per check: no hitches
     p.body=b; b.p=p; b.root.visible=true; b.cur=null; b.clip=null; b.oy=0; b.acc=0; } }
 
+// ---- the crowd: beyond the real bodies, people are the same cast frozen in a few frames of their own moves (8 steps of the
+// walk, 6 of the run, standing, texting, lying), drawn instanced: one draw per cast and frame in view. The same frames,
+// posed for seats, are the people in cars, buses and on bikes.
+const CW_WALK=8, CW_RUN=6;
+const SEAT_DIRS=(()=>{ const U=(f=0,sd=0)=>[sd,1,f], arms=(a,fa,h)=>({LeftArm:a,LeftForeArm:fa,LeftHand:h,RightArm:[-a[0],a[1],a[2]],RightForeArm:[-fa[0],fa[1],fa[2]],RightHand:[-h[0],h[1],h[2]]});
+  const sit={LeftUpLeg:[.14,-.06,1],RightUpLeg:[-.14,-.06,1],LeftLeg:[.02,-1,.12],RightLeg:[-.02,-1,.12],LeftFoot:[.05,-.45,1],RightFoot:[-.05,-.45,1]};
+  return {seat:{...sit,...arms([.24,-.7,.66],[.08,-.16,1],[.04,-.22,1]),Spine:U(-.06),Spine1:U(-.02),Spine2:U(0),Neck:U(.1),Head:U(.04)},
+    pass:{...sit,...arms([.22,-.92,.3],[.02,-.42,1],[0,-.35,1]),Spine:U(-.12),Spine1:U(-.08),Spine2:U(-.04),Neck:U(.12),Head:U(.06)},
+    bike:{LeftUpLeg:[.3,-.25,1],RightUpLeg:[-.3,-.25,1],LeftLeg:[.06,-1,-.2],RightLeg:[-.06,-1,-.2],LeftFoot:[.05,-.4,1],RightFoot:[-.05,-.4,1],...arms([.32,-.42,.86],[.14,-.2,1],[.08,-.3,1]),Spine:U(.3),Spine1:U(.2),Spine2:U(.1),Neck:U(.02),Head:U(-.06)},
+    bikeP:{LeftUpLeg:[.3,-.2,1],RightUpLeg:[-.3,-.2,1],LeftLeg:[.06,-1,-.25],RightLeg:[-.06,-1,-.25],LeftFoot:[.05,-.4,1],RightFoot:[-.05,-.4,1],...arms([.3,-.9,.3],[.1,-.6,.8],[.05,-.6,.8]),Spine:U(.14),Spine1:U(.08),Spine2:U(.04),Neck:U(.06),Head:U(.04)},
+    stand:{LeftArm:[.25,.95,.1],LeftForeArm:[.15,1,.15],LeftHand:[.1,1,.1],RightArm:[-.25,-1,.08],RightForeArm:[-.1,-1,.35],RightHand:[-.05,-1,.35],Spine:U(0,-.08),Spine1:U(0,-.04),Neck:U(.08),Head:U(.05)},
+    bed:{...sit,...arms([.2,-.8,.55],[.05,-.3,1],[0,-.4,1]),Spine:U(.12),Spine1:U(.08),Spine2:U(.04),Neck:U(.1),Head:U(.05)}}; })();
+const SEAT_HIP={seat:.05,pass:.05,bike:.08,bikeP:.08,bed:.05};   // where the hips sit above the seat point
+const _crS=new THREE.Matrix4(), _crB=new THREE.Matrix4(), _crT=new THREE.Matrix4(), _crM=new THREE.Matrix4();
+let MSIMP=null;   // meshoptimizer's simplifier, loaded only for the crowd
+async function simplifier(){ if(MSIMP!==null) return MSIMP; try{ const m=await import('./libs/meshopt_simplifier.js'); await m.MeshoptSimplifier.ready; MSIMP=m.MeshoptSimplifier; }catch(e){ console.warn('simplifier',e); MSIMP=false; } return MSIMP; }
+const CQ=2.5;   // crowd points are stored as 16-bit numbers within ±2.5 m (scaled back by the instance)
+// the cast's texture read back once (a small copy), so the cut-down crowd body can carry its colours on its points
+function crowdTexPix(map){ const W=Math.min(512,(map.image&&map.image.width)||512), H=Math.min(512,(map.image&&map.image.height)||512), rt=new THREE.WebGLRenderTarget(W,H);
+  const m=new THREE.ShaderMaterial({uniforms:{t:{value:map}},vertexShader:'varying vec2 vu; void main(){ vu=uv; gl_Position=vec4(position.xy,0.,1.); }',
+    fragmentShader:'uniform sampler2D t; varying vec2 vu; void main(){ vec4 c=texture2D(t,vu); gl_FragColor=vec4(pow(max(c.rgb,vec3(0.)),vec3(1./2.2)),1.); }',depthTest:false,depthWrite:false});
+  const q=new THREE.Mesh(new THREE.PlaneGeometry(2,2),m), sc=new THREE.Scene(), cam=new THREE.Camera(); q.frustumCulled=false; sc.add(q);
+  const prev=renderer.getRenderTarget(), buf=new Uint8Array(W*H*4); renderer.setRenderTarget(rt); renderer.render(sc,cam); renderer.readRenderTargetPixels(rt,0,0,W,H,buf); renderer.setRenderTarget(prev);
+  rt.dispose(); m.dispose(); q.geometry.dispose(); return {W,H,buf}; }
+// colours per point: each little triangle of the cast's atlas is sampled a bit inside, and points at the same place share the mean
+function crowdColors(B,MS,map){ const T=crowdTexPix(map); map.updateMatrix(); const e=map.matrix.elements, n=B.n, remap=MS.generatePositionRemap(B.P,3), acc=new Float32Array(n*4), idx=B.idx, UV=B.UV;
+  const look=(u,v,g)=>{ const tu=e[0]*u+e[3]*v+e[6], tv=e[1]*u+e[4]*v+e[7], x=clamp(Math.floor(tu*T.W),0,T.W-1), y=clamp(Math.floor(tv*T.H),0,T.H-1), o=(y*T.W+x)*4, a=remap[g]*4;
+    acc[a]+=T.buf[o]; acc[a+1]+=T.buf[o+1]; acc[a+2]+=T.buf[o+2]; acc[a+3]++; };
+  for(let t=0;t<idx.length;t+=3){ const a=idx[t],b=idx[t+1],c=idx[t+2], cu=(UV[a*2]+UV[b*2]+UV[c*2])/3, cv=(UV[a*2+1]+UV[b*2+1]+UV[c*2+1])/3;
+    for(const k of [a,b,c]) look(UV[k*2]*.55+cu*.45,UV[k*2+1]*.55+cv*.45,k); }
+  const col=new Float32Array(n*3); for(let i=0;i<n;i++){ const a=remap[i]*4, w=acc[a+3]||1; for(let k=0;k<3;k++) col[i*3+k]=Math.pow(acc[a+k]/w/255,2.2); } return col; }
+// the body of a cast cut down to about `tris` triangles, with only the points it still uses (colour per point when cut, else the texture)
+function crowdPrep(B,MS,tris,col){ let idx=B.idx; if(MS&&col&&idx.length>tris*3.4){ try{ const [r]=MS.simplify(idx,B.P,3,tris*3,.05,['Permissive']); if(r.length>=30) idx=r; }catch(e){ console.warn('simplify',e); } }
+  const map=new Int32Array(B.n).fill(-1), ix=new Uint32Array(idx.length); let m=0; for(let i=0;i<idx.length;i++){ const v=idx[i]; if(map[v]<0) map[v]=m++; ix[i]=map[v]; }
+  const R={n:m,sm:B.sm,F:B.F,P:new Float32Array(m*3),N:new Float32Array(m*3),SI:new Uint16Array(m*4),SW:new Float32Array(m*4)}, ex=new Float32Array(m*(col?3:2)), w=col?3:2;
+  for(let v=0;v<B.n;v++){ const k=map[v]; if(k<0) continue; for(let a=0;a<3;a++){ R.P[k*3+a]=B.P[v*3+a]; R.N[k*3+a]=B.N[v*3+a]; } for(let a=0;a<4;a++){ R.SI[k*4+a]=B.SI[v*4+a]; R.SW[k*4+a]=B.SW[v*4+a]; }
+    if(col) for(let a=0;a<3;a++) ex[k*3+a]=col[v*3+a]; else { ex[k*2]=B.UV[v*2]; ex[k*2+1]=B.UV[v*2+1]; } }
+  if(col) R.color=new THREE.BufferAttribute(ex,3); else R.uv=new THREE.BufferAttribute(ex,2);
+  R.index=new THREE.BufferAttribute(m<65536?Uint16Array.from(ix):ix,1); R.tris=ix.length/3; return R; }
+const CROWD_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.78,metalness:0,emissive:0xffffff,emissiveIntensity:0});
+CROWD_MAT.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <emissivemap_fragment>','totalEmissiveRadiance *= vColor.rgb;'); }; HERO_MATS.push(CROWD_MAT);   // the night lift, in their own colours
+// who sits where (a few looks per seat keep memory small): okada riders are men, the conductor hangs from the door
+const SEAT_CASTS={seat:['areaboy','baba','suit_lady','mama','lady_red'],pass:['mama','lady_red','lady_black','girl','schoolboy','baba','areaboy','suit_lady'],bike:['areaboy','baba'],bikeP:['mama','lady_red','lady_black','girl','schoolboy','areaboy','baba','suit_lady'],stand:['areaboy','schoolboy'],
+  seatP:['police_m','police_f'],passP:['police_m','police_f'],bedP:['police_m','police_f']};
+// one frame of a cast: the clip at time t, skinned on the CPU into one plain mesh (all its parts; same height as the real body)
+function crowdSkin(C,J,clip,t,off,hipTo){ const tpl=C.tpl, mx=J.mixer; mx.stopAllAction(); if(clip){ mx.clipAction(clip).reset().play(); mx.setTime(t); } tpl.updateMatrixWorld(true);
+  _crS.makeScale(C.sc,C.sc,C.sc).multiply(_crT.makeTranslation(0,C.y0+(off||0),0));
+  if(hipTo&&J.hips){ const h=J.hips.getWorldPosition(new THREE.Vector3()).applyMatrix4(_crS); _crS.premultiply(_crT.makeTranslation(hipTo.x-h.x,hipTo.y-h.y,hipTo.z-h.z)); }
+  _crS.premultiply(_crT.makeScale(1/CQ,1/CQ,1/CQ));
+  const pos=new Int16Array(J.n*3), nor=new Int8Array(J.n*3), Q16=32767; let base=0;
+  for(const R of J.list){ const sm=R.sm, sk=sm.skeleton, F=R.F, nb=sk.bones.length; _crM.copy(_crS).multiply(sm.matrixWorld).multiply(sm.bindMatrixInverse);
+    for(let b=0;b<nb;b++){ _crB.multiplyMatrices(sk.bones[b].matrixWorld,sk.boneInverses[b]).premultiply(_crM).multiply(sm.bindMatrix); F.set(_crB.elements,b*16); }
+    const n=R.n, P=R.P, N=R.N, SI=R.SI, SW=R.SW;
+    for(let i=0;i<n;i++){ const i3=i*3, i4=i*4, o3=(base+i)*3, px=P[i3],py=P[i3+1],pz=P[i3+2], qx=N[i3],qy=N[i3+1],qz=N[i3+2]; let x=0,y=0,z=0,nx=0,ny=0,nz=0;
+      for(let k=0;k<4;k++){ const w=SW[i4+k]; if(w===0) continue; const e=SI[i4+k]*16;
+        x+=w*(F[e]*px+F[e+4]*py+F[e+8]*pz+F[e+12]); y+=w*(F[e+1]*px+F[e+5]*py+F[e+9]*pz+F[e+13]); z+=w*(F[e+2]*px+F[e+6]*py+F[e+10]*pz+F[e+14]);
+        nx+=w*(F[e]*qx+F[e+4]*qy+F[e+8]*qz); ny+=w*(F[e+1]*qx+F[e+5]*qy+F[e+9]*qz); nz+=w*(F[e+2]*qx+F[e+6]*qy+F[e+10]*qz); }
+      pos[o3]=Math.round(clamp(x,-1,1)*Q16); pos[o3+1]=Math.round(clamp(y,-1,1)*Q16); pos[o3+2]=Math.round(clamp(z,-1,1)*Q16);
+      const l=127/(Math.hypot(nx,ny,nz)||1); nor[o3]=Math.round(nx*l); nor[o3+1]=Math.round(ny*l); nor[o3+2]=Math.round(nz*l); }
+    base+=n; }
+  mx.stopAllAction(); tpl.updateMatrixWorld(true);   // back to rest at once: bodies are cloned from this template
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3,true)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3,true)); if(J.uv) g.setAttribute('uv',J.uv); if(J.color) g.setAttribute('color',J.color); g.setIndex(J.index);
+  g.boundingSphere=new THREE.Sphere(new THREE.Vector3(0,.9/CQ,0),1.5/CQ); return g; }
+// several cut-down parts as one body (one draw)
+function crowdJoin(list,mixer,hips){ let n=0,ni=0; for(const R of list){ n+=R.n; ni+=R.index.count; } const idx=n<65536?new Uint16Array(ni):new Uint32Array(ni); let o=0,vb=0;
+  for(const R of list){ const a=R.index.array; for(let i=0;i<a.length;i++) idx[o++]=a[i]+vb; vb+=R.n; }
+  const J={list,mixer,hips,n,index:new THREE.BufferAttribute(idx,1),tris:ni/3};
+  if(list.every(R=>R.color)){ const c=new Float32Array(n*3); let k=0; for(const R of list){ c.set(R.color.array,k); k+=R.color.array.length; } J.color=new THREE.BufferAttribute(c,3); } else J.uv=list[0].uv; return J; }
+function crowdInst(g,mat){ const m=new THREE.InstancedMesh(g,mat,CROWD.cap||(CROWD.cap=peds.length+8)); m.count=0; m.visible=false; m.frustumCulled=false; m.castShadow=false; m.receiveShadow=true; m.layers.set(1); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); return m; }
+// the parts a cast wears in its first outfit (our own people have several outfits in one file)
+function crowdParts(tpl){ const out=[]; tpl.traverse(o=>{ if(!o.isSkinnedMesh||!o.geometry.attributes.uv) return; let on=true;
+    for(let q=o;q&&q!==tpl;q=q.parent){ const n=q.name; let m;   // the same rules as C2.setOutfit, on the part or any group above it
+      if((m=/^o(\d)~/.exec(n))){ on=m[1]==='0'; break; } if((m=/^shoe(\d*)~/.exec(n))){ on=m[1].includes('0'); break; } if((m=/^body~(\d*)$/.exec(n))){ on=!m[1].includes('0'); break; } if(!q.visible){ on=false; break; } }
+    if(on) out.push(o); }); return out; }
+function crowdBase(sm){ const G=sm.geometry, PA=G.attributes.position, NA=G.attributes.normal, IA=G.attributes.skinIndex, WA=G.attributes.skinWeight, UA=G.attributes.uv, n=PA.count;
+  const B={sm,n,F:new Float32Array(sm.skeleton.bones.length*16),P:new Float32Array(n*3),N:new Float32Array(n*3),SI:new Uint16Array(n*4),SW:new Float32Array(n*4),UV:new Float32Array(n*2),
+    idx:G.index?Uint32Array.from(G.index.array):Uint32Array.from({length:n},(_,i)=>i)};
+  for(let i=0;i<n;i++){ B.P[i*3]=PA.getX(i); B.P[i*3+1]=PA.getY(i); B.P[i*3+2]=PA.getZ(i); if(NA){ B.N[i*3]=NA.getX(i); B.N[i*3+1]=NA.getY(i); B.N[i*3+2]=NA.getZ(i); } B.UV[i*2]=UA.getX(i); B.UV[i*2+1]=UA.getY(i);
+    let ws=0; for(let k=0;k<4;k++){ B.SI[i*4+k]=IA.getComponent(i,k); ws+=(B.SW[i*4+k]=WA.getComponent(i,k)); } if(ws>0) for(let k=0;k<4;k++) B.SW[i*4+k]/=ws; }
+  return B; }
+async function crowdBake(id){ const C=PEOPLE.casts[id], c=CAST[id]; if(!C||CROWD.c[id]) return; const MS=await simplifier(), parts=crowdParts(C.tpl); if(!parts.length||(parts.length>1&&!MS)) return;
+  let hips=null; C.tpl.traverse(o=>{ if(o.isBone&&!hips&&/Hips$/.test(o.name)) hips=o; });
+  const mixer=new THREE.AnimationMixer(C.tpl), yieldNow=()=>new Promise(r=>setTimeout(r,0)), Bs=parts.map(crowdBase), total=Bs.reduce((a,B)=>a+B.idx.length/3,0), want=Q.npc<=8?1500:2200;
+  const list=[]; for(const B of Bs){ const mat=B.sm.material; let col=null;
+    if(MS){ try{ col=mat.map?crowdColors(B,MS,mat.map):null; if(!col){ col=new Float32Array(B.n*3); for(let i=0;i<B.n;i++){ col[i*3]=1; col[i*3+1]=1; col[i*3+2]=1; } }
+        if(mat.color){ for(let i=0;i<B.n;i++){ col[i*3]*=mat.color.r; col[i*3+1]*=mat.color.g; col[i*3+2]*=mat.color.b; } } }catch(e){ console.warn('crowd colours',e); col=null; } }
+    if(!col&&Bs.length>1) return;
+    list.push(crowdPrep(B,MS,Math.max(60,Math.round(want*(B.idx.length/3)/total)),col)); await yieldNow(); }
+  const J=crowdJoin(list,mixer,hips), mat=J.color?CROWD_MAT:parts[0].material, cl=C.clips, K={walk:[],run:null,idle:null,text:null,lie:null,tris:J.tris};
+  if(cl.walk){ for(let i=0;i<CW_WALK;i++) K.walk.push(crowdInst(crowdSkin(C,J,cl.walk,cl.walk.duration*i/CW_WALK,C.off.walk),mat)); await yieldNow(); }
+  if(cl.run&&id!=='hawker'){ K.run=[]; for(let i=0;i<CW_RUN;i++) K.run.push(crowdInst(crowdSkin(C,J,cl.run,cl.run.duration*i/CW_RUN,C.off.run),mat)); await yieldNow(); }
+  const idle=cl[C.idle0]; K.idle=crowdInst(crowdSkin(C,J,idle,idle?idle.duration*.3:0,C.off[C.idle0]),mat);
+  if(cl.text) K.text=crowdInst(crowdSkin(C,J,cl.text,cl.text.duration*.4,C.off.text),mat);
+  if(cl.lie) K.lie=crowdInst(crowdSkin(C,J,cl.lie,0,C.off.lie),mat);
+  if(!K.walk.length) K.walk=[K.idle];
+  // seats (seen close: the whole body and its texture), for the light casts named in SEAT_CASTS; no copies of you
+  await yieldNow(); const kinds=Object.keys(SEAT_CASTS).filter(k=>SEAT_CASTS[k].includes(id));
+  if(kinds.length&&parts.length===1&&(c.w>0||c.cop)){ const D=C2.skeletonInfo(C.tpl), J2=crowdJoin([crowdPrep(Bs[0],null,0,null)],mixer,hips);
+    for(const key of kinds){ const k=SEAT_DIRS[key]?key:key.slice(0,-1), g=crowdSkin(C,J2,C2.poseClip(D,'crowd_'+k,[{t:0,d:SEAT_DIRS[k]}]),0,0,k==='stand'?null:{x:0,y:SEAT_HIP[k],z:0});
+      (CROWD.seat[key]||(CROWD.seat[key]=[])).push({g,mat:parts[0].material,id}); await yieldNow(); } }
+  mixer.uncacheRoot(C.tpl); C.tpl.updateMatrixWorld(true); CROWD.c[id]=K;
+  CROWD.wait=CROWD.wait.filter(o=>{ let r=o.root; while(r.parent) r=r.parent; return r===scene&&!crowdSeat(o); }); }
+function crowdQueue(id){ CROWD.queue.push(id); if(CROWD.busy) return; CROWD.busy=true;
+  (async()=>{ while(CROWD.queue.length){ const k=CROWD.queue.shift(); try{ await crowdBake(k); }catch(e){ console.warn('crowd '+k,e); } await new Promise(r=>setTimeout(r,20)); } CROWD.busy=false; })(); }
+function crowdSeat(o){ const L=CROWD.seat[o.k+(o.police?'P':'')]; if(!L||!L.length) return false; let e=o.cast?L.find(q=>q.id===o.cast):null; if(!e) e=mpick(L);
+  const m=new THREE.Mesh(e.g,e.mat); m.scale.setScalar(CQ); m.castShadow=false; m.receiveShadow=true; m.layers.set(1); o.root.add(m); o.mesh=m; return true; }
+const _crq=new THREE.Quaternion(), _crp=new THREE.Vector3(), _crm=new THREE.Matrix4(), _cr1=new THREE.Vector3(CQ,CQ,CQ);
+function crowdStart(){ for(const m of CROWD.used){ m.count=0; m.visible=false; } CROWD.used.length=0; }
+function crowdFrame(p,K){ const st=p.state, f=((p.ph/6.2832)%1+1)%1;
+  if(st==='down'||st==='dead'||st==='carried'||p.fall>.5) return K.lie||K.idle;
+  if(st==='flee'&&K.run) return K.run[Math.floor(f*K.run.length)%K.run.length];
+  if(p.speed>.15&&st!=='spot'&&st!=='react'&&st!=='idle'&&st!=='hurt') return K.walk[Math.floor(f*K.walk.length)%K.walk.length];
+  if(K.text&&((p.phone&&st==='idle')||((st==='spot'||st==='react')&&(p.act==='text'||p.act==='phone')))) return K.text;
+  return K.idle; }
+function crowdPut(m,p){ if(m.count>=m.instanceMatrix.count) return; if(m.count===0){ CROWD.used.push(m); m.visible=true; }
+  _crq.setFromAxisAngle(_up,p.yaw); _crm.compose(_crp.set(p.x,p.y,p.z),_crq,_cr1); m.setMatrixAt(m.count++,_crm); }
+function crowdDraw(){ crowdStart(); frusF=-1; for(const p of CROWD.list){ const K=CROWD.c[p.cast]; if(!K||p.state==='off'||p.body||!inView(p.x,p.y+.9,p.z,1.2)) continue; crowdPut(crowdFrame(p,K),p); p.far=true; }
+  CROWD.list.length=0; for(const m of CROWD.used){ m.instanceMatrix.clearUpdateRanges(); m.instanceMatrix.addUpdateRange(0,m.count*16); m.instanceMatrix.needsUpdate=true; } }
+
 // ---- what people do
 let sayT=0;
 const SAY={areaboy:['"Oga, anything for the boys?"','"How far, my guy!"','"Boss, you go settle us?"'],baba:['"Ah, my son! How is work?"','"Greet your mother for me o."'],
@@ -2979,12 +3106,12 @@ function boardPed(p,dt){ const v=p.bv; p.timer-=dt; let done=p.timer<=0||!v||!(v
     const tx=v.x-fz*sg*o-fx*back, tz=v.z+fx*sg*o-fz*back, dx=tx-p.x, dz=tz-p.z, d=Math.hypot(dx,dz);
     if(d<.45) done=true; else { p.speed+=(1.5-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=dx/d*st; p.z+=dz/d*st; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); } }
   if(done){ const s=p.spot; if(s){ s.boarding=Math.max(0,s.boarding-1); s.peds=s.peds.filter(q=>q!==p); } if(p.fare){ p.fare=false; if(!(v===drive.v&&Math.hypot(p.x-v.x,p.z-v.z)<v.c.def.L/2+2.2)){ p.state='walk'; p.bv=null; p.spot=null; replanPed(p); return; } fareIn(p.cast,v); } offPed(p); } }   // you drove off: they walk on
-function offPed(p){ if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); returnLook(p); p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
+function offPed(p){ if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
   Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0}); }   // back to the pool as nobody in particular
-function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ returnLook(p); p.cast=c; p.h=getLook(c); p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
+function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ p.cast=c; p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
 function spotOn(s){ s.on=true; s.peds=[]; s.boarding=0; s.hailV=null; const night=ENV.hour>=21||ENV.hour<5.5;
   for(const m of s.m){ const p=peds.find(q=>q.state==='off'); if(!p) break; const c=night&&m.cast==='schoolboy'?'areaboy':m.cast;
-    p.cast=c; p.h=getLook(c); p.lod=-1; p.spot=s; p.home=m; p.hot=undefined; p.acts=m.acts.filter(a=>!(CAST[c].tray&&(a==='text'||a==='phone')));
+    p.cast=c; p.lod=-1; p.spot=s; p.home=m; p.hot=undefined; p.acts=m.acts.filter(a=>!(CAST[c].tray&&(a==='text'||a==='phone')));
     p.x=s.x+m.dx; p.z=s.z+m.dz; p.y=groundY(p.x,p.z); p.yaw=m.ry; p.speed=0; p.fall=0; p.vx=p.vz=0; p.cool=0; p.state='spot'; p.act=null; p.hv=null; p.wants=false; nextAct(p); p.timer*=.2+MR()*.8;
     s.peds.push(p); } }
 function spotOff(s){ for(const p of s.peds) if(p.spot===s) offPed(p); s.peds=[]; s.on=false; s.hailV=null; }
@@ -3000,7 +3127,7 @@ let spotT=0, bodyT=0;
 function updatePeople(dt){ if(sayT>0) sayT-=dt; if((spotT-=dt)<=0){ spotT=.5; updateSpots(); } if((bodyT-=dt)<=0){ bodyT=.2; assignBodies(); }
   updateCrossers(dt); updateTraders(dt); updatePark(dt); updateShoppers(dt); }
 const freePed=()=>peds.find(q=>q.state==='off');
-function wakePed(p,c){ p.cast=c; p.h=getLook(c); p.lod=-1; p.spot=null; p.home=null; Object.assign(p,{fall:0,vx:0,vz:0,cool:0,act:null,hv:null,wants:false,speed:0,phone:false,stare:0,bumps:0,bumpT:-99});
+function wakePed(p,c){ p.cast=c; p.lod=-1; p.spot=null; p.home=null; Object.assign(p,{fall:0,vx:0,vz:0,cool:0,act:null,hv:null,wants:false,speed:0,phone:false,stare:0,bumps:0,bumpT:-99});
   p.hot=undefined; }
 const hotHead=p=>p.hot??(p.hot=p.cast==='areaboy'||(!CAST[p.cast]?.f&&p.cast!=='baba'&&p.cast!=='schoolboy'&&!p.cop&&MR()<.25));   // who pushes you back, or fights you for staring
 // ---- people crossing the big roads by footbridge: up the steps, over the deck, down, and on along the street
@@ -3104,6 +3231,105 @@ const HP0=c=>c==='areaboy'?110:c==='police_f'||c==='police_m'?140:70;
 const durOf=(p,n)=>{ const C=PEOPLE.casts[p.cast], k=C&&C.clips[n]; return k?k.duration:1.2; };
 const fightReady=()=>!!(hero&&hero.act.punch);
 function whoosh(){ burst(.16,1500,.16,1.4); }
+function skid(k){ burst(.34,3200,.06+.1*k,2.2); }   // tyres crying in a drift
+/* ================= the skateboard =================
+   W (joystick forward) pushes with the back foot (Shift / joystick all the way: harder pushes, more speed), S drags the
+   foot to brake, A/D carve. Space (OLLIE) jumps; in the air J (FLIP) kickflip, K heelflip (FLIP + joystick left),
+   L (SPIN) shove-it, I 360 flip (FLIP + joystick up). Land your tricks: half-done when you touch down and you bail.
+   Tricks in one jump and the ones you land soon after it make a combo: points times the number of tricks. */
+const TRICKS={'KICKFLIP':{dur:.42,roll:1,spin:0,pts:150},'HEELFLIP':{dur:.42,roll:-1,spin:0,pts:150},'SHOVE-IT':{dur:.36,roll:0,spin:.5,pts:110},'360 FLIP':{dur:.56,roll:1,spin:1,pts:320}};
+const SK={h:0,vy:0,air:false,pushPh:-1,crouch:0,land:0,trick:null,prev:{},combo:null,brake:0,w:{ride:1,crouch:0,air:0,push:0,brake:0},deck:0};
+function skReset(){ Object.assign(SK,{h:0,vy:0,air:false,pushPh:-1,crouch:0,land:0,trick:null,prev:{},combo:null,brake:0}); }
+function skDeck(){ if(SK.deck) return SK.deck; const M=MODELS.skate; if(!M) return .12; const P=M.geo.attributes.position; let hi=0;   // the top of the deck between the trucks (not the kicked-up tail)
+  for(let i=0;i<P.count;i++) if(Math.abs(P.getX(i))<.14) hi=Math.max(hi,P.getY(i)); return SK.deck=hi||M.H*.6; }
+// skater poses from where the bones point (+Z = the way he faces = the board's right side, +X = his left = the board's nose)
+const SKP={for:null,clips:null,acts:{},foot:{}};
+function skClips(){ if(SKP.for===hero.cObj&&SKP.clips) return SKP.clips; const D=homeInfo(), U=(f=0,sd=0)=>[sd,1,f];
+  const armsOut=(a=.62,f=.15)=>({LeftArm:[.75,-a,f],LeftForeArm:[.7,-a,f+.18],LeftHand:[.65,-a-.08,f+.15],RightArm:[-.75,-a,f],RightForeArm:[-.7,-a,f+.18],RightHand:[-.65,-a-.08,f+.15]});
+  const legs=(ul,ll,ur,lr)=>({LeftUpLeg:ul,LeftLeg:ll,LeftFoot:[0,-.35,1],RightUpLeg:ur,RightLeg:lr,RightFoot:[0,-.35,1]});
+  const ride={Spine:U(.16),Spine1:U(.1),Spine2:U(.05),Neck:U(.15),Head:U(.1),...armsOut(.55,.2),...legs([.3,-.9,.34],[.2,-1,-.3],[-.3,-.9,.34],[-.2,-1,-.3])};
+  const crouch={Spine:U(.55),Spine1:U(.35),Spine2:U(.15),Neck:U(.25),Head:U(.2),...armsOut(.3,.55),...legs([.3,-.5,.86],[.18,-1,-.72],[-.3,-.5,.86],[-.18,-1,-.72])};
+  const air={Spine:U(.3),Spine1:U(.2),Spine2:U(.1),Neck:U(.2),Head:U(.15),...armsOut(-.1,.25),...legs([.3,-.45,.85],[.2,-1,-.25],[-.3,-.45,.85],[-.2,-1,-.25])};
+  const pushArms={LeftArm:[.6,-.62,.45],LeftForeArm:[.55,-.55,.62],LeftHand:[.5,-.6,.6],RightArm:[-.55,-.7,-.25],RightForeArm:[-.5,-.75,-.2],RightHand:[-.45,-.8,-.15]};
+  // pushing: the front leg bends deep so the back foot, almost straight, reaches the road beside the board and sweeps back
+  const pushBase={Spine:U(.3),Spine1:U(.2),Spine2:U(.08),Neck:U(.22),Head:U(.1),...pushArms,LeftUpLeg:[.24,-.55,.86],LeftLeg:[.15,-1,-.66],LeftFoot:[0,-.45,1],RightFoot:[0,-.3,1]};
+  const push=[{t:0,d:{...pushBase,RightUpLeg:[-.12,-.8,.5],RightLeg:[-.1,-1,-.25]}},{t:.3,d:{...pushBase,RightUpLeg:[-.04,-1,.16],RightLeg:[-.02,-1,.06]}},
+    {t:.62,d:{...pushBase,RightUpLeg:[-.22,-1,.06],RightLeg:[-.2,-1,.02],LeftArm:[.6,-.55,.55],RightArm:[-.55,-.6,-.4]}},{t:.85,d:{...pushBase,RightUpLeg:[-.3,-.75,.42],RightLeg:[-.3,-1,-.5]}}];
+  const brake={...pushBase,Spine:U(.05),Spine1:U(.05),RightUpLeg:[-.22,-1,.14],RightLeg:[-.2,-1,.08],RightFoot:[-.3,-.4,1]};   // the back foot drags on the road
+  const C={ride:C2.poseClip(D,'sk_ride',[{t:0,d:ride}]),crouch:C2.poseClip(D,'sk_crouch',[{t:0,d:crouch}]),air:C2.poseClip(D,'sk_air',[{t:0,d:air}]),push:C2.poseClip(D,'sk_push',push,{loop:true,dur:1}),brake:C2.poseClip(D,'sk_brake',[{t:0,d:brake}])};
+  // how high the front (planted) foot sits in each pose, to keep it on the deck
+  for(const k in C){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(C[k]).play(); m.setTime(0); r.updateMatrixWorld(true);
+    let lo=1e9; hero.cObj.traverse(o=>{ if(o.isBone&&/Left(Foot|ToeBase)$/.test(o.name)) lo=Math.min(lo,o.getWorldPosition(new THREE.Vector3()).y); }); SKP.foot[k]=lo<1e8?lo:0;
+    m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; }
+  hero.mixer.update(0); SKP.for=hero.cObj; SKP.acts={}; return SKP.clips=C; }
+function skPoses(on){ if(!hero) return; if(!on){ for(const k in SKP.acts) SKP.acts[k].stop(); return; } const C=skClips(); for(const k in C){ const a=SKP.acts[k]||(SKP.acts[k]=hero.mixer.clipAction(C[k])); a.reset().play(); a.setEffectiveWeight(k==='ride'?1:0); if(k==='push') a.paused=true; } }
+// the board, the rider and their poses, every frame
+function skPose(dt){ const v=drive.v; if(!v||v.type!=='skate'||!hero) return; const S=SK, W=S.w, k=Math.min(1,dt*12);
+  const want={air:S.air?1:0,crouch:S.crouch>0||S.land>0?1:0,push:S.pushPh>=0&&!S.air?1:0,brake:!S.air?S.brake:0}; want.ride=Math.max(0,1-want.air-want.crouch-want.push-want.brake);
+  let sum=0; for(const n in W){ W[n]+=(want[n]-W[n])*k; sum+=W[n]; } let foot=0; for(const n in W){ const a=SKP.acts[n]; const w=W[n]/(sum||1); if(a) a.setEffectiveWeight(w); foot+=w*(SKP.foot[n]||0); }
+  if(SKP.acts.push&&S.pushPh>=0) SKP.acts.push.time=S.pushPh;
+  hero.mixer.update(dt);
+  // the trick: the deck turns under your feet, you lift your legs over it
+  const T=S.trick, q=T?Math.min(1,T.t/T.dur):0, e=q*q*(3-2*q), H=skDeck();
+  const roll=T?T.roll*e*Math.PI*2:0, spin=T?T.spin*e*Math.PI*2:0, up=T?Math.sin(q*Math.PI)*.22:0;
+  if(v.c.hi){ v.c.hi.rotation.set(roll,spin,0); v.c.hi.position.set(0,H*.5*(1-Math.cos(roll))+up*.6,-H*.5*Math.sin(roll)); }
+  rig.root.position.y=H-foot+up+(S.crouch>0?-.02:0); v.lift=S.h; }
+function skAdd(name,pts){ const C=SK.combo||(SK.combo={list:[],pts:0,t:0}); C.list.push(name); C.pts+=pts; C.t=2.4; }
+function skBank(){ const C=SK.combo; SK.combo=null; if(!C||!C.list.length) return; const n=C.list.length, cnt={}; for(const x of C.list) cnt[x]=(cnt[x]||0)+1;
+  const name=Object.entries(cnt).map(([k,c])=>c===1?k:c===2?'DOUBLE '+k:c===3?'TRIPLE '+k:c+'x '+k).join(' + '), tricks=C.list.filter(x=>x!=='OLLIE').length;
+  if(!tricks&&n===1){ skillShow('OLLIE',C.pts); return; } skillShow(name,C.pts*Math.max(1,tricks),tricks>1?`×${tricks}`:''); }
+function skBail(msg){ const v=drive.v, sp=Math.abs(drive.speed); SK.combo=null; SK.trick=null; skReset(); if(v&&v.c.hi){ v.c.hi.rotation.set(0,0,0); v.c.hi.position.set(0,0,0); }
+  if(mode==='drive') exitCar(); if(v){ v.speed=0; v.lift=0; }
+  thud(); camState.shake=Math.min(1.2,camState.shake+.5); FIGHT.hp=Math.max(5,FIGHT.hp-(sp>6?8:4)); FIGHT.calmT=0; FIGHT.ko=true; FIGHT.koT=0;   // you go down, then get up
+  if(hero) heroDo(hero.act.uppercut?'uppercut':'hit_body',{force:true,ts:1.3,onEnd:()=>{ if(hero.act.stand_up) heroDo('stand_up',{force:true,ts:1.8,onEnd:()=>{ FIGHT.ko=false; }}); else FIGHT.ko=false; }});
+  setTimeout(()=>{ if(FIGHT.ko&&!FIGHT.dead&&FIGHT.koT>=3) FIGHT.ko=false; },3500); toast(msg||mpick(['Bail! You don fall.','Ouch! The board throw you.','Bail! Small small next time.']),2.4); }
+function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); let sp=drive.speed; if(FIGHT.ko) return;
+  const jl=Math.hypot(joy.x,joy.y), hard=K.shift||touchRun||jl>.88, keys={jump:K[' ']||TSK.b2,kick:K.j||TSK.b1&&joy.x>-.4&&joy.y>-.5,heel:K.k||TSK.b1&&joy.x<=-.4,shove:K.l||TSK.b3,flip360:K.i||TSK.b1&&joy.y<=-.5};
+  const press=n=>{ const on=!!keys[n], was=S.prev[n]; S.prev[n]=on; return on&&!was; }; const P={}; for(const n in keys) P[n]=press(n);
+  const surf=condAt(v.x,v.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1, cap=hard?11:8.2;
+  if(!S.air){
+    if(S.pushPh<0&&f>.3&&sp<cap-.3&&S.crouch<=0&&S.land<=0) S.pushPh=0;   // push with the back foot
+    if(S.pushPh>=0){ const was=S.pushPh; S.pushPh+=dt/(hard?.55:.78); if(was<.42&&S.pushPh>=.42){ sp+=Math.max(0,cap-sp)*(hard?.34:.28)/Math.sqrt(rough); burst(.08,500,.05,6); } if(S.pushPh>=1) S.pushPh=f>.3&&sp<cap-.3?0:-1; }
+    if(f<-.3||touchBrake){ sp=Math.max(0,sp-3.6*dt); S.brake=Math.min(1,S.brake+dt*5); S.pushPh=-1; } else S.brake=Math.max(0,S.brake-dt*5);
+    sp=Math.max(0,sp-(.14+sp*.016)*rough*dt);   // it rolls on and on, slower on bad roads
+    if(P.jump&&S.crouch<=0&&S.land<=0){ S.crouch=.12; S.pushPh=-1; }
+    if(S.crouch>0&&(S.crouch-=dt)<=0){ S.crouch=0; S.air=true; S.vy=4.4+Math.min(sp,10)*.07; skAdd('OLLIE',40); burst(.06,900,.12,8); }   // pop!
+    if(S.land>0) S.land-=dt;
+    if(S.combo&&(S.combo.t-=dt)<=0) skBank(); }
+  else {
+    S.vy-=11.5*dt; S.h=Math.max(0,S.h+S.vy*dt);
+    if(!S.trick){ const k=P.flip360?'360 FLIP':P.kick?'KICKFLIP':P.heel?'HEELFLIP':P.shove?'SHOVE-IT':null; if(k){ const T=TRICKS[k]; S.trick={k,t:0,dur:T.dur,roll:T.roll,spin:T.spin}; whoosh(); } }
+    else if((S.trick.t+=dt)>=S.trick.dur){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
+    if(S.h<=0&&S.vy<0){ S.air=false; S.vy=0; S.h=0;
+      if(S.trick&&S.trick.t/S.trick.dur<.8){ skBail(mpick(['Bail! You no land the flip.','Bail! The board turn wrong side.'])); return; }
+      if(S.trick){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
+      S.land=.15; clunk(.45); if(S.combo) S.combo.t=2.4; } }
+  // carve: lean into the turn, tighter when slow
+  drive.steer+=(-s*.55-drive.steer)*Math.min(1,dt*7); v.h+=Math.max(sp,.6)/1.15*Math.tan(drive.steer)*dt*(S.air?.3:1);
+  const fx=Math.cos(v.h), fz=-Math.sin(v.h); let nx=v.x+fx*sp*dt, nz=v.z+fz*sp*dt;
+  if(!onLand(nx,nz,.5)){ if(sp>3.5){ skBail(); return; } nx=v.x; nz=v.z; sp=0; }
+  const c={x:nx,z:nz}; if(resolveCircle(c,.28,null,S.h)){ if(sp>4.2&&!S.air){ skBail(); return; } sp*=.4; }   // jump high enough and you clear low things
+  for(const o of vehicles){ if(o===v||Math.abs(o.x-c.x)>6||Math.abs(o.z-c.z)>6) continue; const hx=Math.cos(o.h), hz=-Math.sin(o.h), dx=c.x-o.x, dz=c.z-o.z; if(Math.abs(dx*hx+dz*hz)<o.c.def.L/2+.25&&Math.abs(-dx*hz+dz*hx)<o.c.def.W/2+.25&&S.h<.9){ if(sp>2.5||Math.abs(o.speed)>3){ skBail(); return; } c.x=v.x; c.z=v.z; sp=0; } }
+  for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.state==='down'||p.carried||Math.abs(p.x-c.x)>1||Math.abs(p.z-c.z)>1) continue; if(Math.hypot(p.x-c.x,p.z-c.z)<.55&&S.h<.8){ if(sp>3){ react(p,'argue',c.x,c.z,3); p.cool=6; skBail('Bail! You jam person.'); return; } sp*=.5; } }
+  v.x=c.x; v.z=c.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false;
+  skPose(dt); }
+/* ================= skills: drifts, wheelies, hops and skate tricks =================
+   Every skill you land shows its name and points in the middle of the screen; big ones pay a little cash. */
+const SKILL={best:0,cashT:-99,timers:{},hideT:0};
+try{ SKILL.best=+localStorage.getItem('naija-best-combo')||0; }catch(e){}
+function skillShow(title,pts,sub=''){ const e=$('#trick'); if(!e) return; $('#trickT').textContent=title; $('#trickP').textContent=`+${pts.toLocaleString()}${sub?'  '+sub:''}`; e.hidden=false; e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); SKILL.hideT=2.2;
+  if(pts>SKILL.best){ SKILL.best=pts; try{ localStorage.setItem('naija-best-combo',String(pts)); }catch(_){} if(pts>=300) $('#trickP').textContent+='  BEST!'; }
+  if(pts>=300&&T0-SKILL.cashT>15){ SKILL.cashT=T0; const n=Math.min(500,Math.round(pts/10/10)*10); addCash(n); toast(mpick([`People dey hail you! Dem dash you ${naira(n)}.`,`"Na wa o, you sabi!" Someone dash you ${naira(n)}.`]),2.6); } }
+const skillAdd=(name,pts)=>skillShow(name,pts);
+function skillTime(name,on,dt,perSec){ const T=SKILL.timers; if(on){ T[name]=(T[name]||0)+dt; return; } const t=T[name]||0; if(t>.6) skillShow(`${name} ${t.toFixed(1)}s`,Math.round(t*perSec*(1+t*.25))); T[name]=0; }
+// which skill buttons a phone shows: on a bike WHEELIE and HOP, on the skateboard FLIP, OLLIE and SPIN
+let skBtnK='';
+function skillButtons(){ if(!touchUI) return; const v=mode==='drive'&&!drive.ride?drive.v:null, t=v?(v.type==='skate'?'skate':BIKE[v.type]?'bike':''):'';
+  if(t===skBtnK) return; skBtnK=t; const L=t==='skate'?['FLIP','OLLIE','SPIN']:t==='bike'?['WHEELIE','HOP','']:['','',''];
+  ['#tSk1','#tSk2','#tSk3'].forEach((id,i)=>{ const b=$(id); b.hidden=!L[i]; b.textContent=L[i]; }); $('#tHorn').hidden=!v||t==='skate'; $('#tBrake').textContent=t==='skate'?'BRAKE':t==='bike'?'BRAKE':'BRAKE'; }
+function skillTick(dt){ if(SKILL.hideT>0&&(SKILL.hideT-=dt)<=0) $('#trick').hidden=true; }
+// phone buttons for skills (what they do depends on what you ride): b1 left, b2 middle, b3 top
+const TSK={b1:false,b2:false,b3:false};
 function smack(k=1){ burst(.06,2600,.32*k,6); burst(.22,320,.5*k,3); }
 // moves made from other moves: hands up (the raised hand of a taxi hail, mirrored onto the other arm), punching down at someone on
 // the floor (crouched legs and back from getting up, arms from the punch), rising from that crouch, and a dodge to the other side
@@ -4503,6 +4729,9 @@ function explode(x,y,z,power=1,byMe=true){ const R=6.2*power;
 // cars: damage, smoke, fire, blast, wreck
 const WRECK_MATS=new Map();
 function wreckMat(m){ let w=WRECK_MATS.get(m); if(!w){ w=new THREE.MeshStandardMaterial({map:m.map||null,color:0x2a2522,roughness:1,metalness:.05}); WRECK_MATS.set(m,w); } return w; }
+// how much a vehicle can take in crashes (bullets, bombs and fire still finish it the old way)
+const VHP={okada:220,bike2:240,sbike:240,keke:260,sedan:380,suv:400,car2:380,benz:450,danfo:480,police:500,bus:650,tanker:800};
+function crashDamage(v,sp){ if(!v||v.type==='skate'||sp<10) return; carDamage(v,Math.pow(sp-10,1.25)*2*100/(VHP[v.type]||380)); }   // a hard knock at 70 km/h costs a car about 9%, at 110 km/h about 22%
 function carDamage(v,amt,byMe=true){ if(!v||v.wreck||amt<=0) return; v.dmg=(v.dmg||0)+amt; if(byMe) v.byMe=true;
   if(v.dmg>=100&&!v.fire){ v.fire=T0; v.fireT=v===drive.v?mrr(5,7):mrr(3.5,6);   // it catches fire: everybody out
     if(v.ai&&v!==drive.v){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); }
@@ -4512,8 +4741,8 @@ function carDamage(v,amt,byMe=true){ if(!v||v.wreck||amt<=0) return; v.dmg=(v.dm
 function wreckCar(v){ v.wreck=true; v.fire=0; v.ai=null; v.speed=0; v.parked=true; v.jacked=true; v.wreckT=T0; v.taxi=false; if(v.copsOut){ v.copsOut=null; } if(v===FIGHT.cop){ FIGHT.cop=null; if(starCount()>0) FIGHT.seen=T0; } COPS.extra=COPS.extra.filter(x=>x!==v);
   v.c.g.traverse(o=>{ if(o.isMesh&&o.material&&!o.userData.m0){ o.userData.m0=o.material; o.material=wreckMat(o.material); } }); }
 function unwreck(v){ v.wreck=false; v.dmg=0; v.fire=0; v.byMe=false; v.out=false; v.c.g.traverse(o=>{ if(o.isMesh&&o.userData.m0){ o.material=o.userData.m0; o.userData.m0=null; } }); }
-function blowCar(v){ const me=!!v.byMe; if(v===drive.v){ const inside=mode==='drive'; if(inside) exitCar(); wreckCar(v); explode(v.x,(v.y||0)+.8,v.z,1.2,me); if(inside&&!FIGHT.dead) playerDie('blast'); return; }
-  wreckCar(v); explode(v.x,(v.y||0)+.8,v.z,1.2,me); if(me) addHeat(.6); }
+function blowCar(v){ const me=!!v.byMe, big=v.type==='tanker'?2.6:1.2; if(v===drive.v){ const inside=mode==='drive'; if(inside) exitCar(); wreckCar(v); explode(v.x,(v.y||0)+.8,v.z,big,me); if(inside&&!FIGHT.dead) playerDie('blast'); return; }
+  wreckCar(v); explode(v.x,(v.y||0)+.8,v.z,big,me); if(me) addHeat(.6); }   // a fuel tanker goes up big
 function updateCars(dt){ const near=(x,z,r)=>Math.abs(x-camera.position.x)<r&&Math.abs(z-camera.position.z)<r;
   for(const v of vehicles){ if(!v.dmg) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h), ex=v.x+fx*v.c.def.L*.32, ez=v.z+fz*v.c.def.L*.32, ey=(v.y||0)+(v.c.def.H||1.4)*.75;
     if(v.wreck){ const a=T0-v.wreckT; if(near(v.x,v.z,140)){ if(a<7&&MR()<dt*22) flame(v.x+mrr(-.6,.6),ey,v.z+mrr(-.6,.6),1.2); if(a<40&&MR()<dt*(a<8?10:3)) smokePuff(v.x,ey+.3,v.z,1.3,.1); } continue; }
@@ -5022,7 +5251,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started) updateFightHUD(); updateAudio(); }
+  updateCamera(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -5056,7 +5285,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     shadows(b){ renderer.shadowMap.enabled=b; sun.castShadow=b; scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); },
     post(b){ usePost=b; }, bloom(b){ if(bloom) bloom.enabled=b; },
     show(name,b){ const m={clouds,veil,rain,stars,water,sky}; if(m[name]) m[name].visible=b; },
-    peds(b){ for(const p of peds) if(p.h) p.h.root.visible=b; for(const bd of BODIES) bd.root.visible=b&&!!bd.p; }, cars(b){ for(const v of vehicles) v.c.g.visible=b; },
+    peds(b){ CROWD.hide=!b; for(const bd of BODIES) bd.root.visible=b&&!!bd.p; }, cars(b){ for(const v of vehicles) v.c.g.visible=b; },
     culls(b){ for(const c of CULLS) c.off=!b; }, cullNames:()=>CULLS.map(c=>c.name||'?'),
     cullOne(name,b){ for(const c of CULLS) if(c.name===name) c.off=!b; },
     hideStatic(b){ scene.children.forEach(o=>{ if(o.isMesh&&!o.isInstancedMesh&&o.geometry&&o.geometry.attributes.position&&o.geometry.attributes.position.count>20000) o.visible=!b; }); },

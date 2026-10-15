@@ -52,7 +52,13 @@ suit_lady. Women walk, run, stand, talk and dance with women's moves (Walking, G
 Bashful, Macarena, Salsa, ...).
 They walk the pavements, gist at shop fronts, hold junction corners, stand at compound gates and wave down danfos at
 bus stops; they answer when you walk into them or horn at them. The nearest ones get the real body and moves
-(Low 8, Medium 14, High 24); farther away the same person is a light look-alike in the same colours.
+(Low 8, Medium 14, High 24). Farther away the same person is drawn by the crowd: when a character loads, its body is cut
+down to about 2,200 triangles (1,500 on Low; meshoptimizer's simplifier, `src/libs/meshopt_simplifier.js`), takes its
+colours from its own texture and is posed once in 8 walking frames, 6 running, standing, texting and lying; far walkers
+pick the frame for where they are in their step, one instanced draw per character and frame. Tunde, Amaka and Ada are in
+the crowd too (first outfit). People in danfos, buses, kekes, cars and on okadas are the same characters posed once for
+the seat (drivers, passengers, okada riders and the pillion, the danfo conductor at the door, police in the pickup).
+The old box people are gone.
 
 Adding a character or a move: export from Mixamo as FBX *with skin*, then
 ```
@@ -60,7 +66,7 @@ python3 tools/npc_convert.py /tmp/npc            # edit CAST and MOVES at the to
 sh tools/npc_pack.sh /tmp/npc /path/to/gltfpack  # shrink (gltfpack built with texture compression)
 cp /tmp/npc/out/*.glb assets/people/
 ```
-and add the character to `CAST` in `src/game.js` (height, how common, what it does, far look-alike colours).
+and add the character to `CAST` in `src/game.js` (height, how common, what it does); the crowd and seat poses are made from it when it loads.
 
 ## Your profile
 The first time, you type a name and choose man or woman. It is kept on the device and cannot be changed afterwards.
@@ -181,6 +187,17 @@ bike load in the background and join the traffic (the Benz and sport bike are ra
 Take any of them like other vehicles: the sport bike is the fastest thing on the road, the tanker the slowest.
 They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by your door next to the okada: E to ride
 (you stand side-on), E to step off. It doesn't knock people over.
+
+## Skating, bike and car skills
+- **Skateboard:** W pushes with the back foot (hold Shift or push the stick all the way for faster pushes), S or BRAKE
+  drags the foot, A/D carve. Space (OLLIE on phones) pops an ollie; in the air J kickflip, K heelflip, L shove-it,
+  I 360 flip (on phones FLIP, FLIP with the stick left = heelflip, up = 360 flip, SPIN = shove-it). Tricks in one jump make
+  a combo (DOUBLE, TRIPLE…); land it straight or you bail and fall. Rough roads slow you, walls and people throw you off.
+- **Bikes:** Shift (WHEELIE) lifts the front wheel, handbrake while straight is a stoppie, J (HOP) is a bunny hop.
+- **Drifts:** handbrake (Space/BRAKE) while turning at speed slides cars and bikes with tyre smoke; hold it for DRIFT points.
+- Every skill shows its name and points; big ones (300+) pay a little cash. Your best combo is kept.
+- **Vehicle health:** cars take many more knocks before smoke, fire and the blast (a car about 11 hits at 70 km/h,
+  bikes fewer, buses and the tanker more; a tanker blast is bigger).
 Models: `assets/models/car_blue.glb`, `car_benz.glb`, `tanker.glb`, `bike_naked.glb`, `bike_sport.glb`, `skateboard.glb`
 (each with a `_lod1` far version), listed in `LATE_FILES` in `src/game.js`.
 
