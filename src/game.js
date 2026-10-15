@@ -383,7 +383,7 @@ const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.7
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
   jet:['ns_jet','h',34.4,1],jetw:['ns_jet_wide','h',60.4,1],terminal:['ns_terminal','h',252.4,1],tower:['ns_tower','h',18,1],jetbridge:['ns_jetbridge','h',4,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],stadium:['ns_stadium','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
-  tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -1295,17 +1295,31 @@ function texOldZinc(){ const S=256, [c,g]=cv(S,S); g.fillStyle='#8c9196'; g.fill
     { const [x,z]=at(0,D); DEN.gate=addOB(x,z,.85,.12,Math.atan2(uz,ux),2.2); }   // the gap: shut until you pay
     addOB(...at(-W+.9,-D+.4),.7,.2,Math.atan2(uz,ux),.45); addOB(...at(W-.6,-D+.5),.38,.28,Math.atan2(uz,ux),.95); } }
 // ---- market stalls: tables of tomatoes, pepper, onions, yams and cloth under umbrellas and sheds
-const STALLS=[];
+const STALLS=[], BOLAS=[];
 { const inDen=(x,z)=>DEN.ok&&Math.abs((x-DEN.x)*DEN.ux+(z-DEN.z)*DEN.uz)<6&&(x-DEN.x)*DEN.nx+(z-DEN.z)*DEN.nz<8&&(x-DEN.x)*DEN.nx+(z-DEN.z)*DEN.nz>-5;
   const free=(x,z)=>onLand(x,z,2)&&!roadAt(x,z,1.2)&&!resolveCircle({x,z},1.5)&&!inDen(x,z);
   for(const m of MARKETS){ const pts=m.a.pts, xs=pts.map(p=>p[0]), zs=pts.map(p=>p[1]), x0=Math.min(...xs), x1=Math.max(...xs), z0=Math.min(...zs), z1=Math.max(...zs);
-    const [e]=nearestRoad((x0+x1)/2,(z0+z1)/2), ax=e?e.fx:1, az=e?e.fz:0, bx=-az, bz=ax, lim=m.a.a>60000?260:150, cx0=(x0+x1)/2, cz0=(z0+z1)/2, ext=Math.hypot(x1-x0,z1-z0)/2;
-    for(let i=-ext;i<ext&&m.stalls.length<lim;i+=3.3) for(let j=-ext;j<ext&&m.stalls.length<lim;j+=4.8){ const x=cx0+ax*i+bx*j, z=cz0+az*i+bz*j;
+    const [e]=nearestRoad((x0+x1)/2,(z0+z1)/2), ax=e?e.fx:1, az=e?e.fz:0, bx=-az, bz=ax, lim=m.a.a>60000?420:240, cx0=(x0+x1)/2, cz0=(z0+z1)/2, ext=Math.hypot(x1-x0,z1-z0)/2;
+    for(let i=-ext;i<ext&&m.stalls.length<lim;i+=2.95) for(let j=-ext;j<ext&&m.stalls.length<lim;j+=3.9){ const x=cx0+ax*i+bx*j, z=cz0+az*i+bz*j;
       if(!inPoly(pts,x,z)||!free(x,z)) continue; 
-      const st={x,z,ang:Math.atan2(az,ax),side:(Math.round(j/4.8)&1)?1:-1,goods:ri(0,5),m}; m.stalls.push(st); STALLS.push(st); }
+      const st={x,z,ang:Math.atan2(az,ax),side:(Math.round(j/3.9)&1)?1:-1,goods:ri(0,5),m}; m.stalls.push(st); STALLS.push(st); }
     for(const b of MARKET_SHEDS) if(inPoly(pts,b.cx,b.cz)){ const n=Math.max(1,Math.floor(Math.max(b.w,b.d)/3.4)), long=b.w>=b.d, L=Math.max(b.w,b.d);
       for(let k=0;k<n;k++){ const t=-L/2+L*(k+.5)/n, x=b.cx+(long?b.c*t:-b.s*t), z=b.cz+(long?b.s*t:b.c*t); const st={x,z,ang:long?b.ang:b.ang+Math.PI/2,side:1,goods:ri(0,5),m,shed:true}; m.stalls.push(st); STALLS.push(st); } } }
-  if(STALLS.length){ const tables=[], umb=[], goods=[[],[],[],[],[],[]];
+  // the market made in Blender (tools: the user's Blender, Documents/naija_rooms/market): stall by stall, zinc roofs, umbrellas,
+  // blue tarpaulin, wooden kiosks, tables of basins, and the bola (refuse heap) at the edge of each market
+  if(STALLS.length&&MODELS.mk_zinc&&MODELS.mk_table){ const items={}, put=(k,o)=>(items[k]||(items[k]=[])).push(o), hs=(x,z)=>{ const n=Math.sin(x*12.9898+z*78.233)*43758.5453; return n-Math.floor(n); };
+    for(const st of STALLS){ const h=hs(st.x,st.z), k=st.shed?'mk_table':h<.3?'mk_zinc':h<.55?'mk_umb':h<.7?'mk_tarp':h<.82?'mk_wood':'mk_table', K=MODELS[k]?k:'mk_table';
+      st.kind=K; put(K,{x:st.x,y:0,z:st.z,ry:-st.ang+(st.side<0?Math.PI:0),sc:1}); /* the seller's side away from the lane */ if(K==='mk_wood') addOB(st.x,st.z,1.15,.8,st.ang,2.2); else addOB(st.x,st.z,.95,.5,st.ang,.9); }
+    for(const [k,list] of Object.entries(items)) new CullSet(modelLevels(MODELS[k],Q.lod0*.6,Q.draw*.6),list,{shadowDist:Q.shR,name:k});
+    if(MODELS.mk_bola){ const heaps=[];
+      for(const m of MARKETS){ if(!m.stalls.length) continue; const pts=m.a.pts; let cx=0,cz=0; for(const q of pts){ cx+=q[0]; cz+=q[1]; } cx/=pts.length; cz/=pts.length;
+        const want=m.stalls.length>60?3:m.stalls.length>15?2:1, got=[];
+        for(let i=0;i<pts.length&&got.length<want;i+=Math.max(1,Math.floor(pts.length/(want*3)))){ for(const f of [.82,.7,.58]){ const x=cx+(pts[i][0]-cx)*f, z=cz+(pts[i][1]-cz)*f;
+          if(!inPoly(pts,x,z)||!free(x,z)||roadAt(x,z,3.6)||resolveCircle({x,z},3)||m.stalls.some(s2=>Math.hypot(s2.x-x,s2.z-z)<3.6)||got.some(g=>Math.hypot(g.x-x,g.z-z)<15)) continue;
+          got.push({x,z}); break; } }
+        for(const g of got){ const ry=hs(g.x,g.z)*6.28; const sc=1.15+hs(g.z,g.x)*.4; heaps.push({x:g.x,y:0,z:g.z,ry,sc}); BOLAS.push({x:g.x,z:g.z,m:m.name}); addOB(g.x,g.z,2.4*sc,1.8*sc,-ry,1.4); } }
+      if(heaps.length) new CullSet(modelLevels(MODELS.mk_bola,Q.lod0*.6,Q.draw*.6),heaps,{shadowDist:Q.shR,name:'bola'}); } }
+  else if(STALLS.length){ const tables=[], umb=[], goods=[[],[],[],[],[],[]];
     const GC=['#c8261e','#e85d14','#a8743d','#e9d9b0','#5b8f2e','#3d64b8'];
     for(const st of STALLS){ tables.push({x:st.x,y:0,z:st.z,ry:-st.ang}); if(!st.shed) umb.push({x:st.x+Math.sin(st.ang)*.4,y:0,z:st.z-Math.cos(st.ang)*.4,ry:R()*6,col:new THREE.Color(pick(['#d23c2c','#2f7bbf','#f2b705','#1f8a5c','#e46b1e','#ffffff']))});
       for(let k=-1;k<=1;k++) goods[st.goods].push({x:st.x+Math.cos(st.ang)*k*.55,y:.82,z:st.z+Math.sin(st.ang)*k*.55,ry:R()*6,sx:rr(.8,1.1),sy:rr(.7,1.1),sz:rr(.8,1.1)});
@@ -5720,6 +5734,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     ride(q){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; CASH.n=Math.max(CASH.n,50000); bookRide(pl); return {state:RIDE.state,dest:RIDE.dest&&RIDE.dest.name}; },
     mapAt(x,z,sc){ if(!mapView.isOpen) openMap(); mapView.view.cx=x; mapView.view.cz=z; mapView.view.s=sc; mapView.draw(); return true; },
     enter(){ rideEnter(); return RIDE.state; }, skip(){ skipRide(); return RIDE.state; }, rideInfo(){ const v=RIDE.v; return {state:RIDE.state,leg:!!RIDE.leg,legI:RIDE.leg&&RIDE.leg.i,ai:!!(v&&v.ai),x:v&&+v.x.toFixed(1),z:v&&+v.z.toFixed(1),px:+player.x.toFixed(1),pz:+player.z.toFixed(1),mode}; },
+    bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
