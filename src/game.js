@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=2134c4e866';
-import * as C2 from './char2.js?v=2134c4e866';
-import { MapView } from './mapview.js?v=2134c4e866';
+import * as CLOCK from './clock.js?v=3a0ac93580';
+import * as C2 from './char2.js?v=3a0ac93580';
+import { MapView } from './mapview.js?v=3a0ac93580';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='2134c4e866';
+const BUILD='3a0ac93580';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -909,7 +909,7 @@ function obKiosk(b){ const hw=b.w/2, hd=b.d/2, K=bCorners(b), h=rr(2.4,2.9), col
 // an open market shed: posts and a zinc roof, stalls underneath
 function obShed(b){ const hw=b.w/2, hd=b.d/2, h=3.1, W3=(u,y,v)=>[b.cx+b.c*u-b.s*v,y,b.cz+b.s*u+b.c*v], zc=new THREE.Color(pick(['#c9b8a6','#b9a896','#d2c9bf']));
   A.zinc.quad(W3(-hw,h,-hd),W3(-hw,h+.5,hd),W3(hw,h+.5,hd),W3(hw,h,-hd),[0,1,0],[[0,0],[1,0],[1,1],[0,1]],zc);
-  for(let u=-hw+.3;u<=hw-.2;u+=Math.max(3,(b.w-.6)/Math.max(1,Math.round((b.w-.6)/4)))) for(const v of [-hd+.3,hd-.3]){ const [x,,z]=W3(u,0,v); SHED_POSTS.push({x,y:0,z,sy:h+(v>0?.5:0)}); addCol({x0:x-.12,x1:x+.12,z0:z-.12,z1:z+.12,h:h}); }
+  for(let u=-hw+.3;u<=hw-.2;u+=Math.max(3,(b.w-.6)/Math.max(1,Math.round((b.w-.6)/4)))) for(const v of [-hd+.3,hd-.3]){ const [x,,z]=W3(u,0,v); if(roadAt(x,z,.15)) continue; SHED_POSTS.push({x,y:0,z,sy:h+(v>0?.5:0)}); addCol({x0:x-.12,x1:x+.12,z0:z-.12,z1:z+.12,h:h}); }
   MARKET_SHEDS.push(b); }
 const SHED_POSTS=[], MARKET_SHEDS=[];
 
@@ -1136,7 +1136,7 @@ const APT={door:{x:0,z:0},front:{x:0,z:0},ry:0};
 { const b=HOME; let f=[0,1];
   if(b){ f=FACE_DIR(b); const key=MODELS.storey?'storey':'bungalow';
     if(HOUSES){ const M=MODELS[key], fw=frontLen(b), dd=depthLen(b), s=clamp(Math.min(fw/M.W,dd/M.D),.7,1.2), ry=Math.atan2(f[0],f[1]);
-      new CullSet(modelLevels(M,Q.lod0*1.6,Q.draw+60),[{x:b.cx,y:0,z:b.cz,ry,sc:s,col:new THREE.Color('#efe0c4')}],{shadowDist:Q.shR,name:'home'});   // your house: warm cream paint addOB(b.cx,b.cz,M.W*s/2,M.D*s/2,-ry,M.H*s);
+      new CullSet(modelLevels(M,Q.lod0*1.6,Q.draw+60),[{x:b.cx,y:0,z:b.cz,ry,sc:s,col:new THREE.Color('#efe0c4')}],{shadowDist:Q.shR,name:'home'}); APT.ob=addOB(b.cx,b.cz,M.W*s/2,M.D*s/2,-ry,M.H*s);   // your house: warm cream paint; solid, so you (and the camera) can't go through its walls
       // the Blender storey house has its own front door, steps and balcony: the lit door sits on its real front wall
       const own=MODEL_FILES[key][0]==='ns_storey', k=own?M.sc0*s:1, hd=own?(6.75-M.cz0)*k:M.D*s/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; APT.own=own?k:0; }
     else { obBuilding(b,{type:'resi',h:6.8,zinc:true}); const hd=depthLen(b)/2; APT.door={x:b.cx+f[0]*hd,z:b.cz+f[1]*hd}; } }
@@ -1323,7 +1323,7 @@ const STALLS=[];
     // shelter along the back
     const shed={cx:W3(0,0,fs*(pk.hd-3.5))[0],cz:W3(0,0,fs*(pk.hd-3.5))[2],w:pk.hw*1.6,d:4,ang:pk.ang,c,s}; const zc=new THREE.Color('#bfb3a3');
     { const hw=shed.w/2, hd=shed.d/2, W4=(u,y,v)=>[shed.cx+c*u-s*v,y,shed.cz+s*u+c*v]; A.zinc.quad(W4(-hw,3.4,-hd),W4(-hw,3.9,hd),W4(hw,3.9,hd),W4(hw,3.4,-hd),[0,1,0],[[0,0],[1,0],[1,1],[0,1]],zc);
-      for(let u=-hw;u<=hw+.1;u+=hw/3) for(const v of [-hd,hd]){ const [x,,z]=W4(u,0,v); SHED_POSTS.push({x,y:0,z,sy:3.6}); addCol({x0:x-.1,x1:x+.1,z0:z-.1,z1:z+.1,h:3.6}); }
+      for(let u=-hw;u<=hw+.1;u+=hw/3) for(const v of [-hd,hd]){ const [x,,z]=W4(u,0,v); if(roadAt(x,z,.15)) continue; SHED_POSTS.push({x,y:0,z,sy:3.6}); addCol({x0:x-.1,x1:x+.1,z0:z-.1,z1:z+.1,h:3.6}); }
       const bench=[]; for(let u=-hw+1.5;u<hw-1;u+=3){ const [x,,z]=W4(u,0,fs>0?hd*.4:-hd*.4); bench.push({x,y:0,z,ry:-pk.ang}); }
       inst(mergeList([box(2.2,.08,.45,0,.46,0),box(.08,.46,.4,-1,.23,0),box(.08,.46,.4,1,.23,0)]),new THREE.MeshStandardMaterial({color:0x5c4632,roughness:.8}),bench); }
     // the sign by the gate
@@ -1416,11 +1416,17 @@ const CYCLE=30;
   for(const n of tl){ if(n.tlg===n) n.tlo=MR()*CYCLE; } for(const n of tl) n.tlo=n.tlg.tlo, n.ax=n.tlg.ax; }
 function lightAt(n,fx,fz){ const t=(T0+n.tlo)%CYCLE, along=Math.abs(fx*Math.cos(n.ax)+fz*Math.sin(n.ax))>.7; if(along) return t<12?'g':t<15?'y':'r'; return t<15?'r':t<27?'g':'y'; }
 const tlPoles=[], tlHeads=[], tlLamps=[], tlRefs=[], TLM=MODELS.tlight;
+// is this spot on asphalt: on any road, or inside a junction's paved middle?
+const JG=new Map(); for(const n of nodes){ if(n.deg<3) continue; const k=rgk(Math.floor(n.x/RGC),Math.floor(n.z/RGC)); let L=JG.get(k); if(!L) JG.set(k,L=[]); L.push(n); }
+function onAsphalt(x,z,m=0){ if(roadAt(x,z,m)) return true; const i=Math.floor(x/RGC), j=Math.floor(z/RGC);
+  for(let a=i-1;a<=i+1;a++) for(let b=j-1;b<=j+1;b++){ const L=JG.get(rgk(a,b)); if(L) for(const n of L) if(Math.hypot(n.x-x,n.z-z)<n.r+m) return true; } return false; }
 const TL_LENS=[[-3.757,4.11],[-3.757,3.815],[-3.757,3.52]], TL_LZ=.175;
 nodes.forEach(n=>{ if(!n.tl) return; for(const e of n.ed){ if(!e.drive||e.c>5) continue; const m=nodes[e.a===n.i?e.b:e.a]; if(e.ow&&e.b!==n.i) continue;   // only roads that bring cars in
   const dx=n.x-m.x, dz=n.z-m.z, L=Math.hypot(dx,dz), fx=dx/L, fz=dz/L, rx=-fz, rz=fx;
-  const px=n.x-fx*(n.r+1.4)+rx*(e.hw+1.1), pz=n.z-fz*(n.r+1.4)+rz*(e.hw+1.1), ry=Math.atan2(-fx,-fz);
-  if(resolveCircle({x:px,z:pz},.2)) continue;
+  let px=0, pz=0, ok=false; const ry=Math.atan2(-fx,-fz);   // on the kerb before the junction, never on any road (big junctions overlap)
+  for(const back of [1.4,3,5,8,12,16,20]){ for(const side of [1.1,1.6,2.3,3.2,4.2]){ const x=n.x-fx*(n.r+back)+rx*(e.hw+side), z=n.z-fz*(n.r+back)+rz*(e.hw+side);
+      if(back+n.r>L-2||onAsphalt(x,z,.55)||resolveCircle({x,z},.25)) continue; px=x; pz=z; ok=true; break; } if(ok) break; }
+  if(!ok) continue;   // short links inside a big junction get no pole
   const cross=(n.ed.find(o=>o!==e&&o.name&&o.name!==e.name)||e).name||'Mushin';
   tlPoles.push({x:px,y:SLAB,z:pz,ry,cross}); addCol({x0:px-.15,x1:px+.15,z0:pz-.15,z1:pz+.15,h:5});
   if(TLM){ const c=Math.cos(ry), sn=Math.sin(ry); for(const [lx,ly] of TL_LENS) tlLamps.push({x:px+lx*c+TL_LZ*sn,y:SLAB+ly,z:pz-lx*sn+TL_LZ*c,ry}); }
@@ -1552,7 +1558,9 @@ function pickCast(hour){ const school=hour!=null&&((hour>=7&&hour<8.5)||(hour>=1
   for(const k in CAST){ let x=CAST[k].w; if(k==='schoolboy') x*=school?5:night?0:.5; if(night&&(k==='baba'||k==='hawker')) x*=.3; if(night&&k==='areaboy') x*=1.6; w[k]=x; tot+=x; }
   let r=MR()*tot; for(const k in w){ r-=w[k]; if(r<=0) return k; } return 'mama'; }
 
-const player={x:APT.front.x+APT.nx*1.2,z:APT.front.z+APT.nz*1.2,y:SLAB,yaw:APT.ry,speed:0,ph:0};
+// where you stand outside your door: a few steps out, so the camera behind you has room (not inside the house)
+APT.step=(()=>{ for(const k of [2.8,2.2,1.6,1.2]){ const x=APT.front.x+APT.nx*k, z=APT.front.z+APT.nz*k; if(onLand(x,z)&&!roadAt(x,z,.4)&&!resolveCircle({x,z},.45)) return {x,z}; } return {x:APT.front.x+APT.nx*1.2,z:APT.front.z+APT.nz*1.2}; })();
+const player={x:APT.step.x,z:APT.step.z,y:SLAB,yaw:APT.ry,speed:0,ph:0};
 let mode='walk', started=false, busy=false, T0=0;
 let rig=makeHuman({f:false,skin:skinMat('#5a3825'),top:ankMat(5),bottom:clothMat('#1a1a1c'),shoe:clothMat('#f2f2f2'),hairM:clothMat('#141110')});
 scene.add(rig.root);
@@ -1873,7 +1881,7 @@ function buildInterior(){
 const INT=buildInterior();
 // rooms you can be inside: your flat and the hotel lounge share the same walking, camera and exit code
 Object.assign(INT,{bounds:{x0:-5.6,x1:5.6,z0:-4.6,z1:4.6},cam:{x0:-5.75,x1:5.75,z0:-4.75,z1:4.75,y0:.5,y1:3},label:'Your room · Mushin',camDist:2.7,
-  out:()=>({x:APT.front.x+APT.nx*.8,z:APT.front.z+APT.nz*.8,ry:APT.ry}),update:dt=>{ if(INT.fan) INT.fan.rotation.y+=dt*4; }});
+  out:()=>({x:APT.step.x,z:APT.step.z,ry:APT.ry}),update:dt=>{ if(INT.fan) INT.fan.rotation.y+=dt*4; }});
 let ROOM=INT;
 /* ================= your home, built in Blender (assets/models/room.glb) =================
    The inside of your house is the flat made in Blender (sitting room, dining, kitchen, bathroom, hallway and your bedroom),
@@ -2328,7 +2336,7 @@ function updateHUD(dt){ if(!started) return;
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
 
 /* ================= camera ================= */
-const camState={yaw:APT.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0};
+const camState={yaw:APT.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0}; camState.yaw=clearYaw(player.x,player.y,player.z,APT.ry);   // at your door: a clear view, not your wall
 const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
 let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
 function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
@@ -2564,6 +2572,15 @@ function inPath(v,fx,fz,x,z){ const dx=x-v.x, dz=z-v.z, ah=dx*fx+dz*fz; return a
 // how fast traffic moves on each kind of road: the highways and big roads really move (so people use the footbridges)
 const ROAD_PACE=(c,chase)=>c<=1?1.6:c===2?1.3:c<=4?1:chase?1:.8;
 const brakeTo=d=>Math.sqrt(Math.max(0,d)*12);   // the speed from which a car can still stop in d metres (6 m/s²)
+// is a strip beside this car free: lateral `lat` (from the car, + = right), from `from` to `to` metres ahead (oncoming cars count by where they will be)
+function passFree(v,fx,fz,lat,from,to,skip){ const W=v.c.def.W;
+  for(const o of vehicles){ if(o===v||o===skip||(o.c.g&&o.wreck&&o===skip)) continue; const dx=o.x-v.x, dz=o.z-v.z; if(Math.abs(dx)>to+45||Math.abs(dz)>to+45) continue;
+    const ah=dx*fx+dz*fz, ol=-dx*fz+dz*fx, toward=(Math.cos(o.h)*fx-Math.sin(o.h)*fz)<-.3, far=to+(toward?Math.abs(o.speed)*3.5+4:0);
+    if(ah<from-o.c.def.L/2||ah>far) continue; if(Math.abs(ol-lat)<(W+o.c.def.W)/2+.45) return false; }
+  const clear=(x,z,r)=>{ const dx=x-v.x, dz=z-v.z, ah=dx*fx+dz*fz, ol=-dx*fz+dz*fx; return !(ah>from&&ah<to&&Math.abs(ol-lat)<W/2+r); };
+  if(mode!=='drive'&&!clear(player.x,player.z,.9)) return false;
+  for(const p of peds) if(p.state!=='off'&&p.state!=='dead'&&p.state!=='down'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<to+5&&Math.abs(p.z-v.z)<to+5&&!clear(p.x,p.z,.8)) return false;
+  return true; }
 function updateTraffic(dt){
   for(const v of vehicles){ const ai=v.ai; if(!ai) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
     const sc=ai.seg.k===0?(ai.cond||'good'):'good'; let target=ai.seg.k===1?Math.min((ai.seg.vmax||6.5)*(ai.chase?1.3:1),ai.maxV):ai.maxV*(sc==='dirt'?(ai.chase?.75:.5):sc==='bad'?(ai.chase?.85:.7):1)*ROAD_PACE(ai.ec,ai.chase), waiting=false; if(ai.wait>0){ ai.wait-=dt; target=0; waiting=true; }
@@ -2578,24 +2595,37 @@ function updateTraffic(dt){
       if(lat<11&&ah>-3&&ah<40) target=Math.min(target,Math.max(0,ah*.7)); G.near=lat<11&&Math.abs(ah)<4; }
     if(ai.chase){ const G=ai.raid?RAID:player, dx=G.x-v.x, dz=G.z-v.z, ah=dx*fx+dz*fz, lat=Math.abs(-dx*fz+dz*fx), at=ai.raid?RAID.node:CHASE.at, cg=!ai.raid&&mode!=='drive'?CHASE.g:null, mine=cg?(ai.a===cg.a&&ai.b===cg.b)||(ai.a===cg.b&&ai.b===cg.a):ai.a===at||ai.b===at;   // police pull up beside you
       if((mine||lat<22)&&ah>-3&&ah<45) target=Math.min(target,Math.max(0,ah*.8)); ai.near=mine&&lat<45&&Math.abs(ah)<6; }   // (on the street nearest you they stop level with you and wait, even if you are back from the road)
-    if(ai.ghost>0) ai.ghost-=dt; else {
+    let blk=null, blkAh=1e9;   // the nearest car in this car's way
+    if(ai.ghost>0) ai.ghost-=dt;   // a car just put on the road may slip out of a crowd unseen, but never while you watch
+    if(!(ai.ghost>0)||inView(v.x,1,v.z,4)){
       const look=Math.max(22,Math.abs(v.speed)*2.4+8);   // fast cars look further ahead
       for(const o of vehicles){ if(o===v) continue; const dx=o.x-v.x, dz=o.z-v.z; if(Math.abs(dx)>look||Math.abs(dz)>look) continue; const ah=dx*fx+dz*fz; if(ah<=0||ah>look) continue;
         if(Math.abs(-dx*fz+dz*fx)<(v.c.def.W+o.c.def.W)/2+.12){ const gap=ah-((v.c.def.L+o.c.def.L)/2+1.8), os=Math.max(0,(Math.cos(o.h)*fx-Math.sin(o.h)*fz)*o.speed);
-          const lim=Math.max(0,Math.min(gap*1.3+os*.9,brakeTo(gap)+os*.95)); if(lim<target){ target=lim; if(o.ai&&o.ai.waiting) waiting=true; } } }
+          const lim=Math.max(0,Math.min(gap*1.3+os*.9,brakeTo(gap)+os*.95)); if(lim<target){ target=lim; if(o.ai&&o.ai.waiting) waiting=true; } if(ah<blkAh){ blk=o; blkAh=ah; } } }
       if((mode==='walk'||mode==='enter')&&inPath(v,fx,fz,player.x,player.z)) target=0;
       for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0; }
     if(ai.hs){ const r=busStopFor(v,ai,fx,fz,target); target=r; if(target===0) waiting=true; }
+    // a car that won't move (parked, broken down, burnt, you): go round it on the left when the way is clear; never through it
+    if(ai.pcool>0) ai.pcool-=dt;
+    if(ai.pb){ const o=ai.pb, dx=o.x-v.x, dz=o.z-v.z, ah=dx*fx+dz*fz; target=Math.min(target,7.5);
+      if(ai.seg.k!==0||!vehicles.includes(o)){ ai.pb=null; ai.pt=0; }
+      else if(ah<-((v.c.def.L+o.c.def.L)/2+2)&&passFree(v,fx,fz,-(ai.po||0),-4,12,o)){ ai.pb=null; ai.pt=0; } }   // past it, and room to pull back in
+    else if(blk&&ai.seg.k===0&&ai.stuck>(ai.chase?.8:2.2)&&!(ai.pcool>0)&&Math.abs(blk.speed)<.6&&!(blk.ai&&blk.ai.waiting)){
+      const e=edgeOf(ai.a,ai.b), hw=e?e.hw:3, W=v.c.def.W, dx=blk.x-v.x, dz=blk.z-v.z, bl=-dx*fz+dz*fx, want=bl-((W+blk.c.def.W)/2+.55), np=(ai.po||0)+want, minPo=-(ai.seg.off+hw)+W/2+.25;
+      if(np>=minPo&&ai.seg.len-ai.s>blkAh+(blk.c.def.L+v.c.def.L)/2+6&&passFree(v,fx,fz,want,-6,blkAh+blk.c.def.L/2+12,blk)){ ai.pb=blk; ai.pt=np; ai.stuck=0; if(MR()<.5&&Math.hypot(v.x-player.x,v.z-player.z)<40) setTimeout(horn,200); }
+      else ai.pcool=1.5; }
     ai.waiting=waiting;
     v.speed+=clamp(target-v.speed,-10*dt,3.5*dt);
-    if((waiting&&!ai.chase)||v.speed>.5) ai.stuck=0; else if(target<.2&&!ai.near){ ai.stuck+=dt; if(ai.stuck>(ai.chase?2.5:8)){ ai.ghost=2.5; ai.stuck=0; } }   // police push through
+    if((waiting&&!ai.chase)||v.speed>.5) ai.stuck=0; else if(target<.2&&!ai.near){ ai.stuck+=dt;
+      if(ai.stuck>(ai.chase?6:12)){ ai.stuck=ai.chase?3:6; if(!ai.chase&&!v.taxi&&!v.keep&&(Math.hypot(v.x-player.x,v.z-player.z)>90||!inView(v.x,1,v.z,4))){ placeCar(v,120,250); continue; } } }   // stuck for good: taken away once you can't see it
     ai.s+=v.speed*dt; let guard=0;
     while(ai.s>=ai.seg.len&&guard++<4){ ai.s-=ai.seg.len;
       if(ai.seg.k===0){ const out=nodes[ai.b].out; let opts=out.filter(n=>n!==ai.a); if(v.type==='bus') { const big=opts.filter(n=>{ const e=edgeOf(ai.b,n); return e&&e.c<=4; }); if(big.length) opts=big; }
         if(!opts.length){ if(out.includes(ai.a)) opts=[ai.a]; else { placeCar(v,120,250); break; } }
         ai.na=ai.chase||ai.goal?chaseTurn(v,opts):pickTurn(ai,opts); ai.seg=turnSeg(ai.a,ai.b,ai.na); const nd=nodes[ai.b]; if(nd.deg>=3){ nd.occ=v; nd.occT=T0; } }
       else { const passed=nodes[ai.b]; if(passed.occ===v) passed.occ=null; ai.a=ai.b; ai.b=ai.na; ai.seg=lineSeg(ai.a,ai.b); const e=edgeOf(ai.a,ai.b); ai.cond=e?e.cond:'good'; ai.ec=e?e.c:6; ai.stopAt=(v.type==='danfo'&&MR()<.35&&ai.ec<=6)?ai.seg.len*mrr(.3,.65):-1; } }
-    segPos(ai.seg,ai.s,_sp); v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx);
+    segPos(ai.seg,ai.s,_sp); { const was=ai.po||0, goal=ai.seg.k===0?(ai.pt||0):0, rate=(.6+Math.abs(v.speed)*.32)*dt*(ai.seg.k===0?1:2.5); ai.po=was+clamp(goal-was,-rate,rate);
+      const dl=Math.hypot(_sp.dx,_sp.dz)||1, lr=dt>0?(ai.po-was)/dt:0; v.x=_sp.x-_sp.dz/dl*ai.po; v.z=_sp.z+_sp.dx/dl*ai.po; v.h=Math.atan2(-_sp.dz,_sp.dx)+Math.atan2(-lr,Math.max(2.5,Math.abs(v.speed))); }   // pulled out to pass
     if(!v.taxi&&(v.x-player.x)**2+(v.z-player.z)**2>340*340) placeCar(v,120,250); } }
 const HI_D=Q===QUAL.low?34:Q===QUAL.medium?50:70, OCC_D=Q===QUAL.low?30:Q===QUAL.medium?45:60;
 function bumpPothole(v,fx,fz,sp,isPlayer){ if(v.phCool>0||sp<1.5) return null; const L=v.c.def.L*.32;
@@ -2769,7 +2799,7 @@ function updateWorld(dt){ WU.time.value=(WU.time.value+dt*.6)%1000; if(WU._n){ W
   { const tex=(sun.shadow.camera.right-sun.shadow.camera.left)/Q.sh; sun.position.x=Math.round(sun.position.x/tex)*tex; sun.position.z=Math.round(sun.position.z/tex)*tex; sun.target.position.x=Math.round(sun.target.position.x/tex)*tex; sun.target.position.z=Math.round(sun.target.position.z/tex)*tex; }
   aviMat.emissiveIntensity=ENV.lamp>.3?(Math.sin(T0*3)>.2?3:.3):.6;
   PH_MAT.wet.opacity=.62+.38*ENV.wet; PH_MAT.wet.roughness=.22-.18*ENV.wet; PH_MAT.dry.color.setScalar(1-ENV.wet*.25);
-  APT.ring.material.opacity=.45+.35*Math.sin(T0*3); APT.ring.scale.setScalar(1+.08*Math.sin(T0*3)); }
+  APT.ring.material.opacity=.45+.35*Math.sin(T0*3); APT.ring.scale.setScalar(1+.08*Math.sin(T0*3)); doorMarksTick(dt); }
 const _up=new THREE.Vector3(0,1,0);
 // Low quality has no real-time sun shadows; soft dark spots under people and vehicles keep them standing on the ground
 const BLOBS=(()=>{ if(Q.shadows) return null; const [c,g]=cv(64,64); const gr=g.createRadialGradient(32,32,2,32,32,31); gr.addColorStop(0,'rgba(0,0,0,.55)'); gr.addColorStop(.6,'rgba(0,0,0,.32)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,64,64);
@@ -5409,7 +5439,11 @@ const spotLabel=s=>typeof s.label==='function'?s.label():s.label;
 function goRoom(R,at,msg){ if(!R) return; if(WARD.open) closeWard(); if(ROOM===INT&&mode==='interior') homeLeave();
   fadeSwap(()=>{ const p=typeof at==='string'?R.marks[at]:at, q=R.nearFree(p.x,p.z); ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
     Object.assign(player,{x:q.x,z:q.z,y:0,yaw:p.yaw??0,speed:0}); Object.assign(camState,{yaw:player.yaw,pitch:.2,dist:R.camDist}); setScene(R.scene); if(R.onEnter) R.onEnter(); if(msg) toast(msg,3.2); }); }
-function leaveRoom(o){ if(!o) return; fadeSwap(()=>{ mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
+// stepping out of a door: the camera goes behind you where it has room, a little to one side if the wall is close (never inside the building)
+function clearYaw(x,y,z,ry){ const t=new THREE.Vector3(x,y+1.55,z), dv=new THREE.Vector3(); let best=ry, bd=-1;
+  for(const k of [0,.75,-.75,1.15,-1.15]){ const yaw=ry+k, cp=Math.cos(.26); dv.set(-Math.sin(yaw)*cp,Math.sin(.26),-Math.cos(yaw)*cp); const d=rayDist(t,dv,4.3)-(Math.abs(k)*.4);   // straight behind wins a near tie
+    if(d>bd){ bd=d; best=yaw; } if(d>=3.8) break; } return best; }
+function leaveRoom(o){ if(!o) return; fadeSwap(()=>{ mode='walk'; ROOM=INT; scene.add(rig.root); const y=groundY(o.x,o.z); Object.assign(player,{x:o.x,z:o.z,y,yaw:o.ry,speed:0}); const cy=clearYaw(o.x,y,o.z,o.ry); Object.assign(camState,{yaw:cy,pitch:.26,dist:4.3,last:T0}); setScene(scene); }); }
 const backOf=m=>m&&{x:m.x,z:m.z,yaw:m.yaw+Math.PI};   // standing at a door, turned away from it
 // people in a room come once the townspeople have loaded
 function fillRoom(R){ if(R.filled||!PEOPLE.n||!R.fill) return; R.filled=true; R.fill(R); }
@@ -5573,6 +5607,62 @@ for(const c of VENUES.clubs){ DOORS.push({x:c.door.x,z:c.door.z,r:2.2,label:()=>
 if(STATION.r&&STATION.r.M.marks) DOORS.push({x:STATION.front.x,z:STATION.front.z,r:2.2,label:'Enter the police station',act:enterPolice});
 if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x,z:V.door.z,r:2.2,label:'Enter the car showroom',act:enterShowroom});
   PLACES.push({name:'Oluwaseun Motors',sub:'Car stand · tokunbo and brand new cars',kind:'cars',x:V.x,z:V.z}); }
+// ---- where to go in: a pulsing ring and a bobbing arrow at every door you can walk into (hotels, clubs, police, car stand)
+const DMARK={list:[],arrowG:(()=>{ const g=new THREE.ConeGeometry(.32,.62,4); g.rotateX(Math.PI); g.rotateY(Math.PI/4); return g; })(),t:0};
+function doorMark(x,z,col,text,txt2){ const y=groundY(x,z), c=new THREE.Color(col), g=new THREE.Group(); g.position.set(x,y,z); g.layers.set(1);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(1.05,1.35,48),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.8,depthWrite:false,fog:false})); ring.rotation.x=-Math.PI/2; ring.position.y=Math.max(0,SLAB-y)+.08; ring.renderOrder=2;   // on top of the pavement ring.layers.set(1); g.add(ring);
+  const arrow=new THREE.Mesh(DMARK.arrowG,new THREE.MeshBasicMaterial({color:c,fog:false})); arrow.position.y=2.5; arrow.layers.set(1); g.add(arrow);
+  let lab=null; if(text){ lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(text,col,'#0E1014'),transparent:true,fog:false})); lab.scale.set(4.6,.86,1); lab.position.y=3.5; lab.layers.set(1); g.add(lab); }
+  scene.add(g); const m={x,z,g,ring,arrow,lab,text,col}; DMARK.list.push(m); return m; }
+// the ring sits on whatever is under the door: a hotel's raised forecourt, steps, the pavement (once, when you first come near)
+const _dmRay=new THREE.Raycaster(); _dmRay.layers.enableAll();
+function doorMarkFloor(m){ try{ _dmRay.set(new THREE.Vector3(m.x,m.g.position.y+1.6,m.z),new THREE.Vector3(0,-1,0)); _dmRay.far=2.4; const hits=[], tmp=new THREE.Mesh();
+  for(const c of CULLS){ if(c.off||!c.levels[0]) continue; for(const it of c.items){ if(Math.abs(it.x-m.x)>60||Math.abs(it.z-m.z)>60||!it.m) continue; tmp.geometry=c.levels[0].geo; tmp.matrixWorld.fromArray(it.m); tmp.raycast(_dmRay,hits); } }
+  let top=-1e9; for(const h of hits) if(h.point.y<m.g.position.y+1.5) top=Math.max(top,h.point.y);
+  if(top>m.g.position.y+.05) m.ring.position.y=top-m.g.position.y+.06; }catch(e){ console.warn(e); } }
+function doorMarkText(m,text){ if(!m.lab||m.text===text) return; m.text=text; const old=m.lab.material.map; m.lab.material.map=texLabel(text,m.col,'#0E1014'); m.lab.material.needsUpdate=true; if(old) old.dispose(); }
+function doorMarksTick(dt){ DMARK.t+=dt; const k=Math.sin(DMARK.t*3), px=mode==='drive'&&drive.v?drive.v.x:player.x, pz=mode==='drive'&&drive.v?drive.v.z:player.z;
+  if((DMARK.lab=(DMARK.lab||0)-dt)<=0){ DMARK.lab=1; for(const h of HOTELS) if(h.mark) doorMarkText(h.mark,STAY&&STAY.h===h.i?`YOUR HOTEL · ROOM ${roomNo(HTIERS[STAY.t].f,STAY.n)}`:h.markTxt); }
+  for(const m of DMARK.list){ const d=Math.hypot(m.x-px,m.z-pz); m.g.visible=d<120&&mode!=='interior'; if(!m.g.visible) continue;
+    if(!m.fixed&&d<90){ m.fixed=true; doorMarkFloor(m); }
+    m.ring.material.opacity=.5+.3*k; m.ring.scale.setScalar(1+.07*k); m.arrow.position.y=2.45+.22*Math.sin(DMARK.t*2.4); m.arrow.rotation.y=DMARK.t*1.6; } }
+for(const h of HOTELS){ h.markTxt=h.i?'ENTER · '+h.name.toUpperCase():null; h.mark=doorMark(h.door.x,h.door.z,'#F2B705',h.markTxt); if(!h.i) h.mark.lab=null; }   // Eko Grand has its own name board
+for(const c of VENUES.clubs) doorMark(c.door.x,c.door.z,'#c86bff','ENTER · '+c.name.toUpperCase());
+if(STATION.r&&STATION.r.M.marks) doorMark(STATION.front.x,STATION.front.z,'#4c7dff',null);
+if(VENUES.carstand) doorMark(VENUES.carstand.door.x,VENUES.carstand.door.z,'#2fbf71',null);
+// ---- inside the hotel: a gold trail on the floor to where you should go next (reception, the lift, your room's door)
+const GUIDE={scene:null,key:'',path:[],t:0,re:0,
+  ring:(()=>{ const m=new THREE.Mesh(new THREE.RingGeometry(.55,.75,40),new THREE.MeshBasicMaterial({color:0xF2B705,transparent:true,opacity:.85,depthWrite:false,fog:false})); m.rotation.x=-Math.PI/2; return m; })(),
+  arrow:new THREE.Mesh(DMARK.arrowG,new THREE.MeshBasicMaterial({color:0xF2B705,fog:false})),
+  chev:(()=>{ const sh=new THREE.Shape(); sh.moveTo(-.3,-.16); sh.lineTo(0,.1); sh.lineTo(.3,-.16); sh.lineTo(.3,.04); sh.lineTo(0,.3); sh.lineTo(-.3,.04); sh.closePath();   // a bold chevron pointing the way
+    const g=new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI/2); g.rotateY(Math.PI); const m=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({color:0xFFC21A,transparent:true,opacity:.92,depthWrite:false,fog:false,side:THREE.DoubleSide}),48); m.count=0; m.frustumCulled=false; m.renderOrder=3; return m; })(),
+  lab:new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,fog:false,depthTest:false})), txt:''};
+GUIDE.arrow.scale.setScalar(.7); GUIDE.lab.scale.set(2.3,.43,1); GUIDE.lab.renderOrder=5;
+function guideTarget(){ if(mode!=='interior'||!ROOM||!ROOM.marks) return null; const R=ROOM, M=R.marks, mine=STAY&&STAY.h===H.cur;
+  if(R.name==='int_hotel_lobby') return mine?{m:M.lift,txt:`LIFT TO FLOOR ${HTIERS[STAY.t].f}`}:{m:M.desk,txt:'RECEPTION · BOOK A ROOM'};
+  if(R.name==='int_hotel_corridor'){ if(mine&&HTIERS[STAY.t].f===H.floor&&M['door_'+STAY.n]) return {m:M['door_'+STAY.n],txt:`ROOM ${roomNo(H.floor,STAY.n)} · YOUR ROOM`}; return {m:M.lift,txt:mine?`LIFT TO FLOOR ${HTIERS[STAY.t].f}`:'LIFT TO THE LOBBY'}; }
+  return null; }
+// a walkable route over the room's floor (0.5 m cells), round the furniture
+function guidePath(R,sx,sz,tx,tz){ const B=R.bounds, C=.5, gw=Math.ceil((B.x1-B.x0)/C)+1, gd=Math.ceil((B.z1-B.z0)/C)+1; if(gw*gd>40000) return [{x:tx,z:tz}];
+  const id=(x,z)=>clamp(Math.round((z-B.z0)/C),0,gd-1)*gw+clamp(Math.round((x-B.x0)/C),0,gw-1), X=i=>B.x0+(i%gw)*C, Z=i=>B.z0+Math.floor(i/gw)*C;
+  const s0=id(sx,sz), g0=id(tx,tz), prev=new Int32Array(gw*gd).fill(-1), q=[s0]; prev[s0]=s0;
+  for(let h=0;h<q.length;h++){ const c=q[h]; if(c===g0) break; const cx=c%gw, cz=Math.floor(c/gw);
+    for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){ const nx=cx+dx, nz=cz+dz; if(nx<0||nz<0||nx>=gw||nz>=gd) continue; const n=nz*gw+nx; if(prev[n]>=0) continue;
+      if(n!==g0&&!R.free(X(n),Z(n),.22)) continue; if(dx&&dz&&(!R.free(X(c)+dx*C,Z(c),.22)||!R.free(X(c),Z(c)+dz*C,.22))) continue; prev[n]=c; q.push(n); } }
+  if(prev[g0]<0) return [{x:sx,z:sz},{x:tx,z:tz}]; const out=[]; for(let c=g0;;c=prev[c]){ out.push({x:X(c),z:Z(c)}); if(c===s0) break; } out.reverse(); out[out.length-1]={x:tx,z:tz}; return out; }
+function guideTick(dt){ const G=GUIDE, T=guideTarget(), R=ROOM;
+  if(!T||!T.m){ G.ring.visible=G.arrow.visible=G.lab.visible=false; G.chev.count=0; G.key=''; return; }
+  if(G.scene!==R.scene){ G.scene=R.scene; for(const o of [G.ring,G.arrow,G.chev,G.lab]) R.scene.add(o); }
+  const at=R.nearFree(T.m.x,T.m.z), key=R.name+'|'+T.txt;
+  if(G.key!==key){ G.key=key; G.re=0; if(G.txt!==T.txt){ G.txt=T.txt; const old=G.lab.material.map; G.lab.material.map=texLabel(T.txt,'#F2B705','#0E1014'); G.lab.material.needsUpdate=true; if(old) old.dispose(); } }
+  G.t+=dt; G.ring.visible=G.arrow.visible=G.lab.visible=true; G.ring.position.set(at.x,.05,at.z); G.ring.scale.setScalar(1+.08*Math.sin(G.t*3)); G.ring.material.opacity=.6+.25*Math.sin(G.t*3);
+  G.arrow.position.set(at.x,1.75+.15*Math.sin(G.t*2.4),at.z); G.arrow.rotation.y=G.t*1.6; G.lab.position.set(at.x,2.35,at.z);
+  const far=Math.hypot(player.x-at.x,player.z-at.z); if((G.re-=dt)<=0){ G.re=.5; G.path=far>1.6?guidePath(R,player.x,player.z,at.x,at.z):[]; }
+  // chevrons every 0.9 m along the route, a wave of light running toward the target
+  let n=0, acc=.9; const P=G.path; for(let i=1;i<P.length&&n<48;i++){ const a=P[i-1], b=P[i], L=Math.hypot(b.x-a.x,b.z-a.z); if(!L) continue; const ux=(b.x-a.x)/L, uz=(b.z-a.z)/L;
+    for(let t=acc;t<L&&n<48;t+=.9){ const x=a.x+ux*t, z=a.z+uz*t; if(Math.hypot(x-at.x,z-at.z)<1||Math.hypot(x-player.x,z-player.z)<.8) continue; _q.setFromAxisAngle(_up,Math.atan2(ux,uz)); _p.set(x,.03,z); _s.setScalar(1+.15*Math.max(0,Math.sin(G.t*5-n*.6))); _m.compose(_p,_q,_s); G.chev.setMatrixAt(n++,_m); }
+    acc=(acc-L)%.9; if(acc<0) acc+=.9; }
+  G.chev.count=n; G.chev.instanceMatrix.needsUpdate=true; }
 const doorNear=()=>{ if(mode!=='walk') return null; let best=null, bd=1e9; for(const d of DOORS){ const e=Math.hypot(player.x-d.x,player.z-d.z); if(e<d.r&&e<bd){ bd=e; best=d; } } return best; };
 // the police station opens at once when you are caught
 setTimeout(()=>{ if(STATION.r&&STATION.r.M.marks) intLoad('int_police'); },25000);
@@ -5659,7 +5749,7 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else ROOM.update(dt);
+  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
@@ -5763,7 +5853,7 @@ const eb=$('#enterBtn');
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
 eb.addEventListener('click',()=>{ if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
-  started=true; lastT=performance.now(); camState.yaw=0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
+  started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);   // the new vehicles come in the background
   { const left=jailSaved(); if(left){ busy=true; setTimeout(()=>{ fadeSwap(()=>{ enterJail(left); }); },300); } } });   // you left the game in the cell: straight back in
