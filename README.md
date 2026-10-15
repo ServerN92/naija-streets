@@ -188,6 +188,14 @@ Take any of them like other vehicles: the sport bike is the fastest thing on the
 They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by your door next to the okada: E to ride
 (you stand side-on), E to step off. It doesn't knock people over.
 
+## Phone controls and full screen
+The buttons show only what you can do right now. On foot with your fists: CROUCH and JUMP. Running, CROUCH becomes
+SLIDE (like CODM: you slide along the ground and end crouched; keep running and you come straight up). Crouched you
+creep about; tap again (or jump) to stand. GRAB and ATTACK come up when someone is right by you or a fight is on; E when
+there is a vehicle, a door or a place to use (the prompt says what); a gun or a throw gives AIM and FIRE/THROW. On a
+keyboard X crouches or slides. The minimap sits small in the top right, away from the move pad. On phones and tablets the
+game goes full screen when you tap ENTER (Settings → Full screen to turn it off); on an iPhone, Add to Home Screen.
+
 ## Skating, bike and car skills
 - **Skateboard:** W pushes with the back foot (hold Shift or push the stick all the way for faster pushes), S or BRAKE
   drags the foot, A/D carve. Space (OLLIE on phones) pops an ollie; in the air J kickflip, K heelflip, L shove-it,
