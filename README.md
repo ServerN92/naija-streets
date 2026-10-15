@@ -257,4 +257,10 @@ packs every part's picture into one atlas. Vehicles keep their own textures when
 `autorig.py` works best on a T-pose body; arms that touch the thighs (A-pose) stretch when the arms move (`--nocut` keeps
 the mesh whole, `--gentle` cuts less).
 
+## Last step: sharper picture on phones
+When the game is finished, the very last job is a sharp upscale for phones, like AMD FSR 1 (DLSS can't run in browsers).
+Phones draw the game smaller than the screen; the browser stretches it and it looks soft. The two shaders in
+`tools/sharpen_shaders.js` (Catmull-Rom upscale, then FSR's RCAS sharpening) make leaves, signs and windows clearly crisper
+for very little cost. Hook them in after the scene is drawn whenever the pixel ratio is below the screen's.
+
 Map data © OpenStreetMap contributors, ODbL.
