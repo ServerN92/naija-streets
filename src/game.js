@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=9c218ae85b';
-import * as C2 from './char2.js?v=9c218ae85b';
-import { MapView } from './mapview.js?v=9c218ae85b';
+import * as CLOCK from './clock.js?v=dc878f75af';
+import * as C2 from './char2.js?v=dc878f75af';
+import { MapView } from './mapview.js?v=dc878f75af';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='9c218ae85b';
+const BUILD='dc878f75af';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -5076,7 +5076,7 @@ let hotelPeek=0; function hotelPrefetch(dt){ if(!MYROOM.loading&&MANIFEST['asset
    desk, beds, lamps, signs), so the game puts people, lights, words and the E spots there. */
 const INTS={}, INT_ENV={t:null};
 function intLoad(name){ const I=INTS[name]||(INTS[name]={}); if(I.p) return I.p; const u=murl(name); DL.exp[u]=MANIFEST[`assets/models/${name}.glb`]||600000;
-  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ let sims=false; g.scene.traverse(o=>{ if(/^WALL_/.test(o.name)) sims=true; }); I.room=sims?buildSimsRoom(name,g):buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
+  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ let sims=false; g.scene.traverse(o=>{ if(/^(WALL_|ROOM$)/.test(o.name)) sims=true; }); I.room=sims?buildSimsRoom(name,g):buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
 async function intGet(name,msg){ const I=INTS[name]; if(I&&I.room) return I.room; if(msg) toast(msg,4); busy=true; let R=null; try{ R=await intLoad(name); }catch(e){} busy=false; if(!R) toast('E no open now. Try again small time.'); return R; }
 function buildRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x0d0b0a);
@@ -5113,6 +5113,7 @@ function buildRoom(name,g){
 /* ---- rooms made in Blender with real textures (tools: the user's Blender, ~/Documents/naija_rooms): many meshes,
    walls as separate WALL_* objects, spots as MARK_* empties. Seen from above like the Sims: every wall that stands
    between the camera and you drops to a low strip, so you see into the room you are in and the rooms around. */
+let LM_K=2*Math.PI*3;   // the light picture was baked at half strength; Blender's light pass is radiance (x pi)
 function buildSimsRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x101216);
   if(!INT_ENV.t) INT_ENV.t=pmrem.fromScene(new RoomEnvironment(),.04).texture; S.environment=INT_ENV.t; S.environmentIntensity=.55;
@@ -5137,16 +5138,22 @@ function buildSimsRoom(name,g){
       if(by<.3||ay>1.7) continue; const i0=Math.max(0,Math.floor((ax-x0)/CS)), i1=Math.min(gw-1,Math.floor((bx-x0)/CS)), j0=Math.max(0,Math.floor((az-z0)/CS)), j1=Math.min(gd-1,Math.floor((bz-z0)/CS));
       if((i1-i0+1)*(j1-j0+1)>900) continue; for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) grid[j*gw+i]=1; } }
   // the camera stops at walls: faces of the walls that reach from low down to above head height
-  const tall=new Uint8Array(gw*gd); for(const w of W){ const o=w.o, P=o.geometry.attributes.position, I=o.geometry.index, n=(I?I.count:P.count)/3; o.updateMatrixWorld(true);
+  const tall=new Uint8Array(gw*gd); for(const w of (W.length?W:solids.map(o=>({o})))){ const o=w.o, P=o.geometry.attributes.position, I=o.geometry.index, n=(I?I.count:P.count)/3; o.updateMatrixWorld(true);
     for(let t=0;t<n;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9; for(let k=0;k<3;k++){ a.fromBufferAttribute(P,I?I.getX(t*3+k):t*3+k).applyMatrix4(o.matrixWorld); if(a.x<ax) ax=a.x; if(a.x>bx) bx=a.x; if(a.y<ay) ay=a.y; if(a.y>by) by=a.y; if(a.z<az) az=a.z; if(a.z>bz) bz=a.z; }
       if(!(ay<1.2&&by>2.4)) continue; const i0=Math.max(0,Math.floor((ax-x0)/CS)), i1=Math.min(gw-1,Math.floor((bx-x0)/CS)), j0=Math.max(0,Math.floor((az-z0)/CS)), j1=Math.min(gd-1,Math.floor((bz-z0)/CS)); if((i1-i0+1)*(j1-j0+1)>900) continue;
       for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) tall[j*gw+i]=1; } }
   // a ceiling (the Blender room leaves it off)
-  { let top=0; for(const w of W) top=Math.max(top,w.o.position.y+w.h); const c=new THREE.Mesh(new THREE.PlaneGeometry(bb.max.x-bb.min.x,bb.max.z-bb.min.z).rotateX(Math.PI/2),new THREE.MeshStandardMaterial({color:0xf3efe8,roughness:.95})); c.position.set((bb.min.x+bb.max.x)/2,top||3.2,(bb.min.z+bb.max.z)/2); S.add(c); }
+  if(W.length){ let top=0; for(const w of W) top=Math.max(top,w.o.position.y+w.h); const c=new THREE.Mesh(new THREE.PlaneGeometry(bb.max.x-bb.min.x,bb.max.z-bb.min.z).rotateX(Math.PI/2),new THREE.MeshStandardMaterial({color:0xf3efe8,roughness:.95})); c.position.set((bb.min.x+bb.max.x)/2,top||3.2,(bb.min.z+bb.max.z)/2); S.add(c); }
   const cell=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:grid[j*gw+i]; };
   const free=(x,z,r=.26)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z);
   // lights from the Blender lamps (watts turned into game light)
   const lights=[]; for(const [k,m] of Object.entries(MK)){ if(!/^light_/.test(k)) continue; const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),Math.min(40,(m.power||60)*(m.kind==='AREA'?.11:.3)),m.kind==='AREA'?11:6,1.7); L.position.set(m.x,m.y-.15,m.z); S.add(L); lights.push(L); }
+  const lmUrl=`assets/models/${name}_lm.jpg`;
+  if(MANIFEST[lmUrl]){ const room=root.getObjectByName('ROOM'); new THREE.TextureLoader().load(lmUrl+'?v='+(AV[lmUrl]||MANIFEST[lmUrl]),t=>{ t.flipY=true; t.channel=1; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=Math.min(4,maxAniso);
+      root.traverse(o=>{ if(!o.isMesh||/^VIEW_/.test(o.name)||!o.geometry.attributes.uv1) return; o.material=[].concat(o.material).map(m=>{ const e=m.emissive&&m.emissiveIntensity>0&&(m.emissive.r+m.emissive.g+m.emissive.b)>.05;
+        const b=new THREE.MeshBasicMaterial({map:m.map,color:e?m.emissive.clone().multiplyScalar(Math.min(1.6,m.emissiveIntensity)):m.color,lightMap:e?null:t,lightMapIntensity:LM_K,transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite,side:THREE.DoubleSide});
+        b.userData.std=m; return b; }); if(o.material.length===1) o.material=o.material[0]; o.castShadow=false; o.receiveShadow=false; });
+      S.environmentIntensity=.35; for(const l of S.children) if(l.isDirectionalLight){ l.intensity=.5; l.castShadow=false; } else if(l.isHemisphereLight) l.intensity=.7; R.lit=true; }); }
   const R={name,scene:S,marks:MK,free,sims:false,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs:{},tick:null,walls:W,
     bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:bb.min.x+.2,x1:bb.max.x-.2,z0:bb.min.z+.2,z1:bb.max.z-.2,y0:.5,y1:2.9},
     camHit(t,d,dist){ for(let q=.25;q<dist;q+=.08){ const x=t.x+d.x*q, z=t.z+d.z*q, i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); if(i<0||j<0||i>=gw||j>=gd||tall[j*gw+i]) return q; } return dist; },out:()=>STATION.front,
