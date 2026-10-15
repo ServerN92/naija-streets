@@ -2349,8 +2349,9 @@ function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lo
   if(mode==='drive'){ const v=drive.v; _t.set(v.x,v.y+1.5,v.z); dist=7.8+Math.abs(drive.speed)*.04;
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
   else { _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
+  const sims=mode==='interior'&&ROOM.sims&&!WARD.open; if(sims){ _t.y=player.y+.9; camState.pitch=clamp(camState.pitch,.55,1.2); }   // the Sims view: high, looking down; the walls in the way drop
   dist*=camState.zoom; const cp=Math.cos(camState.pitch); _d.set(-Math.sin(camState.yaw)*cp,Math.sin(camState.pitch),-Math.cos(camState.yaw)*cp);
-  if(mode!=='drive'){ let side=gunOut()&&ARMS.aim?.6:.35;   // over the shoulder; with the wardrobe open, you stand in the clear part of the screen
+  if(mode!=='drive'&&!sims){ let side=gunOut()&&ARMS.aim?.6:.35;   // over the shoulder; with the wardrobe open, you stand in the clear part of the screen
     if(WARD.open) side=-(WARD.px/2)/(innerWidth/2)*Math.tan(camera.fov*Math.PI/360)*camera.aspect*camState.dist;
     _t.x+=-Math.cos(camState.yaw)*side; _t.z+=Math.sin(camState.yaw)*side; }
   let d=dist; if(mode!=='interior'){ d=Math.max(.7,Math.min(d,rayDist(_t,_d,dist)-.3)); } else if(ROOM.camHit) d=Math.max(.35,Math.min(d,ROOM.camHit(_t,_d,dist)-.2));
@@ -2360,7 +2361,7 @@ function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lo
   else { const gy=groundY(_c.x,_c.z)+.35; if(_c.y<gy) _c.y=gy; if(_c.y<water.position.y+.7) _c.y=water.position.y+.7; }
   if(camState.shake>0){ camState.shake=Math.max(0,camState.shake-dt*2.5); const s=camState.shake*.25; _c.x+=(MR()-.5)*s; _c.y+=(MR()-.5)*s; _c.z+=(MR()-.5)*s; }
   camera.position.copy(_c); camera.lookAt(_t);
-  const fov=mode==='drive'?60+Math.min(14,Math.abs(drive.speed)*.4):(mode==='interior'?66:gunOut()&&ARMS.aim?50:58); if(Math.abs(camera.fov-fov)>.05){ camera.fov+=(fov-camera.fov)*(1-Math.exp(-3*dt)); camera.updateProjectionMatrix(); } }
+  const fov=mode==='drive'?60+Math.min(14,Math.abs(drive.speed)*.4):(mode==='interior'?(sims?42:66):gunOut()&&ARMS.aim?50:58); if(Math.abs(camera.fov-fov)>.05){ camera.fov+=(fov-camera.fov)*(1-Math.exp(-3*dt)); camera.updateProjectionMatrix(); } }
 
 /* ================= input ================= */
 const K={}, joy={x:0,y:0}; let touchRun=false, touchBrake=false, touchUI=false;
@@ -5075,7 +5076,7 @@ let hotelPeek=0; function hotelPrefetch(dt){ if(!MYROOM.loading&&MANIFEST['asset
    desk, beds, lamps, signs), so the game puts people, lights, words and the E spots there. */
 const INTS={}, INT_ENV={t:null};
 function intLoad(name){ const I=INTS[name]||(INTS[name]={}); if(I.p) return I.p; const u=murl(name); DL.exp[u]=MANIFEST[`assets/models/${name}.glb`]||600000;
-  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ I.room=buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
+  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ let sims=false; g.scene.traverse(o=>{ if(/^WALL_/.test(o.name)) sims=true; }); I.room=sims?buildSimsRoom(name,g):buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
 async function intGet(name,msg){ const I=INTS[name]; if(I&&I.room) return I.room; if(msg) toast(msg,4); busy=true; let R=null; try{ R=await intLoad(name); }catch(e){} busy=false; if(!R) toast('E no open now. Try again small time.'); return R; }
 function buildRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x0d0b0a);
@@ -5108,6 +5109,47 @@ function buildRoom(name,g){
   for(const [k,m] of Object.entries(MK)){
     if(/^light_/.test(k)){ const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),(m.power||20)*1.1,m.range||10,1.6); L.position.set(m.x,m.y,m.z); S.add(L); R.lights.push(L); L.userData.base=L.intensity; L.userData.col=L.color.clone(); }
     else if(/^(sign|plate)_/.test(k)) R.signs[k]=signAt(S,m,m.text||'','#1a1410','#e9c46a',{fog:false}); }
+  return R; }
+/* ---- rooms made in Blender with real textures (tools: the user's Blender, ~/Documents/naija_rooms): many meshes,
+   walls as separate WALL_* objects, spots as MARK_* empties. Seen from above like the Sims: every wall that stands
+   between the camera and you drops to a low strip, so you see into the room you are in and the rooms around. */
+function buildSimsRoom(name,g){
+  const S=new THREE.Scene(); S.background=new THREE.Color(0x101216);
+  if(!INT_ENV.t) INT_ENV.t=pmrem.fromScene(new RoomEnvironment(),.04).texture; S.environment=INT_ENV.t; S.environmentIntensity=.55;
+  S.add(new THREE.HemisphereLight(0xfff4e6,0x3a2c20,1.0)); const sun=new THREE.DirectionalLight(0xfff0dc,1.2); sun.position.set(6,14,9); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+  Object.assign(sun.shadow.camera,{left:-12,right:12,top:12,bottom:-12,far:40}); sun.shadow.bias=-.0005; S.add(sun,sun.target);
+  const root=g.scene; root.updateMatrixWorld(true); const MK={}, walls=[], solids=[];
+  root.traverse(o=>{ if(/^MARK_/.test(o.name)){ const k=o.name.slice(5), p=o.getWorldPosition(new THREE.Vector3()), u=o.userData||{}; MK[k]={...u,k,x:p.x,y:p.y,z:p.z,yaw:FACE_YAW[u.face]??0}; }
+    if(o.isMesh){ o.castShadow=o.receiveShadow=true; const ms=[].concat(o.material); for(const m of ms){ m.side=THREE.DoubleSide; if(m.map) m.map.anisotropy=Math.min(8,maxAniso); if(m.transmission>0){ m.transparent=true; m.opacity=.25; m.transmission=0; m.depthWrite=false; } }
+      if(/^VIEW_/.test(o.name)){ o.castShadow=o.receiveShadow=false; for(const m of ms){ m.toneMapped=false; } } else solids.push(o); } });
+  S.add(root);
+  // each wall: geometry in world space, origin at its foot, so it can drop toward the floor
+  root.traverse(o=>{ if(!o.isMesh||!/^WALL_/.test(o.parent&&/^WALL_/.test(o.parent.name)?o.parent.name:o.name)) return; walls.push(o); });
+  const W=walls.map(o=>{ const mw=o.matrixWorld.clone(); o.parent.remove(o); root.add(o); o.geometry=o.geometry.clone(); o.geometry.applyMatrix4(mw); o.position.set(0,0,0); o.rotation.set(0,0,0); o.scale.set(1,1,1);
+    o.geometry.computeBoundingBox(); const b=o.geometry.boundingBox; o.geometry.translate(0,-b.min.y,0); o.position.y=b.min.y; o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere();
+    const sx=b.max.x-b.min.x, sz=b.max.z-b.min.z, alongX=sx>=sz; return {o,cx:(b.min.x+b.max.x)/2,cz:(b.min.z+b.max.z)/2,h:b.max.y-b.min.y,low:b.min.y<.3,alongX,len:Math.max(sx,sz),k:1}; });
+  root.updateMatrixWorld(true);
+  // walking: knee-to-head things block; floors and rugs don't
+  const bb=new THREE.Box3().setFromObject(root), x0=bb.min.x, z0=bb.min.z, CS=.2, gw=Math.ceil((bb.max.x-x0)/CS)+1, gd=Math.ceil((bb.max.z-z0)/CS)+1, grid=new Uint8Array(gw*gd), a=new THREE.Vector3();
+  for(const o of solids){ const P=o.geometry.attributes.position, I=o.geometry.index, n=(I?I.count:P.count)/3, M=o.matrixWorld;
+    for(let t=0;t<n;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
+      for(let k=0;k<3;k++){ a.fromBufferAttribute(P,I?I.getX(t*3+k):t*3+k).applyMatrix4(M); if(a.x<ax) ax=a.x; if(a.x>bx) bx=a.x; if(a.y<ay) ay=a.y; if(a.y>by) by=a.y; if(a.z<az) az=a.z; if(a.z>bz) bz=a.z; }
+      if(by<.3||ay>1.7) continue; const i0=Math.max(0,Math.floor((ax-x0)/CS)), i1=Math.min(gw-1,Math.floor((bx-x0)/CS)), j0=Math.max(0,Math.floor((az-z0)/CS)), j1=Math.min(gd-1,Math.floor((bz-z0)/CS));
+      if((i1-i0+1)*(j1-j0+1)>900) continue; for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) grid[j*gw+i]=1; } }
+  const cell=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:grid[j*gw+i]; };
+  const free=(x,z,r=.26)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z);
+  // lights from the Blender lamps (watts turned into game light)
+  const lights=[]; for(const [k,m] of Object.entries(MK)){ if(!/^light_/.test(k)) continue; const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),Math.min(40,(m.power||60)*(m.kind==='AREA'?.11:.3)),m.kind==='AREA'?11:6,1.7); L.position.set(m.x,m.y-.15,m.z); S.add(L); lights.push(L); }
+  const R={name,scene:S,marks:MK,free,sims:true,label:'',camDist:10,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs:{},tick:null,walls:W,
+    bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:-1e4,x1:1e4,z0:-1e4,z1:1e4,y0:.5,y1:1e4},out:()=>STATION.front,
+    move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
+    nearFree(x,z){ if(free(x,z,.3)) return {x,z}; for(let r=.2;r<4;r+=.2) for(let q=0;q<16;q++){ const px=x+Math.sin(q/16*6.283)*r, pz=z+Math.cos(q/16*6.283)*r; if(free(px,pz,.3)) return {x:px,z:pz}; } return {x,z}; },
+    spot(m,label,act,r=1.4){ if(!m) return null; const s2={x:m.x,z:m.z,r,label,act}; R.spots.push(s2); return s2; },
+    update(dt){ const cx=camera.position.x, cz=camera.position.z;
+      for(const w of W){ const side=(w.alongX?cz-w.cz:cx-w.cx), me=(w.alongX?player.z-w.cz:player.x-w.cx), along=w.alongX?Math.abs(player.x-w.cx)-w.len/2:Math.abs(player.z-w.cz)-w.len/2;
+        const cut=side*me<0&&Math.abs(side)>.2&&along<7;   // the camera and you on different sides of this wall: it drops
+        const want=cut?(w.low?Math.min(1,.32/w.h):0):1; w.k+=(want-w.k)*Math.min(1,dt*8); w.o.scale.y=Math.max(.001,w.k); w.o.visible=w.k>.01; }
+      for(const f of R.folk) f.mixer.update(dt); if(R.tick) R.tick(dt); } };
   return R; }
 function setSign(mesh,text,bg='#1a1410',fg='#e9c46a'){ if(!mesh) return; const g=mesh.geometry.parameters, old=mesh.material.map; mesh.material.map=texSign(text,bg,fg,g.width,g.height); mesh.material.needsUpdate=true; if(old) old.dispose(); }
 // a person standing (or dancing) at a spot inside a room or out in the street
