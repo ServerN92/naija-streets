@@ -5113,7 +5113,7 @@ function buildRoom(name,g){
 /* ---- rooms made in Blender with real textures (tools: the user's Blender, ~/Documents/naija_rooms): many meshes,
    walls as separate WALL_* objects, spots as MARK_* empties. Seen from above like the Sims: every wall that stands
    between the camera and you drops to a low strip, so you see into the room you are in and the rooms around. */
-let LM_K=2*Math.PI*3;   // the light picture was baked at half strength; Blender's light pass is radiance (x pi)
+let LM_K=2.5*Math.PI;   // light picture = 0.8 x light at half strength (baked on white); basic material divides by pi
 function buildSimsRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x101216);
   if(!INT_ENV.t) INT_ENV.t=pmrem.fromScene(new RoomEnvironment(),.04).texture; S.environment=INT_ENV.t; S.environmentIntensity=.55;
