@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=82b7987ba1';
-import * as C2 from './char2.js?v=82b7987ba1';
-import { MapView } from './mapview.js?v=82b7987ba1';
+import * as CLOCK from './clock.js?v=22ffca8ccb';
+import * as C2 from './char2.js?v=22ffca8ccb';
+import { MapView } from './mapview.js?v=22ffca8ccb';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='82b7987ba1';
+const BUILD='22ffca8ccb';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -5453,6 +5453,8 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     at(x,z,yaw){ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } return true; },
     menuPick(i){ const b=[...document.querySelectorAll('#menuBody .sh-buy')][i]; if(b) b.click(); return !!b; },
     cash(n){ CASH.n=n; return n; },
+    room(n,t){ intGet(n).then(R=>{ if(!R) return; if(t!=null){ STAY={h:0,t,n:1,until:Date.now()+864e5}; setupHotelRoom(R,t); } goRoom(R,'spawn'); }); return 1; },
+    camSet(yaw,pitch){ camState.yaw=yaw; camState.pitch=pitch; camState.last=T0; return 1; },
     setPR(v){ PR=v; applyPR(); }, lockPR(v){ Q.prMin=Q.pr=v; PR=v; applyPR(); },
     shadows(b){ renderer.shadowMap.enabled=b; sun.castShadow=b; scene.traverse(o=>{ if(o.material) o.material.needsUpdate=true; }); },
     post(b){ usePost=b; }, bloom(b){ if(bloom) bloom.enabled=b; },
