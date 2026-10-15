@@ -5149,7 +5149,7 @@ function buildSimsRoom(name,g){
   // lights from the Blender lamps (watts turned into game light)
   const lights=[]; for(const [k,m] of Object.entries(MK)){ if(!/^light_/.test(k)) continue; const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),Math.min(40,(m.power||60)*(m.kind==='AREA'?.11:.3)),m.kind==='AREA'?11:6,1.7); L.position.set(m.x,m.y-.15,m.z); S.add(L); lights.push(L); }
   const lmUrl=`assets/models/${name}_lm.jpg`;
-  if(MANIFEST[lmUrl]){ const room=root.getObjectByName('ROOM'); new THREE.TextureLoader().load(lmUrl+'?v='+(AV[lmUrl]||MANIFEST[lmUrl]),t=>{ t.flipY=true; t.channel=1; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=Math.min(4,maxAniso);
+  if(MANIFEST[lmUrl]){ const room=root.getObjectByName('ROOM'); new THREE.TextureLoader().load(lmUrl+'?v='+(AV[lmUrl]||MANIFEST[lmUrl]),t=>{ t.flipY=false; t.channel=1; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=Math.min(4,maxAniso);
       root.traverse(o=>{ if(!o.isMesh||/^VIEW_/.test(o.name)||!o.geometry.attributes.uv1) return; o.material=[].concat(o.material).map(m=>{ const e=m.emissive&&m.emissiveIntensity>0&&(m.emissive.r+m.emissive.g+m.emissive.b)>.05;
         const b=new THREE.MeshBasicMaterial({map:m.map,color:e?m.emissive.clone().multiplyScalar(Math.min(1.6,m.emissiveIntensity)):m.color,lightMap:e?null:t,lightMapIntensity:LM_K,transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite,side:THREE.DoubleSide});
         b.userData.std=m; return b; }); if(o.material.length===1) o.material=o.material[0]; o.castShadow=false; o.receiveShadow=false; });
