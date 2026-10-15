@@ -12,12 +12,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=897fafc971';
-import * as C2 from './char2.js?v=897fafc971';
-import { MapView } from './mapview.js?v=897fafc971';
+import * as CLOCK from './clock.js?v=5722c58bd8';
+import * as C2 from './char2.js?v=5722c58bd8';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=5722c58bd8';
+import { MapView } from './mapview.js?v=5722c58bd8';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='897fafc971';
+const BUILD='5722c58bd8';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2525,7 +2526,7 @@ function jackOut(v){ if(v.out) return; v.out=true; const p=freePed(); fleeFrom(v
   setTimeout(()=>toast(p.fightAfter?'"Ehen? You wan take my motor? I go show you!"':v.type==='okada'?'"Take am! Na only okada I get o!"':v.type==='danfo'?'"Everybody come down! Run!"':mpick(['"Take am! Take am! No wahala!"','"Oga abeg, no kill me!"','"Ah! Na my daily bread o!"']),2.2),450); }
 // the player sits on okada / in keke and is seen riding
 function seatHero(v,idx=0){ if(v.type==='skate'&&hero&&v.c.hi){ const a=hero.act; heroQuiet(); a.car.stop(); a.idle.setEffectiveWeight(0); hero.w.idle=0; skPoses(true);   // feet on the deck, side-on like a skater
-    v.c.g.add(rig.root); rig.root.position.set(0,skDeck(),0); rig.root.rotation.set(0,.1,0); rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPose(0); return; }
+    v.c.g.add(rig.root); rig.root.position.set(0,skDeck(),0); rig.root.rotation.set(0,0,0); rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPose(0); return; }
   const st=(SEATS[v.type]||[])[idx]||(SEATS[v.type]||[])[0]; if(!st||!v.c.hi){ rig.root.visible=false; return; }
   if(hero){ const a=hero.act; heroQuiet(); a.car.reset(); a.car.setEffectiveWeight(1); a.car.play(); a.car.time=a.car.getClip().duration-.02; a.car.paused=true; hero.mixer.update(0);
     v.c.hi.add(rig.root); rig.root.position.set(0,0,0); rig.root.rotation.set(0,0,0); rig.root.updateMatrixWorld(true);
@@ -2662,7 +2663,8 @@ function updateTraffic(dt){
         if(Math.abs(-dx*fz+dz*fx)<(v.c.def.W+o.c.def.W)/2+.12){ const gap=ah-((v.c.def.L+o.c.def.L)/2+1.8), os=Math.max(0,(Math.cos(o.h)*fx-Math.sin(o.h)*fz)*o.speed);
           const lim=Math.max(0,Math.min(gap*1.3+os*.9,brakeTo(gap)+os*.95)); if(lim<target){ target=lim; if(o.ai&&o.ai.waiting) waiting=true; } if(ah<blkAh){ blk=o; blkAh=ah; } } }
       if((mode==='walk'||mode==='enter')&&inPath(v,fx,fz,player.x,player.z)) target=0;
-      for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0; }
+      for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0;
+      for(const k of SKATERS) if(Math.abs(k.x-v.x)<12&&Math.abs(k.z-v.z)<12&&inPath(v,fx,fz,k.x,k.z)) target=0; }   // and for the street skaters
     if(ai.hs){ const r=busStopFor(v,ai,fx,fz,target); target=r; if(target===0) waiting=true; }
     // a car that won't move (parked, broken down, burnt, you): go round it on the left when the way is clear; never through it
     if(ai.pcool>0) ai.pcool-=dt;
@@ -2697,7 +2699,7 @@ function syncCar(v,dt){ const c=v.c, fx=Math.cos(v.h), fz=-Math.sin(v.h), d2=(v.
   const gy=groundY(v.x,v.z); v.y+=(gy-v.y)*Math.min(1,dt*10); const yA=groundY(v.x+fx*2,v.z+fz*2), yB=groundY(v.x-fx*2,v.z-fz*2);
   let w=(v.h-v.lastH); w=((w+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; v.lastH=v.h; const om=dt>0?w/dt:0;
   const steer=v===drive.v?drive.steer:clamp(Math.atan(om*c.def.L*.62/Math.max(sp,1.5)),-.55,.55); v.steerVis+=(steer-v.steerVis)*Math.min(1,dt*8);
-  const leanT=BIKE[v.type]||v.type==='keke'||v.type==='skate'?clamp(-om*sp*(BIKE[v.type]?.075:v.type==='skate'?.05:.02),-.5,.5):0; v.lean+=(leanT-v.lean)*Math.min(1,dt*5);
+  const leanT=v.type==='skate'?clamp(-Math.atan(om*sp/9.81)*.5,-.22,.22):BIKE[v.type]||v.type==='keke'?clamp(-om*sp*(BIKE[v.type]?.075:.02),-.5,.5):0;   // a board leans about half as far as its rider (the trucks stop it) v.lean+=(leanT-v.lean)*Math.min(1,dt*5);
   c.g.position.set(v.x,v.y+v.bob-(v.wreck?.12:0)+(v.lift||0),v.z); c.g.rotation.set(v.lean+(v.wreck?.07:0),v.h,Math.atan((yA-yB)/4)*.9+v.pitch+(v.wreck?.03:0)+(v.wh||0));
   const near=d2<HI_D*HI_D||v===drive.v; if(c.hi){ c.hi.visible=near||!c.lo.children.length; c.lo.visible=!c.hi.visible; }
   if(c.occ){ c.occ.visible=c.hi.visible&&d2<OCC_D*OCC_D&&!!v.ai; }
@@ -3453,44 +3455,28 @@ function skid(k){ burst(.34,3200,.06+.1*k,2.2); }   // tyres crying in a drift
    W (joystick forward) pushes with the back foot (Shift / joystick all the way: harder pushes, more speed), S drags the
    foot to brake, A/D carve. Space (OLLIE) jumps; in the air J (FLIP) kickflip, K heelflip (FLIP + joystick left),
    L (SPIN) shove-it, I 360 flip (FLIP + joystick up). Land your tricks: half-done when you touch down and you bail.
-   Tricks in one jump and the ones you land soon after it make a combo: points times the number of tricks. */
+   Tricks in one jump and the ones you land soon after it make a combo: points times the number of tricks.
+   The rider's body is worked out every frame from the ride itself (src/skater.js): the pushing foot is planted on the
+   road while the board rolls past it, you lean into carves as far as the speed and the turn need, the ollie snaps the
+   tail and levels the board, the legs tuck in the air and soak up the landing, and the arms swing with all of it. */
 const TRICKS={'KICKFLIP':{dur:.42,roll:1,spin:0,pts:150},'HEELFLIP':{dur:.42,roll:-1,spin:0,pts:150},'SHOVE-IT':{dur:.36,roll:0,spin:.5,pts:110},'360 FLIP':{dur:.56,roll:1,spin:1,pts:320}};
-const SK={h:0,vy:0,air:false,pushPh:-1,crouch:0,land:0,trick:null,prev:{},combo:null,brake:0,w:{ride:1,crouch:0,air:0,push:0,brake:0},deck:0};
-function skReset(){ Object.assign(SK,{h:0,vy:0,air:false,pushPh:-1,crouch:0,land:0,trick:null,prev:{},combo:null,brake:0}); }
+const SK=Object.assign(skNew(),{prev:{},combo:null,deck:0,om:0,vy0:4.4});
+function skReset(){ Object.assign(SK,skNew(),{prev:{},combo:null,om:0,vy0:4.4}); if(SKP.B) skBodyReset(SKP.B); }
 function skDeck(){ if(SK.deck) return SK.deck; const M=MODELS.skate; if(!M) return .12; const P=M.geo.attributes.position; let hi=0;   // the top of the deck between the trucks (not the kicked-up tail)
   for(let i=0;i<P.count;i++) if(Math.abs(P.getX(i))<.14) hi=Math.max(hi,P.getY(i)); return SK.deck=hi||M.H*.6; }
-// skater poses from where the bones point (+Z = the way he faces = the board's right side, +X = his left = the board's nose)
-const SKP={for:null,clips:null,acts:{},foot:{}};
-function skClips(){ if(SKP.for===hero.cObj&&SKP.clips) return SKP.clips; const D=homeInfo(), U=(f=0,sd=0)=>[sd,1,f];
-  const armsOut=(a=.62,f=.15)=>({LeftArm:[.75,-a,f],LeftForeArm:[.7,-a,f+.18],LeftHand:[.65,-a-.08,f+.15],RightArm:[-.75,-a,f],RightForeArm:[-.7,-a,f+.18],RightHand:[-.65,-a-.08,f+.15]});
-  const legs=(ul,ll,ur,lr)=>({LeftUpLeg:ul,LeftLeg:ll,LeftFoot:[0,-.35,1],RightUpLeg:ur,RightLeg:lr,RightFoot:[0,-.35,1]});
-  const ride={Spine:U(.16),Spine1:U(.1),Spine2:U(.05),Neck:U(.15),Head:U(.1),...armsOut(.55,.2),...legs([.3,-.9,.34],[.2,-1,-.3],[-.3,-.9,.34],[-.2,-1,-.3])};
-  const crouch={Spine:U(.55),Spine1:U(.35),Spine2:U(.15),Neck:U(.25),Head:U(.2),...armsOut(.3,.55),...legs([.3,-.5,.86],[.18,-1,-.72],[-.3,-.5,.86],[-.18,-1,-.72])};
-  const air={Spine:U(.3),Spine1:U(.2),Spine2:U(.1),Neck:U(.2),Head:U(.15),...armsOut(-.1,.25),...legs([.3,-.45,.85],[.2,-1,-.25],[-.3,-.45,.85],[-.2,-1,-.25])};
-  const pushArms={LeftArm:[.6,-.62,.45],LeftForeArm:[.55,-.55,.62],LeftHand:[.5,-.6,.6],RightArm:[-.55,-.7,-.25],RightForeArm:[-.5,-.75,-.2],RightHand:[-.45,-.8,-.15]};
-  // pushing: the front leg bends deep so the back foot, almost straight, reaches the road beside the board and sweeps back
-  const pushBase={Spine:U(.3),Spine1:U(.2),Spine2:U(.08),Neck:U(.22),Head:U(.1),...pushArms,LeftUpLeg:[.24,-.55,.86],LeftLeg:[.15,-1,-.66],LeftFoot:[0,-.45,1],RightFoot:[0,-.3,1]};
-  const push=[{t:0,d:{...pushBase,RightUpLeg:[-.12,-.8,.5],RightLeg:[-.1,-1,-.25]}},{t:.3,d:{...pushBase,RightUpLeg:[-.04,-1,.16],RightLeg:[-.02,-1,.06]}},
-    {t:.62,d:{...pushBase,RightUpLeg:[-.22,-1,.06],RightLeg:[-.2,-1,.02],LeftArm:[.6,-.55,.55],RightArm:[-.55,-.6,-.4]}},{t:.85,d:{...pushBase,RightUpLeg:[-.3,-.75,.42],RightLeg:[-.3,-1,-.5]}}];
-  const brake={...pushBase,Spine:U(.05),Spine1:U(.05),RightUpLeg:[-.22,-1,.14],RightLeg:[-.2,-1,.08],RightFoot:[-.3,-.4,1]};   // the back foot drags on the road
-  const C={ride:C2.poseClip(D,'sk_ride',[{t:0,d:ride}]),crouch:C2.poseClip(D,'sk_crouch',[{t:0,d:crouch}]),air:C2.poseClip(D,'sk_air',[{t:0,d:air}]),push:C2.poseClip(D,'sk_push',push,{loop:true,dur:1}),brake:C2.poseClip(D,'sk_brake',[{t:0,d:brake}])};
-  // how high the front (planted) foot sits in each pose, to keep it on the deck
-  for(const k in C){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(C[k]).play(); m.setTime(0); r.updateMatrixWorld(true);
-    let lo=1e9; hero.cObj.traverse(o=>{ if(o.isBone&&/Left(Foot|ToeBase)$/.test(o.name)) lo=Math.min(lo,o.getWorldPosition(new THREE.Vector3()).y); }); SKP.foot[k]=lo<1e8?lo:0;
-    m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; }
-  hero.mixer.update(0); SKP.for=hero.cObj; SKP.acts={}; return SKP.clips=C; }
-function skPoses(on){ if(!hero) return; if(!on){ for(const k in SKP.acts) SKP.acts[k].stop(); return; } const C=skClips(); for(const k in C){ const a=SKP.acts[k]||(SKP.acts[k]=hero.mixer.clipAction(C[k])); a.reset().play(); a.setEffectiveWeight(k==='ride'?1:0); if(k==='push') a.paused=true; } }
-// the board, the rider and their poses, every frame
-function skPose(dt){ const v=drive.v; if(!v||v.type!=='skate'||!hero) return; const S=SK, W=S.w, k=Math.min(1,dt*12);
-  const want={air:S.air?1:0,crouch:S.crouch>0||S.land>0?1:0,push:S.pushPh>=0&&!S.air?1:0,brake:!S.air?S.brake:0}; want.ride=Math.max(0,1-want.air-want.crouch-want.push-want.brake);
-  let sum=0; for(const n in W){ W[n]+=(want[n]-W[n])*k; sum+=W[n]; } let foot=0; for(const n in W){ const a=SKP.acts[n]; const w=W[n]/(sum||1); if(a) a.setEffectiveWeight(w); foot+=w*(SKP.foot[n]||0); }
-  if(SKP.acts.push&&S.pushPh>=0) SKP.acts.push.time=S.pushPh;
-  hero.mixer.update(dt);
-  // the trick: the deck turns under your feet, you lift your legs over it
-  const T=S.trick, q=T?Math.min(1,T.t/T.dur):0, e=q*q*(3-2*q), H=skDeck();
+// the rider's body, made once per body you wear (its rest pose, worked out with the body standing at the origin)
+const SKP={for:null,B:null};
+function skRig(){ if(!hero) return null; if(SKP.for!==hero.cObj){ SKP.for=hero.cObj; const y=hero.cObj.position.y; hero.cObj.position.y=0; SKP.B=skBody(homeInfo()); hero.cObj.position.y=y; } return SKP.B; }
+function skPoses(on){ if(!hero) return; if(on){ const B=skRig(); hero.cObj.position.y=0; if(B) skBodyReset(B); } }
+// the board, the rider and the pose, every frame
+function skPose(dt){ const v=drive.v; if(!v||v.type!=='skate'||!hero) return; const B=skRig(), M=MODELS.skate; if(!B||!M) return;
+  const T=SK.trick, q=T?Math.min(1,T.t/T.dur):0, e=q*q*(3-2*q), H=skDeck();
+  const r=skBodyPose(B,SK,dt,{deck:H,L:M.W,W:M.D,om:SK.om,lean:v.lean,x:v.x,z:v.z,h:v.h,vy0:SK.vy0,grav:11.5,trick:T?{q}:null});
+  hero.cObj.position.y=0; rig.root.position.set(r.root[0],r.root[1],r.root[2]); rig.root.rotation.set(0,0,0);
+  // the deck: the pop turns it about the back wheels; a flip rolls it, a shove-it spins it, under your lifted feet
   const roll=T?T.roll*e*Math.PI*2:0, spin=T?T.spin*e*Math.PI*2:0, up=T?Math.sin(q*Math.PI)*.22:0;
-  if(v.c.hi){ v.c.hi.rotation.set(roll,spin,0); v.c.hi.position.set(0,H*.5*(1-Math.cos(roll))+up*.6,-H*.5*Math.sin(roll)); }
-  rig.root.position.y=H-foot+up+(S.crouch>0?-.02:0); v.lift=S.h; }
+  if(v.c.hi){ v.c.hi.rotation.set(roll,spin,r.board.pitch); v.c.hi.position.set(r.board.px,r.board.py+H*.5*(1-Math.cos(roll))+up*.6,r.board.pz-H*.5*Math.sin(roll)); }
+  v.lift=SK.h; }
 function skAdd(name,pts){ const C=SK.combo||(SK.combo={list:[],pts:0,t:0}); C.list.push(name); C.pts+=pts; C.t=2.4; }
 function skBank(){ const C=SK.combo; SK.combo=null; if(!C||!C.list.length) return; const n=C.list.length, cnt={}; for(const x of C.list) cnt[x]=(cnt[x]||0)+1;
   const name=Object.entries(cnt).map(([k,c])=>c===1?k:c===2?'DOUBLE '+k:c===3?'TRIPLE '+k:c+'x '+k).join(' + '), tricks=C.list.filter(x=>x!=='OLLIE').length;
@@ -3500,36 +3486,106 @@ function skBail(msg){ const v=drive.v, sp=Math.abs(drive.speed); SK.combo=null; 
   thud(); camState.shake=Math.min(1.2,camState.shake+.5); FIGHT.hp=Math.max(5,FIGHT.hp-(sp>6?8:4)); FIGHT.calmT=0; FIGHT.ko=true; FIGHT.koT=0;   // you go down, then get up
   if(hero) heroDo(hero.act.uppercut?'uppercut':'hit_body',{force:true,ts:1.3,onEnd:()=>{ if(hero.act.stand_up) heroDo('stand_up',{force:true,ts:1.8,onEnd:()=>{ FIGHT.ko=false; }}); else FIGHT.ko=false; }});
   setTimeout(()=>{ if(FIGHT.ko&&!FIGHT.dead&&FIGHT.koT>=3) FIGHT.ko=false; },3500); toast(msg||mpick(['Bail! You don fall.','Ouch! The board throw you.','Bail! Small small next time.']),2.4); }
-function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); let sp=drive.speed; if(FIGHT.ko) return;
+function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); if(FIGHT.ko) return;
   const jl=Math.hypot(joy.x,joy.y), hard=K.shift||touchRun||jl>.88, keys={jump:K[' ']||TSK.b2,kick:K.j||TSK.b1&&joy.x>-.4&&joy.y>-.5,heel:K.k||TSK.b1&&joy.x<=-.4,shove:K.l||TSK.b3,flip360:K.i||TSK.b1&&joy.y<=-.5};
   const press=n=>{ const on=!!keys[n], was=S.prev[n]; S.prev[n]=on; return on&&!was; }; const P={}; for(const n in keys) P[n]=press(n);
-  const surf=condAt(v.x,v.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1, cap=hard?11:8.2;
-  if(!S.air){
-    if(S.pushPh<0&&f>.3&&sp<cap-.3&&S.crouch<=0&&S.land<=0) S.pushPh=0;   // push with the back foot
-    if(S.pushPh>=0){ const was=S.pushPh; S.pushPh+=dt/(hard?.55:.78); if(was<.42&&S.pushPh>=.42){ sp+=Math.max(0,cap-sp)*(hard?.34:.28)/Math.sqrt(rough); burst(.08,500,.05,6); } if(S.pushPh>=1) S.pushPh=f>.3&&sp<cap-.3?0:-1; }
-    if(f<-.3||touchBrake){ sp=Math.max(0,sp-3.6*dt); S.brake=Math.min(1,S.brake+dt*5); S.pushPh=-1; } else S.brake=Math.max(0,S.brake-dt*5);
-    sp=Math.max(0,sp-(.14+sp*.016)*rough*dt);   // it rolls on and on, slower on bad roads
-    if(P.jump&&S.crouch<=0&&S.land<=0){ S.crouch=.12; S.pushPh=-1; }
-    if(S.crouch>0&&(S.crouch-=dt)<=0){ S.crouch=0; S.air=true; S.vy=4.4+Math.min(sp,10)*.07; skAdd('OLLIE',40); burst(.06,900,.12,8); }   // pop!
-    if(S.land>0) S.land-=dt;
-    if(S.combo&&(S.combo.t-=dt)<=0) skBank(); }
-  else {
-    S.vy-=11.5*dt; S.h=Math.max(0,S.h+S.vy*dt);
-    if(!S.trick){ const k=P.flip360?'360 FLIP':P.kick?'KICKFLIP':P.heel?'HEELFLIP':P.shove?'SHOVE-IT':null; if(k){ const T=TRICKS[k]; S.trick={k,t:0,dur:T.dur,roll:T.roll,spin:T.spin}; whoosh(); } }
-    else if((S.trick.t+=dt)>=S.trick.dur){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
-    if(S.h<=0&&S.vy<0){ S.air=false; S.vy=0; S.h=0;
-      if(S.trick&&S.trick.t/S.trick.dur<.8){ skBail(mpick(['Bail! You no land the flip.','Bail! The board turn wrong side.'])); return; }
-      if(S.trick){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
-      S.land=.15; clunk(.45); if(S.combo) S.combo.t=2.4; } }
+  const surf=condAt(v.x,v.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1, cap=hard?11:8.2, B=skRig();
+  S.sp=drive.speed; S.vy0=4.4+Math.min(S.sp,10)*.07;
+  // pushes (speed comes only while the foot is on the road), the foot brake and the ollie
+  const ev=skMove(S,dt,{push:f>.3,hard,brake:f<-.3||touchBrake,pop:P.jump&&!S.air,cap,rough,vy0:S.vy0,grav:11.5,crouchT:.16,x:v.x,z:v.z,h:v.h,k:B?B.k:1});
+  if(ev.plant) burst(.08,500,.05,6);   // the shoe on the road
+  if(ev.popped){ skAdd('OLLIE',40); burst(.06,900,.12,8); }   // pop!
+  if(S.air){ if(!S.trick){ const k=P.flip360?'360 FLIP':P.kick?'KICKFLIP':P.heel?'HEELFLIP':P.shove?'SHOVE-IT':null; if(k){ const T=TRICKS[k]; S.trick={k,t:0,dur:T.dur,roll:T.roll,spin:T.spin}; whoosh(); } }
+    else if((S.trick.t+=dt)>=S.trick.dur){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; } }
+  else if(ev.landed){ if(S.trick&&S.trick.t/S.trick.dur<.8){ skBail(mpick(['Bail! You no land the flip.','Bail! The board turn wrong side.'])); return; }
+    if(S.trick){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; } clunk(.45); if(S.combo) S.combo.t=2.4; }
+  else if(S.combo&&(S.combo.t-=dt)<=0) skBank();
+  let sp=S.sp;
   // carve: lean into the turn, tighter when slow
-  drive.steer+=(-s*.55-drive.steer)*Math.min(1,dt*7); v.h+=Math.max(sp,.6)/1.15*Math.tan(drive.steer)*dt*(S.air?.3:1);
+  drive.steer+=(-s*.55-drive.steer)*Math.min(1,dt*7); const om=Math.max(sp,.6)/1.15*Math.tan(drive.steer)*(S.air?.3:1); v.h+=om*dt; S.om=om;
   const fx=Math.cos(v.h), fz=-Math.sin(v.h); let nx=v.x+fx*sp*dt, nz=v.z+fz*sp*dt;
   if(!onLand(nx,nz,.5)){ if(sp>3.5){ skBail(); return; } nx=v.x; nz=v.z; sp=0; }
   const c={x:nx,z:nz}; if(resolveCircle(c,.28,null,S.h)){ if(sp>4.2&&!S.air){ skBail(); return; } sp*=.4; }   // jump high enough and you clear low things
   for(const o of vehicles){ if(o===v||Math.abs(o.x-c.x)>6||Math.abs(o.z-c.z)>6) continue; const hx=Math.cos(o.h), hz=-Math.sin(o.h), dx=c.x-o.x, dz=c.z-o.z; if(Math.abs(dx*hx+dz*hz)<o.c.def.L/2+.25&&Math.abs(-dx*hz+dz*hx)<o.c.def.W/2+.25&&S.h<.9){ if(sp>2.5||Math.abs(o.speed)>3){ skBail(); return; } c.x=v.x; c.z=v.z; sp=0; } }
   for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.state==='down'||p.carried||Math.abs(p.x-c.x)>1||Math.abs(p.z-c.z)>1) continue; if(Math.hypot(p.x-c.x,p.z-c.z)<.55&&S.h<.8){ if(sp>3){ react(p,'argue',c.x,c.z,3); p.cool=6; skBail('Bail! You jam person.'); return; } sp*=.5; } }
-  v.x=c.x; v.z=c.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false;
+  S.sp=sp; v.x=c.x; v.z=c.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false;
   skPose(dt); }
+/* ================= street skaters =================
+   A few young people ride boards along the edge of the road with the same body physics as you (src/skater.js): pushing
+   with a planted foot, carving with the lean the turn needs, an ollie now and then. They keep off the highways, slow down
+   and wait for people and cars in their way (cars wait for them too), and a car that hits one knocks him off his board:
+   he falls, gets up and rides on. Far from you (or out of sight for a while) a skater is put back on a street near you. */
+const SKATERS=[], SKATE_CAST=['areaboy','schoolboy','girl','p_tunde','lady_black','p_ada','p_amaka'];
+let skaterT=3;
+const skaterWant=()=>mode==='interior'?0:Q===QUAL.low?2:3;
+// the riding line: the people's walking line along the street, moved out onto the edge of the road
+function skLine(k){ const [s0,s1]=k.q, A=nodes[k.a], B=nodes[k.b], dx=B.x-A.x, dz=B.z-A.z, L=Math.hypot(dx,dz)||1, nx=-dz/L, nz=dx/L;
+  const o=(s0.x-A.x)*nx+(s0.z-A.z)*nz, m=Math.sign(o)*clamp(Math.abs(o)-1.3,0,1.1); k.q=[{x:s0.x-nx*m,z:s0.z-nz*m},{x:s1.x-nx*m,z:s1.z-nz*m}]; }
+function newSkater(){ const used=new Set(SKATERS.map(k=>k.cast)); let ids=SKATE_CAST.filter(id=>PEOPLE.casts[id]&&CAST[id]&&CAST[id].w>0);
+  if(!ids.length) ids=Object.keys(PEOPLE.casts).filter(id=>CAST[id]&&CAST[id].w>0&&!CAST[id].cop); if(!ids.length) return null;
+  const free=ids.filter(id=>!used.has(id)), id=mpick(free.length?free:ids), C=PEOPLE.casts[id];
+  const inner=cloneCast(C), root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(inner); inner.position.y=C.y0; root.updateMatrixWorld(true);
+  const B=skBody(C2.skeletonInfo(root)); if(!B) return null;
+  inner.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; o.castShadow=Q.shadows; o.receiveShadow=true; } });
+  const c=makeCar('skate','#ffffff',true); c.g.add(root); c.g.visible=false; scene.add(c.g);
+  const k={cast:id,c,root,inner,B,S:skNew(),x:0,z:0,h:0,lean:0,om:0,a:0,b:0,side:1,q:[],vmax:mrr(2.8,4.3),olT:mrr(4,10),stuck:0,offT:0,vis:false,down:null,pushing:false,v:1.3,state:'walk'};
+  if(!placeSkater(k,30,75)){ scene.remove(c.g); return null; } return k; }
+function placeSkater(k,dmin,dmax){ for(let t=0;t<40;t++){ const e=streetNear(player.x,player.z,dmin,dmax,e=>walkable(e)&&!bigRoad(e)&&e.len>18); if(!e) continue;
+    const rev=MR()<.5; k.a=rev?e.b:e.a; k.b=rev?e.a:e.b; k.side=MR()<.5?1:-1; k.q=sidewalkPts(nodes[k.a],nodes[k.b],k.side); skLine(k);
+    const [s0,s1]=k.q, u=mrr(.1,.6), x=s0.x+(s1.x-s0.x)*u, z=s0.z+(s1.z-s0.z)*u, d=Math.hypot(x-player.x,z-player.z);
+    if(d<dmin||d>dmax+10||!onLand(x,z,.6)||resolveCircle({x,z},.3)||(t<30&&inView(x,1,z,2))) continue;
+    Object.assign(k,{x,z,h:Math.atan2(-(s1.z-s0.z),s1.x-s0.x),lean:0,om:0,stuck:0,offT:0,down:null}); k.S=skNew(); k.S.sp=mrr(1.5,2.5); skBodyReset(k.B);
+    if(k.root.parent!==k.c.g){ k.c.g.add(k.root); k.root.rotation.set(0,0,0); } return true; } return false; }
+// knocked off the board by a car: he falls on the road, lies a moment, gets up and rides on
+function skaterKnock(k){ if(k.down) return; const C=PEOPLE.casts[k.cast], cl=C&&C.clips, fall=cl&&(cl.uppercut?'uppercut':cl.hit_body?'hit_body':null);
+  k.S.sp=0; k.S.push=null; k.S.air=false; k.S.h=0; k.down={t:0,stage:0}; if(!fall||!cl.stand_up){ k.down.plain=true; return; }
+  scene.add(k.root); k.root.position.set(k.x,groundY(k.x,k.z),k.z); k.root.rotation.set(0,k.h+Math.PI/2,0);
+  if(!k.mixer) k.mixer=new THREE.AnimationMixer(k.inner); k.mixer.stopAllAction(); const a=k.mixer.clipAction(cl[fall]); a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.timeScale=1.2; a.play(); k.down.fall=fall; thud(); }
+function skaterDown(k,dt){ const D=k.down, cl=PEOPLE.casts[k.cast].clips; D.t+=dt;
+  if(D.plain){ if(D.t>2.5){ k.down=null; skBodyReset(k.B); } return; }
+  k.mixer.update(dt);
+  if(D.stage===0&&D.t>cl[D.fall].duration/1.2+.8){ D.stage=1; D.t=0; k.mixer.stopAllAction(); const a=k.mixer.clipAction(cl.stand_up); a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.timeScale=1.6; a.play(); }
+  else if(D.stage===1&&D.t>cl.stand_up.duration/1.6){ k.mixer.stopAllAction(); k.c.g.add(k.root); k.root.rotation.set(0,0,0); k.down=null; skBodyReset(k.B); } }
+function updateSkaters(dt){ if(!MODELS.skate||!PEOPLE.done) return;
+  const want=skaterWant(); if((skaterT-=dt)<=0){ skaterT=1.5; if(SKATERS.length<want){ const k=newSkater(); if(k) SKATERS.push(k); } }
+  for(const k of SKATERS){ const S=k.S, d=Math.hypot(k.x-player.x,k.z-player.z);
+    // too far, or long out of sight: back on a street near you
+    if(d>80&&!inView(k.x,1,k.z,2)) k.offT+=dt; else k.offT=0;
+    if(d>130||k.offT>6){ placeSkater(k,35,80); continue; }
+    k.vis=SKATERS.indexOf(k)<want&&mode!=='interior'&&d<Math.min(85,Q.draw);
+    if(k.down){ skaterDown(k,dt); k.c.g.visible=k.vis; continue; }
+    // the line ahead: aim a little down it; at its end turn into the next street (not across a big road)
+    let [A,Bq]=k.q; let lx=Bq.x-A.x, lz=Bq.z-A.z, LL=Math.hypot(lx,lz)||1; const along=(k.x-A.x)*lx/LL+(k.z-A.z)*lz/LL;
+    if(along>LL-1.5){ pedPlan(k); if(k.q.length<2){ placeSkater(k,35,80); continue; } skLine(k); [A,Bq]=k.q; lx=Bq.x-A.x; lz=Bq.z-A.z; LL=Math.hypot(lx,lz)||1; }
+    const al=clamp((k.x-A.x)*lx/LL+(k.z-A.z)*lz/LL,0,LL), la=Math.min(LL,al+3+S.sp*.6), tx=A.x+lx/LL*la, tz=A.z+lz/LL*la;
+    let err=Math.atan2(-(tz-k.z),tx-k.x)-k.h; err=Math.atan2(Math.sin(err),Math.cos(err));
+    // anyone in the way (you, people, cars): slow down, stop and wait
+    const fx=Math.cos(k.h), fz=-Math.sin(k.h); let block=99;
+    const ahead=(x,z,w)=>{ const dx=x-k.x, dz=z-k.z, ah=dx*fx+dz*fz; if(ah>0&&ah<6&&Math.abs(-dx*fz+dz*fx)<w) block=Math.min(block,ah); };
+    if(mode!=='drive') ahead(player.x,player.z,.9);
+    for(const p of peds) if(p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-k.x)<7&&Math.abs(p.z-k.z)<7) ahead(p.x,p.z,.8);
+    for(const v of vehicles) if(Math.abs(v.x-k.x)<12&&Math.abs(v.z-k.z)<12){ const dx=v.x-k.x, dz=v.z-k.z, ah=dx*fx+dz*fz-v.c.def.L/2; if(ah>-1&&ah<6&&Math.abs(-dx*fz+dz*fx)<v.c.def.W/2+.7) block=Math.min(block,Math.max(0,ah)); }
+    for(const o of SKATERS) if(o!==k&&!o.down) ahead(o.x,o.z,.8);
+    let tgt=k.vmax*(Math.abs(err)>.6?.55:1); if(block<99) tgt=Math.min(tgt,block>3?1.4:0);
+    if(S.sp<.3&&block<2.5) k.stuck+=dt; else k.stuck=Math.max(0,k.stuck-dt);
+    if(k.stuck>4){ [k.a,k.b]=[k.b,k.a]; k.side=-k.side; k.q=sidewalkPts(nodes[k.a],nodes[k.b],k.side); skLine(k); k.h+=Math.PI; k.stuck=0; S.sp=0; }   // give up: turn round
+    k.pushing=S.sp<tgt-.5?true:S.sp>tgt-.05?false:k.pushing;
+    let pop=false; if((k.olT-=dt)<=0&&!S.air&&S.sp>2.4&&Math.abs(err)<.12&&block>5){ pop=true; k.olT=mrr(5,13); }
+    const surf=condAt(k.x,k.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1;
+    skMove(S,dt,{push:k.pushing&&block>2,hard:false,brake:S.sp>tgt+.8,pop,cap:k.vmax+.8,rough,vy0:4.2,grav:11.5,x:k.x,z:k.z,h:k.h,k:k.B.k});
+    const omMax=Math.max(.8,S.sp/2.4); k.om=clamp(err*2.6,-omMax,omMax)*(S.air?.3:1); k.h+=k.om*dt;
+    let nx=k.x+Math.cos(k.h)*S.sp*dt, nz=k.z-Math.sin(k.h)*S.sp*dt; const c={x:nx,z:nz};
+    if(!onLand(nx,nz,.5)||resolveCircle(c,.28,null,S.h)){ S.sp*=.3; if(!onLand(c.x,c.z,.5)){ c.x=k.x; c.z=k.z; } }
+    k.x=c.x; k.z=c.z;
+    // a car you drive into him knocks him off
+    if(mode==='drive'&&drive.v&&drive.v.type!=='skate'&&Math.abs(drive.speed)>3){ const v=drive.v, dx=k.x-v.x, dz=k.z-v.z, hx=Math.cos(v.h), hz=-Math.sin(v.h);
+      if(Math.abs(dx*hx+dz*hz)<v.c.def.L/2+.3&&Math.abs(-dx*hz+dz*hx)<v.c.def.W/2+.3){ skaterKnock(k); continue; } }
+    // the board and the rider
+    const leanT=clamp(-Math.atan(k.om*S.sp/9.81)*.5,-.22,.22); k.lean+=(leanT-k.lean)*Math.min(1,dt*6);
+    k.c.g.visible=k.vis; if(!k.vis){ k.B.st.pel=null; continue; }   // (shown again: no jolt from the gap)
+    const H=skDeck(), M=MODELS.skate, r=skBodyPose(k.B,S,dt,{deck:H,L:M.W,W:M.D,om:k.om,lean:k.lean,x:k.x,z:k.z,h:k.h,vy0:4.2,grav:11.5});
+    k.root.position.set(r.root[0],r.root[1],r.root[2]); k.c.hi.position.set(r.board.px,r.board.py,r.board.pz); k.c.hi.rotation.set(0,0,r.board.pitch);
+    k.c.g.position.set(k.x,groundY(k.x,k.z)+S.h,k.z); k.c.g.rotation.set(k.lean,k.h,0); } }
 /* ================= skills: drifts, wheelies, hops and skate tricks =================
    Every skill you land shows its name and points in the middle of the screen; big ones pay a little cash. */
 const SKILL={best:0,cashT:-99,timers:{},hideT:0};
@@ -5840,7 +5896,7 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
+  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
@@ -5895,6 +5951,14 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       for(let i=0;i<5;i++) one(); const t=[]; for(let i=0;i<n;i++){ const a=performance.now(); one(); t.push(performance.now()-a); } t.sort((x,y)=>x-y);
       return {med:+t[n>>1].toFixed(2), p90:+t[Math.floor(n*.9)].toFixed(2), calls:renderer.info.render.calls, tris:renderer.info.render.triangles, px:[renderer.domElement.width,renderer.domElement.height]}; },
     sim(sec=1){ for(let i=0;i<sec*60;i++){ T0+=1/60; simulate(1/60); } },
+    // test helpers for the skateboard and the street skaters
+    skate(){ if(!mySkate) return null; const [e]=nearestRoad(player.x,player.z,walkable); if(e){ const A=nodes[e.a], t=clamp((player.x-A.x)*e.fx+(player.z-A.z)*e.fz,3,Math.max(3,e.len-3));
+        Object.assign(mySkate,{x:A.x+e.fx*t-e.fz*e.hw*.4,z:A.z+e.fz*t+e.fx*e.hw*.4,h:Math.atan2(-e.fz,e.fx)}); player.x=mySkate.x; player.z=mySkate.z; } enterCar(mySkate); return mode; },
+    skInfo:()=>({mode,sp:+SK.sp.toFixed(2),air:SK.air,h:+SK.h.toFixed(2),push:SK.push&&SK.push.st,sb:SKP.B?+SKP.B.st.sb.toFixed(2):null,x:+player.x.toFixed(1),z:+player.z.toFixed(1)}),
+    skaters:()=>SKATERS.map(k=>({cast:k.cast,x:+k.x.toFixed(1),z:+k.z.toFixed(1),d:+Math.hypot(k.x-player.x,k.z-player.z).toFixed(1),sp:+k.S.sp.toFixed(2),air:k.S.air,vis:k.vis,down:!!k.down,push:k.S.push&&k.S.push.st})),
+    skaterLook(i=0,back=4.5,hgt=1.4){ const k=SKATERS[i]; if(!k) return null; const fx=Math.cos(k.h), fz=-Math.sin(k.h); DEVCAM={p:new THREE.Vector3(k.x+fx*back+Math.sin(k.h)*back*.6,hgt,k.z+fz*back+Math.cos(k.h)*back*.6),t:new THREE.Vector3(k.x,.9,k.z)}; return {x:k.x,z:k.z}; },
+    key(k,on){ K[k]=on; return true; },
+    skaterKnock(i=0){ const k=SKATERS[i]; if(!k) return null; skaterKnock(k); return !!k.down; },
     start(){ if(!started) $('#enterBtn').click(); },
     // test helper: stand next to a place from the map (name contains the text), facing it
     // test helper: a fixed camera looking at a place from `back` metres away and `h` metres up (look() with no place gives control back)

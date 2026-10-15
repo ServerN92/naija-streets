@@ -16,7 +16,8 @@ python3 tools/stamp.py      # always: ties index.html and src/*.js to one releas
 Then commit and push. GitHub Pages serves the `main` branch.
 
 ## Folders
-- `index.html`, `src/game.js` – the game; `src/clock.js` – shared world clock and weather; `src/mapview.js` – big map
+- `index.html`, `src/game.js` – the game; `src/clock.js` – shared world clock and weather; `src/mapview.js` – big map;
+  `src/skater.js` – the skateboarders' bodies (yours and the street skaters')
 - `sw.js`, `manifest.webmanifest` – offline cache and "Add to Home Screen"
 - `assets/models/` – vehicles and buildings (.glb with meshopt geometry and KTX2 textures, plus `_lod1` far versions)
 - `assets/characters/` – the player (`hero.glb`; the original Mixamo .fbx files are a fallback)
@@ -38,6 +39,9 @@ Life on the streets: traffic moves fast on the highways and big roads, so people
 red and run back on green; at the motor park conductors call out, the queue climbs into a danfo and it leaves full,
 then another rolls in; pupils stand at the school gates in school hours; in the markets the mallams and market women
 sell from their stalls and crowds of shoppers go from stall to stall. People only dance at the hotel.
+A few young people skate along the edge of the road (2 on Low, 3 otherwise), with the same body physics as you: they push,
+carve and ollie now and then, keep off the highways, wait for people and cars in their way, and cars wait for them. Drive
+into one and he falls off, gets up and rides on.
 
 ## Shared time and weather
 Every player computes the same game time and weather from the server clock (the HTTP Date header), so day, night,
@@ -204,6 +208,13 @@ more see-through; Reset puts them back. The layout is kept on that phone, uprigh
   drags the foot, A/D carve. Space (OLLIE on phones) pops an ollie; in the air J kickflip, K heelflip, L shove-it,
   I 360 flip (on phones FLIP, FLIP with the stick left = heelflip, up = 360 flip, SPIN = shove-it). Tricks in one jump make
   a combo (DOUBLE, TRIPLE…); land it straight or you bail and fall. Rough roads slow you, walls and people throw you off.
+  The skater's body is not a set of fixed poses: `src/skater.js` works it out every frame from the ride. To push he turns
+  to face the nose, the back foot comes down on the road and stays on that spot while the board rolls past it (the board
+  only gains speed while the foot is down), then it swings forward for the next push or back onto the tail. Carving, he
+  leans as far as the speed and the turn need (tan lean = speed × turn rate / g; the board leans about half as much).
+  The ollie is a quick squat, the tail snapping down so the board pivots on its back wheels, the front foot dragging it
+  level, the legs tucking at the top and then giving like a spring on the landing. The arms swing like damped pendulums
+  from the body's real pushes, turns, pop and landing. The feet stay on the deck by two-bone IK, so it fits any body.
 - **Bikes:** Shift (WHEELIE) lifts the front wheel, handbrake while straight is a stoppie, J (HOP) is a bunny hop.
 - **Drifts:** handbrake (Space/BRAKE) while turning at speed slides cars and bikes with tyre smoke; hold it for DRIFT points.
 - Every skill shows its name and points; big ones (300+) pay a little cash. Your best combo is kept.
