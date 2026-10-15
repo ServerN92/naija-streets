@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=84e7562b38';
-import * as C2 from './char2.js?v=84e7562b38';
-import { MapView } from './mapview.js?v=84e7562b38';
+import * as CLOCK from './clock.js?v=897fafc971';
+import * as C2 from './char2.js?v=897fafc971';
+import { MapView } from './mapview.js?v=897fafc971';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='84e7562b38';
+const BUILD='897fafc971';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2328,7 +2328,7 @@ function updateHUD(dt){ if(!started) return;
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
   let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?'Ride your skateboard':v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
-  if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI) $('#tE').hidden=!txt; }
+  if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
   if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
@@ -2404,7 +2404,43 @@ function setFull(on){ FS.want=on; try{ localStorage.setItem('naija-fs',on?'on':'
 document.querySelectorAll('#fs button').forEach(b=>{ b.addEventListener('click',()=>setFull(b.dataset.f==='on')); b.setAttribute('aria-pressed',String((b.dataset.f==='on')===FS.want)); });
 function fsSettings(){ const box=$('#fsSet'); if(!box) return; box.hidden=!touchUI||standalone(); if(!fsReq){ $('#fs').hidden=true; $('#fsNote').textContent='On iPhone: tap Share, then "Add to Home Screen", and open Naija Streets from there for full screen.'; } }
 addEventListener('pointerdown',()=>{ if(started&&touchUI) goFull(); },{passive:true});   // swiped out of full screen by mistake: the next tap brings it back
-function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=!lastPrompt; if(typeof fsSettings==='function') fsSettings(); $('#keys').hidden=true; $('#lookhint').hidden=true;
+// ---- your own button layout (phones): drag each button where your thumb likes it, size and see-through; kept on this
+// phone for upright and sideways separately (positions are the button centres as parts of the screen)
+const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tBrake','tSk1','tSk2','tSk3'],data:{},edit:false,drag:null,was:null};
+try{ BL.data=JSON.parse(localStorage.getItem('naija-btns')||'{}')||{}; }catch(e){ BL.data={}; }
+const blKey=()=>innerWidth>innerHeight?'land':'port';
+const BL_NAME={tE:'E',tGrab:'GRAB / AIM',tPunch:'ATTACK / FIRE',tCrouch:'CROUCH',tJump:'JUMP'};
+function blSave(){ try{ localStorage.setItem('naija-btns',JSON.stringify(BL.data)); }catch(e){} }
+function blApply(){ const L=BL.data[blKey()], box=document.querySelector('.tbtns'); if(!box) return; const sc=L&&L.s||1; box.style.setProperty('--bs',sc); box.style.setProperty('--bo',L&&L.o||1);
+  for(const id of BL.ids){ const b=$('#'+id); if(!b) continue; const p=L&&L.pos&&L.pos[id];
+    if(p){ const d=(b.classList.contains('tbig')?76:64)*sc; b.classList.add('free'); b.style.left=Math.round(clamp(p[0]*innerWidth,d/2,innerWidth-d/2)-d/2)+'px'; b.style.top=Math.round(clamp(p[1]*innerHeight,d/2,innerHeight-d/2)-d/2)+'px'; }
+    else { b.classList.remove('free'); b.style.left=b.style.top=''; } } }
+function blShown(){ if(mode==='drive') return BL.ids.filter(id=>!$('#'+id).hidden&&id!=='tCrouch'&&id!=='tJump'&&id!=='tGrab'&&id!=='tPunch');   // the buttons of what you are doing now
+  return ['tE','tGrab','tPunch','tCrouch','tJump']; }
+function blRecord(ids){ const L=BL.data[blKey()]||(BL.data[blKey()]={s:1,o:1,pos:{}}); L.pos=L.pos||{};
+  for(const id of ids){ if(L.pos[id]) continue; const r=$('#'+id).getBoundingClientRect(); if(r.width) L.pos[id]=[(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight]; } return L; }
+function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
+  if(on){ BL.was={}; const set=blShown(); for(const id of BL.ids){ const b=$('#'+id); BL.was[id]={h:b.hidden,t:b.textContent}; b.hidden=!set.includes(id); if(BL_NAME[id]&&mode!=='drive') b.textContent=BL_NAME[id]; }
+    requestAnimationFrame(()=>{ const L=blRecord(set); blApply(); $('#beSize').value=Math.round((L.s||1)*100); $('#beOp').value=Math.round((L.o||1)*100); }); }
+  else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; b.textContent=BL.was[id].t; } BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=mode==='drive'?$('#tE').hidden:!lastPrompt; } }
+{ const box=document.querySelector('.tbtns');
+  box.addEventListener('pointerdown',e=>{ if(!BL.edit) return; const b=e.target.closest('button'); e.preventDefault(); e.stopPropagation(); if(!b) return; const r=b.getBoundingClientRect();
+    BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
+  addEventListener('pointermove',e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; const L=BL.data[blKey()]; L.pos[D.b.id]=[clamp((e.clientX-D.dx)/innerWidth,.03,.97),clamp((e.clientY-D.dy)/innerHeight,.05,.97)]; blApply(); });
+  const end=e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; D.b.classList.remove('drag'); BL.drag=null; blSave(); }; addEventListener('pointerup',end); addEventListener('pointercancel',end);
+  $('#beSize').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; const ns=+e.target.value/100, r=ns/(L.s||1); L.s=ns;
+    // bigger buttons spread apart (and smaller ones close up) so they never sit on top of each other, then the group is kept on screen
+    const W=innerWidth, H=innerHeight, ids=Object.keys(L.pos).filter(id=>!$('#'+id).hidden); if(ids.length){ let cx=0, cy=0; for(const id of ids){ cx+=L.pos[id][0]*W; cy+=L.pos[id][1]*H; } cx/=ids.length; cy/=ids.length;
+      let x0=1e9, y0=1e9, x1=-1e9, y1=-1e9; const P={};
+      for(const id of ids){ const x=cx+(L.pos[id][0]*W-cx)*r, y=cy+(L.pos[id][1]*H-cy)*r, d=($('#'+id).classList.contains('tbig')?76:64)*ns/2+8; P[id]=[x,y]; x0=Math.min(x0,x-d); x1=Math.max(x1,x+d); y0=Math.min(y0,y-d); y1=Math.max(y1,y+d); }
+      const sx=x0<0?-x0:x1>W?W-x1:0, sy=y0<0?-y0:y1>H?H-y1:0; for(const id of ids) L.pos[id]=[(P[id][0]+sx)/W,(P[id][1]+sy)/H]; }
+    blApply(); });
+  $('#beOp').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; L.o=+e.target.value/100; blApply(); });
+  $('#beReset').addEventListener('click',()=>{ delete BL.data[blKey()]; blApply(); requestAnimationFrame(()=>{ const L=blRecord(blShown()); blApply(); $('#beSize').value=100; $('#beOp').value=100; void L; }); });
+  $('#beDone').addEventListener('click',()=>blEdit(false));
+  $('#btnEdit').addEventListener('click',()=>blEdit(true));
+  addEventListener('resize',()=>{ if(touchUI) blApply(); }); }
+function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=!lastPrompt; if(typeof fsSettings==='function') fsSettings(); $('#btnSet').hidden=false; blApply(); $('#keys').hidden=true; $('#lookhint').hidden=true;
   const zl=$('#zoneL'), zr=$('#zoneR'), jo=$('#joy'), jk=$('#joyK'); let jid=null,jx=0,jy=0; const lp=new Map(); let pinch=0;
   zl.addEventListener('pointerdown',e=>{ $('#settings').hidden=true; jid=e.pointerId; jx=e.clientX; jy=e.clientY; jo.hidden=false; jo.style.left=jx+'px'; jo.style.top=jy+'px'; try{ zl.setPointerCapture(jid); }catch(_){} });
   zl.addEventListener('pointermove',e=>{ if(e.pointerId!==jid) return; let dx=e.clientX-jx, dy=e.clientY-jy; const d=Math.hypot(dx,dy), m=50; if(d>m){ dx*=m/d; dy*=m/d; } joy.x=dx/m; joy.y=dy/m; jk.style.transform=`translate(${dx}px,${dy}px)`; jo.classList.toggle('run',Math.hypot(joy.x,joy.y)>.88); });
@@ -2430,7 +2466,7 @@ function tapAttack(){ if(gunOut()){ ARMS.trig=true; return; } const nxt=T0-FIGHT
 const fightNear=()=>mode==='walk'&&(FIGHT.near||(FIGHT.foe&&FIGHT.foeT>0&&FIGHT.foe.state!=='down'&&FIGHT.foe.state!=='dead'&&Math.hypot(FIGHT.foe.x-player.x,FIGHT.foe.z-player.z)<5)||COPS.list.some(p=>p.atk&&Math.hypot(p.x-player.x,p.z-player.z)<4));
 // the buttons that show only when they can do something: GRAB (or ROB, or AIM with a gun), JUMP or DODGE
 const TB={t:0,k:null};
-function touchButtons(dt){ if(!touchUI||mode!=='walk'||!fightReady()) return; if((TB.t-=dt)>0) return; TB.t=.15;
+function touchButtons(dt){ if(!touchUI||BL.edit||mode!=='walk'||!fightReady()) return; if((TB.t-=dt)>0) return; TB.t=.15;
   let g='', cls='';
   if(gunOut()){ g='AIM'; cls=ARMS.aim?'on':''; }
   else if(CARRY.p) g='DROP';
@@ -3505,7 +3541,7 @@ const skillAdd=(name,pts)=>skillShow(name,pts);
 function skillTime(name,on,dt,perSec){ const T=SKILL.timers; if(on){ T[name]=(T[name]||0)+dt; return; } const t=T[name]||0; if(t>.6) skillShow(`${name} ${t.toFixed(1)}s`,Math.round(t*perSec*(1+t*.25))); T[name]=0; }
 // which skill buttons a phone shows: on a bike WHEELIE and HOP, on the skateboard FLIP, OLLIE and SPIN
 let skBtnK='';
-function skillButtons(){ if(!touchUI) return; const v=mode==='drive'&&!drive.ride?drive.v:null, t=v?(v.type==='skate'?'skate':BIKE[v.type]?'bike':''):'';
+function skillButtons(){ if(!touchUI||BL.edit) return; const v=mode==='drive'&&!drive.ride?drive.v:null, t=v?(v.type==='skate'?'skate':BIKE[v.type]?'bike':''):'';
   if(t===skBtnK) return; skBtnK=t; const L=t==='skate'?['FLIP','OLLIE','SPIN']:t==='bike'?['WHEELIE','HOP','']:['','',''];
   ['#tSk1','#tSk2','#tSk3'].forEach((id,i)=>{ const b=$(id); b.hidden=!L[i]; b.textContent=L[i]; }); $('#tHorn').hidden=!v||t==='skate'; $('#tBrake').textContent=t==='skate'?'BRAKE':t==='bike'?'BRAKE':'BRAKE'; }
 function skillTick(dt){ if(SKILL.hideT>0&&(SKILL.hideT-=dt)<=0) $('#trick').hidden=true; }
