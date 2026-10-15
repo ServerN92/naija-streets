@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="f60984d938">
+<meta name="ns-build" content="481abb0938">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -169,7 +169,10 @@ body.touchui .ward .kb{display:none}
 .tbtns button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
 .tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
-#tE{grid-column:3;grid-row:2}#tGrab,#tHorn{grid-column:2;grid-row:1}#tJump{grid-column:1;grid-row:2}#tPunch,#tBrake{grid-column:2;grid-row:3}
+#tE{grid-column:3;grid-row:2}#tGrab,#tHorn{grid-column:2;grid-row:1}#tJump{grid-column:1;grid-row:2}#tPunch,#tBrake{grid-column:2;grid-row:3}#tSk1{grid-column:1;grid-row:2}#tSk2{grid-column:2;grid-row:2}#tSk3{grid-column:1;grid-row:1}
+.trick{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;font-family:var(--fd);color:var(--danfo);text-shadow:0 2px 0 #0E1014,0 4px 14px rgba(0,0,0,.6);white-space:nowrap;z-index:6}
+.trick b{display:block;font-weight:400;font-size:clamp(18px,3.4vw,30px);letter-spacing:.02em}.trick span{display:block;font-size:clamp(15px,2.4vw,22px);color:#F7EFDF}
+.trick.pop{animation:trickpop .35s ease-out}@keyframes trickpop{0%{transform:translateX(-50%) scale(.6);opacity:0}60%{transform:translateX(-50%) scale(1.12);opacity:1}100%{transform:translateX(-50%) scale(1)}}
 .tbtns .tbig{width:76px;height:76px;margin:-6px;font-size:13px}
 .tbtns #tJump.fightb{font-size:12px}
 .joy.run{border-color:var(--danfo)}.joy.run i{background:var(--danfo)}
@@ -270,6 +273,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="prompt" id="prompt" hidden role="button" tabindex="-1"><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="trick" id="trick" hidden><b id="trickT"></b><span id="trickP"></span></div>
   <div class="jail" id="jailBox" hidden><b>MUSHIN POLICE CELL</b><span id="jailT">3:00</span><small>until they release you</small></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
   <div class="panel phone" id="phone" hidden role="dialog" aria-label="Your phone">
@@ -339,6 +343,9 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" id="tJump" hidden aria-label="Jump, or dodge in a fight">JUMP</button>
       <button type="button" class="act" id="tE">E</button>
       <button type="button" id="tBrake" hidden>BRAKE</button>
+      <button type="button" id="tSk1" hidden>FLIP</button>
+      <button type="button" id="tSk2" class="tbig" hidden>OLLIE</button>
+      <button type="button" id="tSk3" hidden>SPIN</button>
       <button type="button" id="tPunch" class="fightb tbig" hidden aria-label="Attack: tap tap tap for jab, cross, kick">ATTACK</button>
     </div>
   </div>
@@ -401,7 +408,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=f60984d938"></script>
+<script type="module" src="src/game.js?v=481abb0938"></script>
 
 </body>
 </html>
