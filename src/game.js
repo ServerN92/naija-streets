@@ -5113,7 +5113,7 @@ function buildRoom(name,g){
 /* ---- rooms made in Blender with real textures (tools: the user's Blender, ~/Documents/naija_rooms): many meshes,
    walls as separate WALL_* objects, spots as MARK_* empties. Seen from above like the Sims: every wall that stands
    between the camera and you drops to a low strip, so you see into the room you are in and the rooms around. */
-let LM_K=2.5*Math.PI;   // light picture = 0.8 x light at half strength (baked on white); basic material divides by pi
+let LM_K=2.5*Math.PI; const LM_ROOM={int_club:2.6,int_police:1.3};   // dark rooms get a little more   // light picture = 0.8 x light at half strength (baked on white); basic material divides by pi
 function buildSimsRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x101216);
   if(!INT_ENV.t) INT_ENV.t=pmrem.fromScene(new RoomEnvironment(),.04).texture; S.environment=INT_ENV.t; S.environmentIntensity=.55;
@@ -5147,14 +5147,15 @@ function buildSimsRoom(name,g){
   const cell=(x,z)=>{ const i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); return i<1||j<1||i>=gw-1||j>=gd-1?1:grid[j*gw+i]; };
   const free=(x,z,r=.26)=>!cell(x-r,z)&&!cell(x+r,z)&&!cell(x,z-r)&&!cell(x,z+r)&&!cell(x,z);
   // lights from the Blender lamps (watts turned into game light)
+  const signs={}; for(const [k,m] of Object.entries(MK)) if(/^(sign|plate)_/.test(k)) signs[k]=signAt(S,m,m.text||'','#1a1410','#e9c46a',{fog:false});   // name boards and door numbers
   const lights=[]; for(const [k,m] of Object.entries(MK)){ if(!/^light_/.test(k)) continue; const L=new THREE.PointLight(new THREE.Color(m.color||'#ffe0b0'),Math.min(40,(m.power||60)*(m.kind==='AREA'?.11:.3)),m.kind==='AREA'?11:6,1.7); L.position.set(m.x,m.y-.15,m.z); S.add(L); lights.push(L); }
   const lmUrl=`assets/models/${name}_lm.jpg`;
   if(MANIFEST[lmUrl]){ const room=root.getObjectByName('ROOM'); new THREE.TextureLoader().load(lmUrl+'?v='+(AV[lmUrl]||MANIFEST[lmUrl]),t=>{ t.flipY=false; t.channel=1; t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=Math.min(4,maxAniso);
       root.traverse(o=>{ if(!o.isMesh||/^VIEW_/.test(o.name)||!o.geometry.attributes.uv1) return; o.material=[].concat(o.material).map(m=>{ const e=m.emissive&&m.emissiveIntensity>0&&(m.emissive.r+m.emissive.g+m.emissive.b)>.05;
-        const b=new THREE.MeshBasicMaterial({map:m.map,color:e?m.emissive.clone().multiplyScalar(Math.min(1.6,m.emissiveIntensity)):m.color,lightMap:e?null:t,lightMapIntensity:LM_K,transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite,side:THREE.DoubleSide});
+        const b=new THREE.MeshBasicMaterial({map:m.map,color:e?m.emissive.clone().multiplyScalar(Math.min(1.6,m.emissiveIntensity)):m.color,vertexColors:!!o.geometry.attributes.color,lightMap:e?null:t,lightMapIntensity:LM_K*(LM_ROOM[name]||1),transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite,side:THREE.DoubleSide});
         b.userData.std=m; return b; }); if(o.material.length===1) o.material=o.material[0]; o.castShadow=false; o.receiveShadow=false; });
       S.environmentIntensity=.35; for(const l of S.children) if(l.isDirectionalLight){ l.intensity=.5; l.castShadow=false; } else if(l.isHemisphereLight) l.intensity=.7; R.lit=true; }); }
-  const R={name,scene:S,marks:MK,free,sims:false,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs:{},tick:null,walls:W,
+  const R={name,scene:S,marks:MK,free,sims:false,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs,tick:null,walls:W,
     bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:bb.min.x+.2,x1:bb.max.x-.2,z0:bb.min.z+.2,z1:bb.max.z-.2,y0:.5,y1:2.9},
     camHit(t,d,dist){ for(let q=.25;q<dist;q+=.08){ const x=t.x+d.x*q, z=t.z+d.z*q, i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); if(i<0||j<0||i>=gw||j>=gd||tall[j*gw+i]) return q; } return dist; },out:()=>STATION.front,
     move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
