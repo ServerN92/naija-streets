@@ -201,6 +201,12 @@ They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by
 Models: `assets/models/car_blue.glb`, `car_benz.glb`, `tanker.glb`, `bike_naked.glb`, `bike_sport.glb`, `skateboard.glb`
 (each with a `_lod1` far version), listed in `LATE_FILES` in `src/game.js`.
 
+## Doors and the way to your hotel room
+Every door you can walk into (hotels, clubs, the police station, the car stand) has a pulsing ring on the ground and a
+bobbing arrow; hotels also say ENTER · name, and your hotel says YOUR HOTEL · ROOM 203 once you book. Inside a hotel a
+gold trail of arrows on the floor leads to where you go next: reception if you have no room, then the lift, then your
+room's door on your floor.
+
 ## Eko Grand Hotel
 The office tower a short walk from your house is the hotel. Walk to the yellow ring at its door and press E to enter the lounge
 bar (`assets/models/hotel_bar.glb`, downloaded only when you come near). Women dance on the floor there.
