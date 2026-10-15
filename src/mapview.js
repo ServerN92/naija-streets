@@ -9,9 +9,13 @@ export const KINDS = {
   guns:    { label: 'Guns',     color: '#e0453a', glyph: 'G' },
   service: { label: 'Services', color: '#b46cff', glyph: 'S' },
   office:  { label: 'Offices',  color: '#5fc6d8', glyph: 'O' },
+  hotel:   { label: 'Hotels',   color: '#e9c46a', glyph: 'H' },
+  club:    { label: 'Clubs',    color: '#ff4fd8', glyph: '♪' },
+  cars:    { label: 'Cars',     color: '#3ddc84', glyph: 'C' },
+  sport:   { label: 'Sport',    color: '#7ed957', glyph: '⚽' },
   place:   { label: 'Places',   color: '#f7efdf', glyph: '★' },
 };
-const FILTERS = [['all', 'All'], ['guns', 'Guns'], ['food', 'Food'], ['shop', 'Shops'], ['service', 'Services'], ['office', 'Offices'], ['police', 'Police'], ['place', 'Places']];
+const FILTERS = [['all', 'All'], ['guns', 'Guns'], ['food', 'Food'], ['shop', 'Shops'], ['service', 'Services'], ['office', 'Offices'], ['police', 'Police'], ['hotel', 'Hotels'], ['club', 'Clubs'], ['cars', 'Cars'], ['sport', 'Sport'], ['place', 'Places']];
 
 export class MapView {
   constructor(o) {
@@ -65,7 +69,7 @@ export class MapView {
     v.s = Math.min(9, Math.max(.25, v.s * k)); v.cx = wx - (sx - innerWidth / 2) / v.s; v.cz = wz - (sy - innerHeight / 2) / v.s; this.draw();
   }
   toScreen(x, z) { const v = this.view; return [(x - v.cx) * v.s + innerWidth / 2, (z - v.cz) * v.s + innerHeight / 2]; }
-  visiblePlaces() { const major = p => (p.kind === 'home' || p.kind === 'police' || p.kind === 'guns' || p.kind === 'place' || p.kind === 'office') && !p.minor;
+  visiblePlaces() { const major = p => (p.kind === 'home' || p.kind === 'police' || p.kind === 'guns' || p.kind === 'place' || p.kind === 'office' || p.kind === 'hotel' || p.kind === 'club' || p.kind === 'cars' || p.kind === 'sport') && !p.minor;
     return this.places.filter(p => this.filter === 'all' ? (major(p) || this.view.s >= 1.7) : (p.kind === this.filter || (this.filter === 'police' && p.kind === 'home'))); }
   tap(sx, sy) {
     let best = null, bd = 26;
@@ -112,12 +116,12 @@ export class MapView {
     const shown = this.visiblePlaces(), drawn = [];
     for (const p of shown) {
       const [x, y] = this.toScreen(p.x, p.z); if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-      if (p.kind !== 'home' && p.kind !== 'police' && p.kind !== 'guns' && drawn.some(q => Math.abs(q[0] - x) < rad * 1.6 && Math.abs(q[1] - y) < rad * 1.6)) continue; // declutter
+      if (p.kind !== 'home' && p.kind !== 'police' && p.kind !== 'guns' && p.kind !== 'hotel' && p.kind !== 'club' && p.kind !== 'cars' && p.kind !== 'sport' && drawn.some(q => Math.abs(q[0] - x) < rad * 1.6 && Math.abs(q[1] - y) < rad * 1.6)) continue; // declutter
       drawn.push([x, y]); const k = KINDS[p.kind] || KINDS.place, sel = p === this.sel;
       g.beginPath(); g.arc(x, y, rad + (sel ? 4 : 0), 0, 7); g.fillStyle = sel ? '#ffffff' : 'rgba(11,24,32,.9)'; g.fill();
       g.beginPath(); g.arc(x, y, rad - 1.5, 0, 7); g.fillStyle = k.color; g.fill();
       g.fillStyle = '#0E1014'; g.fillText(k.glyph, x, y + 1);
-      if (v.s > 2.2 || sel || p.kind === 'home' || p.kind === 'police' || p.kind === 'guns' || (p.kind === 'place' && !p.minor)) {
+      if (v.s > 2.2 || sel || p.kind === 'home' || p.kind === 'police' || p.kind === 'guns' || p.kind === 'hotel' || p.kind === 'club' || p.kind === 'cars' || p.kind === 'sport' || (p.kind === 'place' && !p.minor)) {
         g.font = `700 13px "Barlow Semi Condensed", "Arial Narrow", sans-serif`; g.lineWidth = 4; g.strokeStyle = 'rgba(11,24,32,.9)'; g.strokeText(p.name, x, y + rad + 11); g.fillStyle = '#f7efdf'; g.fillText(p.name, x, y + rad + 11);
         g.font = `400 ${Math.round(rad * 1.05)}px Bungee, Impact, sans-serif`;
       }

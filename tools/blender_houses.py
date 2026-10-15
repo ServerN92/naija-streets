@@ -39,6 +39,11 @@ class Builder:
         self.bm = bmesh.new()
         self.col = self.bm.loops.layers.color.new('Col')
         self.detail = detail
+        self.marks = {}                           # named spots for the game (doors, desks, beds...), Blender coordinates
+
+    def mark(self, name, x, y, z=0.0, **extra):
+        """Remember a spot the game needs (where a door is, where the receptionist stands). Saved in the .glb."""
+        self.marks[name] = dict(x=x, y=y, z=z, **extra)
 
     def face(self, pts, c, shade=None):
         vs = [self.bm.verts.new(p) for p in pts]
@@ -71,6 +76,12 @@ class Builder:
             pass
         ob = bpy.data.objects.new(name, me)
         bpy.context.scene.collection.objects.link(ob)
+        if self.marks:
+            import json
+            try:
+                ob['marks'] = json.dumps(self.marks)    # exported as glTF extras (Blender: Include > Custom Properties)
+            except TypeError:
+                ob.marks = self.marks
         mat = bpy.data.materials.get('NS_House') or make_material()
         me.materials.append(mat)
         return ob
@@ -869,8 +880,8 @@ def export(ob, path):
     bpy.context.view_layer.objects.active = ob
     loc = ob.location.copy(); ob.location = (0, 0, 0)
     args = dict(filepath=path, use_selection=True, export_format='GLB', export_yup=True, export_apply=True,
-                export_texcoords=False, export_normals=True, export_materials='EXPORT', export_vertex_color='ACTIVE')
-    for drop in ([], ['export_vertex_color'], ['export_vertex_color', 'export_texcoords']):
+                export_texcoords=False, export_normals=True, export_materials='EXPORT', export_vertex_color='ACTIVE', export_extras=True)
+    for drop in ([], ['export_extras'], ['export_extras', 'export_vertex_color'], ['export_extras', 'export_vertex_color', 'export_texcoords']):
         a = {k: v for k, v in args.items() if k not in drop}
         try:
             bpy.ops.export_scene.gltf(**a)

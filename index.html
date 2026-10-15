@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="481abb0938">
+<meta name="ns-build" content="7a3f1b4521">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -288,6 +288,12 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div id="shopBody"></div>
     <button type="button" class="done" id="shopDone">Done</button>
   </div>
+  <div class="panel shop" id="menu" hidden role="dialog" aria-label="Menu">
+    <h2 id="menuTitle"></h2>
+    <p class="note" style="margin:0" id="menuNote"></p>
+    <div id="menuBody"></div>
+    <button type="button" class="done" id="menuDone">Done</button>
+  </div>
   <div class="panel ward" id="ward" hidden role="dialog" aria-label="Wardrobe">
     <h2>WARDROBE</h2>
     <p class="note" style="margin:0">Pick who you are and what you wear. It stays on until you change again. <span class="kb">E or Esc closes.</span></p>
@@ -408,7 +414,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=481abb0938"></script>
+<script type="module" src="src/game.js?v=7a3f1b4521"></script>
 
 </body>
 </html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Model preview</title>
+<style>html,body{margin:0;height:100%;background:#8fa9bd;overflow:hidden;font:12px sans-serif}#info{position:fixed;left:8px;top:6px;color:#fff;text-shadow:0 1px 2px #000}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
+</head><body><div id="info"></div>
+<script type="module">
+/* Look at models from assets/models without the game.
+   tools/preview.html?m=ns_hotel,int_club&view=iso&cut=2.6&marks=1
+   m      models, side by side          view   iso | front | top | in (inside, eye height, from the first mark or ?at=x,z)
+   cut    cut everything above this height (to see inside a building from above)
+   yaw    turn the camera (degrees)     dist   camera distance factor     look  x,y,z to look at (in=from ?at, look)
+   marks  show the spots the model marks (doors, desks...)                 night  dark sky with the room lights only */
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+const q=new URLSearchParams(location.search), names=(q.get('m')||'ns_hotel').split(','), view=q.get('view')||'iso', cut=q.get('cut')?+q.get('cut'):null;
+const R=new THREE.WebGLRenderer({antialias:true}); R.setSize(innerWidth,innerHeight); R.toneMapping=THREE.ACESFilmicToneMapping; R.toneMappingExposure=1; R.shadowMap.enabled=true; document.body.append(R.domElement);
+if(cut!==null) R.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,-1,0),cut)];
+const S=new THREE.Scene(); S.background=new THREE.Color(q.get('night')?0x101318:0x8fa9bd);
+const pm=new THREE.PMREMGenerator(R); S.environment=pm.fromScene(new RoomEnvironment(),.04).texture; S.environmentIntensity=q.get('night')?.15:.5;
+S.add(new THREE.HemisphereLight(0xdfe9f5,0x5a4a3a,q.get('night')?.25:1.1)); const sun=new THREE.DirectionalLight(0xfff1dc,q.get('night')?.0:2.2); sun.position.set(30,60,40); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-80,right:80,top:80,bottom:-80,far:200}); S.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(800,800).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({color:0x8a7560,roughness:1})); ground.position.y=-.02; ground.receiveShadow=true; S.add(ground);
+const cam=new THREE.PerspectiveCamera(+(q.get('fov')||45),innerWidth/innerHeight,.05,3000);
+const L=new GLTFLoader(); let x=0, box=new THREE.Box3(), marks=[]; window.loaded=0;
+for(const n of names){ const g=await L.loadAsync(`../assets/models/${n}.glb`); const o=g.scene; o.traverse(m=>{ if(m.isMesh){ m.castShadow=m.receiveShadow=true; m.material.side=THREE.DoubleSide; if(m.material.vertexColors) m.material.color.set(0xffffff); } if(m.userData&&m.userData.marks) for(const [k,v] of Object.entries(m.userData.marks)) marks.push({k,v,o}); });
+  const b=new THREE.Box3().setFromObject(o); if(window.loaded) o.position.x=x-b.min.x; x=o.position.x+b.max.x+6;   /* the first model stays where it was built */ S.add(o); o.updateMatrixWorld(true); box.union(new THREE.Box3().setFromObject(o)); window.loaded++; }
+if(q.get('marks')) for(const {k,v,o} of marks){ const p=new THREE.Vector3(v.x,v.y,v.z).add(o.position); const s=new THREE.Mesh(new THREE.SphereGeometry(.25),new THREE.MeshBasicMaterial({color:0xff2060,depthTest:false})); s.position.copy(p).add(new THREE.Vector3(0,.3,0)); s.renderOrder=9; S.add(s);
+  const c=document.createElement('canvas'); c.width=256; c.height=48; const g=c.getContext('2d'); g.fillStyle='rgba(0,0,0,.6)'; g.fillRect(0,0,256,48); g.fillStyle='#fff'; g.font='bold 26px sans-serif'; g.fillText(k,6,34);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false})); sp.scale.set(2.4,.45,1); sp.position.copy(p).add(new THREE.Vector3(0,1,0)); sp.renderOrder=10; S.add(sp); }
+if(q.get('lights')!=='0') for(const {k,v,o} of marks) if(/^light/.test(k)){ const pl=new THREE.PointLight(v.color?new THREE.Color(v.color):0xffe0b0,v.power||20,v.range||10,1.6); pl.position.set(v.x,v.y,v.z).add(o.position); S.add(pl); }
+const c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3()), r=Math.max(sz.x,sz.z,sz.y)*(+(q.get('dist')||1)), yaw=(+(q.get('yaw')||25))*Math.PI/180;
+if(view==='front'){ cam.position.set(c.x+Math.sin(yaw)*r*1.1,c.y+sz.y*.15,c.z+Math.cos(yaw)*r*1.1); cam.lookAt(c); }
+else if(view==='top'){ cam.position.set(c.x,c.y+r*1.3,c.z+.01); cam.lookAt(c); }
+else if(view==='in'){ const at=(q.get('at')||'0,0').split(',').map(Number), lk=(q.get('look')||'0,1.4,-5').split(',').map(Number); cam.position.set(at[0],+(q.get('eye')||1.6),at[1]); cam.lookAt(lk[0],lk[1],lk[2]); }
+else { cam.position.set(c.x+Math.sin(yaw)*r*.85,c.y+r*.6,c.z+Math.cos(yaw)*r*.85); cam.lookAt(c); }
+document.getElementById('info').textContent=names.join(', ')+` · ${sz.x.toFixed(1)} × ${sz.y.toFixed(1)} × ${sz.z.toFixed(1)} m`;
+R.render(S,cam); setInterval(()=>R.render(S,cam),500);
+</script></body></html>
