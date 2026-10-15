@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="2134c4e866">
+<meta name="ns-build" content="72bea994ab">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -266,7 +266,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>
   <div class="tr">
     <div class="chip" id="clock" aria-live="off"><svg id="wIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="t" id="clockT">--:--</span><span class="w" id="clockW"></span></div>
-    <button type="button" class="iconbtn" id="phoneBtn" aria-label="Your phone: book a ride" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
+    <button type="button" class="iconbtn" id="phoneBtn" aria-label="Your phone" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button type="button" class="iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
   <button type="button" id="mmWrap" aria-label="Open the map"><canvas id="mm" width="420" height="420"></canvas><span class="mmtag">MAP</span></button>
@@ -276,11 +276,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="trick" id="trick" hidden><b id="trickT"></b><span id="trickP"></span></div>
   <div class="jail" id="jailBox" hidden><b>MUSHIN POLICE CELL</b><span id="jailT">3:00</span><small>until they release you</small></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
-  <div class="panel phone" id="phone" hidden role="dialog" aria-label="Your phone">
-    <div class="ph-top"><span id="phTime">--:--</span><span class="ph-cam"></span><button type="button" id="phClose" aria-label="Put the phone away">✕</button></div>
-    <div class="ph-tabs" role="tablist"><button type="button" class="ph-tab on" data-tab="ride" role="tab">OYA RIDE</button><button type="button" class="ph-tab" data-tab="work" role="tab">OYA WORK</button></div>
-    <div id="phBody"></div>
-  </div>
+  <div id="phone" hidden role="dialog" aria-label="Your phone"><button type="button" id="phClose" aria-label="Put the phone away">✕</button></div>
   <div class="xhair" id="xhair" hidden></div>
   <div class="panel shop" id="shop" hidden role="dialog" aria-label="Black market">
     <h2>OGA SHEGE · BLACK MARKET</h2>
@@ -329,7 +325,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>L or Q</dt><dd>Dodge (hit straight after for a harder blow)</dd>
         <dt>G</dt><dd>Slam the man you are fighting down, or carry someone</dd>
         <dt>H</dt><dd>Horn</dd>
-        <dt>P</dt><dd>Your phone: book a ride (OYA RIDE) or take a delivery job (OYA WORK)</dd>
+        <dt>P</dt><dd>Your phone: calls (112 for police), messages, Gist, camera, rides (OYA RIDE) and delivery jobs (OYA WORK)</dd>
         <dt>1–6 · Tab</dt><dd>Fists, baton, katana, AK-47, grenade, petrol bomb (from Oga Shege)</dd>
         <dt>Right mouse / K</dt><dd>Aim the AK or a throw (left mouse or J fires or throws, R reloads)</dd>
         <dt>G with a weapon</dt><dd>Rob the person in front of you</dd>
@@ -414,7 +410,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=2134c4e866"></script>
+<script type="module" src="src/game.js?v=72bea994ab"></script>
 
 </body>
 </html>

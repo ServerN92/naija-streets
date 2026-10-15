@@ -12,12 +12,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=2134c4e866';
-import * as C2 from './char2.js?v=2134c4e866';
-import { MapView } from './mapview.js?v=2134c4e866';
+import * as CLOCK from './clock.js?v=72bea994ab';
+import * as C2 from './char2.js?v=72bea994ab';
+import { createPhone } from './phone.js?v=72bea994ab';
+import { MapView } from './mapview.js?v=72bea994ab';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='2134c4e866';
+const BUILD='72bea994ab';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -35,6 +36,7 @@ function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15
 const R = mulberry32(90210);
 const rr = (a,b) => a + R()*(b-a), ri = (a,b) => Math.floor(rr(a,b+1)), pick = a => a[Math.floor(R()*a.length)];
 const naira=n=>'₦'+n.toLocaleString('en-NG');
+let PH=null;   // the phone (src/phone.js)
 const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
@@ -2076,6 +2078,7 @@ function onResize(){ Q.pr=fitPR(); if(PR>Q.pr) PR=Q.pr; renderer.setPixelRatio(P
 addEventListener('resize',onResize); addEventListener('orientationchange',()=>setTimeout(onResize,250));
 function setScene(sc){ curScene=sc; if(renderPass) renderPass.scene=sc; }
 let usePost=true;
+function grabFrame(){ const src=renderer.domElement, W=Math.min(1280,src.width), c=document.createElement('canvas'); c.width=W; c.height=Math.round(W*src.height/src.width); c.getContext('2d').drawImage(src,0,0,c.width,c.height); return c; }
 function renderFrame(dt){ if(PERF) renderer.info.reset(); if(composer&&usePost) composer.render(dt); else renderer.render(curScene,camera); }
 
 /* ================= world clock: sun, sky and weather (the same for every player) ================= */
@@ -2373,6 +2376,8 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   const k=keyOf(e); if(k===' '||k==='tab'||k.startsWith('arrow')) e.preventDefault(); if(!started||e.repeat) return;
   if(DEALER.open&&(k==='escape'||k==='e')){ closeShop(); K[k]=true; return; }
   if(MENU.open&&(k==='escape'||k==='e')){ closeMenu(); K[k]=true; return; }
+  if(k==='escape'&&PH&&PH.cam()){ PH.closeCamera(); return; }
+  if(k==='enter'&&PH&&PH.cam()){ PH.test('shoot'); return; }
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
@@ -2385,7 +2390,7 @@ const cvs=renderer.domElement; let dragging=false;
 function look(dx,dy){ const a=gunOut()&&ARMS.aim; camState.yaw-=dx*(a?.0021:.0028); camState.pitch=clamp(camState.pitch+dy*(a?.0017:.0022),a?-.6:-.15,1.15); camState.last=T0; }
 function lockPointer(){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{}); }catch(_){} }
 cvs.addEventListener('contextmenu',e=>e.preventDefault());
-cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') return; if(document.pointerLockElement===cvs&&mode==='walk'){ if(gunOut()){ if(e.button===0) ARMS.trig=true; else if(e.button===2) ARMS.aim=true; } else if(e.button===0) playerAttack('punch'); else if(e.button===2) playerAttack('kick'); }
+cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') return; if(PHONE.cam){ dragging=true; return; } if(document.pointerLockElement===cvs&&mode==='walk'){ if(gunOut()){ if(e.button===0) ARMS.trig=true; else if(e.button===2) ARMS.aim=true; } else if(e.button===0) playerAttack('punch'); else if(e.button===2) playerAttack('kick'); }
   $('#settings').hidden=true; dragging=true; if(document.pointerLockElement!==cvs) lockPointer(); $('#lookhint').hidden=true; });
 addEventListener('pointerup',()=>{ dragging=false; });
 document.addEventListener('mouseup',e=>{ if(e.button===0) ARMS.trig=false; else if(e.button===2&&!touchUI) ARMS.aim=false; });
@@ -3575,7 +3580,7 @@ function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); co
   player.speed=0; FIGHT.buf=null; FIGHT.chain=0; heroDo('takedown_a',{force:true,ts:1.7,to:TK,root:true,onEnd:()=>{ if(!FIGHT.ko) heroDo('rise',{force:true,ts:1.5,lock:false}); }});
   FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); camState.shake=Math.min(1,camState.shake+.2); setTimeout(()=>smack(1.4),TK*7250/1.7*.8); }
 // ---- people getting hit
-function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); crime(p,how==='drop_kick'?1.5:1); if(p.cop){ p.mad=1; FIGHT.heat=Math.max(FIGHT.heat,1.65); FIGHT.crimeT=0; }   // touch an officer: two stars
+function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); if(PH&&how!=='car') PH.event('fight',{place:placeNameAt(p.x,p.z)}); crime(p,how==='drop_kick'?1.5:1); if(p.cop){ p.mad=1; FIGHT.heat=Math.max(FIGHT.heat,1.65); FIGHT.crimeT=0; }   // touch an officer: two stars
   const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d; FIGHT.foe=p; FIGHT.foeT=4;
   if(p.hp<=0||knock) koPed(p,ux,uz,knock||2.4);
   else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?mpick(['hit_side','hit_body']):'uppercut';
@@ -3647,7 +3652,7 @@ function crime(p,k=1){ const civ=p.cast!=='areaboy'&&!p.cop; addHeat((civ?.15:.0
 // stars grow with how bad the crime is: small crimes (fights, robbery, gunfire, a stolen car) stop at two stars,
 // killings at three; only attacking the police goes higher
 const CAP={minor:1.95,kill:3.55,cop:5.4};
-function addHeat(a,cap=CAP.minor){ if(FIGHT.heat<cap) FIGHT.heat=Math.min(cap,FIGHT.heat+a); FIGHT.crimeT=0; if(copsSee()) FIGHT.seen=T0; else if(starCount()>0) caseOpen(player.x,player.z); }
+function addHeat(a,cap=CAP.minor){ const s0=starCount(); if(FIGHT.heat<cap) FIGHT.heat=Math.min(cap,FIGHT.heat+a); if(PH&&starCount()>=2&&starCount()>s0) PH.event('wanted',{area:districtAt(player.x,player.z)}); FIGHT.crimeT=0; if(copsSee()) FIGHT.seen=T0; else if(starCount()>0) caseOpen(player.x,player.z); }
 // police close enough to see it with their own eyes: then they come at once
 function copsSee(){ if(mode==='interior') return false; const f=mode==='drive'&&drive.v?drive.v:player; if(COPS.near<32) return true;
   for(const v of vehicles){ if(v.type!=='police'||v===drive.v||v.jacked||v.wreck) continue; if(Math.abs(v.x-f.x)<38&&Math.abs(v.z-f.z)<38&&Math.hypot(v.x-f.x,v.z-f.z)<38&&(v.ai||v.copsOut||v.raid)) return true; } return false; }
@@ -3696,7 +3701,7 @@ function fieldTo(s){ let d=FIELDS.get(s); if(d) return d; if(!CHASE.inn){ CHASE.
   d=dijkstra(s,u=>CHASE.inn[u]).dist; FIELDS.set(s,d); if(FIELDS.size>4) FIELDS.delete(FIELDS.keys().next().value); return d; }
 // caught: into the van, and into the cell at Mushin police station for three minutes (with whoever else they picked up)
 function jailNext(){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; }catch(e){} return JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]; }
-function arrest(){ releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
+function arrest(){ if(PH) PH.event('arrest',{place:placeNameAt(player.x,player.z)}); releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
   arrestFine(); }
 // the fine and what the police take (done the moment you are caught, so reloading can't save your money or guns)
 function arrestFine(){ if(COPS.fined&&T0-COPS.fined<10) return; COPS.fined=T0;
@@ -3765,7 +3770,7 @@ function incident(x,z,kind){ if(mode==='interior'||!started) return;
 function caseDispatch(x,z,kind){ let best=null, bd=230*230; for(const v of vehicles){ if(v.type!=='police'||!v.ai||v===drive.v||isCopVan(v)||v.ai.chase) continue; const d=(v.x-x)**2+(v.z-z)**2; if(d<bd){ bd=d; best=v; } }
   if(!best){ best=vehicles.find(v=>v.type==='police'&&!v.ai&&v!==drive.v&&!v.jacked&&!v.raid&&v!==FIGHT.cop&&!v.copsOut&&!v.block)||vehicles.find(v=>v.type==='police'&&v.ai&&!v.ai.chase&&v!==drive.v&&!isCopVan(v)&&Math.hypot(v.x-player.x,v.z-player.z)>120);   // none close: one comes from the station side
     if(!best||!placeCar(best,110,170,true,{x,z})) return false; }
-  Object.assign(RAID,{v:best,x,z,node:driveNode(x,z),phase:'drive',t:0,kind,sus:[],seen:T0,wit:[],eta:clamp(Math.hypot(best.x-x,best.z-z)/11,10,45)});
+  Object.assign(RAID,{v:best,x,z,node:driveNode(x,z),phase:'drive',t:0,kind,sus:[],seen:T0,wit:[],eta:clamp(Math.hypot(best.x-x,best.z-z)/11,10,45)}); if(PH&&kind!=='call') PH.event('police',{place:placeNameAt(x,z)});
   const ai=best.ai; ai.chase=true; ai.raid=true; ai.maxV0=ai.maxV0||ai.maxV; ai.maxV=Math.max(14,ai.maxV0*1.3); return true; }
 // the van stops anyhow: half on the kerb, at an angle
 function parkRough(v){ const e=edgeOf(v.ai.a,v.ai.b)||edgeOf(v.ai.b,v.ai.a); v.ai=null; v.raid=true; v.parked=true; v.speed=0;
@@ -4446,10 +4451,55 @@ function phoneInHand(){ const m=PHONE.mesh; if(!hero) return; const w=hero.w, wa
   if(want&&PHONE.body!==hero.cObj){ let hb=null; hero.cObj.traverse(o=>{ if(!hb&&o.isBone&&/RightHand$/.test(o.name)) hb=o; }); if(!hb) return; hero.cObj.updateMatrixWorld(true);
     const s=new THREE.Vector3(); hb.matrixWorld.decompose(_p,_q,s); m.scale.setScalar(1/s.x); m.position.set(PHONE_POSE.x/s.x,PHONE_POSE.y/s.x,PHONE_POSE.z/s.x); m.rotation.set(PHONE_POSE.rx,PHONE_POSE.ry,PHONE_POSE.rz); hb.add(m); PHONE.body=hero.cObj; }
   if(m.visible!==want) m.visible=want; }
+// ---- the phone's link to the game (what it can see and do)
+const PHN={};   // name lists for the posts people make: streets, areas, markets, places
+function phNames(k){ if(PHN[k]) return PHN[k];
+  if(k==='road'){ const S=new Set(); for(const e of ROADS) if(e.name&&e.drive&&e.c<=3) S.add(e.name); return PHN[k]=[...S].slice(0,80); }
+  if(k==='area') return PHN[k]=DISTRICTS.map(d=>d.n);
+  if(k==='market') return PHN[k]=MARKETS.filter(m=>m.stalls.length).map(m=>m.name);
+  if(k==='place') return PHN[k]=PLACES.filter(p=>p.name&&!p.minor&&p.name!=='Footbridge').map(p=>p.name);
+  return null; }
+function placeNameAt(x,z){ let best=null, bd=260; for(const p of PLACES){ if(!p.name||p.minor||p.name==='Footbridge') continue; const d=Math.hypot(p.x-x,p.z-z)-(p.r||0); if(d<bd){ bd=d; best=p.name; } } return best||districtAt(x,z); }
+function phPlaces(q,n){ const s=(q||'').trim().toLowerCase(), seen=new Set(), out=[];
+  const L=PLACES.filter(p=>p.name&&p.name!=='Footbridge'&&(!s||(p.name+' '+(p.sub||'')).toLowerCase().includes(s))).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z));
+  for(const p of L){ if(seen.has(p.name)) continue; if(!s&&(p.minor||Math.hypot(p.x-player.x,p.z-player.z)<40)) continue; seen.add(p.name); out.push({name:p.name,x:p.x,z:p.z,dist:kmOf(Math.hypot(p.x-player.x,p.z-player.z))}); if(out.length>=n) break; } return out; }
+// you call 112: a police van goes to the place you give (they ask around, and carry anybody wey dey fight)
+function phonePolice(p,kind){ if(mode==='interior'&&!p) return {ok:false,msg:'We no fit find where you dey. Comot outside, or tell us the name of the place.'};
+  const x=p?p.x:player.x, z=p?p.z:player.z, where=p?p.name:placeNameAt(x,z);
+  if(RAID.v) return {ok:false,msg:'All our vans dey another place now. Call back after small time.'};
+  if(!caseDispatch(x,z,'call')) return {ok:false,msg:'No van dey near that side now. Try again later.'};
+  const m=Math.round(RAID.eta/60); return {ok:true,where,eta:m<2?'one or two minutes':m+' minutes'}; }
+// what is happening around you (the "Around you" page of Gist)
+function phoneAround(){ const out=[], px=player.x, pz=player.z;
+  if(RAID.v){ const d=Math.hypot(RAID.x-px,RAID.z-pz); out.push({icon:'🚔',text:`Police dey ${placeNameAt(RAID.x,RAID.z)}`,sub:`${kmOf(d)} from you · ${RAID.phase==='drive'?'dem dey rush go there':'dem dey ask people questions'}`}); }
+  const st=starCount(); if(st>0) out.push({icon:'🚨',text:`Police dey find you ${'★'.repeat(st)}`,sub:'Hide or run comot. Dem go forget you small time.'});
+  let nf=0, fx=0, fz=0; for(const p of peds){ if(p.state==='fight'&&Math.hypot(p.x-px,p.z-pz)<320){ nf++; fx=p.x; fz=p.z; } }
+  if(nf) out.push({icon:'🥊',text:`Fight dey happen for ${placeNameAt(fx,fz)}`,sub:`${nf} people inside · ${kmOf(Math.hypot(fx-px,fz-pz))} away`});
+  if(RIDE.state) out.push({icon:'🚕',text:`Your ride: ${RIDE.who}`,sub:RIDE.state==='coming'?'Dey come pick you':RIDE.state==='waiting'?'Don reach, dey wait for you':'On the way'});
+  if(JOB.state) out.push({icon:'📦',text:'You get delivery job',sub:JOB.state==='pick'?'Go pick the load':'Carry am go drop'});
+  let mk=null, md=1e9; for(const m of MARKETS){ if(!m.stalls.length||m.cx==null) continue; const d=Math.hypot(m.cx-px,m.cz-pz); if(d<md){ md=d; mk=m; } }
+  const hr=ENV.hour; if(mk) out.push({icon:'🛒',text:`${mk.name} ${hr>6&&hr<19?'dey open':'don close for today'}`,sub:`${mk.stalls.length} stalls · ${kmOf(md)} away`});
+  let nv=0; for(const v of vehicles) if(v.ai&&Math.hypot(v.x-px,v.z-pz)<150) nv++; out.push({icon:'🚗',text:nv>22?'Hold-up dey near you':'Road dey free small',sub:`${nv} motors around`});
+  let np=0; for(const p of peds) if(p.state!=='off'&&p.state!=='dead'&&Math.hypot(p.x-px,p.z-pz)<70) np++; if(np) out.push({icon:'👥',text:`${np} people around you`,sub:placeNameAt(px,pz)});
+  if(ENV.rain>.2) out.push({icon:'🌧️',text:'Rain dey fall',sub:'Road dey slippery. Drive slow.'});
+  const club=PLACES.find(p=>/club/i.test((p.sub||'')+' '+p.name)&&p.kind!=='shop'); if(club&&(hr>19||hr<3)) out.push({icon:'🎉',text:`${club.name} dey open tonight`,sub:kmOf(Math.hypot(club.x-px,club.z-pz))+' away'});
+  return out; }
+function phoneBeep(f,d=.1,v=.2){ if(!AC||!soundOn) return; try{ const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain(); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v*.25,t+.01); g.gain.setValueAtTime(v*.25,t+d); g.gain.linearRampToValueAtTime(0,t+d+.04); o.connect(g); g.connect(master); o.start(t); o.stop(t+d+.06); }catch(e){} }
+PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()=>ENV.hour, weather:()=>wLabel(), rain:()=>Math.min(1,ENV.rain||0), cash:()=>CASH.n, naira,
+  where:()=>{ try{ return mode==='interior'?(ROOM.label||'Inside'):placeNameAt(player.x,player.z); }catch(e){ return 'Lagos'; } }, playerName:()=>PROFILE&&PROFILE.name||'',
+  names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
+  rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
+  openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
+  badge:n=>$('#phoneBtn').classList.toggle('badge',n>0), beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
+  camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
+  pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
+  setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); toast(`Your map don show the way to ${pl.name}.`,2.6); },
+  denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone() });
 function togglePhone(){ if(PHONE.open) closePhone(); else openPhone(); }
 function openPhone(){ if(!started||busy||PHONE.open||mode==='interior'||mode==='enter'||(mode==='drive'&&!drive.ride)) return; loadPhone(); PHONE.open=true; closeWard(); $('#settings').hidden=true;
-  if(document.pointerLockElement) document.exitPointerLock(); phoneUI(); $('#phone').hidden=false; $('#phoneBtn').setAttribute('aria-pressed','true'); }
-function closePhone(){ if(!PHONE.open) return; PHONE.open=false; $('#phone').hidden=true; $('#phoneBtn').setAttribute('aria-pressed','false'); if(hero&&hero.fid==='text') hero.fid=null; }
+  if(document.pointerLockElement) document.exitPointerLock(); PH.open(); $('#phoneBtn').setAttribute('aria-pressed','true'); }
+function closePhone(){ if(!PHONE.open) return; PHONE.open=false; PH.close(); PHONE.cam=false; $('#phoneBtn').setAttribute('aria-pressed','false'); if(hero&&hero.fid==='text') hero.fid=null; }
 const fareOf=pl=>Math.max(500,Math.round((500+Math.hypot(pl.x-player.x,pl.z-player.z)*1.3/1000*350)/50)*50);
 const bikeFare=pl=>Math.max(200,Math.round(fareOf(pl)*.55/50)*50);   // okada: cheaper than a car
 const rideFare=pl=>PHONE.rideKind==='okada'?bikeFare(pl):fareOf(pl);
@@ -4536,7 +4586,7 @@ function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book you
   if(air){ // a taxi from the airport rank pulls up on the forecourt road
     v.ai=null; v.parked=false; v.x=clamp(player.x,AIRPORT.TX-130,AIRPORT.TX+130); v.z=AIRPORT.drop.z; v.y=0; v.h=0; v.speed=0; RIDE.state='waiting'; RIDE.t=0;
     v.taxi=true; rideSign(v,true); toast(`${RIDE.who} dey the taxi rank. The car with the OYA RIDE sign is on the road in front of the terminal. Press E to enter.`,3.2); phoneUI(); return; }
-  v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(bike?`Bike man ${RIDE.who} don accept. He dey come with the okada!`:`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); }
+  v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(bike?`Bike man ${RIDE.who} don accept. He dey come with the okada!`:`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); if(PH) PH.event('ride',{name:pl.name,fare,who:RIDE.who,bike}); }
 function cancelRide(msg){ const v=RIDE.v; if(!v) return; if(RIDE.state==='riding'){ rideExit(true); return; }
   if(v.ai){ v.ai.goal=null; v.ai.wait=0; } else v.parked=true; v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null,leg:null,fromAir:false,legDone:false}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
 const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<4.4;
@@ -4622,7 +4672,7 @@ function workUI(b,el,btn){ b.append(el('h3','ph-h','OYA WORK'));
    G next to someone with a weapon in your hand robs them (shop and market sellers carry more). Jobs on the phone pay too. */
 const CASH={n:5000,shown:null,drops:[],geo:null,mat:null,flashT:0,flash:0};
 try{ const c=localStorage.getItem('naija-cash'); if(c!==null&&isFinite(+c)) CASH.n=+c; }catch(e){}
-function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
+function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
 const CASH_OF={areaboy:[300,3500],mama:[500,4500],baba:[800,6000],suit_lady:[3000,15000],lady_red:[500,5000],lady_black:[500,5000],hawker:[200,2500],schoolboy:[50,600],girl:[500,4000],police_m:[2000,9000],police_f:[2000,9000]};
 const cashOf=(c,k=1)=>{ const r=CASH_OF[c]||[300,3000]; return Math.max(50,Math.round(mrr(r[0],r[1])*k/50)*50); };
 function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
@@ -4769,7 +4819,7 @@ function bulletPlayer(dmg,shooter){ hitPlayer(dmg*1.5,shooter,'shot'); }
 function bulletCar(v,shooter){ carDamage(v,shooter===player?9:2.5,shooter===player); if(shooter!==player||!v.ai||v===drive.v||v.type==='police'||v.fire) return; if(MR()<.45){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); } else { v.ai.wait=0; v.ai.ghost=1.5; } }
 // gunshots empty the street around them
 const PANIC={t:-9};
-function shotsFired(x,z,mine){ if(T0-PANIC.t<.8) return; PANIC.t=T0; let seen=false;
+function shotsFired(x,z,mine){ if(mine&&PH) PH.event('shots',{place:placeNameAt(x,z)}); if(T0-PANIC.t<.8) return; PANIC.t=T0; let seen=false;
   for(const p of peds){ if(p.state==='off'||p.cop||p.dealer) continue; const dd=Math.hypot(p.x-x,p.z-z); if(dd>80) continue; if(dd<70) seen=true;
     if(p.state==='walk'||p.state==='idle'||p.state==='spot'||p.state==='react'||p.state==='shop'||p.state==='tsell'||p.state==='fight'&&p.cast!=='areaboy'){
       if(p.spot){ const s=p.spot; s.peds=s.peds.filter(q=>q!==p); p.spot=null; } p.state='flee'; p.timer=mrr(6,10); p.atk=null; p.yaw=Math.atan2(p.x-x,p.z-z)+mrr(-.5,.5); p.phone=false; } }
@@ -4854,7 +4904,7 @@ function scorch(x,z,r){ if(!BOOM.sc.length){ const [c,g]=cv(64,64), gr=g.createR
 function updateBoom(dt){ for(const F of BOOM.fl){ if(!F.s.visible) continue; F.t+=dt; const k=F.t/.42; if(k>=1){ F.s.visible=false; continue; } F.s.scale.setScalar((2+k*9)*F.k); F.s.material.opacity=1-k; } }
 function boomSound(d){ const v=clamp(1.15-d/140,.08,1); burst(1.6,70,1.1*v,1.4); burst(.5,700,.75*v,3.5); burst(.2,2600,.35*v,6); }
 // a blast at (x,y,z): power 1 = a grenade, a car is a little more. byMe: you caused it (stars, money from the dead)
-function explode(x,y,z,power=1,byMe=true){ const R=6.2*power;
+function explode(x,y,z,power=1,byMe=true){ const R=6.2*power; if(PH) PH.event('explosion',{place:placeNameAt(x,z)});
   boomFlash(x,y+.6,z,power); scorch(x,z,1.6*power); boomSound(Math.hypot(x-camera.position.x,z-camera.position.z));
   for(let i=0;i<40*power;i++){ const a=MR()*6.28, s=mrr(1.5,6.5)*power; emit('fire',x+Math.cos(a)*.4,y+.3,z+Math.sin(a)*.4,Math.cos(a)*s,mrr(1.5,6.5)*power,Math.sin(a)*s,mrr(.45,1.1),mrr(1.8,3.2)*power,.6,1,.6,.25,1); }
   for(let i=0;i<18*power;i++){ const a=MR()*6.28, s=mrr(.5,2.5); emit('smoke',x+Math.cos(a)*.8,y+.5,z+Math.sin(a)*.8,Math.cos(a)*s,mrr(1.2,3),Math.sin(a)*s,mrr(3,5.5),1.6*power,5*power,.12,.11,.1,.6); }
@@ -5542,7 +5592,7 @@ function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x
 /* ---- the car stand: tokunbo cars on the lot outside, brand new ones in the showroom. Cars you buy are yours: they
    wait for you near your house every time you come back. */
 function buyLotCar(v){ const s=v.forSale; if(!s) return; if(CASH.n<s.price){ toast(`Salesman: "This one na ${naira(s.price)}. Go hustle come back!"`,3); return; }
-  addCash(-s.price); cashHUD(); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
+  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
   toast(`${s.name} na your own now! Press E to drive. Congrats!`,3.5); }
 async function enterShowroom(){ if(busy) return; const R=await intGet('int_showroom','Opening the showroom…'); if(!R) return; setupShowroom(R); R.label='Oluwaseun Motors showroom'; goRoom(R,'spawn','Welcome to Oluwaseun Motors. Brand new cars!'); }
 function setupShowroom(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
@@ -5675,7 +5725,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else ROOM.update(dt);
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -5693,7 +5743,7 @@ function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-last
   if(!started&&warm>8){ warm++; return; }   // nothing to draw behind the title screen
   T0+=dt; warm++;
   try{ simulate(dt); }catch(e){ reportErr(e); }
-  try{ if(mode!=='interior') updateCulls(); renderFrame(dt); }catch(e){ reportErr(e); }
+  try{ if(mode!=='interior') updateCulls(); if(PH&&PH.camHook(camera)) camera.updateMatrixWorld(); renderFrame(dt); if(PHONE.snapCb){ const cb=PHONE.snapCb; PHONE.snapCb=null; cb(grabFrame()); } }catch(e){ reportErr(e); }
   if(started&&!ctxLost&&!document.hidden){ if(raw>250){ perfAcc=perfN=0; perfIv.length=0; return; }   // back from another app: don't count that gap
     perfAcc+=raw; perfN++; perfIv.push(raw); if(perfN>=40){ const avg=perfAcc/perfN; perfAcc=perfN=0; prCool-=.7; tuneResolution(avg,perfIv); perfIv.length=0; } } }
 if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
@@ -5735,6 +5785,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     mapAt(x,z,sc){ if(!mapView.isOpen) openMap(); mapView.view.cx=x; mapView.view.cz=z; mapView.view.s=sc; mapView.draw(); return true; },
     enter(){ rideEnter(); return RIDE.state; }, skip(){ skipRide(); return RIDE.state; }, rideInfo(){ const v=RIDE.v; return {state:RIDE.state,leg:!!RIDE.leg,legI:RIDE.leg&&RIDE.leg.i,ai:!!(v&&v.ai),x:v&&+v.x.toFixed(1),z:v&&+v.z.toFixed(1),px:+player.x.toFixed(1),pz:+player.z.toFixed(1),mode}; },
     bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
+    phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); },
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
