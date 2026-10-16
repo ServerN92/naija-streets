@@ -142,7 +142,9 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     const v = typeof m.v === 'string' && /^[a-z0-9_]{0,12}$/.test(m.v) ? m.v : '';
     const vc = typeof m.vc === 'string' && /^#[0-9a-f]{3,8}$/i.test(m.vc) ? m.vc : '';
     const q = Number.isInteger(m.q) ? m.q & 0xffff : 0;
-    P.x = r2(m.x); P.y = r2(m.y); P.z = r2(m.z); P.r = r3(m.r); P.s = Math.round(m.s * 10) / 10; P.a = a; P.v = v; P.vc = vc; P.q = q; P.h = 0; P.has = true; P.ver++;
+    const x = r2(m.x), y = r2(m.y), z = r2(m.z), r = r3(m.r), sp = Math.round(m.s * 10) / 10;
+    if (P.has && !P.h && P.x === x && P.y === y && P.z === z && P.r === r && P.s === sp && P.a === a && P.v === v && P.vc === vc && P.q === q) return;   // nothing new: nothing to send on
+    P.x = x; P.y = y; P.z = z; P.r = r; P.s = sp; P.a = a; P.v = v; P.vc = vc; P.q = q; P.h = 0; P.has = true; P.ver++;
   }
   function say(C, m) {
     const P = C.p, all = m.ch === 'a';

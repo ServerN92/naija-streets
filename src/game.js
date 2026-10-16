@@ -12,16 +12,17 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=621fbb4862';
-import * as C2 from './char2.js?v=621fbb4862';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=621fbb4862';
-import { createPhone } from './phone.js?v=621fbb4862';
-import { createGuide } from './guide.js?v=621fbb4862';
-import { createFarm } from './farm.js?v=621fbb4862';
-import { MapView } from './mapview.js?v=621fbb4862';
+import * as CLOCK from './clock.js?v=c0b9c6d2e6';
+import * as C2 from './char2.js?v=c0b9c6d2e6';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=c0b9c6d2e6';
+import { createPhone } from './phone.js?v=c0b9c6d2e6';
+import { createGuide } from './guide.js?v=c0b9c6d2e6';
+import { createFarm } from './farm.js?v=c0b9c6d2e6';
+import { createOnline } from './online.js?v=c0b9c6d2e6';
+import { MapView } from './mapview.js?v=c0b9c6d2e6';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='621fbb4862';
+const BUILD='c0b9c6d2e6';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -42,6 +43,7 @@ const naira=n=>'₦'+n.toLocaleString('en-NG');
 let PH=null;   // the phone (src/phone.js)
 let GD=null;   // the first-time tips (src/guide.js)
 let FARM=null; // the Farm Settlement and your farm (src/farm.js)
+let ON=null;   // Lagos online: other players, chat, your money on the server (src/online.js)
 const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
@@ -1772,7 +1774,7 @@ function makeCar(type,color,empty=false){
   return {g,wheels,def:D,type}; }
 const CAR_COLORS=['#111214','#f1f1ee','#8d939a','#1d3557','#7a0f12','#2b4b3a','#c4c8cc','#3a2a1e','#0f4c81','#b0b6bb'];
 const vehicles=[];
-function newVehicle(type,color,empty=false){ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty); scene.add(c.g); const v={c,type,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
+function newVehicle(type,color,empty=false){ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty); scene.add(c.g); const v={c,type,color,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
 function laneOff(a,b){ const e=edgeOf(a.i,b.i); if(!e) return 1.5; if(e.ow) return e.w>=8?e.w*.2:0; return e.hw>=10?4.6:e.hw*.45; }
 function lineSeg(ia,ib){ const a=nodes[ia],b=nodes[ib],dx=b.x-a.x,dz=b.z-a.z,L=Math.hypot(dx,dz)||.1,fx=dx/L,fz=dz/L,rx=-fz,rz=fx,off=laneOff(a,b),sa=Math.min(a.deg>=3?a.r+1.2:1.2,L*.45),sb=Math.min(b.deg>=3?b.r+1.2:1.2,L*.45);
   const p0={x:a.x+fx*sa+rx*off,z:a.z+fz*sa+rz*off}, p2={x:b.x-fx*sb+rx*off,z:b.z-fz*sb+rz*off}; return {k:0,p0,p2,len:Math.max(.1,Math.hypot(p2.x-p0.x,p2.z-p0.z)),fx,fz,rx,rz,off}; }
@@ -5095,7 +5097,7 @@ function workUI(b,el,btn){ b.append(el('h3','ph-h','OYA WORK'));
    G next to someone with a weapon in your hand robs them (shop and market sellers carry more). Jobs on the phone pay too. */
 const CASH={n:5000,shown:null,drops:[],geo:null,mat:null,flashT:0,flash:0};
 try{ const c=localStorage.getItem('naija-cash'); if(c!==null&&isFinite(+c)) CASH.n=+c; }catch(e){}
-function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
+function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
 const CASH_OF={areaboy:[300,3500],mama:[500,4500],baba:[800,6000],suit_lady:[3000,15000],lady_red:[500,5000],lady_black:[500,5000],hawker:[200,2500],schoolboy:[50,600],girl:[500,4000],police_m:[2000,9000],police_f:[2000,9000]};
 const cashOf=(c,k=1)=>{ const r=CASH_OF[c]||[300,3000]; return Math.max(50,Math.round(mrr(r[0],r[1])*k/50)*50); };
 function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
@@ -6988,6 +6990,7 @@ function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-last
   if(!started&&warm>8){ warm++; return; }   // nothing to draw behind the title screen
   T0+=dt; warm++;
   try{ simulate(dt); }catch(e){ reportErr(e); }
+  if(ON&&started) try{ ON.frame(dt); }catch(e){ reportErr(e); }
   try{ if(mode!=='interior') updateCulls(); if(PH&&PH.camHook(camera)) camera.updateMatrixWorld(); renderFrame(dt); if(PHONE.snapCb){ const cb=PHONE.snapCb; PHONE.snapCb=null; cb(grabFrame()); } }catch(e){ reportErr(e); }
   if(started&&!ctxLost&&!document.hidden){ if(raw>250){ perfAcc=perfN=0; perfIv.length=0; return; }   // back from another app: don't count that gap
     perfAcc+=raw; perfN++; perfIv.push(raw); if(perfN>=40){ const avg=perfAcc/perfN; perfAcc=perfN=0; prCool-=.7; tuneResolution(avg,perfIv); perfIv.length=0; } } }
@@ -7056,6 +7059,45 @@ FARM=createFarm({ THREE, scene, zone:FARMZ, Q, CullSet, addOB, naira, dirtMat:MA
   truckGo:(v,P)=>{ if(!v.ai&&!placeCar(v,0,60,false,v)) return; v.ai.goal=goalAt(P.x,P.z); v.ai.wait=0; },
   truckTo:(v,P,jump)=>{ if(jump&&!inView(v.x,1,v.z,6)){ placeCar(v,8,60,true,P); } if(v.ai){ v.ai.goal=goalAt(P.x,P.z); v.ai.goal.near=true; } },
   releaseTruck:v=>{ if(v.ai){ v.ai.goal=null; v.ai.wait=0; } Object.assign(v,{keep:0,farm:false,taxi:false}); } });
+// ---- Lagos online (src/online.js): what another player's body needs, and what we tell the server about us
+// the moves a player's person plays for the others to see: their own walk, run and swagger, the fight and phone moves,
+// the crouch, slide, prone and jumps (moves3, women's jumps for women) and the sitting pose for motors and okadas
+const ONCLIPS=new Map();
+function onlineMoves(C){ if(ONCLIPS.has(C)) return ONCLIPS.get(C);
+  const job=(async()=>{ const clips={...C.clips}, off={...C.off}, D=C.info;
+    try{ const M=await v3Moves(); if(M){ const has=n=>M.g.animations.some(a=>a.name===n), FJ=C.f&&has('v3f_jump')&&has('v3f_jump_run');
+      const mv=(n,as)=>{ const c=M.g.animations.find(a=>a.name===n); if(!c) return; const k=C2.retargetClip(c,M.S,D,{norm:true}); k.name=as; clips[as]=k; off[as]=C2.footOffset(C.tpl,D,k); };
+      mv('v3_cr_idle','cr_idle'); mv('v3_cr_walk','cr_walk'); mv('v3_slide','cr_slide'); mv(FJ?'v3f_jump':'v3_jump','jump3'); mv(FJ?'v3f_jump_run':'v3_jump_run','jump_run'); mv('v3_prone_idle','prone_idle'); mv('v3_prone_fwd','prone_fwd'); mv('v3_vault','vault'); } }catch(e){ console.warn('online moves',e); }
+    const hips=D&&D.nodes.get('Hips'); if(HERO_CAR&&hips){ const names=new Set(); C.tpl.traverse(o=>{ if(o.isBone) names.add(o.name); }); clips.car=fitClip(HERO_CAR,names,hips.position); }
+    return {clips,off}; })();
+  ONCLIPS.set(C,job); return job; }
+// what you are doing right now, in a word the other phones understand (the moves above)
+const ONME={ov:null,q:0,sl:false,cl:false};
+function onlineMe(){ if(mode==='interior') return {h:1};
+  if(mode==='drive'&&drive.v){ const v=drive.v; return {x:v.x,y:v.y,z:v.z,r:v.h,a:'d',s:drive.ride?v.speed:drive.speed,v:v.type,vc:typeof v.color==='string'?v.color:'',q:ONME.q}; }
+  const sp=player.speed; let a='i';
+  if(hero&&hero.ov&&hero.ov!==ONME.ov) ONME.q++; ONME.ov=hero?hero.ov:null;
+  if(CR.sp&&!ONME.sl) ONME.q++; ONME.sl=!!CR.sp; if(CLIMB.on&&!ONME.cl) ONME.q++; ONME.cl=CLIMB.on;
+  if(FIGHT.ko||FIGHT.dead) a='k';
+  else if(CLIMB.on) a='cl';
+  else if(CR.sp) a='sl';
+  else if(CR.pr) a=sp>.08?'pc':'p';
+  else if(CR.on) a=sp>.12?'cw':'c';
+  else if(hero&&hero.ov){ const n=hero.ov.name; a=/jump_run/.test(n)?'jr':/jump/.test(n)?'j':/kick/.test(n)?'ki':/^(punch|uppercut|gp|takedown)/.test(n)?'pu':/^hit/.test(n)?'hit':sp>WALK_V+.3?'r':sp>.08?'w':'i'; }
+  else if(sp>WALK_V+.3) a='r';
+  else if(sp>.08) a=hero&&hero.k2>.5?'w2':'w';
+  else if(hero&&hero.w.fight>.5) a='f';
+  else if(hero&&(hero.fid==='text'||hero.fid==='phone')) a='ph';
+  return {x:player.x,y:player.y+(hero?CR.yo:0),z:player.z,r:player.yaw,a,s:sp,v:'',q:ONME.q}; }
+try{ ON=createOnline({ THREE, scene, camera,
+  started:()=>started, inside:()=>mode==='interior', me:onlineMe, profile:()=>PROFILE,
+  look:()=>{ if(!PROFILE) return null; const id=isV2(WARD.cur)?WARD.cur:myPerson(); return {c:id,f:fitOf(id),g:PROFILE.g==='f'?'f':'m'}; },
+  loadCast:id=>loadV2(isV2(id)&&v2Of(id)?id:'p_dayo'), moves:onlineMoves, clone:o=>SkeletonUtils.clone(o), setOutfit:(o,i)=>C2.setOutfit(o,i),
+  makeCar:(type,color)=>{ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; try{ return makeCar(type,color,true); }catch(e){ return null; } },
+  seats:t=>SEATS[t], ride:t=>HERO_RIDE[t], maxBodies:()=>Q===QUAL.low?6:Q===QUAL.medium?10:16,
+  getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
+  typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
+  toast }); }catch(e){ console.warn('online could not start',e); ON=null; }   // the game always plays, online or not
 if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
   if(!/[?&]perf=show/.test(location.search)) el.hidden=true;   // numbers stay available to tests; shown only with ?perf=show
   document.body.appendChild(el); let fr=[], tLast=performance.now();

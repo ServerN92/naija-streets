@@ -199,6 +199,27 @@ over it to take it. With a weapon in your hand, G next to someone is a robbery: 
 run, and the people around run too. Market and shop sellers carry the day's sales. Jobs pay, rides cost the fare,
 waking up at LUTH costs a hospital bill, and an arrest costs a fine.
 
+## Online: other players, chat, money on the server
+
+PLAY ONLINE on the title screen (or Settings → Online account): sign in or make an account with a username and a
+password. The email is optional and only used to send a 6-digit code if you forget the password. Signed in, the
+other players near you (160 m, the nearest 30) are really there: their own person and outfit, walking, running,
+swagger, jumps, crouch, slide, prone, fights, the phone, and the motor or okada they ride, with their name over their
+head. The chat button (Enter on a computer) talks to the people near you (60 m, a bubble over your head) or to all
+Lagos. Tap a name in the open chat to mute that player (kept on this phone). Links are cut out of chat; bad words are
+starred.
+
+While you are signed in, your money is kept on the server: the same on every phone, and nobody can just type in more.
+Money made in the game is capped by time (₦250k at once, then ₦150 a second); a new account brings up to ₦50,000 of
+what you had as a guest; signing out gives back the guest money that stayed on the phone.
+
+The server is `server/` (Node 22, no npm packages: its own WebSocket, Node's SQLite, scrypt password hashes). Run it
+with `cd server && npm start` (port 8080; a game page on localhost connects to `ws://localhost:8080/ws` by itself),
+test it with `npm test`. It runs on Fly.io as `naija-streets-lagos` (London, one machine, accounts on a 1 GB volume).
+`.github/workflows/server.yml` tests and deploys it on every push that changes `server/`, using the repository secret
+`FLY_API_TOKEN`. Reset emails switch on when the Fly secrets `RESEND_API_KEY` and `MAIL_FROM` are set (resend.com).
+Players' code is `src/online.js` (the game passes in what it needs, like the farm).
+
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
 big map, where the Guns chip shows only him). His boys smoke at the gap in the fence and stop you: ₦100 to pass (E).

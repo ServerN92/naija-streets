@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="621fbb4862">
+<meta name="ns-build" content="c0b9c6d2e6">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -259,6 +259,46 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   .speedo b{font-size:46px}
   body.touchui .speedo{bottom:calc(162px + var(--sb))}
 }
+/* Online: the title-screen button, the sign-in panel, the chat */
+.onl{display:flex}
+.onlb{display:flex;flex-direction:column;gap:2px;text-align:left;background:rgba(22,160,107,.16);color:var(--cream);border:2px solid rgba(22,160,107,.7);border-radius:12px;padding:10px 14px;min-height:52px;cursor:pointer;max-width:340px}
+.onlb b{font-family:var(--fd);font-weight:400;font-size:18px;color:#7ee2a0}.onlb small{color:var(--muted);font-size:13px;font-weight:600}
+.onlb.on{border-color:var(--flag);background:rgba(22,160,107,.28)}
+.opanel{position:fixed;inset:0;z-index:56;display:grid;place-items:center;background:rgba(6,7,9,.6);padding:calc(10px + var(--st)) calc(12px + var(--sr)) calc(10px + var(--sb)) calc(12px + var(--sl));pointer-events:auto}
+.obox{position:relative;width:min(380px,100%);box-sizing:border-box;max-height:100%;overflow:auto;touch-action:pan-y;overscroll-behavior:contain;background:rgba(12,14,18,.96);border:1px solid var(--line);border-radius:16px;padding:16px 18px 18px;box-shadow:0 20px 50px rgba(0,0,0,.55)}
+.obox h2{font-family:var(--fd);font-weight:400;font-size:17px;margin:0 40px 4px 0;color:var(--danfo)}
+.obox h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.oclose{position:absolute;right:8px;top:8px;width:44px;height:44px;background:none;border:none;color:var(--cream);font-size:20px}
+.ostat{margin:0 0 12px;color:#7ee2a0;font-weight:700;font-size:14px}
+.obox form{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.ofield{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:14px;font-weight:600}
+.ofield i{font-style:normal;font-weight:400}.ofield small{font-size:12px;font-weight:400}
+.obox input{font:inherit;font-size:17px;color:var(--cream);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 12px;min-height:46px;box-sizing:border-box;width:100%;-webkit-user-select:text;user-select:text}
+.obox input:focus{outline:2px solid var(--danfo);outline-offset:1px}
+.ogo{font-family:var(--fd);font-size:17px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:12px 18px;min-height:50px}
+.ogo:disabled{opacity:.5}.ogo.ghost{background:rgba(255,255,255,.1);color:var(--cream);width:100%;margin-top:16px}
+.oinline{display:flex;gap:8px}.oinline input{flex:1;min-width:0}.oinline button{flex:none;min-height:46px;border-radius:10px;border:none;background:var(--danfo);color:var(--ink);font-weight:700;padding:0 14px}
+.olink{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:14px;padding:10px 0 0;min-height:40px}
+.oerr{margin:0;color:#ff9b8a;font-weight:700;font-size:14px}.ook{margin:0;color:#7ee2a0;font-weight:700;font-size:14px}
+.ome{margin:0;font-size:17px}.ome b{color:var(--danfo)}
+.onote{margin:6px 0 0;color:var(--muted);font-size:13px}
+.okick{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:rgba(242,183,5,.12);border:1px solid rgba(242,183,5,.4);font-size:14px;display:flex;flex-direction:column;gap:8px}
+.okick button{align-self:flex-start;min-height:42px;border-radius:10px;border:none;background:var(--danfo);color:var(--ink);font-weight:700;padding:0 14px}
+.onlN{font-weight:700;font-size:13px;color:#7ee2a0;text-shadow:0 1px 3px #000;white-space:nowrap}.onlN::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#2fd17e;margin-right:5px;vertical-align:1px;box-shadow:0 0 6px #2fd17e}
+.chatlog{position:absolute;left:calc(16px + var(--sl));top:calc(128px + var(--st));width:min(420px,44vw);display:flex;flex-direction:column;gap:3px;pointer-events:auto;font-size:15px;line-height:1.25;z-index:4}
+.chatlog .cl{background:rgba(12,14,18,.55);border-radius:8px;padding:4px 9px;text-shadow:0 1px 2px #000;overflow-wrap:anywhere;align-self:flex-start;max-width:100%;box-sizing:border-box}
+.chatlog .cl b{margin-right:6px}.chatlog .cl b.mutable{cursor:pointer;text-decoration:underline dotted}
+.chatlog .cl i{font-style:normal;font-size:11px;font-weight:700;background:var(--danfo);color:var(--ink);border-radius:4px;padding:1px 4px;margin-right:6px;vertical-align:1px}
+.chatlog .cl.mine{background:rgba(22,160,107,.35)}
+.chatbar{position:absolute;left:50%;top:calc(10px + var(--st));transform:translateX(-50%);width:min(620px,calc(100vw - 24px - var(--sl) - var(--sr)));box-sizing:border-box;display:flex;gap:8px;align-items:center;background:rgba(12,14,18,.94);border:1px solid var(--line);border-radius:14px;padding:8px;pointer-events:auto;z-index:8}
+.chatbar .seg{flex:none;padding:2px}.chatbar .seg button{min-height:40px;padding:6px 10px;font-size:14px}
+.chatbar input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--cream);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px 10px;min-height:44px;box-sizing:border-box;-webkit-user-select:text;user-select:text}
+.chatbar .go{flex:none;min-height:44px;border-radius:10px;border:none;background:var(--danfo);color:var(--ink);font-family:var(--fd);font-size:14px;padding:0 12px}
+.chatbar .x{flex:none;width:40px;min-height:44px;background:none;border:none;color:var(--cream);font-size:18px}
+@media (max-width:560px){ .chatbar{flex-wrap:wrap}.chatbar .seg{order:3;flex:1}.chatbar input{flex-basis:60%} .chatlog{width:min(330px,60vw);font-size:14px} }
+body.touchui .chatlog{top:calc(118px + var(--st))}
+@media (orientation:portrait) and (max-width:760px){ body.touchui .chatlog{top:calc(250px + var(--st));width:calc(100vw - 130px)} }
+@media (max-height:520px){ .chatlog{top:calc(104px + var(--st));font-size:13px} body.touchui .chatlog{top:calc(104px + var(--st))} }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}.stars.chase{animation:none;color:#ff4d4d}}
 </style>
 </head>
@@ -270,11 +310,12 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
 <div class="hud" id="hud" hidden>
   <div class="tl"><div class="brand">NAIJA STREETS</div><div class="loc" id="loc">Lagos</div>
     <div class="vitals" id="vitals" hidden><div class="hpbar" aria-label="Your health"><i id="hpFill"></i></div><span class="stars" id="stars" hidden aria-label="Police wanted level"></span></div>
-    <div class="vitals2"><span class="cash" id="cash">₦0</span><button type="button" class="weap" id="weap" hidden aria-label="Change weapon">Fists</button></div>
+    <div class="vitals2"><span class="cash" id="cash">₦0</span><span class="onlN" id="onlN" hidden></span><button type="button" class="weap" id="weap" hidden aria-label="Change weapon">Fists</button></div>
     <div class="jobhud" id="job" hidden></div>
     <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>
   <div class="tr">
     <div class="chip" id="clock" aria-live="off"><svg id="wIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="t" id="clockT">--:--</span><span class="w" id="clockW"></span></div>
+    <button type="button" class="iconbtn" id="chatBtn" aria-label="Chat with players" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg></button>
     <button type="button" class="iconbtn" id="phoneBtn" aria-label="Your phone" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button type="button" class="iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
@@ -282,6 +323,12 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="prompt" id="prompt" hidden role="button" tabindex="-1"><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="chatlog" id="chatLog" hidden aria-live="polite"></div>
+  <form class="chatbar" id="chatBar" hidden autocomplete="off">
+    <div class="seg" id="chatSeg" role="group" aria-label="Who hears you"><button type="button" data-ch="n" aria-pressed="true">Near</button><button type="button" data-ch="a" aria-pressed="false">All Lagos</button></div>
+    <input id="chatIn" maxlength="120" placeholder="Talk to people near you…" enterkeyhint="send" autocomplete="off" spellcheck="true">
+    <button type="submit" class="go">SEND</button><button type="button" class="x" id="chatX" aria-label="Close the chat">✕</button>
+  </form>
   <div class="trick" id="trick" hidden><b id="trickT"></b><span id="trickP"></span></div>
   <div class="jail" id="jailBox" hidden><b>MUSHIN POLICE CELL</b><span id="jailT">3:00</span><small>until they release you</small></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
@@ -307,6 +354,9 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   </div>
   <div class="panel" id="settings" hidden>
     <h2>SETTINGS</h2>
+    <h3>Online</h3>
+    <div class="seg"><button type="button" id="olSetBtn" aria-pressed="false">Online account</button></div>
+    <p class="note" id="olSetSub">Sign in to see other players</p>
     <h3>Graphics</h3>
     <div class="seg" id="qual" role="group" aria-label="Graphics quality">
       <button type="button" data-q="low" aria-pressed="false">Low</button>
@@ -415,6 +465,45 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <button type="button" id="rotateOk">PLAY ANYWAY</button>
 </div></div>
 
+<div class="opanel" id="onlinePanel" hidden role="dialog" aria-modal="true" aria-label="Naija Streets online">
+  <div class="obox">
+    <button type="button" class="oclose" id="olClose" aria-label="Close">✕</button>
+    <h2>NAIJA STREETS ONLINE</h2>
+    <p class="ostat" id="olStat">Connecting to Lagos…</p>
+    <div class="okick" id="olKick" hidden><span>You signed in on another phone or tab.</span><button type="button" id="olKickGo">Play here instead</button></div>
+    <div id="olGuest">
+      <div class="seg" id="olTabs" role="group" aria-label="Sign in or make an account"><button type="button" data-k="in" aria-pressed="true">Sign in</button><button type="button" data-k="new" aria-pressed="false">New account</button></div>
+      <form id="olForm" autocomplete="on">
+        <label class="ofield"><span>Username</span><input id="olUser" name="username" autocomplete="username" maxlength="16" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="e.g. Tunde_99"></label>
+        <label class="ofield"><span>Password</span><input id="olPass" name="password" type="password" autocomplete="current-password" maxlength="72" placeholder="6 or more characters"></label>
+        <label class="ofield" id="olMailF" hidden><span>Email <i>(optional)</i></span><input id="olMail" name="email" type="email" autocomplete="email" maxlength="120" placeholder="you@example.com"><small>Only used to send you a code if you forget your password.</small></label>
+        <p class="oerr" id="olErr" hidden></p>
+        <button type="submit" class="ogo" id="olGo">SIGN IN</button>
+      </form>
+      <button type="button" class="olink" id="olForgot">Forgot password?</button>
+      <form id="olForgotF" hidden autocomplete="off">
+        <label class="ofield"><span>Your username</span><input id="olFUser" maxlength="16" spellcheck="false" autocapitalize="off" autocorrect="off"></label>
+        <button type="submit" class="ogo">EMAIL ME A CODE</button>
+      </form>
+      <form id="olResetF" hidden autocomplete="off">
+        <label class="ofield"><span>The 6-digit code from the email</span><input id="olCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+        <label class="ofield"><span>New password</span><input id="olRPass" type="password" autocomplete="new-password" maxlength="72"></label>
+        <button type="submit" class="ogo">SET NEW PASSWORD</button>
+      </form>
+    </div>
+    <div id="olIn" hidden>
+      <p class="ome">Signed in as <b id="olName"></b></p>
+      <p class="onote">Your money is kept online while you are signed in. Talk with the chat button (Enter on a computer).</p>
+      <p class="ook" id="olMsg" hidden></p>
+      <h3>Email for password reset</h3>
+      <p class="onote" id="olMailNow"></p>
+      <form id="olMailForm" class="oinline"><input id="olMail2" type="email" autocomplete="email" maxlength="120" placeholder="you@example.com" aria-label="Email"><button type="submit">SAVE</button></form>
+      <h3>Change password</h3>
+      <form id="olPwForm"><input id="olOld" type="password" autocomplete="current-password" maxlength="72" placeholder="Old password" aria-label="Old password"><input id="olNew" type="password" autocomplete="new-password" maxlength="72" placeholder="New password" aria-label="New password"><button type="submit" class="ogo">CHANGE PASSWORD</button></form>
+      <button type="button" class="ogo ghost" id="olOut">SIGN OUT</button>
+    </div>
+  </div>
+</div>
 <div class="loading" id="loading">
   <div class="ld">
     <h1><span class="a">NAIJA</span><span class="b">STREETS</span><span class="c">LAGOS · MUSHIN</span></h1>
@@ -433,6 +522,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <div class="pnote">Man or woman stays. Change person, clothes and colours in the wardrobe at home.</div>
     </div>
     <div class="pwho" id="pwho" hidden></div>
+    <div class="onl" id="onlRow" hidden><button type="button" class="onlb" id="onlBtn"><b>PLAY ONLINE</b><small id="onlSub">Sign in to see other players</small></button></div>
     <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
     <p class="lnote">Works on phones, tablets and computers. On a phone, turn it sideways.</p>
   </div>
@@ -449,7 +539,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=621fbb4862"></script>
+<script type="module" src="src/game.js?v=c0b9c6d2e6"></script>
 
 </body>
 </html>

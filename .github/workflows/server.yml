@@ -41,7 +41,11 @@ jobs:
         name: Deploy
         run: flyctl deploy --remote-only --ha=false
       - if: steps.tok.outputs.ok == '1'
+        uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - if: steps.tok.outputs.ok == '1'
         name: Check it answers
         run: |
           APP=$(sed -n 's/^app = "\(.*\)"/\1/p' fly.toml)
-          for i in 1 2 3 4 5 6; do curl -fsS "https://$APP.fly.dev/health" && exit 0; sleep 10; done; exit 1
+          ok=0; for i in 1 2 3 4 5 6; do curl -fsS "https://$APP.fly.dev/health" && ok=1 && break; sleep 10; done; [ $ok = 1 ] || exit 1
+          node -e "const w=new WebSocket('wss://$APP.fly.dev/ws'); const t=setTimeout(()=>{console.log('no answer');process.exit(1)},15000); w.onopen=()=>w.send(JSON.stringify({t:'hi',v:1})); w.onmessage=e=>{const m=JSON.parse(e.data); if(m.t==='guest'){console.log('WebSocket ok,',m.n,'online');clearTimeout(t);w.close();process.exit(0)}}; w.onerror=e=>{console.log('ws error');process.exit(1)}"
