@@ -41,7 +41,7 @@ export function createNet(url, hello, on) {
     get id() { return id; }, get status() { return status; },
     // your state, at most ten times a second; the same state again only once a second
     state(s) { const now = performance.now(); if (now - lastSent < 95) return; const k = JSON.stringify(s); if (k === last && now - lastSent < 1000) return; if (send({ t: 's', ...s })) { last = k; lastSent = now; } },
-    chat: x => send({ t: 'c', x }), ride: d => send({ t: 'ride', d }), off: () => send({ t: 'off' }), look: (l, o) => send({ t: 'look', l, o }),
+    chat: x => send({ t: 'c', x }), ride: (d, x, z) => send({ t: 'ride', d, x, z }), off: () => send({ t: 'off' }), look: (l, o) => send({ t: 'look', l, o }),
     close() { closed = true; clearTimeout(timer); if (ws) ws.close(); } };
 }
 

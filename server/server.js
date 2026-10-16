@@ -41,12 +41,14 @@ function leaveRide(r, p) {
   if (!p.ride) return; const d = r.players.get(p.ride.d);
   if (d && d.pass) { d.pass.delete(p.ride.i); if (!d.pass.size) d.pass = null; }
   p.ride = null; }
-function askRide(r, p, did) {
+function askRide(r, p, did, at) {
   const d = r.players.get(did), no = why => send(p, { t: 'ride', ok: false, why });
   if (!d || !d.ready || d === p) return no('gone');
   if (!d.s || !d.s.car) return no('walking');
   if (p.ride) leaveRide(r, p);
-  if (Math.hypot(d.s.x - p.s.x, d.s.z - p.s.z) > 9) return no('far');
+  // the position sent with the ask is fresher than the last state (it may be a few steps on, never across town)
+  let px = p.s.x, pz = p.s.z; if (at && Number.isFinite(at.x) && Number.isFinite(at.z) && Math.hypot(at.x - px, at.z - pz) < 30) { px = at.x; pz = at.z; }
+  if (Math.hypot(d.s.x - px, d.s.z - pz) > 9) return no('far');
   if (Math.abs(d.s.car.s) > 3) return no('moving');
   const seats = d.s.car.n; if (!d.pass) d.pass = new Map();
   let free = -1; for (let i = 1; i < seats; i++) if (!d.pass.has(i)) { free = i; break; }
@@ -84,7 +86,7 @@ function onMessage(p, raw) {
     const x = clean(m.x, 140); if (!x || now - p.lastC < 1200) return; p.lastC = now;
     toRoom(r, { t: 'chat', id: p.id, n: p.name, x }); return; }
   if (m.t === 'look') { p.look = word(m.l, 32); p.fit = num(m.o, 0, 3) | 0; toRoom(r, { t: 'look', id: p.id, l: p.look, o: p.fit }, p); return; }
-  if (m.t === 'ride') { askRide(r, p, num(m.d, 0, 1e9) | 0); return; }
+  if (m.t === 'ride') { askRide(r, p, num(m.d, 0, 1e9) | 0, { x: num(m.x, -6000, 6000, NaN), z: num(m.z, -6000, 6000, NaN) }); return; }
   if (m.t === 'off') { leaveRide(r, p); return; }
 }
 

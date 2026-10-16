@@ -6115,7 +6115,7 @@ function netCarFree(R){ const v=R.car; R.car=null; if(!v) return; if(NET.ride&&N
 // someone driving near you, stopped: you can ride with them
 function netRideNear(){ if(!NET.c||mode!=='walk') return null; let best=null,bd=4.2;
   for(const R of NET.P.values()){ const v=R.car; if(!v||v.netFree||Math.abs(v.speed)>2.5||netSeats(v.type)<2) continue; const d=Math.hypot(v.x-player.x,v.z-player.z)-v.c.def.L*.25; if(d<bd){ bd=d; best=R; } } return best; }
-function netRideAsk(R){ if(T0-NET.asked<2) return; NET.asked=T0; NET.c.ride(R.id); }
+function netRideAsk(R){ if(T0-NET.asked<2) return; NET.asked=T0; NET.c.ride(R.id,Math.round(player.x*100)/100,Math.round(player.z*100)/100); }
 function netRideStart(d,i){ const R=NET.P.get(d), v=R&&R.car; if(!v||mode!=='walk'||busy){ NET.c.off(); return; }
   closeWard(); carryDrop(true); if(CR.on||CR.sl>0) crOff(); drive.v=v; drive.ride=true; drive.speed=0; drive.steer=0; mode='drive'; player.speed=0; camState.last=-10; lastMode=null; NET.ride={d,i,v};
   seatHero(v,i); toast(`You dey inside ${R.n}'s ${(VT[v.type]||{name:'motor'}).name}. Press E to get down.`,3); }
