@@ -2059,7 +2059,7 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   const s=1-Math.exp(-10*dt), w=hero.w; w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
   const hd=FIGHT.stop>0?dt*.1:dt; FIGHT.stop=Math.max(0,FIGHT.stop-dt);   // hit-stop: a heavy blow freezes the moment
   { const o=hero.ov, b=FIGHT.buf; if(b&&(T0-b.t>.5)) FIGHT.buf=null; else if(b&&(!o||(o.atk&&o.t>=o.cancel*o.dur))){ FIGHT.buf=null; playerAttack(b.kind); } }   // a press made during a blow comes out as soon as it can
-  const ow=heroOverlay(hd), base=(1-ow)*(1-CR.w);   // a punch, kick, jump or hit plays over the walk (and a crouch under it)
+  const ow=Math.max(heroOverlay(hd),climbWeight(hd)), base=(1-ow)*(1-CR.w);   // a punch, kick, jump or hit plays over the walk (and a crouch under it)
   if(CR.w>0&&CR.acts.idle) for(const k in CR.acts) CR.acts[k].setEffectiveWeight(CR.acts[k].getEffectiveWeight()*(1-ow));
   // fists up while a fight is on
   w.fight+=((((FIGHT.near||T0-FIGHT.lastAtk<4)&&!FIGHT.ko&&a.fight_idle&&mode==='walk')?1:0)-w.fight)*(1-Math.exp(-6*dt)); if(w.fight>.05) hero.fid=null;
@@ -2361,7 +2361,7 @@ let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
 function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
   if(mode==='drive'){ const v=drive.v, sk=v.type==='skate'; _t.set(v.x,v.y+(sk?1.3+(v.lift||0)*.5:1.5),v.z); dist=sk?4.4+Math.abs(drive.speed)*.1:7.8+Math.abs(drive.speed)*.04;   // on the board the camera stays close, like on foot
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
-  else { _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
+  else { camFollow(dt); _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55-.42*CR.w-.5*CR.pw),player.z+FIGHT.cz); dist=mode==='interior'?(WARD.open?2.3:ROOM.camDist):gunOut()&&ARMS.aim?2.1:4.3; }
   const sims=mode==='interior'&&ROOM.sims&&!WARD.open; if(sims){ _t.y=player.y+.9; camState.pitch=clamp(camState.pitch,.55,1.2); }   // the Sims view: high, looking down; the walls in the way drop
   dist*=camState.zoom; const cp=Math.cos(camState.pitch); _d.set(-Math.sin(camState.yaw)*cp,Math.sin(camState.pitch),-Math.cos(camState.yaw)*cp);
   if(mode!=='drive'&&!sims){ let side=gunOut()&&ARMS.aim?.6:.35;   // over the shoulder; with the wardrobe open, you stand in the clear part of the screen
@@ -2391,13 +2391,22 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crPress(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(ARMS.cur==='board'&&mode==='walk') boardRide(); else if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='7') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
-addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crDown(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(ARMS.cur==='board'&&mode==='walk') boardRide(); else if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='7') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; if(k==='x') crUp(); });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ for(const kk in K) K[kk]=false; joy.x=joy.y=0; touchBrake=false; if(AC&&AC.state==='running') AC.suspend(); } else { if(AC&&started) AC.resume(); lastT=performance.now(); } });
 const cvs=renderer.domElement; let dragging=false;
-function look(dx,dy){ const a=gunOut()&&ARMS.aim; camState.yaw-=dx*(a?.0021:.0028); camState.pitch=clamp(camState.pitch+dy*(a?.0017:.0022),a?-.6:-.15,1.15); camState.last=T0; }
+// camera: how fast it turns under your finger or mouse, and whether it swings round behind you as you move (kept on this device)
+const CAMS={s:1,f:1}; try{ Object.assign(CAMS,JSON.parse(localStorage.getItem('naija-cam')||'{}')); }catch(e){}
+function camSettings(){ $('#camSens').value=Math.round(CAMS.s*100); $('#camSensV').textContent=Math.round(CAMS.s*100)+'%'; document.querySelectorAll('#camFol button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.c===CAMS.f))); try{ localStorage.setItem('naija-cam',JSON.stringify(CAMS)); }catch(e){} }
+$('#camSens').addEventListener('input',e=>{ CAMS.s=+e.target.value/100; camSettings(); });
+document.querySelectorAll('#camFol button').forEach(b=>b.addEventListener('click',()=>{ CAMS.f=+b.dataset.c; camSettings(); })); camSettings();
+function look(dx,dy){ const a=gunOut()&&ARMS.aim, k=CAMS.s; camState.yaw-=dx*(a?.0021:.0028)*k; camState.pitch=clamp(camState.pitch+dy*(a?.0017:.0022)*k,a?-.6:-.15,1.15); camState.last=T0; }
+// on foot the camera comes round behind you while you move (not while you aim, turn it yourself, or run towards it)
+function camFollow(dt){ if(!CAMS.f||mode!=='walk'||(gunOut()&&ARMS.aim)||T0-camState.last<.6||player.speed<.5||WARD.open||HL.act) return;
+  let d=player.yaw-camState.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); if(Math.abs(d)>2.5) return;
+  const k=(CAMS.f===2?2.4:1.1)*clamp(player.speed/RUN_V,.3,1); camState.yaw+=d*(1-Math.exp(-k*dt)); }
 function lockPointer(){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{}); }catch(_){} }
 cvs.addEventListener('contextmenu',e=>e.preventDefault());
 cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') return; if(PHONE.cam){ dragging=true; return; } if(document.pointerLockElement===cvs&&mode==='walk'){ if(gunOut()){ if(e.button===0) ARMS.trig=true; else if(e.button===2) ARMS.aim=true; } else if(e.button===0) playerAttack('punch'); else if(e.button===2) playerAttack('kick'); }
@@ -2479,7 +2488,8 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
     for(const ev of ['pointerup','pointercancel','pointerleave']) b.addEventListener(ev,()=>{ const my=n; setTimeout(()=>{ if(n===my) TSK[k]=false; },Math.max(0,110-(performance.now()-t0))); b.classList.remove('on'); }); });
   $('#tPunch').addEventListener('pointerdown',e=>{ e.preventDefault(); tapAttack(); }); for(const ev of ['pointerup','pointercancel','pointerleave']) $('#tPunch').addEventListener(ev,()=>{ ARMS.trig=false; });
   $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); if(fightNear()) playerDodge(); else playerJump(); });
-  $('#tCrouch').addEventListener('pointerdown',e=>{ e.preventDefault(); crPress(); TB.k=null; }); }
+  { const C=$('#tCrouch'); C.addEventListener('pointerdown',e=>{ e.preventDefault(); crDown(); TB.k=null; try{ C.setPointerCapture(e.pointerId); }catch(_){} });   // hold it 2 s to lie down
+    for(const ev of ['pointerup','pointercancel']) C.addEventListener(ev,()=>{ crUp(); TB.k=null; }); } }
 // one ATTACK button: tap, tap, tap = jab, cross and the kick that floors him (running: a takedown); with a gun it fires
 function tapAttack(){ if(ARMS.cur==='board'&&mode==='walk'){ boardRide(); return; } if(gunOut()){ ARMS.trig=true; return; } const nxt=T0-FIGHT.swingT<1.05?FIGHT.chain+1:0; playerAttack(nxt>=2&&FIGHT.chain>=0?'kick':'punch'); }
 // a fight going on around you: JUMP becomes DODGE
@@ -2494,8 +2504,9 @@ function touchButtons(dt){ if(!touchUI||BL.edit||mode!=='walk'||!fightReady()) r
   if(!gunOut()&&!CARRY.p&&boardNear()) g='PICK UP';   // your board on the ground
   // ATTACK only with a weapon in hand, someone right by you or a fight on; with a gun: AIM and FIRE; with your board: RIDE
   const W=WEAPONS[ARMS.cur]||{}, gun=gunOut(), at=gun?(W.throw?'THROW':'FIRE'):ARMS.cur==='board'?'RIDE':(armed()||g==='GRAB'||g==='ROB'||fightNear()||T0-FIGHT.lastAtk<3)?'ATTACK':'';
-  const c=CR.sp?'SLIDE':CR.on?'CROUCH':player.speed>WALK_V+.35?'SLIDE':'CROUCH', con=CR.on||!!CR.sp;
-  const j=fightNear()?'DODGE':'JUMP', k=g+'|'+cls+'|'+j+'|'+at+'|'+c+con; if(k===TB.k) return; TB.k=k;
+  const c=CR.sp?'SLIDE':CR.pr?'PRONE':CR.on?'CROUCH':player.speed>WALK_V+.35?'SLIDE':'CROUCH', con=CR.on||!!CR.sp||!!CR.pr;
+  if(T0-(TB.ct||0)>.25){ TB.ct=T0; if(V3.done&&CR.for!==hero.cObj) try{ crClips(); }catch(e){} TB.cl=!CR.on&&!CR.sp&&!CARRY.p&&!!CR.clips&&!!climbFind(); }   // a wall or fence you can get over
+  const j=fightNear()?'DODGE':TB.cl?'CLIMB':'JUMP', k=g+'|'+cls+'|'+j+'|'+at+'|'+c+con; if(k===TB.k) return; TB.k=k;
   const b=$('#tGrab'); b.hidden=!g; if(g){ b.textContent=g; b.classList.toggle('on',cls==='on'); b.classList.toggle('fightb',g==='ROB'); }
   const P=$('#tPunch'); P.hidden=!at; P.classList.toggle('fire',gun); P.classList.toggle('fightb',!gun);
   const C=$('#tCrouch'); C.textContent=c; C.classList.toggle('on',con);
@@ -2507,7 +2518,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 /* ================= actions ================= */
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
-function action(){ if(busy||!started) return; if(MENU.open) return closeMenu();
+function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
   if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
@@ -2573,11 +2584,13 @@ function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thu
 
 /* ================= simulation ================= */
 function updateWalk(dt,inside){
+  if(CLIMB.on&&!inside){ climbTick(dt); if(hero) crTick(dt,0); rig.root.position.set(player.x,player.y+CLIMB.yo+(hero?CR.yo+(CR.off.climb||0):0),player.z); rig.root.rotation.y=player.yaw; if(hero) heroAnim(dt,0); return; }   // climbing: the move carries you
   const [f,s]=inputVec(), cy=camState.yaw, fx=Math.sin(cy), fz=Math.cos(cy), rx=-Math.cos(cy), rz=Math.sin(cy);
   let mx=fx*f+rx*s, mz=fz*f+rz*s, jd=0;
   const jg=JACK.go; if(jg&&!inside){ jg.t+=dt; const dx=jg.x-player.x, dz=jg.z-player.z; jd=Math.hypot(dx,dz); if(jd<.2||jg.t>1.6||FIGHT.ko){ JACK.go=null; jackThreaten(jg.v); jd=0; } else { mx=dx/jd; mz=dz/jd; } }   // walking up to the driver's door
   const len=Math.hypot(mx,mz), jl=Math.hypot(joy.x,joy.y), run=K.shift||touchRun||jl>.88; let target=len>.12?(run?RUN_V:WALK_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len)):0; if(CARRY.p) target=Math.min(target,RUN_V*.55); if(jd) target=Math.min(RUN_V*.75,jd*6);
   if(CR.on&&!CR.sp) target=Math.min(target,CR_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len));   // crouched: you creep (at the speed the move was made for)
+  if(CR.pr) target=CR.pr===2?Math.min(target,PRONE_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len)):0;   // lying down you crawl, slowly
   if(CR.sp){ target=crSlide(dt,run,len,mx,mz); player.speed=target; }
   if(CR.on&&(FIGHT.ko||CARRY.p||inside&&false)) crReset();
   const ov=hero&&hero.ov, held=FIGHT.ko||(ov&&ov.lock);
@@ -2586,9 +2599,9 @@ function updateWalk(dt,inside){
       if(k<ov.until+.1) player.yaw=lerpA(player.yaw,Math.atan2(dx,dz),1-Math.exp(-20*dt));
       if(k<ov.until){ const v=clamp((d-ov.stand)/Math.max(.05,(ov.until-k)*ov.dur),0,7); target=v; player.speed=v; } } }
   player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:(held?16:10)));
-  const strafe=!inside&&aimingNow();
-  if(strafe){ player.yaw=lerpA(player.yaw,Math.atan2(AIM.dir.x,AIM.dir.z),1-Math.exp(-(ARMS.aim?30:14)*dt)); target=Math.min(target,WALK_V*.85); }
-  else if(len>.12&&!held&&!CR.sp) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
+  const strafe=!inside&&aimingNow()&&!CR.sp;   // sliding you keep going where you slide, aiming and shooting as you go
+  if(strafe){ player.yaw=lerpA(player.yaw,Math.atan2(AIM.dir.x,AIM.dir.z),1-Math.exp(-(CR.pr?5:ARMS.aim?30:14)*dt)); target=Math.min(target,WALK_V*.85); }
+  else if(len>.12&&!held&&!CR.sp) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-(CR.pr?3:12)*dt));
   else if(!held&&!inside&&(FIGHT.near||T0-FIGHT.lastAtk<3)){ const t=lockFoe(); if(t) player.yaw=lerpA(player.yaw,Math.atan2(t.x-player.x,t.z-player.z),1-Math.exp(-10*dt)); }   // in a fight you keep facing your man
   let ex=0, ez=0; const DS=FIGHT.dash; if(DS){ DS.t+=dt; const k=Math.max(0,1-DS.t/DS.dur)*1.6; ex=DS.vx*k*dt; ez=DS.vz*k*dt; if(DS.t>=DS.dur) FIGHT.dash=null; }   // a dodge slides you aside
   if(strafe&&len>.12){ ex+=mx/len*player.speed*dt; ez+=mz/len*player.speed*dt; }
@@ -2599,7 +2612,9 @@ function updateWalk(dt,inside){
       if(ex>0&&ey>0){ if(ey<ex){ const g=Math.sign(lat)||1; player.x+=-hz*g*ey; player.z+=hx*g*ey; } else { const g=Math.sign(al)||1; player.x+=hx*g*ex; player.z+=hz*g*ex; }
         if(Math.abs(v.speed)>5&&FIGHT.carT<=0&&!FIGHT.dead&&v!==drive.v) carHitPlayer(v,Math.abs(v.speed)); } }
     if(player.y<1.2){ playerPeds(dt); const c2={x:player.x,z:player.z}; if(resolveCircle(c2,.34,null,player.y)){ player.x=c2.x; player.z=c2.z; } }   // people push you, but never into a wall
-    const gy=walkY(player.x,player.z,player.y); player.y+=(gy-player.y)*Math.min(1,dt*14); }
+    const gy=Math.max(walkY(player.x,player.z,player.y),topY(player.x,player.z,player.y));   // the ground, or the top of what you climbed
+    if(player.y>gy+.45){ player.vy=(player.vy||0)-9.8*dt; player.y=Math.max(gy,player.y+player.vy*dt); if(player.y<=gy) player.vy=0; }   // stepped off: you fall
+    else { player.vy=0; player.y+=(gy-player.y)*Math.min(1,dt*14); } }
   player.ph+=dt*(player.speed<3?player.speed*4.3:10+(player.speed-3)*.3);
   if(hero) crTick(dt,player.speed);
   rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw;
@@ -3775,30 +3790,42 @@ function carHitPlayer(v,sp){ FIGHT.carT=1.5; const fx=Math.cos(v.h), fz=-Math.si
   FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})});
   if(sayT<=0){ sayT=5; toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"']),2.4); } }
 // jumping: the real Mixamo jumps fitted to your body. Standing still you spring straight up; moving you leap forward and
-// land running. Crouched, JUMP stands you up (like CODM); sliding, it jumps you out of the slide.
-function playerJump(){ if(mode!=='walk'||!hero||FIGHT.ko||busy) return; if(hero.ov) return;
+// land running. A fence or wall in front of you that you can reach, you climb instead. Crouched, JUMP stands you up
+// (like CODM); lying down it brings you up to a crouch; sliding, it jumps you out of the slide.
+function playerJump(){ if(mode!=='walk'||!hero||FIGHT.ko||busy||CLIMB.on) return; if(hero.ov) return;
   let J=null; try{ J=crClips(); }catch(e){}
+  if(CR.pr){ if(CR.pr===2) proneUp(); return; }
   if(CR.sp){ CR.sp=0; CR.on=false; }
   else if(CR.on){ crStand(); return; }
+  if(J&&!CARRY.p&&climbTry()) return;
   if(J&&hero.act.jump3){ const sp=player.speed; if(sp>1.1) heroDo('jump_run',{ts:clamp(sp/3.7,1,1.32),lock:false}); else heroDo('jump3',{ts:1.3,lock:false,from:J.j0,to:J.j1}); return; }
   if(hero.act.jump) heroDo('jump',{ts:1.35,lock:false}); }
-// ---- crouch and slide (like CODM), with real Mixamo moves fitted to your body: still, CROUCH puts you down on one
-// knee; moving you creep low; running, SLIDE drops you into a slide along the ground. Keep running and you come up into
-// the run, let go and you end crouched. Aiming the rifle you hold it in both hands; otherwise your hands rest and swing.
+// ---- crouch, slide and prone (like CODM), with real Mixamo moves fitted to your body: still, CROUCH puts you down on one
+// knee; moving you creep low; running, SLIDE drops you into a slide along the ground (aiming and shooting all the way if
+// you have the gun up). Keep running and you come up into the run, let go and you end crouched. Hold CROUCH for 2
+// seconds and you lie flat (prone) and can crawl; tap it again (or JUMP) to come back up to the kneel. Aiming the rifle
+// you hold it in both hands; otherwise your hands rest and swing.
 const V3={job:null,done:null};
 function v3Moves(){ return V3.job||(V3.job=fetchBuf(purl('moves3')).then(b=>GLL.parseAsync(b,'')).then(g=>(V3.done={g,S:C2.skeletonInfo(g.scene)})).catch(e=>{ console.warn('moves3',e); V3.job=null; })); }
-const CR={on:false,sp:0,st:0,v0:0,yaw:0,w:0,sw:0,gw:0,wk:0,yo:0,clips:null,for:null,acts:{},off:{},prof:null};
-const CR_V=1.64;   // how fast the crouch walk was made (m/s)
+const CR={on:false,sp:0,st:0,v0:0,yaw:0,w:0,sw:0,gw:0,wk:0,yo:0,pr:0,pt:0,pw:0,pk:0,PW:{pin:0,pidle:0,pfwd:0,pout:0},hold:0,wasOn:false,clips:null,for:null,acts:{},off:{},prof:null,Hw:1};
+const CR_V=1.64, PRONE_V=.45, PRONE_HOLD=2;   // crouch walk speed as made (m/s); crawling; how long to hold CROUCH to lie down (s)
 const SLD={a:3/30,b:24/30,c:38/30,ts:1.15};   // the slide: down and along the ground (a..b), then up into the run (b..c)
 function crClips(){ if(CR.for===hero.cObj&&CR.clips) return CR.clips; const M=V3.done; if(!M){ v3Moves(); throw new Error('moves3 not in yet'); }
   for(const k in CR.acts) CR.acts[k].stop(); CR.acts={};
   const D=homeInfo(), raw=n=>{ const c=M.g.animations.find(a=>a.name===n); if(!c) throw new Error('no '+n); return c; };
   const mv=(n,as)=>{ const k=C2.retargetClip(raw(n),M.S,D,{norm:true}); k.name=as; return k; };
-  const C={idle:mv('v3_cr_idle','cr_idle'),walk:mv('v3_cr_walk','cr_walk'),gidle:mv('v3_cr_idle_gun','cr_idle_gun'),gwalk:mv('v3_cr_walk_gun','cr_walk_gun'),slide:mv('v3_slide','cr_slide'),jump:mv('v3_jump','jump3'),jrun:mv('v3_jump_run','jump_run')};
+  const C={idle:mv('v3_cr_idle','cr_idle'),walk:mv('v3_cr_walk','cr_walk'),gidle:mv('v3_cr_idle_gun','cr_idle_gun'),gwalk:mv('v3_cr_walk_gun','cr_walk_gun'),slide:mv('v3_slide','cr_slide'),jump:mv('v3_jump','jump3'),jrun:mv('v3_jump_run','jump_run'),
+    pin:mv('v3_prone_in','prone_in'),pidle:mv('v3_prone_idle','prone_idle'),pfwd:mv('v3_prone_fwd','prone_fwd'),pout:mv('v3_prone_out','prone_out'),vault:mv('v3_vault','vault'),wall:mv('v3_wall','wall_climb'),drop:mv('v3_drop','drop_down')};
   C.j0=8/72; C.j1=58/72;   // the standing jump from the middle of the dip down to when you are standing again
   // the slide's speed along the ground, as made (a share of its speed at the start)
   { const t=raw('v3_slide').tracks.find(t=>/Hips\.position$/.test(t.name)), v=t.values, n=t.times.length, sp=[]; for(let i=1;i<n;i++) sp.push(Math.hypot(v[i*3]-v[i*3-3],v[i*3+2]-v[i*3-1])/(t.times[i]-t.times[i-1]));
     const s0=sp[Math.round(SLD.a*30)]||1; CR.prof=sp.map(x=>x/s0); }
+  // climbs: the floor under each (how high you stand, how far along you are, per frame) and the hips' height, as shares
+  // of the hips' height; the move is played relative to its floor, which the game raises to the real wall's height
+  const hipsL=D.lp.get('Hips').y; { const v=new THREE.Vector3(); hero.hips.parent.getWorldScale(v); CR.Hw=hipsL*v.y; }
+  for(const k of ['vault','wall','drop']){ const r=raw('v3_'+k), ft=r.tracks.find(t=>/floor\.position$/.test(t.name)), ht=r.tracks.find(t=>/Hips\.position$/.test(t.name)), n=ft.times.length;
+    const F=new Float32Array(n), Z=new Float32Array(n), Y=new Float32Array(n); for(let i=0;i<n;i++){ F[i]=ft.values[i*3+1]; Z[i]=ft.values[i*3+2]; Y[i]=ht.values[i*3+1]; }
+    C[k].floor={F,Z,Y,n}; const pt=C[k].tracks.find(t=>/Hips\.position$/.test(t.name)); for(let i=0;i<pt.times.length;i++) pt.values[i*3+1]-=F[Math.min(n-1,i)]*hipsL; }
   // how low each move puts your feet: they go on the floor where your standing feet are
   const r=hero.root, cy=hero.cObj.position.y, FEET=/(Foot|ToeBase)$/;
   const low=(clip,ts)=>{ const p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); hero.cObj.position.y=0; const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(clip).play(); const lows=[];
@@ -3807,31 +3834,101 @@ function crClips(){ if(CR.for===hero.cObj&&CR.clips) return CR.clips; const M=V3
   const spread=(k,n=8)=>Array.from({length:n},(_,i)=>k.duration*(i+.5)/n), O=hero.look&&hero.look.off, idleN=hero.look?hero.look.idle||'idle':'idle';
   const ground=low(hero.act.idle.getClip(),[0,.5])+(O?(O[idleN]||0):0);
   CR.off={}; for(const k of ['idle','walk','gidle','gwalk']) CR.off[k]=ground-low(C[k],spread(C[k])); CR.off.slide=ground-low(C.slide,[0,.05,.1]);
-  for(const k of ['idle','walk','gidle','gwalk']){ const a=hero.mixer.clipAction(C[k]); a.play(); a.setEffectiveWeight(0); CR.acts[k]=a; }
-  { const a=hero.mixer.clipAction(C.slide); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play(); a.timeScale=0; a.setEffectiveWeight(0); CR.acts.slide=a; }
+  CR.off.prone=ground-low(C.pidle,spread(C.pidle)); CR.off.climb=ground-low(C.vault,[0,.05]);
+  for(const k of ['idle','walk','gidle','gwalk','pidle','pfwd']){ const a=hero.mixer.clipAction(C[k]); a.play(); a.setEffectiveWeight(0); CR.acts[k]=a; }
+  for(const k of ['slide','pin','pout']){ const a=hero.mixer.clipAction(C[k]); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play(); a.timeScale=0; a.setEffectiveWeight(0); CR.acts[k]=a; }
   hero.act.jump3=hero.mixer.clipAction(C.jump); hero.act.jump_run=hero.mixer.clipAction(C.jrun);
   if(O){ O.jump3=ground-low(C.jump,[C.jump.duration*C.j0]); O.jump_run=ground-low(C.jrun,[0,.03]); }
   hero.mixer.update(0); CR.for=hero.cObj; return CR.clips=C; }
-function crPress(){ if(mode!=='walk'||!hero||FIGHT.ko||busy||CARRY.p||(hero.ov&&hero.ov.lock)) return; try{ crClips(); }catch(e){ return; }
-  if(CR.sp||hero.ov) return;
-  if(!CR.on&&player.speed>WALK_V+.35&&!aimingNow()){ CR.sp=1; CR.st=SLD.a; CR.v0=Math.max(player.speed,RUN_V)*1.04; CR.yaw=player.yaw; CR.on=true; burst(.12,260,.18,5); return; }   // running: slide
-  CR.on=!CR.on; }
-function crStand(){ CR.on=false; CR.sp=0; }
-function crReset(){ CR.on=false; CR.sp=0; }
-function crOff(){ crReset(); CR.w=CR.sw=CR.yo=0; for(const k in CR.acts) CR.acts[k].setEffectiveWeight(0); }
+const crOK=()=>mode==='walk'&&hero&&!FIGHT.ko&&!busy&&!CARRY.p&&!CLIMB.on&&!(hero.ov&&hero.ov.lock);
+// CROUCH pressed: running you slide; standing or walking you crouch at once; crouched, you stand up when you let go
+// (unless you held it 2 seconds: then you lie down); lying down, you come back up to the kneel
+function crDown(){ if(!crOK()) return; try{ crClips(); }catch(e){ return; } if(CR.sp||hero.ov) return; CR.hold=0; CR.wasOn=false;
+  if(CR.pr){ if(CR.pr===2) proneUp(); return; }
+  if(!CR.on&&player.speed>WALK_V+.35){ CR.sp=1; CR.st=SLD.a; CR.v0=Math.max(player.speed,RUN_V)*1.04; CR.yaw=player.yaw; CR.on=true; burst(.12,260,.18,5); return; }   // running: slide
+  CR.hold=T0; if(CR.on) CR.wasOn=true; else CR.on=true; }
+function crUp(){ if(CR.hold&&CR.wasOn&&T0-CR.hold<PRONE_HOLD&&!CR.pr&&!CR.sp) crStand(); CR.hold=0; CR.wasOn=false; }
+function crPress(){ crDown(); crUp(); }   // a tap
+function crStand(){ CR.on=false; CR.sp=0; CR.pr=0; }
+function crReset(){ CR.on=false; CR.sp=0; CR.pr=0; CR.hold=0; }
+function crOff(){ crReset(); CR.w=CR.sw=CR.yo=CR.pw=0; for(const k in CR.PW) CR.PW[k]=0; for(const k in CR.acts) CR.acts[k].setEffectiveWeight(0); }
+function proneDown(){ CR.on=true; CR.sp=0; CR.pr=1; CR.pt=0; CR.hold=0; burst(.08,180,.2,4); }
+function proneUp(){ CR.pr=3; CR.pt=0; }
 // the slide, moved on in the walk update: your speed follows the move, you can steer a little
 function crSlide(dt,run,len,mx,mz){ CR.st+=dt*SLD.ts; const P=CR.prof, i=Math.min(P.length-1,Math.max(0,Math.floor(CR.st*30))), sp=CR.v0*(P[i]||.6);
   if(len>.12) CR.yaw=lerpA(CR.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-1.6*dt)); player.yaw=CR.yaw;
   if(CR.sp===1&&CR.st>=SLD.b){ if(run&&len>.5){ CR.sp=2; CR.on=false; } else { CR.sp=0; CR.on=true; } }   // keep running and you come up into the run
   else if(CR.sp===2&&(CR.st>=SLD.c||len<.12)) CR.sp=0;
   return CR.sp===2?Math.max(sp,RUN_V*.8):sp; }
-function crTick(dt,speed){ const want=(CR.on||CR.sp)&&mode!=='drive'?1:0; if(!want&&CR.w<.002){ CR.w=0; CR.yo=0; return; } if(!CR.clips||CR.for!==hero.cObj){ try{ crClips(); }catch(e){ crReset(); return; } }
+function crTick(dt,speed){ if(CR.hold&&CR.on&&!CR.pr&&!CR.sp&&T0-CR.hold>=PRONE_HOLD&&crOK()) proneDown();   // held long enough: lie down
+  const want=(CR.on||CR.sp||CR.pr)&&mode!=='drive'&&!CLIMB.on?1:0; if(!want&&CR.w<.002){ CR.w=0; CR.yo=0; CR.pw=0; return; } if(!CR.clips||CR.for!==hero.cObj){ try{ crClips(); }catch(e){ crReset(); return; } }
+  const C=CR.clips, A=CR.acts;
+  if(CR.pr===1){ CR.pt+=dt*1.25; if(CR.pt>=C.pin.duration) CR.pr=2; }
+  else if(CR.pr===3){ CR.pt+=dt*1.6; if(CR.pt>=C.pout.duration*.97) CR.pr=0; }
   const k=1-Math.exp(-10*dt); CR.w+=(want-CR.w)*k; CR.sw+=((CR.sp?1:0)-CR.sw)*(1-Math.exp(-(CR.sp?18:7)*dt)); CR.wk+=((speed>.12?1:0)-CR.wk)*k; CR.gw+=((mode==='walk'&&ARMS.cur==='ak'&&aimingNow()?1:0)-CR.gw)*(1-Math.exp(-8*dt));
-  const A=CR.acts, c=CR.w, sw=CR.sw, gw=CR.gw, wk=CR.wk, rest=c*(1-sw);
+  CR.pw+=((CR.pr?1:0)-CR.pw)*(1-Math.exp(-(CR.pr?16:12)*dt)); CR.pk+=((CR.pr===2&&speed>.08?1:0)-CR.pk)*(1-Math.exp(-6*dt));
+  { const P=CR.PW, T={pin:CR.pr===1?1:0,pidle:CR.pr===2?1-CR.pk:0,pfwd:CR.pr===2?CR.pk:0,pout:CR.pr===3?1:0}; let s=0; for(const n in P){ P[n]+=(T[n]-P[n])*(1-Math.exp(-14*dt)); s+=P[n]; } if(s>1e-3) for(const n in P) P[n]/=s; }
+  const c=CR.w, sw=CR.sw*(1-CR.pw), pw=CR.pw, gw=CR.gw, wk=CR.wk, rest=c*(1-sw)*(1-pw);
   A.idle.setEffectiveWeight(rest*(1-wk)*(1-gw)); A.gidle.setEffectiveWeight(rest*(1-wk)*gw); A.walk.setEffectiveWeight(rest*wk*(1-gw)); A.gwalk.setEffectiveWeight(rest*wk*gw);
   A.slide.setEffectiveWeight(c*sw); A.slide.time=Math.min(CR.st,SLD.c);
-  A.walk.timeScale=A.gwalk.timeScale=clamp(speed/CR_V,.5,1.6);
-  const O=CR.off; CR.yo=rest*((1-wk)*((1-gw)*O.idle+gw*O.gidle)+wk*((1-gw)*O.walk+gw*O.gwalk))+c*sw*O.slide; }
+  for(const n of ['pin','pidle','pfwd','pout']) A[n].setEffectiveWeight(c*pw*CR.PW[n]);
+  if(CR.pr===1) A.pin.time=Math.min(CR.pt,C.pin.duration); if(CR.pr===3) A.pout.time=Math.min(CR.pt,C.pout.duration);
+  A.walk.timeScale=A.gwalk.timeScale=clamp(speed/CR_V,.5,1.6); A.pfwd.timeScale=clamp(speed/.24,.6,2);
+  const O=CR.off; CR.yo=rest*((1-wk)*((1-gw)*O.idle+gw*O.gidle)+wk*((1-gw)*O.walk+gw*O.gwalk))+c*sw*O.slide+c*pw*O.prone; }
+// ---- climbing: JUMP in front of a fence or wall you can reach and you go over it or up onto it. Up to about 1.4 m you
+// vault it with a hand on top; higher, up to 2.6 m, you run up the wall, pull yourself onto it and (a thin wall) drop
+// down the other side. The moves are Mixamo's, played on a floor that rises and falls to the real wall's height.
+const CLIMB={on:false,w:0,segs:null,i:0,t:0,a:null,prev:null,pw:0,x0:0,z0:0,y0:0,fx:0,fz:1,yo:0,end:null};
+function climbFind(){ const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), reach=player.speed>2.5?1.9:1.15; let best=null;
+  for(const b of query(player.x-3,player.z-3,player.x+3,player.z+3)){ const top=b.h-player.y; if(top<.45||top>2.6||b.y0>player.y+.3) continue;
+    let ox=player.x, oz=player.z, dx=fx, dz=fz, x0=b.x0, x1=b.x1, z0=b.z0, z1=b.z1;
+    if(b.ob){ const q=b.ob, rx=ox-q.cx, rz=oz-q.cz; ox=rx*q.c+rz*q.s; oz=-rx*q.s+rz*q.c; dx=fx*q.c+fz*q.s; dz=-fx*q.s+fz*q.c; x0=-q.hx; x1=q.hx; z0=-q.hz; z1=q.hz; }
+    let tn=-1e9, tf=1e9, ok=true;
+    for(const [o,d,a,e] of [[ox,dx,x0,x1],[oz,dz,z0,z1]]){ if(Math.abs(d)<1e-6){ if(o<a||o>e){ ok=false; break; } continue; } let t1=(a-o)/d, t2=(e-o)/d; if(t1>t2){ const t=t1; t1=t2; t2=t; } tn=Math.max(tn,t1); tf=Math.min(tf,t2); }
+    if(!ok||tn>tf||tn<-.05||tn>reach) continue;
+    if(!best||tn<best.tn) best={b,tn,tf,top}; }
+  if(!best) return null;
+  const {b,tn,tf,top}=best, depth=tf-tn, at=t=>({x:player.x+fx*t,z:player.z+fz*t});
+  const clear=(p,y)=>onLand(p.x,p.z)&&!resolveCircle({x:p.x,z:p.z},.3,null,y), roomAbove=p=>{ for(const o of query(p.x-.3,p.z-.3,p.x+.3,p.z+.3)) if(o!==b&&o.h>b.h+.3&&o.y0<b.h+1.8&&inCol(o,p.x,p.z,.25)) return false; return true; };
+  const far=at(tf+.6), farOK=clear(far,player.y)&&Math.abs(walkY(far.x,far.z,player.y)-player.y)<.6;
+  if(top<=1.45){ if(depth<=1.3&&farOK) return {kind:'vault',b,tn,tf,depth,top,land:far}; return null; }
+  if(depth<=.9&&farOK) return {kind:'over',b,tn,tf,depth,top,land:far};
+  const on=at(tn+Math.min(depth*.5,.6)); if(inCol(b,on.x,on.z,.1)&&roomAbove(on)) return {kind:'onto',b,tn,tf,depth,top,on};
+  return null; }
+function inCol(b,x,z,m=0){ if(b.ob){ const q=b.ob, rx=x-q.cx, rz=z-q.cz, u=rx*q.c+rz*q.s, v=-rx*q.s+rz*q.c; return Math.abs(u)<=q.hx+m&&Math.abs(v)<=q.hz+m; } return x>=b.x0-m&&x<=b.x1+m&&z>=b.z0-m&&z<=b.z1+m; }
+// standing on top of things you climbed: the highest top under you that you are at or just above
+function topY(x,z,y){ let best=0; for(const b of query(x-.4,z-.4,x+.4,z+.4)){ if(b.h>y+.5||b.h<=best||b.h>8) continue; if(inCol(b,x,z,.14)) best=b.h; } return best; }
+// time in a move where its floor has come along a given distance (shares of the hips' height)
+function floorAt(fl,t){ const i=t*30, i0=Math.max(0,Math.min(fl.n-1,Math.floor(i))), i1=Math.min(fl.n-1,i0+1), f=Math.min(1,Math.max(0,i-i0)); return {F:fl.F[i0]+(fl.F[i1]-fl.F[i0])*f,Z:fl.Z[i0]+(fl.Z[i1]-fl.Z[i0])*f,Y:fl.Y[i0]+(fl.Y[i1]-fl.Y[i0])*f}; }
+function floorTime(fl,z){ for(let i=0;i<fl.n;i++) if(fl.Z[i]>=z) return i/30; return (fl.n-1)/30; }
+function climbTry(){ const f=climbFind(); if(!f) return false; const C=CR.clips, H=CR.Hw, segs=[];
+  crOff(); if(hero.ov) heroEnd();
+  if(f.kind==='vault'){ const fl=C.vault.floor, ctr=2.15/ .998, t0=floorTime(fl,Math.max(0,ctr-(f.tn+f.depth/2)/H)), s=clamp(f.top/1.0,.75,1.45);
+    segs.push({k:'vault',clip:C.vault,t0,t1:33/30,ts:clamp(Math.max(player.speed,3)/3.9,.95,1.25),arc:s,fwd:1e9}); }
+  else { const fl=C.wall.floor, face=2.45/.998, t0=floorTime(fl,Math.max(0,face-f.tn/H)), Ftop=fl.F[fl.n-1]*H, s=f.top/Ftop;
+    const fwdMax=f.kind==='over'?f.tn+f.depth/2:f.tn+Math.min(f.depth-.3,.75);
+    segs.push({k:'wall',clip:C.wall,t0,t1:(fl.n-1)/30,ts:1.15,lift:s,fwd:fwdMax});
+    if(f.kind==='over'){ const dl=C.drop.floor, d0=20/30; segs.push({k:'drop',clip:C.drop,t0:d0,t1:68/30,ts:1.25,lift:f.top/(floorAt(dl,d0).F*H),fwd:1e9,down:true}); } }
+  Object.assign(CLIMB,{on:true,kind:f.kind,top:f.top,segs,i:-1,t:0,w:1,x0:player.x,z0:player.z,y0:player.y,fx:Math.sin(player.yaw),fz:Math.cos(player.yaw),d0:0,yo:0,b:f.b});
+  climbSeg(0); player.speed=Math.max(player.speed,1.5); TB.k=null; return true; }
+function climbSeg(i){ const S=CLIMB.segs[i]; if(CLIMB.a){ CLIMB.prev=CLIMB.a; CLIMB.pw=1; }
+  CLIMB.i=i; CLIMB.t=S.t0; const a=hero.mixer.clipAction(S.clip); a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play(); a.timeScale=0; a.time=S.t0; a.setEffectiveWeight(1); CLIMB.a=a;
+  CLIMB.zs=floorAt(S.clip.floor,S.t0).Z; }
+function climbTick(dt){ const H=CR.Hw, S=CLIMB.segs[CLIMB.i], fl=S.clip.floor;
+  CLIMB.t=Math.min(S.t1,CLIMB.t+dt*S.ts); CLIMB.a.time=CLIMB.t; const p=floorAt(fl,CLIMB.t);
+  const along=Math.min((p.Z-CLIMB.zs)*H,S.fwd);
+  if(S.k==='vault'){ const Y0=floorAt(fl,S.t0).Y; player.y=CLIMB.y0; CLIMB.yo=(S.arc-1)*Math.max(0,p.Y-Y0)*H; }
+  else if(S.down){ player.y=CLIMB.y0+p.F*H*S.lift; CLIMB.yo=0; }
+  else { player.y=CLIMB.y0+p.F*H*S.lift; CLIMB.yo=0; }
+  const base=CLIMB.i===0?0:CLIMB.d0; player.x=CLIMB.x0+CLIMB.fx*(base+along); player.z=CLIMB.z0+CLIMB.fz*(base+along);
+  if(CLIMB.prev){ CLIMB.pw=Math.max(0,CLIMB.pw-dt/.15); CLIMB.prev.setEffectiveWeight(CLIMB.pw); CLIMB.a.setEffectiveWeight(1-CLIMB.pw); if(CLIMB.pw<=0){ CLIMB.prev.stop(); CLIMB.prev=null; } }
+  if(CLIMB.t>=S.t1-1e-4){ if(CLIMB.i+1<CLIMB.segs.length){ CLIMB.d0=base+along; climbSeg(CLIMB.i+1); } else climbEnd(); }
+  player.speed=CLIMB.on?0:player.speed; }
+function climbEnd(){ const k=CLIMB.kind; CLIMB.on=false; CLIMB.yo=0; if(CLIMB.prev){ CLIMB.prev.stop(); CLIMB.prev=null; }
+  if(k==='onto') player.y=CLIMB.y0+CLIMB.top; else player.y=walkY(player.x,player.z,player.y);
+  const a=CLIMB.a; CLIMB.fade=a; CLIMB.fw=1; CLIMB.a=null; player.speed=k==='vault'?Math.min(RUN_V,3.4):0; }
+// the climb's weight over everything else, and the end of it fading into what you do next
+function climbWeight(dt){ if(CLIMB.on) return 1; const a=CLIMB.fade; if(!a) return 0; CLIMB.fw=Math.max(0,CLIMB.fw-dt/(CLIMB.kind==='onto'?.35:.18)); a.setEffectiveWeight(CLIMB.fw); if(CLIMB.fw<=0){ a.stop(); CLIMB.fade=null; } return CLIMB.fw; }
 // paired move ("jack" him): you grab them by the legs and slam them on the floor, and you are down there with them to keep hitting
 const TK=.34;   // the part of the takedown up to the slam
 function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);

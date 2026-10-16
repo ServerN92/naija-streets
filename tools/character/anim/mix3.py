@@ -95,3 +95,13 @@ def loop_fix(M, k=6):   # blend the last frames into the first so a loop has no 
 def slerp_m(A, B, w):
     from scipy.spatial.transform import Rotation as Rr, Slerp
     r = Rr.from_matrix([A, B]); return Slerp([0, 1], r)([w]).as_matrix()[0]
+
+def floor(M, kind):
+    """where the floor is under a climbing move, per frame (cm): 'up' the highest the feet have stood so far (ends on top
+    of the wall), 'down' the lowest so far (from the ledge to the ground), 'flat' always 0. The game raises you with it,
+    scaled to the real height, and the move is played relative to it."""
+    P = world_pos(M); toe = np.minimum(P['mixamorig:LeftToeBase'][:, 1], P['mixamorig:RightToeBase'][:, 1]) - 3
+    if kind == 'flat': F = np.zeros(M['n'])
+    elif kind == 'up': F = np.minimum(np.maximum.accumulate(np.maximum(toe, 0)), max(toe[-1], 0))
+    else: F = np.maximum(np.minimum.accumulate(toe), 0)
+    return dict(M, F=F)

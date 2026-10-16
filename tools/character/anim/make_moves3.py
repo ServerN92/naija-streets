@@ -23,6 +23,12 @@ def moves(F):
         'v3_slide': F('Running Slide'),
         'v3_jump': F('Standing Jump'),
         'v3_jump_run': mix3.join(mix3.cut(F('Standing Jump Running'), 12), mix3.cut(F('Standing Jump Running Landing'), 1, 30)),
+        # lying down (prone), crawling and getting up again, from the kneel
+        'v3_prone_in': mix3.cut(F('Crouch To Prone'), 12, 46), 'v3_prone_idle': F('Prone Idle'),
+        'v3_prone_fwd': mix3.loop_fix(F('Prone Forward')), 'v3_prone_out': F('Prone To Crouch'),
+        # climbing: vault a fence, climb a wall, drop down off a wall; each carries its floor (see mix3.floor)
+        'v3_vault': mix3.floor(F('Jump Over Obstacle'), 'flat'), 'v3_wall': mix3.floor(F('Sprint To Wall Climb'), 'up'),
+        'v3_drop': mix3.floor(F('Jumping Down'), 'down'),
     }
 
 def write(MV, out, skel):
@@ -37,6 +43,7 @@ def write(MV, out, skel):
         p = par.get(b); (g.js['nodes'][idx[p]]['children'] if p in idx else g.js['nodes'][root]['children']).append(idx[b])
     for n in g.js['nodes']:
         if not n.get('children'): n.pop('children', None)
+    fl = g.node(name='floor'); g.js['nodes'][root]['children'].append(fl)   # a climb's floor: (0, height, forward) per frame
     g.js['scenes'][0]['nodes'].append(root)
     H = rest['mixamorig:Hips']['Lcl Translation'][1]; anims = []
     for clip, M in MV.items():
@@ -49,7 +56,10 @@ def write(MV, out, skel):
             sm.append(dict(input=tin, output=g.acc(Q.astype(np.float32), 'VEC4'), interpolation='LINEAR')); ch.append(dict(sampler=len(sm) - 1, target=dict(node=idx[bn], path='rotation')))
             if bn.endswith('Hips'):
                 sm.append(dict(input=tin, output=g.acc((M['T'] / H).astype(np.float32), 'VEC3'), interpolation='LINEAR')); ch.append(dict(sampler=len(sm) - 1, target=dict(node=idx[bn], path='translation')))
-        anims.append(dict(name=clip, channels=ch, samplers=sm)); print(clip, n, 'frames %.2f s' % (n / 30))
+        if 'F' in M:
+            FL = np.stack([np.zeros(n), M['F'], M['T'][:, 2] - M['T'][0, 2]], 1) / H
+            sm.append(dict(input=tin, output=g.acc(FL.astype(np.float32), 'VEC3'), interpolation='LINEAR')); ch.append(dict(sampler=len(sm) - 1, target=dict(node=fl, path='translation')))
+        anims.append(dict(name=clip, channels=ch, samplers=sm)); print(clip, n, 'frames %.2f s' % (n / 30), ('floor top %.2f m' % (M['F'].max() / 100)) if 'F' in M else '')
     g.js['animations'] = anims; print('saved', out, g.save(out), 'bytes')
 
 def main(indir, out, build=moves):
