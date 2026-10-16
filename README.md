@@ -59,10 +59,13 @@ Bridge; the shops, gangs and people in it are made up.
   on you. Give them everything (they leave you ₦200 for transport), fight (your odds depend on your weapon and health:
   win and they run, drop money and leave you the motor; lose and they beat you and take it all), or jump out of the
   moving motor and keep your money.
-- **Cults.** Two made-up cults share Under Bridge: the Red Scorpions (west, red berets) and the Blue Mambas (east, blue
-  berets). Each has a base (on your map) with its Capo and boys, and the boys at the drums belong to the cult whose turf
-  it is. At night strangers get warned, then beaten; now and then the two cults shoot it out in a street. Talk to a
-  Capo to join (₦20,000, then put down three of the other cult). As a member your boys greet you, the other cult hunts
+- **No police inside.** What happens in Under Bridge stays there: fights, shootings and killings bring no stars, and
+  stars you bring in fade away. The police wait at the checkpoint.
+- **Cults.** Three made-up cults share Under Bridge and are always at war: the Red Scorpions (west, red berets), the Blue
+  Mambas (middle, blue) and the Yellow Hornets (east, yellow). Each has a base (on your map) with its Capo and boys, and
+  the boys at the drums belong to the cult whose turf it is. At night strangers get warned, then beaten; day and night
+  two of the cults shoot it out in a street every minute or two. Talk to a Capo to join (₦20,000, then put down three of
+  the other cults). As a member your boys greet you, the other cult hunts
   you, the base pays you a share over time, and the Capo can send three armed boys to follow you and fight for you for
   three minutes (₦3,000). Hit your own people and they throw you out; ₦50,000 settles them if you want to leave.
 - **Kidnappers.** Masked men in buses grab people off the street and take them to their den (a fenced yard with an
@@ -73,6 +76,16 @@ Bridge; the shops, gangs and people in it are made up.
   rope loose, take your things from the sack by the generator, and run for the gate past the guards.
 - **Bandits.** At night okadas come in fast, two masked bandits on each, shooting into the air. Keep away, or fight:
   the vigilante pays ₦10,000 for every bandit you put down. They ride off after a minute or two.
+- **The forest.** A block at the south edge of Under Bridge is bush now (no new land): tall trees, thick bushes, rocks
+  and earth tracks, and in a clearing the bandits' camp (on your map) with tents, a cooking fire, the post they tie
+  people to and their olive pickup. Walk in and they shoot.
+- **Taken by the bandits.** Their pickup comes for you with masked men in the back (or a man walking past grabs you):
+  one throws you over his shoulder (press E again and again to kick free), they throw you in the truck, drive you to
+  the camp and tie you to the post. Pay the ransom (70% of your cash, from ₦20,000), or work the rope loose, take your
+  things from the sack by the tents and run into the bush.
+- **Hard men, big money.** Armed gang fighters take as many bullets as you do and slide or jump out of the line of fire
+  like you. Every one that falls drops ₦100,000–250,000 (₦300,000 for a Capo), and wiping out a whole group (a clash
+  side, a base, the den, the raiders, the camp) pays ₦200,000–500,000 more.
 - **The chop shop.** Bring any car that isn't yours to the yellow ring by the "WE BUY ANY CAR" sign and press E: they
   pay by type and damage, no questions (a police van also brings heat).
 
@@ -82,8 +95,9 @@ python3 tools/osm_world.py ikeja.osm /tmp/ikeja_world.json
 python3 tools/merge_district.py assets/maps/mushin_world.json /tmp/ikeja_world.json assets/maps/lagos_world.json
 ```
 The Under Bridge props are built in Blender by `tools/blender_underbridge.py` (gate, police post, piers, shacks) and
-`tools/blender_underbridge2.py` (cult berets, bandit masks, cult bases, kidnappers' den); run either inside Blender, or
-headless with `python3 tools/glb_build.py -m blender_underbridge2`.
+`tools/blender_underbridge2.py` (cult berets, bandit masks, cult bases, kidnappers' den) and `tools/blender_forest.py`
+(the bandits' truck, forest trees, bushes, rocks, tents, cooking fire, log, post, the third cult's base); run any of them
+inside Blender, or headless with `python3 tools/glb_build.py -m blender_forest`.
 Both cities are one map; far things are hidden by distance, as in Mushin.
 
 Life on the streets: traffic moves fast on the highways and big roads, so people never walk across them: they use the footbridges; hawkers walk out between the cars when the light turns
