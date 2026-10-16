@@ -6232,7 +6232,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     // online test helpers
     net:()=>({status:NET.c&&NET.c.status,id:NET.id,room:NET.room,mode,ride:NET.ride&&{d:NET.ride.d,i:NET.ride.i},x:player.x,z:player.z,
       log:NET.log.map(m=>(m.n?m.n+': ':'')+m.x),players:[...NET.P.values()].map(R=>({id:R.id,n:R.n,l:R.l,body:!!R.av,vis:!!(R.av&&R.av.root.visible),seat:!!(R.av&&R.av.seat),car:R.car?R.car.netType:null,tag:!!(R.tag&&R.tag.visible),x:R.st&&+R.st.x.toFixed(1),z:R.st&&+R.st.z.toFixed(1),a:R.st&&R.st.a}))}),
-    nearCar(){ let b=null,bd=1e9; for(const v of vehicles){ if(v.net||v.ai||v.wreck||v.forSale||v.type==='skate'||!SEATS[v.type]||SEATS[v.type].length<3) continue; const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd){ bd=d; b=v; } } if(!b) return null; const hx=Math.cos(b.h), hz=-Math.sin(b.h); return {x:b.x,z:b.z,type:b.type,sx:b.x+hz*(b.c.def.W/2+1),sz:b.z-hx*(b.c.def.W/2+1)}; },
+    nearCar(){ let b=null,bd=1e9; for(const v of vehicles){ if(v.net||v.ai||v.wreck||v.forSale||Math.hypot(v.x-APT.front.x,v.z-APT.front.z)<16||v.type==='skate'||!SEATS[v.type]||SEATS[v.type].length<3) continue; const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd){ bd=d; b=v; } } if(!b) return null; const hx=Math.cos(b.h), hz=-Math.sin(b.h); return {x:b.x,z:b.z,type:b.type,sx:b.x+hz*(b.c.def.W/2+1),sz:b.z-hx*(b.c.def.W/2+1)}; },
     netCar:()=>{ for(const R of NET.P.values()) if(R.car) return {x:R.car.x,z:R.car.z,type:R.car.netType,h:R.car.h,W:R.car.c.def.W}; return null; },
     skaterKnock(i=0){ const k=SKATERS[i]; if(!k) return null; skaterKnock(k); return !!k.down; },
     start(){ if(!started) $('#enterBtn').click(); },
