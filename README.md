@@ -189,15 +189,28 @@ They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by
 (you stand side-on), E to step off. It doesn't knock people over.
 
 ## Phone controls and full screen
-The buttons show only what you can do right now. On foot with your fists: CROUCH and JUMP. Running, CROUCH becomes
-SLIDE (like CODM: you slide along the ground and end crouched; keep running and you come straight up). Crouched you
-creep about; tap again (or jump) to stand. GRAB and ATTACK come up when someone is right by you or a fight is on; E when
+The buttons show only what you can do right now. On foot with your fists: JUMP over CROUCH. Running, CROUCH becomes
+SLIDE (see Crouch, slide and jump below). Crouched you kneel, and creep about when you move; tap again (or jump) to stand. GRAB and ATTACK come up when someone is right by you or a fight is on; E when
 there is a vehicle, a door or a place to use (the prompt says what); a gun or a throw gives AIM and FIRE/THROW. On a
 keyboard X crouches or slides. The minimap sits small in the top right, away from the move pad. On phones and tablets the
 game goes full screen when you tap ENTER (Settings → Full screen to turn it off); on an iPhone, Add to Home Screen.
 The two on-foot buttons sit one above the other on the right. Settings → Phone buttons → Move and size buttons lets you
 drag every button where your thumb likes it, make them bigger or smaller (they spread apart so they never overlap) and
 more see-through; Reset puts them back. The layout is kept on that phone, upright and sideways separately.
+
+## Crouch, slide and jump (moves3)
+Real Mixamo moves (Y Bot, FBX without skin, 30 fps), put together by `tools/character/anim/make_moves3.py` (see
+`mix3.py`) into `assets/people/moves3.glb` and fitted to whoever you are when the game starts:
+- **Crouch** is CODM's: still, you go down on one knee (`Idle Crouching`); moving, you creep low (`Walk Crouching
+  Forward`, made at 1.64 m/s, played at your speed). Aiming the rifle you hold it as made; otherwise (rifle on your back, or empty hands)
+  the kneel takes the resting arms of `Crouching Idle` and the creep takes the chest and loose arms of `Crouched
+  Walking`, kept where they are in the world, so nothing holds an invisible rifle.
+- **Slide** (`Running Slide`): from a run you drop and slide; your speed follows the move. Keep running and you come up
+  into the run, let go and you end crouched. JUMP jumps you out of it.
+- **Jump**: standing you spring up (`Standing Jump`); moving you leap and land running (`Standing Jump Running` and its
+  `Landing`). Crouched, JUMP stands you up.
+To rebuild: put the FBX files in one folder, `python3 tools/character/anim/make_moves3.py <folder> raw.glb`, then
+`gltfpack -i raw.glb -o assets/people/moves3.glb -cc -kn -af 30` and `python3 tools/manifest.py`.
 
 ## Skating, bike and car skills
 - **Skateboard:** W pushes with the back foot (hold Shift or push the stick all the way for faster pushes), S or BRAKE

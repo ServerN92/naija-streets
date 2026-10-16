@@ -12,12 +12,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=897fafc971';
-import * as C2 from './char2.js?v=897fafc971';
-import { MapView } from './mapview.js?v=897fafc971';
+import * as CLOCK from './clock.js?v=7b583a7db8';
+import * as C2 from './char2.js?v=7b583a7db8';
+import { MapView } from './mapview.js?v=7b583a7db8';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='897fafc971';
+const BUILD='7b583a7db8';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2473,7 +2473,7 @@ function touchButtons(dt){ if(!touchUI||BL.edit||mode!=='walk'||!fightReady()) r
   else { const f=pickFoe(2.4,1.6); if(f&&f.state!=='down'&&f.state!=='dead'){ g=ARMS.cur!=='fists'&&!f.cop&&!f.dealer&&!f.looted&&!(f.state==='fight'||f.state==='hurt')?'ROB':'GRAB'; } else { let n=null; for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.carried) continue; if(Math.abs(p.x-player.x)<1.9&&Math.abs(p.z-player.z)<1.9&&Math.hypot(p.x-player.x,p.z-player.z)<1.9){ n=p; break; } } if(n) g='GRAB'; } }
   // ATTACK only with a weapon in hand, someone right by you or a fight on; with a gun: AIM and FIRE
   const W=WEAPONS[ARMS.cur]||{}, gun=gunOut(), at=gun?(W.throw?'THROW':'FIRE'):(ARMS.cur!=='fists'||g==='GRAB'||g==='ROB'||fightNear()||T0-FIGHT.lastAtk<3)?'ATTACK':'';
-  const c=CR.sl>0?'SLIDE':CR.on?'CROUCH':player.speed>WALK_V+.35?'SLIDE':'CROUCH', con=CR.on||CR.sl>0;
+  const c=CR.sp?'SLIDE':CR.on?'CROUCH':player.speed>WALK_V+.35?'SLIDE':'CROUCH', con=CR.on||!!CR.sp;
   const j=fightNear()?'DODGE':'JUMP', k=g+'|'+cls+'|'+j+'|'+at+'|'+c+con; if(k===TB.k) return; TB.k=k;
   const b=$('#tGrab'); b.hidden=!g; if(g){ b.textContent=g; b.classList.toggle('on',cls==='on'); b.classList.toggle('fightb',g==='ROB'); }
   const P=$('#tPunch'); P.hidden=!at; P.classList.toggle('fire',gun); P.classList.toggle('fightb',!gun);
@@ -2556,9 +2556,8 @@ function updateWalk(dt,inside){
   let mx=fx*f+rx*s, mz=fz*f+rz*s, jd=0;
   const jg=JACK.go; if(jg&&!inside){ jg.t+=dt; const dx=jg.x-player.x, dz=jg.z-player.z; jd=Math.hypot(dx,dz); if(jd<.2||jg.t>1.6||FIGHT.ko){ JACK.go=null; jackThreaten(jg.v); jd=0; } else { mx=dx/jd; mz=dz/jd; } }   // walking up to the driver's door
   const len=Math.hypot(mx,mz), jl=Math.hypot(joy.x,joy.y), run=K.shift||touchRun||jl>.88; let target=len>.12?(run?RUN_V:WALK_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len)):0; if(CARRY.p) target=Math.min(target,RUN_V*.55); if(jd) target=Math.min(RUN_V*.75,jd*6);
-  if(CR.on&&!(CR.sl>0)) target=Math.min(target,1.15);   // crouched: you creep
-  if(CR.sl>0){ CR.sl-=dt; const k=1-Math.max(0,CR.sl)/CR.dur; target=CR.v0*Math.pow(1-k,.8); player.speed=target; if(len>.12) CR.yaw=lerpA(CR.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-1.6*dt)); player.yaw=CR.yaw;
-    if(CR.sl<=0){ CR.sl=0; if(run&&len>.5) CR.on=false; } }   // keep running and you come straight up
+  if(CR.on&&!CR.sp) target=Math.min(target,CR_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len));   // crouched: you creep (at the speed the move was made for)
+  if(CR.sp){ target=crSlide(dt,run,len,mx,mz); player.speed=target; }
   if(CR.on&&(FIGHT.ko||CARRY.p||inside&&false)) crReset();
   const ov=hero&&hero.ov, held=FIGHT.ko||(ov&&ov.lock);
   if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1){ target=v; player.speed=v; } }
@@ -2568,7 +2567,7 @@ function updateWalk(dt,inside){
   player.speed+=(target-player.speed)*Math.min(1,dt*(target>player.speed?6:(held?16:10)));
   const strafe=!inside&&aimingNow();
   if(strafe){ player.yaw=lerpA(player.yaw,Math.atan2(AIM.dir.x,AIM.dir.z),1-Math.exp(-(ARMS.aim?30:14)*dt)); target=Math.min(target,WALK_V*.85); }
-  else if(len>.12&&!held&&!(CR.sl>0)) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
+  else if(len>.12&&!held&&!CR.sp) player.yaw=lerpA(player.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-12*dt));
   else if(!held&&!inside&&(FIGHT.near||T0-FIGHT.lastAtk<3)){ const t=lockFoe(); if(t) player.yaw=lerpA(player.yaw,Math.atan2(t.x-player.x,t.z-player.z),1-Math.exp(-10*dt)); }   // in a fight you keep facing your man
   let ex=0, ez=0; const DS=FIGHT.dash; if(DS){ DS.t+=dt; const k=Math.max(0,1-DS.t/DS.dur)*1.6; ex=DS.vx*k*dt; ez=DS.vz*k*dt; if(DS.t>=DS.dur) FIGHT.dash=null; }   // a dodge slides you aside
   if(strafe&&len>.12){ ex+=mx/len*player.speed*dt; ez+=mz/len*player.speed*dt; }
@@ -3090,6 +3089,7 @@ function heroMoves(){ if(!hero||!hero.cObj||!hero.hipsRest) return; const names=
   lastMode=null; }   // show the fight buttons
 async function loadPeople(){
   if(PROFILE){ loadV2(savedLook()); const me=savedLook(); if(CAST[me]) CAST[me].w=0; }   // your own person comes in alongside the moves (and no copies of you on the street)
+  v3Moves();   // the crouch, slide and jump moves (small) come in alongside
   try{ const mv=await GLL.parseAsync(await fetchBuf(purl('moves')),''); for(const k of mv.animations) PEOPLE.clips[k.name]=k;
     if(HERO_RUN){ const k=HERO_RUN.clone(); k.name='run'; k.tracks=k.tracks.filter(t=>!/\.scale$/.test(t.name));
       for(const t of k.tracks) if(/Hips\.position$/.test(t.name)){ const v=t.values, y0=v[1]||1; for(let i=0;i<v.length;i+=3){ v[i]=0; v[i+1]/=y0; v[i+2]=0; } } PEOPLE.clips.run=k; }
@@ -3443,7 +3443,7 @@ const MOVE_INFO={
   gp2:{act:'gp_b',from:.4,to:.82,ts:1.6,hits:[.33],dmg:15,cancel:.6}};
 // the street's blows (area boys)
 const AI_INFO={punch:{ts:1.55,hits:[.33,.53],reach:1.5},kick:{ts:1.6,hits:[.47],reach:1.95}};
-const ONCE=new Set(['punch','punch_b','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump','threaten','gp','gp_b','rise']);
+const ONCE=new Set(['jump3','jump_run','punch','punch_b','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump','threaten','gp','gp_b','rise']);
 const HP0=c=>c==='areaboy'?110:c==='police_f'||c==='police_m'?140:70;
 const durOf=(p,n)=>{ const C=PEOPLE.casts[p.cast], k=C&&C.clips[n]; return k?k.duration:1.2; };
 const fightReady=()=>!!(hero&&hero.act.punch);
@@ -3642,39 +3642,64 @@ function carHitPlayer(v,sp){ FIGHT.carT=1.5; const fx=Math.cos(v.h), fz=-Math.si
   hitPlayer((sp-4)*9,v,'car'); if(FIGHT.dead) return;
   FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})});
   if(sayT<=0){ sayT=5; toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"']),2.4); } }
-function playerJump(){ if(mode!=='walk'||!hero||!hero.act.jump||FIGHT.ko||busy) return; if(hero.ov) return; if(CR.on||CR.sl>0){ CR.on=false; CR.sl=0; } heroDo('jump',{ts:1.35,lock:false}); }
-// ---- crouch and slide (like CODM): walking, CROUCH bends you low and you creep about; running, SLIDE drops you into a
-// slide along the ground that ends crouched (keep running and you come straight up). Poses are made for your own body.
-const CR={on:false,sl:0,dur:.8,v0:0,yaw:0,w:0,sw:0,wk:0,yo:0,clips:null,for:null,acts:{},foot:{},ref:0};
-function crClips(){ if(CR.for===hero.cObj&&CR.clips) return CR.clips; for(const k in CR.acts) CR.acts[k].stop(); CR.acts={};
-  const D=homeInfo(), U=(f=0,sd=0)=>[sd,1,f];
-  const arms={LeftArm:[.3,-.9,.26],LeftForeArm:[.06,-.12,1],LeftHand:[.02,-.2,1],RightArm:[-.3,-.9,.26],RightForeArm:[-.06,-.12,1],RightHand:[-.02,-.2,1]};   // elbows bent, hands up and ready
-  const body={Spine:U(.36),Spine1:U(.22),Spine2:U(.1),Neck:U(-.08),Head:U(-.12)};
-  const legs=(l1,l2,r1,r2)=>({LeftUpLeg:l1,LeftLeg:l2,LeftFoot:[0,-.35,1],RightUpLeg:r1,RightLeg:r2,RightFoot:[0,-.35,1]});
-  const FWD=[[.1,-.32,.95],[.04,-1,-.38]], MID=[[.1,-.48,.86],[.04,-1,-.62]], BACK=[[.1,-.82,.2],[.04,-1,-.9]], mir=a=>a.map(v=>[-v[0],v[1],v[2]]);
-  const idle={...body,...arms,...legs(MID[0],MID[1],...mir(MID))};
-  const walk=[{t:0,d:{...body,...arms,...legs(FWD[0],FWD[1],...mir(BACK))}},{t:.25,d:{...body,...arms,...legs(MID[0],MID[1],...mir(MID))}},
-    {t:.5,d:{...body,...arms,...legs(BACK[0],BACK[1],...mir(FWD))}},{t:.75,d:{...body,...arms,...legs(MID[0],MID[1],...mir(MID))}}];
-  // sliding: lean back, the front leg out straight along the ground, the back leg folded under, a hand down behind
-  const slide={Spine:U(-.3),Spine1:U(-.16),Spine2:U(-.04),Neck:U(.3),Head:U(.28),LeftArm:[.78,-.22,.5],LeftForeArm:[.45,-.1,.88],LeftHand:[.35,-.1,.93],
-    RightArm:[-.3,-.88,-.36],RightForeArm:[-.12,-1,-.08],RightHand:[-.05,-1,.15],LeftUpLeg:[.06,-.28,1],LeftLeg:[.04,-.22,1],LeftFoot:[0,.45,1],RightUpLeg:[-.2,-.78,.6],RightLeg:[-.1,-.32,-.94],RightFoot:[0,-.25,-1]};
-  const C={idle:C2.poseClip(D,'cr_idle',[{t:0,d:idle}]),walk:C2.poseClip(D,'cr_walk',walk,{loop:true,dur:1}),slide:C2.poseClip(D,'cr_slide',[{t:0,d:slide}])};
-  // how low each pose puts you: the lowest foot (or knee, or hand when sliding) back on the ground
-  const low=(clip,re)=>{ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(clip).play(); m.setTime(0); r.updateMatrixWorld(true);
-    let lo=1e9; hero.cObj.traverse(o=>{ if(o.isBone&&re.test(o.name)) lo=Math.min(lo,o.getWorldPosition(_fv).y); }); m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; r.updateMatrixWorld(true); return lo<1e8?lo:0; };
-  const FEET=/(Foot|ToeBase)$/; CR.ref=low(hero.act.idle.getClip(),FEET); CR.foot={idle:low(C.idle,FEET),walk:low(C.walk,FEET),slide:low(C.slide,/(Foot|ToeBase|Leg|Hand)$/)};
-  for(const k in C){ const a=hero.mixer.clipAction(C[k]); a.play(); a.setEffectiveWeight(0); CR.acts[k]=a; } hero.mixer.update(0);
-  CR.for=hero.cObj; return CR.clips=C; }
-function crPress(){ if(mode!=='walk'||!hero||FIGHT.ko||busy||CARRY.p||(hero.ov&&hero.ov.lock)) return; try{ crClips(); }catch(e){ console.warn('crouch',e); return; }
-  if(CR.sl>0) return; if(!CR.on&&player.speed>WALK_V+.35&&!aimingNow()){ CR.sl=CR.dur; CR.v0=Math.max(player.speed,RUN_V)*1.18; CR.yaw=player.yaw; CR.on=true; burst(.12,260,.18,5); return; }   // running: slide
+// jumping: the real Mixamo jumps fitted to your body. Standing still you spring straight up; moving you leap forward and
+// land running. Crouched, JUMP stands you up (like CODM); sliding, it jumps you out of the slide.
+function playerJump(){ if(mode!=='walk'||!hero||FIGHT.ko||busy) return; if(hero.ov) return;
+  let J=null; try{ J=crClips(); }catch(e){}
+  if(CR.sp){ CR.sp=0; CR.on=false; }
+  else if(CR.on){ crStand(); return; }
+  if(J&&hero.act.jump3){ const sp=player.speed; if(sp>1.1) heroDo('jump_run',{ts:clamp(sp/3.7,1,1.32),lock:false}); else heroDo('jump3',{ts:1.3,lock:false,from:J.j0,to:J.j1}); return; }
+  if(hero.act.jump) heroDo('jump',{ts:1.35,lock:false}); }
+// ---- crouch and slide (like CODM), with real Mixamo moves fitted to your body: still, CROUCH puts you down on one
+// knee; moving you creep low; running, SLIDE drops you into a slide along the ground. Keep running and you come up into
+// the run, let go and you end crouched. Aiming the rifle you hold it in both hands; otherwise your hands rest and swing.
+const V3={job:null,done:null};
+function v3Moves(){ return V3.job||(V3.job=fetchBuf(purl('moves3')).then(b=>GLL.parseAsync(b,'')).then(g=>(V3.done={g,S:C2.skeletonInfo(g.scene)})).catch(e=>{ console.warn('moves3',e); V3.job=null; })); }
+const CR={on:false,sp:0,st:0,v0:0,yaw:0,w:0,sw:0,gw:0,wk:0,yo:0,clips:null,for:null,acts:{},off:{},prof:null};
+const CR_V=1.64;   // how fast the crouch walk was made (m/s)
+const SLD={a:3/30,b:24/30,c:38/30,ts:1.15};   // the slide: down and along the ground (a..b), then up into the run (b..c)
+function crClips(){ if(CR.for===hero.cObj&&CR.clips) return CR.clips; const M=V3.done; if(!M){ v3Moves(); throw new Error('moves3 not in yet'); }
+  for(const k in CR.acts) CR.acts[k].stop(); CR.acts={};
+  const D=homeInfo(), raw=n=>{ const c=M.g.animations.find(a=>a.name===n); if(!c) throw new Error('no '+n); return c; };
+  const mv=(n,as)=>{ const k=C2.retargetClip(raw(n),M.S,D,{norm:true}); k.name=as; return k; };
+  const C={idle:mv('v3_cr_idle','cr_idle'),walk:mv('v3_cr_walk','cr_walk'),gidle:mv('v3_cr_idle_gun','cr_idle_gun'),gwalk:mv('v3_cr_walk_gun','cr_walk_gun'),slide:mv('v3_slide','cr_slide'),jump:mv('v3_jump','jump3'),jrun:mv('v3_jump_run','jump_run')};
+  C.j0=8/72; C.j1=58/72;   // the standing jump from the middle of the dip down to when you are standing again
+  // the slide's speed along the ground, as made (a share of its speed at the start)
+  { const t=raw('v3_slide').tracks.find(t=>/Hips\.position$/.test(t.name)), v=t.values, n=t.times.length, sp=[]; for(let i=1;i<n;i++) sp.push(Math.hypot(v[i*3]-v[i*3-3],v[i*3+2]-v[i*3-1])/(t.times[i]-t.times[i-1]));
+    const s0=sp[Math.round(SLD.a*30)]||1; CR.prof=sp.map(x=>x/s0); }
+  // how low each move puts your feet: they go on the floor where your standing feet are
+  const r=hero.root, cy=hero.cObj.position.y, FEET=/(Foot|ToeBase)$/;
+  const low=(clip,ts)=>{ const p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); hero.cObj.position.y=0; const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(clip).play(); const lows=[];
+    for(const t of ts){ m.setTime(t); r.updateMatrixWorld(true); let lo=1e9; hero.cObj.traverse(o=>{ if(o.isBone&&FEET.test(o.name)) lo=Math.min(lo,o.getWorldPosition(_fv).y); }); lows.push(lo); }
+    m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.cObj.position.y=cy; r.updateMatrixWorld(true); lows.sort((x,y)=>x-y); return lows[Math.floor(lows.length/2)]; };
+  const spread=(k,n=8)=>Array.from({length:n},(_,i)=>k.duration*(i+.5)/n), O=hero.look&&hero.look.off, idleN=hero.look?hero.look.idle||'idle':'idle';
+  const ground=low(hero.act.idle.getClip(),[0,.5])+(O?(O[idleN]||0):0);
+  CR.off={}; for(const k of ['idle','walk','gidle','gwalk']) CR.off[k]=ground-low(C[k],spread(C[k])); CR.off.slide=ground-low(C.slide,[0,.05,.1]);
+  for(const k of ['idle','walk','gidle','gwalk']){ const a=hero.mixer.clipAction(C[k]); a.play(); a.setEffectiveWeight(0); CR.acts[k]=a; }
+  { const a=hero.mixer.clipAction(C.slide); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play(); a.timeScale=0; a.setEffectiveWeight(0); CR.acts.slide=a; }
+  hero.act.jump3=hero.mixer.clipAction(C.jump); hero.act.jump_run=hero.mixer.clipAction(C.jrun);
+  if(O){ O.jump3=ground-low(C.jump,[C.jump.duration*C.j0]); O.jump_run=ground-low(C.jrun,[0,.03]); }
+  hero.mixer.update(0); CR.for=hero.cObj; return CR.clips=C; }
+function crPress(){ if(mode!=='walk'||!hero||FIGHT.ko||busy||CARRY.p||(hero.ov&&hero.ov.lock)) return; try{ crClips(); }catch(e){ return; }
+  if(CR.sp||hero.ov) return;
+  if(!CR.on&&player.speed>WALK_V+.35&&!aimingNow()){ CR.sp=1; CR.st=SLD.a; CR.v0=Math.max(player.speed,RUN_V)*1.04; CR.yaw=player.yaw; CR.on=true; burst(.12,260,.18,5); return; }   // running: slide
   CR.on=!CR.on; }
-function crReset(){ CR.on=false; CR.sl=0; }
+function crStand(){ CR.on=false; CR.sp=0; }
+function crReset(){ CR.on=false; CR.sp=0; }
 function crOff(){ crReset(); CR.w=CR.sw=CR.yo=0; for(const k in CR.acts) CR.acts[k].setEffectiveWeight(0); }
-function crTick(dt,speed){ const want=(CR.on||CR.sl>0)&&mode!=='drive'?1:0; if(!want&&CR.w<.002){ CR.w=0; CR.yo=0; return; } if(!CR.clips||CR.for!==hero.cObj){ try{ crClips(); }catch(e){ crReset(); return; } }
-  const k=1-Math.exp(-12*dt); CR.w+=(want-CR.w)*k; CR.sw+=((CR.sl>0?1:0)-CR.sw)*(1-Math.exp(-16*dt)); CR.wk+=((speed>.12?1:0)-CR.wk)*k;
-  const A=CR.acts, c=CR.w, sw=CR.sw, wk=CR.wk; A.idle.setEffectiveWeight(c*(1-sw)*(1-wk)); A.walk.setEffectiveWeight(c*(1-sw)*wk); A.slide.setEffectiveWeight(c*sw);
-  A.walk.timeScale=clamp(speed/1.05,.5,1.7);
-  CR.yo=c*((1-sw)*((1-wk)*(CR.ref-CR.foot.idle)+wk*(CR.ref-CR.foot.walk))+sw*(CR.ref-CR.foot.slide)); }
+// the slide, moved on in the walk update: your speed follows the move, you can steer a little
+function crSlide(dt,run,len,mx,mz){ CR.st+=dt*SLD.ts; const P=CR.prof, i=Math.min(P.length-1,Math.max(0,Math.floor(CR.st*30))), sp=CR.v0*(P[i]||.6);
+  if(len>.12) CR.yaw=lerpA(CR.yaw,Math.atan2(mx/len,mz/len),1-Math.exp(-1.6*dt)); player.yaw=CR.yaw;
+  if(CR.sp===1&&CR.st>=SLD.b){ if(run&&len>.5){ CR.sp=2; CR.on=false; } else { CR.sp=0; CR.on=true; } }   // keep running and you come up into the run
+  else if(CR.sp===2&&(CR.st>=SLD.c||len<.12)) CR.sp=0;
+  return CR.sp===2?Math.max(sp,RUN_V*.8):sp; }
+function crTick(dt,speed){ const want=(CR.on||CR.sp)&&mode!=='drive'?1:0; if(!want&&CR.w<.002){ CR.w=0; CR.yo=0; return; } if(!CR.clips||CR.for!==hero.cObj){ try{ crClips(); }catch(e){ crReset(); return; } }
+  const k=1-Math.exp(-10*dt); CR.w+=(want-CR.w)*k; CR.sw+=((CR.sp?1:0)-CR.sw)*(1-Math.exp(-(CR.sp?18:7)*dt)); CR.wk+=((speed>.12?1:0)-CR.wk)*k; CR.gw+=((mode==='walk'&&ARMS.cur==='ak'&&aimingNow()?1:0)-CR.gw)*(1-Math.exp(-8*dt));
+  const A=CR.acts, c=CR.w, sw=CR.sw, gw=CR.gw, wk=CR.wk, rest=c*(1-sw);
+  A.idle.setEffectiveWeight(rest*(1-wk)*(1-gw)); A.gidle.setEffectiveWeight(rest*(1-wk)*gw); A.walk.setEffectiveWeight(rest*wk*(1-gw)); A.gwalk.setEffectiveWeight(rest*wk*gw);
+  A.slide.setEffectiveWeight(c*sw); A.slide.time=Math.min(CR.st,SLD.c);
+  A.walk.timeScale=A.gwalk.timeScale=clamp(speed/CR_V,.5,1.6);
+  const O=CR.off; CR.yo=rest*((1-wk)*((1-gw)*O.idle+gw*O.gidle)+wk*((1-gw)*O.walk+gw*O.gwalk))+c*sw*O.slide; }
 // paired move ("jack" him): you grab them by the legs and slam them on the floor, and you are down there with them to keep hitting
 const TK=.34;   // the part of the takedown up to the slam
 function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
