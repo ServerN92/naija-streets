@@ -12,16 +12,16 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=0ab0dec2b0';
-import * as C2 from './char2.js?v=0ab0dec2b0';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=0ab0dec2b0';
-import { createPhone } from './phone.js?v=0ab0dec2b0';
-import { createGuide } from './guide.js?v=0ab0dec2b0';
-import { createFarm } from './farm.js?v=0ab0dec2b0';
-import { MapView } from './mapview.js?v=0ab0dec2b0';
+import * as CLOCK from './clock.js?v=621fbb4862';
+import * as C2 from './char2.js?v=621fbb4862';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=621fbb4862';
+import { createPhone } from './phone.js?v=621fbb4862';
+import { createGuide } from './guide.js?v=621fbb4862';
+import { createFarm } from './farm.js?v=621fbb4862';
+import { MapView } from './mapview.js?v=621fbb4862';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='0ab0dec2b0';
+const BUILD='621fbb4862';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -562,6 +562,20 @@ function inFarmZone(x,z,pad=0){ const F=FARMZ, a=Math.atan2(z-F.cz,x-F.cx), w=1+
   WD.areas=WD.areas.filter(a=>{ let x=0,z=0; const n=a.p.length/2; for(let i=0;i<a.p.length;i+=2){ x+=a.p[i]; z+=a.p[i+1]; } return !inFarmZone(x/n,z/n,20); });
   const ring=[]; for(let i=0;i<64;i++){ const a=i/64*Math.PI*2, w=1+.07*Math.sin(a*3+.7)+.05*Math.sin(a*5+2.2); ring.push(Math.min(WB.x-1,FARMZ.cx+Math.cos(a)*(FARMZ.rx*w-3)),Math.max(-WB.z+1,FARMZ.cz+Math.sin(a)*(FARMZ.rz*w-3))); }
   WD.areas.push({k:'farmland',p:ring,n:'Farm Settlement'}); }
+// nine more farms all over the map, run by other farmers (src/farm.js): sites from tools/npc_farm_sites.py (no road within 22 m, a road to drive in on within 45 m).
+// Each farm faces its nearest drivable road; the houses on the plot and along its driveway go.
+const NPC_FARMS=[[-1126,-1150,'Mama Nkechi','mama'],[186,-1250,'Baba Tunde','baba'],[-1150,100,'Alhaji Musa','baba'],[1158,361,'Iya Bisi','mama'],[-670,1134,'Chief Okafor','baba'],
+  [721,1256,'Madam Funke','mama'],[-2441,-712,'Baba Femi','baba'],[-2359,1057,'Mama Aisha','mama'],[-3644,324,'Oga Emeka','baba']].map(([x,z,n,cast])=>{
+  let kx=x, kz=z, bd=1e9; for(let k=0;k<WD.edges.length;k+=7){ if(!(WD.edges[k+5]&8)) continue; const a=WD.edges[k], b=WD.edges[k+1], x0=WD.nodes[a*2], z0=WD.nodes[a*2+1], dx=WD.nodes[b*2]-x0, dz=WD.nodes[b*2+1]-z0, L=Math.hypot(dx,dz)||.01, t=Math.max(0,Math.min(L,((x-x0)*dx+(z-z0)*dz)/L)), px=x0+dx/L*t, pz=z0+dz/L*t, d=Math.hypot(px-x,pz-z)-WD.edges[k+3]/2;
+    if(d<bd){ bd=d; kx=px; kz=pz; } }
+  return {x,z,n,cast,kx,kz}; });
+function inNpcFarm(x,z,pad=0){ for(const f of NPC_FARMS){ const dx=x-f.x, dz=z-f.z; if(dx*dx+dz*dz>(60+pad)**2) continue; const L=Math.hypot(f.kx-f.x,f.kz-f.z)||1, fx=(f.kx-f.x)/L, fz=(f.kz-f.z)/L, v=dx*fx+dz*fz, u=dx*fz-dz*fx;
+    if(Math.abs(u)<14.5+pad&&v>-12-pad&&v<12+pad) return true;                       // the yard
+    if(Math.abs(u)<3.5+pad&&v>0&&v<L) return true; }                                 // its driveway
+  return false; }
+{ const nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const r=Math.max(WD.bld[i+2],WD.bld[i+3])/2; if(!inNpcFarm(WD.bld[i],WD.bld[i+1],r)) for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb;
+  for(const f of NPC_FARMS){ const L=Math.hypot(f.kx-f.x,f.kz-f.z)||1, fx=(f.kx-f.x)/L, fz=(f.kz-f.z)/L, q=(u,v)=>[f.x+fz*u+fx*v,f.z-fx*u+fz*v];
+    WD.areas.push({k:'npcfarm',p:[...q(-15,-13),...q(15,-13),...q(15,13),...q(-15,13)],n:f.n+' Farm'}); } }
 water.visible=false; water.position.y=-40;   // no lagoon in Mushin
 // road classes: 0 expressway 1 trunk 2 primary 3 secondary 4 tertiary 5 unclassified 6 residential 7 living street 8 service lane 9 track
 const nodes=[]; for(let i=0;i<WD.nodes.length;i+=2) nodes.push({i:nodes.length,x:WD.nodes[i],z:WD.nodes[i+1],adj:[],wadj:[],out:[],ed:[],r:0,deg:0,ax:0,tl:false,tlo:0});
@@ -602,7 +616,7 @@ for(const d of DISTS){ const x0=d.x0-300, x1=-WB.x-300, z0=d.z0-300, z1=d.z1+300
 const AREAS=WD.areas.map(a=>({...a,pts:(()=>{ const o=[]; for(let i=0;i<a.p.length;i+=2) o.push([a.p[i],a.p[i+1]]); return o; })()}));
 function inPoly(pts,x,z){ let ins=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,zi]=pts[i],[xj,zj]=pts[j]; if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi+1e-12)+xi) ins=!ins; } return ins; }
 function areaAt(x,z,kinds){ for(const a of AREAS) if((!kinds||kinds.includes(a.k))&&inPoly(a.pts,x,z)) return a; return null; }
-const AREA_ACC={pitch:'lawn',grassland:'lawn',scrub:'lawn',farmland:'lawn',park:'lawn',recreation_ground:'lawn',school:'sand',marketplace:'lot',retail:'lot',parking:'lot',fuel:'lot',hospital:'lawn'};
+const AREA_ACC={npcfarm:'lawn',pitch:'lawn',grassland:'lawn',scrub:'lawn',farmland:'lawn',park:'lawn',recreation_ground:'lawn',school:'sand',marketplace:'lot',retail:'lot',parking:'lot',fuel:'lot',hospital:'lawn'};
 for(const a of AREAS){ const k=AREA_ACC[a.k]; if(!k||a.pts.length<3) continue; const acc=A[k], y=.012;
   const contour=a.pts.map(([x,z])=>new THREE.Vector2(x,z)); let tris; try{ tris=THREE.ShapeUtils.triangulateShape(contour,[]); }catch(e){ continue; }
   for(const [i0,i1,i2] of tris){ let P0=a.pts[i0],P1=a.pts[i1],P2=a.pts[i2]; const cr=(P1[0]-P0[0])*(P2[1]-P0[1])-(P1[1]-P0[1])*(P2[0]-P0[0]); if(cr>0){ const t=P1; P1=P2; P2=t; }
@@ -2293,7 +2307,7 @@ const mm=$('#mm'), mg=mm.getContext('2d');
 // the whole map as one picture for the big map (sharp detail is drawn on top when you zoom in)
 const MMB={x0:Math.min(-WB.x-20,...DISTS.map(d=>d.x0-20)),z0:AIRPORT?AIRPORT.RZ-140:-WB.z-20,x1:TMB?TMB.xBlock+260:WB.x+20,z1:Math.max(WB.z+20,...DISTS.map(d=>d.z1+20)),ppm:.45}; let mmCache=null;   // the map reaches the airport and the bridge
 const COND_COL={good:'#8d939e',bad:'#7b7468',dirt:'#9a6440'};
-const AREA_COL={pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
+const AREA_COL={npcfarm:'#2c4a30',pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
 function buildMinimapCache(){ const W=Math.ceil((MMB.x1-MMB.x0)*MMB.ppm), H=Math.ceil((MMB.z1-MMB.z0)*MMB.ppm); mmCache=document.createElement('canvas'); mmCache.width=W; mmCache.height=H;
   const g=mmCache.getContext('2d',{willReadFrequently:true}); g.fillStyle='#1f2226'; g.fillRect(0,0,W,H); g.scale(MMB.ppm,MMB.ppm); g.translate(-MMB.x0,-MMB.z0); drawWorldMap(g,MMB.x0,MMB.z0,MMB.x1,MMB.z1,true); }
 // draw the city (areas, buildings, roads, railway) into a 2D canvas already set to world metres
@@ -7020,7 +7034,7 @@ FARM=createFarm({ THREE, scene, zone:FARMZ, Q, CullSet, addOB, naira, dirtMat:MA
   teleport:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; },
   toast, cash:()=>CASH.n, addCash:d=>{ addCash(d); cashHUD(); }, openMenu, closeMenu, rain:()=>Math.min(1,ENV.rain||0),
   day:()=>Math.floor(CLOCK.now()/(CLOCK.DAY_MINUTES*60000)), dayMs:()=>CLOCK.DAY_MINUTES*60000,
-  kerbPoint, inZone:inFarmZone, market:()=>FARM_MARKET, roadHalf:(x,z)=>{ const [e]=nearestRoad(x,z,e=>e.drive); return e?e.hw:4; },
+  kerbPoint, inZone:inFarmZone, npcFarms:NPC_FARMS, market:()=>FARM_MARKET, roadHalf:(x,z)=>{ const [e]=nearestRoad(x,z,e=>e.drive); return e?e.hw:4; },
   roadClear:(x,z,pad)=>{ for(let i=-1;i<=1;i++) for(let j=-1;j<=1;j++){ const L=RG.get(rgk(Math.floor(x/RGC)+i,Math.floor(z/RGC)+j)); if(L) for(const e of L) if(segD(e,x,z)-e.hw<pad) return false; } return true; },
   roadAngle:(x,z)=>{ const [e]=nearestRoad(x,z); return e?Math.atan2(-e.fz,e.fx):0; },
   mapPlace:p=>{ if(!PLACES.some(q=>q.name===p.name)) PLACES.push(p); },

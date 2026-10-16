@@ -14,6 +14,8 @@
    on the ground: walk over them to pick them into your store. An animal that has not eaten for 2 minutes gets thin
    and runs about looking for food; at 2:20 it dies (one at a time). Hunger only runs while you are at the farm.
    Your own farm lorry waits in the yard: pack the store onto it, drive it to the produce buyer, sell the load.
+   Nine more farms all over the map (Mushin and Ikeja) are run by other farmers: cows and hens about, and the farmer
+   at the gate sells you milk and eggs once a day, cheap, to sell on at the market.
    Saved on this phone ('naija-farm'). Made to grow: a garri mill, palm oil, goats, fish ponds, night thieves later.
    The game passes in `api` (its own functions); this file builds and runs the farm. Models: tools/blender_farm.py. */
 
@@ -94,7 +96,7 @@ export function createFarm(api) {
       jobs.push(api.registerTruck().catch(e => console.warn('truck', e)));
       jobs.push(api.registerLorry().catch(e => console.warn('lorry', e)));
       let left = jobs.length; jobs.forEach(j => j.then(() => { left--; })); loadLeft = () => left;
-      await Promise.all(jobs); ready = true; build();
+      await Promise.all(jobs); ready = true; build(); buildNpcs();
     } catch (e) { console.warn('farm', e); }
   }
 
@@ -198,6 +200,86 @@ export function createFarm(api) {
     api.mapPlace({ name: 'Farm Settlement', sub: 'Farms · get your free farm here', kind: 'place', x: SG.x, z: SG.z });
   }
 
+  // ---- nine more farms across the map, run by other farmers (api.npcFarms from src/game.js). Each: a fenced yard facing its road,
+  // barn, farmhouse, tank, a cow pen of grass with two cows, a coop with hens, and the farmer at the gate who sells you
+  // milk and eggs cheap (once a day) for your store: carry them to the market buyer and sell them for more.
+  const NL = { YU: 13, YV: 10.5, PEN: { u: -7, v: 2.5 }, COOP: { u: 8.5, v: 3 }, BARN: { u: -7, v: -6.5 }, HOUSE: { u: 8, v: -6.5 }, TANK: { u: 1.5, v: -8.2 }, FARMER: { u: 2.5, v: 8.2 } };
+  const NPCS = (api.npcFarms || []).map((f, i) => {
+    const ry2 = Math.atan2(f.kx - f.x, f.kz - f.z), fx = Math.sin(ry2), fz = Math.cos(ry2), rx = Math.cos(ry2), rz = -Math.sin(ry2);
+    const Wn = (u, v) => ({ x: f.x + rx * u + fx * v, z: f.z + rz * u + fz * v }), Ln = (x, z) => { const dx = x - f.x, dz = z - f.z; return { u: dx * rx + dz * rz, v: dx * fx + dz * fz }; };
+    const n = { i, ...f, ry: ry2, W: Wn, L: Ln, kd: Math.hypot(f.kx - f.x, f.kz - f.z), cows: [], hens: [], on: false };
+    n.penBox = { u: NL.PEN.u, v: NL.PEN.v - .2, hu: 3.6, hv: 2.1, W: Wn }; n.run = { u: NL.COOP.u, v: NL.COOP.v + .55, hu: 1.5, hv: .7, W: Wn };
+    n.farmer = Wn(NL.FARMER.u, NL.FARMER.v);
+    api.mapPlace({ name: f.n + ' Farm', sub: 'Farm · buy fresh milk and eggs', kind: 'place', x: n.farmer.x, z: n.farmer.z });
+    return n; });
+  const npcNear = p => { let best = null, bd = 1e9; for (const n of NPCS) { const d = Math.hypot(p.x - n.x, p.z - n.z); if (d < bd) { bd = d; best = n; } } return [best, bd]; };
+  let npcBuilt = false;
+  function buildNpcs() {
+    if (npcBuilt || !ready || !NPCS.length) return; npcBuilt = true;
+    const items = {}; const add = (k, n, u, v, rot = 0, sc = 1) => { const w = n.W(u, v); (items[k] || (items[k] = [])).push({ x: w.x, z: w.z, ry: n.ry + rot, sc }); };
+    for (const n of NPCS) {
+      const ob = (p, hu, hv, h, dv = 0) => { const w = n.W(p.u, p.v + dv); api.addOB(w.x, w.z, hu, hv, -n.ry, h); };
+      const wall = (p, u0, v0, u1, v1) => { const a = n.W(p.u + u0, p.v + v0), b = n.W(p.u + u1, p.v + v1); api.addOB((a.x + b.x) / 2, (a.z + b.z) / 2, Math.hypot(b.x - a.x, b.z - a.z) / 2, .12, Math.atan2(b.z - a.z, b.x - a.x), 1.4); };
+      for (const [k, p] of [['barn', NL.BARN], ['house', NL.HOUSE], ['tank', NL.TANK], ['pen', NL.PEN], ['coop', NL.COOP]]) add(k, n, p.u, p.v);
+      ob(NL.BARN, 4.1, 3.1, 4.5); ob(NL.HOUSE, 3.6, 2.6, 4); ob(NL.TANK, 1.0, 1.0, 4.2); ob(NL.COOP, 1.25, .95, 2.4, -1.6);
+      const P = NL.PEN; wall(P, -5, 3.5, -1.1, 3.5); wall(P, 1.1, 3.5, 5, 3.5); wall(P, -5, -3.5, 5, -3.5); wall(P, -5, -3.5, -5, 3.5); wall(P, 5, -3.5, 5, 3.5);
+      const C0 = NL.COOP; wall(C0, -2, 1.6, -.6, 1.6); wall(C0, .6, 1.6, 2, 1.6); wall(C0, -2, 1.6, -2, -.7); wall(C0, 2, 1.6, 2, -.7);
+      // the pen's grass: mostly thick, a patch or two grazed down (this farmer waters it)
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) { const h = hash(n.i * 7 + i, j * 3 + 1); add(h < .7 ? 'turf' : h < .9 ? 'turf_low' : 'turf_wet', n, P.u - 3.45 + i * 2.3, P.v + 2.125 - j * 1.75); }
+      // the yard fence, gate in front, the farm's sign
+      for (let u = -NL.YU + 2; u <= NL.YU - 2 + .01; u += 4) { if (Math.abs(u) > 3.5) add('fence', n, u, NL.YV); add('fence', n, u, -NL.YV); }
+      for (let v = -NL.YV + 2; v <= NL.YV - 2 + .01; v += 4) { add('fence', n, -NL.YU, v, Math.PI / 2); add('fence', n, NL.YU, v, Math.PI / 2); }
+      add('gate', n, 0, NL.YV + .3);
+      { const w = n.W(0, NL.YV + .3 + .18); label((n.n + ' FARM').toUpperCase().slice(0, 24), 'FRESH MILK · EGGS', 3.6, .82, w.x, 3.35, w.z, n.ry); }
+      // round about: palms, plantain, a couple of crop beds, a scarecrow, tools
+      add('tools', n, -1.5, -8.6); add('scarecrow', n, -.5, -1.5, hash(n.i, 9) * 6);
+      for (const [k, u, v] of [['palm', -15.5, -9], ['palm', 15.8, 7], ['plantain', 15.5, -8], ['plantain', -15.5, 6], ['palm', -16, 11]]) add(k, n, u, v, hash(n.i, u) * 6, .9 + hash(u, n.i) * .3);
+      const crop = Object.keys(CROPS)[n.i % 5];
+      for (const [u, v] of [[.6, 2.2], [4.2, 2.2]]) { add('bed', n, u, v); add(crop + '_3', n, u, v); }
+      // the driveway to the road
+      { const a = n.W(0, NL.YV - 1), hw = api.roadHalf(n.kx, n.kz), b = { x: n.kx - Math.sin(n.ry) * hw, z: n.kz - Math.cos(n.ry) * hw }, len = Math.hypot(b.x - a.x, b.z - a.z) + 2, g = new THREE.PlaneGeometry(4.2, len); g.rotateX(-Math.PI / 2);
+        const m = new THREE.Mesh(g, api.dirtMat); m.position.set((a.x + b.x) / 2, .028, (a.z + b.z) / 2); m.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); m.receiveShadow = true; scene.add(m);
+        const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) { const u0 = uv.getX(i), v0 = uv.getY(i); uv.setXY(i, v0 * len / 9, u0); } }
+      // the farmer, at the gate
+      api.spot(n.cast, n.farmer.x, n.farmer.z, n.ry, n.cast === 'mama' ? ['talk', 'idle_2', 'phone'] : ['talk', 'idle_baba', 'phone']);
+    }
+    for (const [k, list] of Object.entries(items)) sets(k, list, k === 'turf' || k.startsWith('turf') ? .45 : .6, k === 'fence' || k.startsWith('turf') ? .6 : .9);
+  }
+  // the NPC farms' animals: only at the farm you are near (they come and go as you move about)
+  function npcAnimals(n, on) {
+    if (on === n.on) return; n.on = on;
+    for (const a of [...n.cows, ...n.hens]) drop(a); n.cows = []; n.hens = []; if (!on) return;
+    if (M.cow) for (let i = 0; i < 2; i++) { const a = makeAnimal(i % 2 && M.cow2 ? M.cow2 : M.cow); const p = n.W(NL.PEN.u - 2 + i * 3, NL.PEN.v + .3 - i); Object.assign(a, { x: p.x, z: p.z, h: n.ry + i * 2, kind: 'cow', t: Math.random() * 4 }); n.cows.push(a); play(a, 'Graze'); }
+    if (M.hen) for (let i = 0; i < 4; i++) { const a = makeAnimal(M.hen, .95 + (i % 3) * .04, HEN_TINT[(i + n.i) % HEN_TINT.length]); const p = n.W(NL.COOP.u - 1.2 + i * .8, NL.COOP.v + .6); Object.assign(a, { x: p.x, z: p.z, h: Math.random() * 6, kind: 'hen', t: Math.random() * 2 }); n.hens.push(a); play(a, 'Idle'); }
+  }
+  function tickNpcs(dt, p) {
+    for (const n of NPCS) {
+      const d = Math.hypot(p.x - n.x, p.z - n.z); npcAnimals(n, d < 150 || (n.on && d < 210)); if (!n.on) continue;
+      const anim = d < 90;
+      for (const a of n.cows) { wander(a, dt, n.penBox, .8); a.root.position.set(a.x, 0, a.z); a.root.rotation.y = a.h; if (anim) a.mix.update(dt); }
+      for (const a of n.hens) { a.root.visible = d < 160; wander(a, dt, n.run, .45); a.root.position.set(a.x, 0, a.z); a.root.rotation.y = a.h; if (anim && d < 60) a.mix.update(dt); }
+    }
+  }
+  // buying from them: 2 jugs of milk and 6 eggs a day from each farm, a quarter below the market price
+  const NPC_BUY = { milk: 2, egg: 6 }, NPC_RATE = .75;
+  const npcCost = () => Math.round(valueOf(NPC_BUY) * NPC_RATE / 10) * 10;
+  function npcBuy(n) {
+    S.npc = S.npc || {};
+    if (!S.got) { api.toast(`${n.n}: "Get your own farm first, my pikin. Go see the farm officer for Farm Settlement — then come buy from me."`, 4); api.gps(OFFICE.x, OFFICE.z, { name: 'Farm office' }); return; }
+    if (S.npc[n.i] === day()) { api.toast(`${n.n}: "I don sell you today's milk and eggs. Come back tomorrow!"`, 3); return; }
+    const k = npcCost(), q = NPC_BUY.milk + NPC_BUY.egg;
+    if (!room(q)) { api.toast(`Your store is full (${stored()}/${S.cap}). Sell something first.`, 2.6); return; }
+    if (api.cash() < k) { api.toast(`You need ${naira(k)}.`); return; }
+    api.addCash(-k); S.npc[n.i] = day(); put('milk', NPC_BUY.milk); put('egg', NPC_BUY.egg); flush();
+    api.toast(`🥛🥚 You bought ${list(NPC_BUY)} from ${n.n} for ${naira(k)}. They're in your store — sell them at the market for more.`, 3.6);
+  }
+  function npcHere(p) {
+    for (const n of NPCS) { if (!near(p, n.farmer.x, n.farmer.z, 3.4)) continue;
+      const sold = S.npc && S.npc[n.i] === day();
+      return { t: sold ? `${n.n}: sold out today · come back tomorrow` : `Buy ${list(NPC_BUY)} from ${n.n} (${naira(npcCost())})`, act: () => npcBuy(n) }; }
+    return null;
+  }
+
   // ---- the animals: skinned, each with its own moves; each one is tied to its saved state (a.s)
   function makeAnimal(g, sc = 1, tint = null) {
     const root = api.clone(g.scene); root.scale.setScalar(sc); root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; o.layers.set(1);
@@ -229,7 +311,7 @@ export function createFarm(api) {
     const want = Math.atan2(dx, dz); let dh = want - a.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); a.h += Math.sign(dh) * Math.min(Math.abs(dh), dt * turn);
     if (Math.abs(dh) < .7) { const s = Math.min(d, spd * dt); a.x += Math.sin(a.h) * s; a.z += Math.cos(a.h) * s; } return false;
   }
-  function roamTo(a, box) { const p = W(box.u + (Math.random() * 2 - 1) * box.hu, box.v + (Math.random() * 2 - 1) * box.hv); a.tx = p.x; a.tz = p.z; }
+  function roamTo(a, box) { const p = (box.W || W)(box.u + (Math.random() * 2 - 1) * box.hu, box.v + (Math.random() * 2 - 1) * box.hv); a.tx = p.x; a.tz = p.z; }
   function wander(a, dt, box, spd) {   // a fed animal: strolls, grazes a little, pecks, stands about
     a.t -= dt;
     if (a.t <= 0) {
@@ -449,6 +531,7 @@ export function createFarm(api) {
     if (MARKET && S.carry && near(p, MARKET.x, MARKET.z, 6)) { here = { t: `Sell your farm produce (${naira(valueOf(S.carry))})`, act: sellCarry }; return; }
     if (S.got && lorry && api.lorryAlive(lorry) && Math.hypot(lorry.x - YC.x, lorry.z - YC.z) < kd + 25) { const r = lorryRear();
       if (near(p, r.x, r.z, 2.4)) { here = { t: stored() ? `Pack your produce onto the lorry (${Math.min(stored(), LORRY_CAP - loaded())}) · lorry ${loaded()}/${LORRY_CAP}` : `Your lorry · ${loaded() ? list(S.lorry.load) : 'empty'}`, act: () => stored() ? packLorry() : api.toast(loaded() ? 'Drive your lorry to the produce buyer and sell the load.' : 'Pick milk and eggs, harvest crops, then pack them onto the lorry here.', 2.6) }; return; } }
+    { const h = npcHere(p); if (h) { here = h; return; } }
     if (Math.hypot(p.x - YC.x, p.z - YC.z) > kd + 30) return;
     if (near(p, OFFICE.x, OFFICE.z, 5.5) || near(p, SG.x, SG.z, 3.2)) { here = { t: S.got ? 'Farm office: workers, pickup, prices' : 'Talk to the farm officer (free farm!)', act: officeMenu }; return; }
     const l = L(p.x, p.z); if (Math.abs(l.u) > YARD.u + 1 || Math.abs(l.v) > YARD.v + 1) return;
@@ -533,7 +616,7 @@ export function createFarm(api) {
   function update(dt) {
     if (!api.started()) return;
     const p = api.player(), dFarm = Math.hypot(p.x - YC.x, p.z - YC.z);
-    if (!loading && (dFarm < 700 || S.carry || S.trip)) load();
+    if (!loading && (dFarm < 700 || S.carry || S.trip || npcNear(p)[1] < 700)) load();
     if ((t1 -= dt) <= 0) { t1 = .5; tickBeds(); tickHand(.5); if (built) { tickTurfRain(); turfShow(); refreshSoft(); if (!lorry || !api.lorryAlive(lorry)) { if (dFarm > 90 || !lorry) spawnLorry(); } } }
     tickTruck(dt);
     if (saveT > 0 && (saveT -= dt) <= 0) flush();
@@ -543,7 +626,7 @@ export function createFarm(api) {
     clock += dt; const sim = S.got && dFarm < SIM_R, vis = dFarm < 260;   // hunger runs only while you are at the farm
     for (const a of cows.slice()) { a.root.visible = vis; if (vis || sim) animalTick(a, dt, sim, dFarm < 90); }
     for (const a of hens.slice()) { a.root.visible = vis && dFarm < 160; if (a.root.visible || sim) animalTick(a, dt, sim, dFarm < 60); }
-    if (dFarm < 200) tickDrops(dt); tickCrates();
+    if (dFarm < 200) tickDrops(dt); tickCrates(); tickNpcs(dt, p);
   }
   let sig = '';
   function tickTurfRain() { if (api.rain() > .3) S.turf.forEach((t, i) => { if (needsWater(i)) waterTurf(i, true); }); }
@@ -581,6 +664,9 @@ export function createFarm(api) {
     if (c === 'truckpos') return truck ? JSON.stringify({ x: Math.round(truck.x), z: Math.round(truck.z), sp: +truck.speed.toFixed(1), ai: !!truck.ai, goal: truck.ai && truck.ai.goal && { x: Math.round(truck.ai.goal.x), z: Math.round(truck.ai.goal.z) } }) : 'none';
     if (c === 'carry') { takeCarry(); return 1; }
     if (c === 'market') { if (MARKET) api.teleport(MARKET.x + 2, MARKET.z + 2, 0); return 1; }
+    if (parts[0] === 'npc') { const n = NPCS[+parts[1]]; if (!n) return 0; const o = n.W(NL.FARMER.u, NL.FARMER.v - 2); api.teleport(o.x, o.z, n.ry + Math.PI); return 1; }   // npc:3 walks you to farm 3's farmer
+    if (c === 'npcs') return JSON.stringify({ built: npcBuilt, farms: NPCS.map(n => ({ n: n.n, x: Math.round(n.x), z: Math.round(n.z), kd: Math.round(n.kd), on: n.on, cows: n.cows.length, hens: n.hens.length })) });
+    if (c === 'npcbuy') { const n = NPCS.find(n => near(api.player(), n.farmer.x, n.farmer.z, 4)); if (!n) return 0; npcBuy(n); return 1; }
     if (c === 'reset') { localStorage.removeItem(KEY); return 1; }
     if (parts[0] === 'at') { const o = W(+parts[1], +parts[2]); api.teleport(o.x, o.z, ry + Math.PI); return 1; }
     if (c === 'yardpos') return JSON.stringify({ yc: YC, k: K, ry, gate: SG, office: OFFICE, market: MARKET });
