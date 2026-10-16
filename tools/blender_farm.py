@@ -432,7 +432,8 @@ def pen(detail=True, seed=34):
         for j in range(n):
             x0, x1 = -W / 2 + W * i / n, -W / 2 + W * (i + 1) / n; y0, y1 = -D / 2 + D * j / n, -D / 2 + D * (j + 1) / n
             q = [Vector((x0, y0, .015)), Vector((x1, y0, .015)), Vector((x1, y1, .015)), Vector((x0, y1, .015))]
-            B.cls = 0; B.poly(q, [B.shade(C['soil_d'] if vnoise(p, .7, seed) > .45 else C['laterite'], p, .2, 1.5) for p in q])
+            B.cls = 5; B.poly(q, [B.shade(lin('#9a6440') if vnoise(p, .7, seed) > .55 else lin('#b47448'), p, .15, 1.5) for p in q])
+            B.cls = 0
     B.box(T(0, D / 2 - .55, 0), 3.2, .6, .55, C['wood_d'], .1, f=4)                    # trough
     B.box(T(0, D / 2 - .55, .45), 3.0, .45, .06, C['hay'], .25, f=6)
     B.cyl(T(3.3, D / 2 - .9, 0), .55, .6, .35, C['tyre'], n=12, top=False, inner=C['tyre'])   # a tyre trough of water
@@ -826,33 +827,55 @@ TURF_W, TURF_D = 2.3, 1.75   # one pasture tile in the cow pen (4 x 3 of them)
 
 def turf(detail=True, kind='full', seed=120):
     """One pasture tile, 2.3 x 1.75 m. full: thick green grass the cows graze; low: eaten down to stubble;
-    bare: grazed out, dry cracked earth; wet: just watered, dark earth with new shoots coming up."""
+    bare: grazed out, dry cracked earth; wet: just watered, dark earth with new shoots coming up.
+    The ground carries a photo class (6 grass floor, 7 cracked red earth, 5 laterite) for the game's detail shader;
+    the blades grow in tufts, splaying out from each tuft's centre, in several greens with a few dry ones."""
     B = MB('fm_turf' + ('' if kind == 'full' else '_' + kind) + ('' if detail else '_lod1'), detail, seed + len(kind)); R = B.R
     hw, hd = TURF_W / 2, TURF_D / 2
-    ground = {'full': lin('#4f6a2a'), 'low': lin('#6a6a34'), 'bare': lin('#9a7048'), 'wet': lin('#6a4a30')}[kind]
-    ground2 = {'full': lin('#3e5a22'), 'low': lin('#8a7444'), 'bare': lin('#b08458'), 'wet': lin('#57391f')}[kind]
+    ground = {'full': lin('#5c8a30'), 'low': lin('#8a8a44'), 'bare': lin('#c08658'), 'wet': lin('#7a5236')}[kind]
+    ground2 = {'full': lin('#4e7a2a'), 'low': lin('#9a8a4e'), 'bare': lin('#cc9464'), 'wet': lin('#6a442c')}[kind]
     n = 8 if detail else 2
+    B.cls = {'full': 6, 'low': 6, 'bare': 7, 'wet': 5}[kind]
     for i in range(n):
         for j in range(n):
             x0, x1 = -hw + TURF_W * i / n, -hw + TURF_W * (i + 1) / n; y0, y1 = -hd + TURF_D * j / n, -hd + TURF_D * (j + 1) / n
             P = [Vector((x0, y0, .02)), Vector((x1, y0, .02)), Vector((x1, y1, .02)), Vector((x0, y1, .02))]
-            B.poly(P, [B.shade(ground2 if vnoise(p, 1.6, seed) > .55 else ground, p, .22, 3.5, seed) for p in P])
-    if kind == 'bare' and detail:   # cracks in the dry earth
-        for i in range(14):
+            B.poly(P, [B.shade(ground2 if vnoise(p, 1.6, seed) > .55 else ground, p, .18, 3.5, seed) for p in P])
+    B.cls = 0
+    if kind == 'bare' and detail:   # a few deeper cracks over the photo ones
+        for i in range(8):
             x, y, a = R.uniform(-hw + .1, hw - .1), R.uniform(-hd + .1, hd - .1), R.uniform(0, 3.14)
-            B.box(T(x, y, .021, a), R.uniform(.15, .4), .012, .003, lin('#5a3e26'), .1)
-    blades = {'full': (320, 90), 'low': (140, 40), 'bare': (18, 6), 'wet': (70, 20)}[kind][0 if detail else 1]
-    for i in range(blades):
-        x, y = R.uniform(-hw + .05, hw - .05), R.uniform(-hd + .05, hd - .05)
-        if kind == 'full': L, col, tip = R.uniform(.16, .34), C['grass'] if i % 3 else C['grass_d'], C['leaf_l']
-        elif kind == 'low': L, col, tip = R.uniform(.04, .09), C['grass_d'], C['grass_y']
-        elif kind == 'bare': L, col, tip = R.uniform(.03, .07), C['leaf_dry'], C['grass_y']
-        else: L, col, tip = R.uniform(.04, .1), C['leaf_l'], lin('#9ad04a')
-        B.leaf((x, y, .02), R.uniform(0, 6.28), R.uniform(1.1, 1.5), L, .035 if detail else .07, col, droop=.5, seg=2, tip=tip, shape='blade', both=False)
+            B.box(T(x, y, .021, a), R.uniform(.15, .4), .01, .003, lin('#6a4630'), .1)
+    GREENS = [lin('#4f7a26'), lin('#5f8a2c'), lin('#3f6a22'), lin('#6e9634'), lin('#567f2a')]
+    TIPS = [lin('#8fb44a'), lin('#a4bc58'), lin('#7aa03c')]
+    DRY = [lin('#b8a058'), lin('#a08a48'), lin('#c8b470')]
+    # (tufts, blades per tuft, single blades) for detail / lod1
+    plan = {'full': ((62, 9, 70), (16, 6, 0)), 'low': ((40, 5, 40), (12, 3, 0)), 'bare': ((7, 4, 6), (3, 2, 0)), 'wet': ((24, 4, 20), (8, 2, 0))}[kind][0 if detail else 1]
+    W = (.036 if kind == 'full' else .03) if detail else .07
+    def blade(x, y, yaw, i):
+        if kind == 'full':
+            dry = R.random() < .08; L = R.uniform(.16, .38); pitch = R.uniform(1.05, 1.5)
+            col = R.choice(DRY) if dry else R.choice(GREENS); tip = R.choice(DRY) if dry else R.choice(TIPS)
+        elif kind == 'low':   # grazed: short, a little yellow, blunt
+            dry = R.random() < .3; L = R.uniform(.035, .09); pitch = R.uniform(1.1, 1.5)
+            col = R.choice(DRY) if dry else R.choice(GREENS); tip = R.choice(DRY)
+        elif kind == 'bare':
+            L = R.uniform(.03, .08); pitch = R.uniform(.9, 1.4); col = R.choice(DRY); tip = lin('#d0c08a')
+        else:                 # new shoots after watering: short and bright
+            L = R.uniform(.04, .11); pitch = R.uniform(1.2, 1.55); col = lin('#5f9a2c'); tip = lin('#a8d65a')
+        B.leaf((x, y, .02), yaw, pitch, L, W * R.uniform(.8, 1.2), col, droop=R.uniform(.3, .7), seg=2, tip=tip, shape='blade', both=False)
+    tufts, per, singles = plan
+    for t in range(tufts):
+        cx, cy = R.uniform(-hw + .08, hw - .08), R.uniform(-hd + .08, hd - .08)
+        for k in range(per + R.randint(-1, 2)):
+            a = R.uniform(0, 6.28); d = R.uniform(0, .05)
+            blade(max(-hw + .03, min(hw - .03, cx + math.cos(a) * d)), max(-hd + .03, min(hd - .03, cy + math.sin(a) * d)), a + R.uniform(-.5, .5), k)
+    for i in range(singles):
+        blade(R.uniform(-hw + .03, hw - .03), R.uniform(-hd + .03, hd - .03), R.uniform(0, 6.28), i)
     if kind == 'wet' and detail:   # puddles
         for i in range(3):
             x, y = R.uniform(-hw + .4, hw - .4), R.uniform(-hd + .3, hd - .3)
-            B.cyl(T(x, y, .022, s=(1, .7, 1)), R.uniform(.12, .25), R.uniform(.12, .25), .002, lin('#2a3a44'), n=10, var=.05)
+            B.cyl(T(x, y, .022, s=(1, .7, 1)), R.uniform(.12, .25), R.uniform(.12, .25), .002, lin('#6a7a80'), n=10, var=.05)
     return B.finish()
 
 

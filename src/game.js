@@ -6997,9 +6997,9 @@ function farmDetail(geo,mat){
       vFW=(modelMatrix*fw).xyz; vFN=mat3(modelMatrix)*fn;`);
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
       uniform sampler2D fDet; varying float vFk; varying vec3 vFW; varying vec3 vFN;
-      vec3 fdS(vec2 q,vec2 cell){ vec2 uv=cell+.004+fract(q)*.492; return textureGrad(fDet,uv,dFdx(q)*.492,dFdy(q)*.492).rgb; }`)
+      vec3 fdS(vec2 q,vec2 cell){ const vec2 cs=vec2(.246,.492); vec2 uv=cell+vec2(.002,.004)+fract(q)*cs; return textureGrad(fDet,uv,dFdx(q)*cs,dFdy(q)*cs).rgb; }`)
       .replace('#include <color_fragment>',`#include <color_fragment>
-      if(vFk>=1.){ float k=floor(vFk+.01)-1.; vec2 cell=vec2(mod(k,2.),1.-floor(k/2.))*.5;
+      if(vFk>=1.){ float k=floor(vFk+.01)-1.; vec2 cell=vec2(mod(k,4.)*.25,(1.-floor(k/4.))*.5);
         vec3 n=abs(normalize(vFN)); n=n*n*n*n; n/=(n.x+n.y+n.z); vec3 p=vFW*.5;
         vec3 d=fdS(p.zy,cell)*n.x+fdS(p.xz,cell)*n.y+fdS(p.xy,cell)*n.z;
         float fl=dot(diffuseColor.rgb,vec3(.3,.59,.11)); vec3 fm=clamp(1.+(d*2.-1.)*1.9,.3,1.9); diffuseColor.rgb=diffuseColor.rgb*fm+d*d*.22*(1.-smoothstep(.05,.25,fl)); }`); }; }
