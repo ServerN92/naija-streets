@@ -12,14 +12,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=c8abaf1d94';
-import * as C2 from './char2.js?v=c8abaf1d94';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=c8abaf1d94';
-import { createPhone } from './phone.js?v=c8abaf1d94';
-import { MapView } from './mapview.js?v=c8abaf1d94';
+import * as CLOCK from './clock.js?v=2531e90d9d';
+import * as C2 from './char2.js?v=2531e90d9d';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=2531e90d9d';
+import { createPhone } from './phone.js?v=2531e90d9d';
+import { createGuide } from './guide.js?v=2531e90d9d';
+import { MapView } from './mapview.js?v=2531e90d9d';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='c8abaf1d94';
+const BUILD='2531e90d9d';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -38,6 +39,7 @@ const R = mulberry32(90210);
 const rr = (a,b) => a + R()*(b-a), ri = (a,b) => Math.floor(rr(a,b+1)), pick = a => a[Math.floor(R()*a.length)];
 const naira=n=>'₦'+n.toLocaleString('en-NG');
 let PH=null;   // the phone (src/phone.js)
+let GD=null;   // the first-time tips (src/guide.js)
 const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
@@ -289,7 +291,8 @@ function texLabel(text, bg='#F2B705', fg='#0E1014', w=1024, h=192){ const [c,g]=
   g.fillStyle=fg; g.textAlign='center'; g.textBaseline='middle'; fitFont(g,text,w-80,96,'Bungee'); g.fillText(text,w/2,h/2+4); const t=tx(c,true,false,1024); return t; }
 
 /* ================= world constants ================= */
-// The city is real Mushin, Lagos, from OpenStreetMap (tools/osm_world.py -> assets/maps/mushin_world.json).
+// The city is real Mushin, Lagos, from OpenStreetMap (tools/osm_world.py -> assets/maps/mushin_world.json), with Ikeja Under
+// Bridge joined on its west side behind a police toll gate (tools/merge_district.py -> assets/maps/lagos_world.json).
 // No raised pavements here: roads, compounds and markets all sit on the same red earth.
 const SLAB=0;
 const PLACES=[]; // things to show on the big map: {name, sub, kind, x, z} (+ door: shop front and which way it faces)
@@ -309,8 +312,9 @@ function addOB(cx,cz,hx,hz,ang,h,y0=0){ const c=Math.cos(ang), s=Math.sin(ang), 
 let qStamp=0; const qOut=[];
 function query(x0,z0,x1,z1){ qStamp++; qOut.length=0; for(let i=Math.floor(x0/CELL);i<=Math.floor(x1/CELL);i++) for(let j=Math.floor(z0/CELL);j<=Math.floor(z1/CELL);j++){ const a=hash.get(hk(i,j)); if(a) for(const b of a) if(b._q!==qStamp){ b._q=qStamp; qOut.push(b); } } return qOut; }
 // push a circle (radius r, feet at height y) out of every box it overlaps
+let RC_FLY=null;   // the flyover the player's car is driving on: its ramp boxes don't block it
 function resolveCircle(p,r,list=null,y=0){ let hit=false; const cand=list||query(p.x-r,p.z-r,p.x+r,p.z+r);
-  for(const b of cand){ if(b.y0>y+1.4||b.h<y+.25) continue;
+  for(const b of cand){ if(b.y0>y+1.4||b.h<y+.25||(b.fly&&b.fly===RC_FLY)) continue;
     if(b.ob){ const o=b.ob, dx=p.x-o.cx, dz=p.z-o.cz, lu=dx*o.c+dz*o.s, lv=-dx*o.s+dz*o.c, cu=clamp(lu,-o.hx,o.hx), cv=clamp(lv,-o.hz,o.hz), du=lu-cu, dv=lv-cv, d2=du*du+dv*dv;
       if(d2<r*r){ hit=true; let nu=lu, nv=lv; if(d2>1e-6){ const d=Math.sqrt(d2); nu=cu+du/d*r; nv=cv+dv/d*r; }
         else { const m0=o.hx-lu, m1=lu+o.hx, m2=o.hz-lv, m3=lv+o.hz, m=Math.min(m0,m1,m2,m3); if(m===m0) nu=o.hx+r; else if(m===m1) nu=-o.hx-r; else if(m===m2) nv=o.hz+r; else nv=-o.hz-r; }
@@ -379,7 +383,8 @@ async function fetchBuf(url,tries=3){ for(let a=0;a<tries;a++){ const ctl=new Ab
 let MANIFEST={}; try{ const r=await fetch('assets/manifest.json',{cache:'no-cache'}); if(r.ok) MANIFEST=await r.json(); }catch(e){}
 const clockSync=CLOCK.syncClock();
 // key: [file, front direction, real size (m) along x after turning, has a low-detail file]
-const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.75,1],bus:['citybus','+z',10.5,1],police:['police_pickup','-x',5.3,1],okada:['red_motorcycle','-x',2.05,1],sedan:['sedancar','-x',4.55,1],
+const MODEL_FILES={ub_pier:['ub_pier','h',0,1],ub_toll:['ub_toll','h',0,1],ub_barrier:['ub_barrier','h',0,1],ub_police:['ub_police','h',0,1],ub_sandbags:['ub_sandbags','h',0,1],ub_shack_zinc:['ub_shack_zinc','h',0,1],ub_shack_wood:['ub_shack_wood','h',0,1],ub_container:['ub_container','h',0,1],ub_drum:['ub_drum','h',0,1],   // Ikeja Under Bridge (tools/blender_underbridge.py)
+  danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.75,1],bus:['citybus','+z',10.5,1],police:['police_pickup','-x',5.3,1],okada:['red_motorcycle','-x',2.05,1],sedan:['sedancar','-x',4.55,1],
   bungalow:['ns_bungalow','h',12.5,1],house:['ns_house','h',16,1],storey:['ns_storey','h',12.5,1],
   dup1:['ns_dup1','h',14.8,1],dup2:['ns_dup2','h',15.2,1],dup3:['ns_dup3','h',15.2,1],dup4:['ns_dup4','h',14.8,1],dup5:['ns_dup5','h',14.8,1],faceme:['ns_faceme','h',18.8,1],zinc:['ns_zinc','h',7.1,1],wood:['ns_wood','h',8.2,1],
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
@@ -389,7 +394,7 @@ const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.7
   tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
-const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
+const WORLD_URL=(()=>{ const u='assets/maps/lagos_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/lagos_world.json']||2050000;   // Mushin + Ikeja Under Bridge (tools/merge_district.py)
 const worldJob=fetchBuf(WORLD_URL).then(b=>JSON.parse(new TextDecoder().decode(b))); worldJob.catch(()=>{});
 for(const [,[file,,,lod]] of Object.entries(MODEL_FILES)){ for(const f of lod?[file,file+'_lod1']:[file]){ const u=murl(f); DL.exp[u]=MANIFEST[`assets/models/${f}.glb`]||300000; } }
 const HERO_FILES=['character','idle','walk','run','enter_car']; const HERO_URL='assets/characters/hero.glb'+((AV['assets/characters/hero.glb']||MANIFEST['assets/characters/hero.glb'])?'?v='+(AV['assets/characters/hero.glb']||MANIFEST['assets/characters/hero.glb']):''); DL.exp[HERO_URL]=MANIFEST['assets/characters/hero.glb']||720000;
@@ -535,6 +540,10 @@ const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,si
 /* ================= the map: real Mushin roads (OpenStreetMap) ================= */
 await step('Laying the roads of Mushin…', 22);
 const WD=await worldJob; WB={x:WD.half[0]-4,z:WD.half[1]-4};
+// other parts of Lagos joined to Mushin: Ikeja Under Bridge, west of Mushin behind the police toll gate (tools/merge_district.py)
+const DISTS=(WD.districts||[]).map(d=>({...d,x0:d.box[0],z0:d.box[1],x1:d.box[2],z1:d.box[3]}));
+for(const L of WD.land||[]) LAND_EXTRA.push(L);
+function distAt(x,z){ for(const d of DISTS) if(x>=d.x0&&x<=d.x1&&z>=d.z0&&z<=d.z1) return d; return null; }
 water.visible=false; water.position.y=-40;   // no lagoon in Mushin
 // road classes: 0 expressway 1 trunk 2 primary 3 secondary 4 tertiary 5 unclassified 6 residential 7 living street 8 service lane 9 track
 const nodes=[]; for(let i=0;i<WD.nodes.length;i+=2) nodes.push({i:nodes.length,x:WD.nodes[i],z:WD.nodes[i+1],adj:[],wadj:[],out:[],ed:[],r:0,deg:0,ax:0,tl:false,tlo:0});
@@ -567,6 +576,9 @@ function groundY(){ return 0; }
 // ---- the ground, then parks, school fields, market yards and filling stations
 const SHORE_X=WB.x+34;   // east of Mushin the land ends at the Lagos Lagoon (the Third Mainland Bridge crosses it)
 { const x0=-WB.x-300, W2=SHORE_X-x0, D2=2*WB.z+600, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2); g.translate((x0+SHORE_X)/2,0,0);
+  const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*W2/16,uv.getY(i)*D2/16);
+  const m=new THREE.Mesh(g,MAT.ground); m.receiveShadow=true; scene.add(m); }
+for(const d of DISTS){ const x0=d.x0-300, x1=-WB.x-300, z0=d.z0-300, z1=d.z1+300, W2=x1-x0, D2=z1-z0, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2); g.translate((x0+x1)/2,0,(z0+z1)/2);   // the district's own ground, up to Mushin's
   const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*W2/16,uv.getY(i)*D2/16);
   const m=new THREE.Mesh(g,MAT.ground); m.receiveShadow=true; scene.add(m); }
 const AREAS=WD.areas.map(a=>({...a,pts:(()=>{ const o=[]; for(let i=0;i<a.p.length;i+=2) o.push([a.p[i],a.p[i+1]]); return o; })()}));
@@ -704,7 +716,7 @@ if(HOME) HOME.special='home';
   pickSite('carstand',250,1100,3,20,(b,d)=>Math.abs(d-600)*.4-b.w*b.d*.1); }
 // the university: the College of Medicine of the University of Lagos stands in the LUTH grounds at Idi-Araba,
 // so the biggest hospital-ground building becomes the faculty block
-const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
+const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special||distAt(b.cx,b.cz)) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
 // open ground near the university for a football field and the township stadium: no road, rail, market or school
 // inside, facing a road; the houses that stood there are cleared. Returns {cx,cz,ry,hw,hd} or null.
 const RAILSEG=[]; for(const pts of WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([r.p[i],r.p[i+1]]); return o; })) for(let i=0;i+1<pts.length;i++) RAILSEG.push([...pts[i],...pts[i+1]]);
@@ -2235,14 +2247,16 @@ function thunder(k){ burst(2.6,140,.6*k,1.6); }
 // people talk to a woman as a woman
 const SHE=[[/\bmy son\b/g,'my daughter'],[/\bOga\b/g,'Madam'],[/\bsir!/g,'ma!'],[/\bUncle\b/g,'Aunty'],[/\bboy!/g,'girl!'],[/\bBoss\b/g,'Madam'],[/\bmy guy\b/g,'my sister'],[/\bguy man\b/g,'fine girl']];
 let toastT=0; function toast(msg,dur=2.6){ if(isF()&&/"/.test(msg)) for(const [a,b] of SHE) msg=msg.replace(a,b); const t=$('#toast'); t.textContent=msg; t.hidden=false; t.onclick=null; toastT=dur; }
-const DISTRICTS=WD.pois.place.map(([x,z,n])=>({x,z,n}));
-function districtAt(x,z){ let best='Mushin',bd=1e18; for(const d of DISTRICTS){ const q=(d.x-x)**2+(d.z-z)**2; if(q<bd){ bd=q; best=d.n; } } return best; }
+const DISTRICTS=WD.pois.place.map(([x,z,n])=>({x,z,n,D:distAt(x,z)}));
+function districtAt(x,z){ const D=distAt(x,z); let best=D?D.name:'Mushin',bd=1e18; for(const d of DISTRICTS){ if(d.D!==D) continue; const q=(d.x-x)**2+(d.z-z)**2; if(q<bd){ bd=q; best=d.n; } } return best; }
+const atCheckpoint=(x,z)=>DISTS.some(g=>g.gate&&!distAt(x,z)&&Math.abs(x-g.gate.x)<60&&Math.abs(z-g.gate.z)<45);
 function locationName(){ if(mode==='interior') return ROOM.label; const x=mode==='drive'?drive.v.x:player.x, z=mode==='drive'?drive.v.z:player.z, dist=districtAt(x,z);
   if(Math.hypot(x-STATION.x,z-STATION.z)<26) return 'Mushin Police Station';
   if(SITES.park&&Math.hypot(x-SITES.park.cx,z-SITES.park.cz)<34) return 'Mushin Motor Park';
-  for(const m of MARKETS) if(m.stalls.length&&inPoly(m.a.pts,x,z)) return `${m.name} · ${dist}`;
+  if(atCheckpoint(x,z)) return 'Police Checkpoint · Under Bridge Toll';
+  for(const m of MARKETS) if(m.stalls.length&&inPoly(m.a.pts,x,z)) return m.name===dist?m.name:`${m.name} · ${dist}`;
   for(const sc of SCHOOLS) if(inPoly(sc.a.pts,x,z)) return sc.name;
-  { const h=areaAt(x,z,['hospital']); if(h&&h.n) return 'LUTH · Idi-Araba'; }
+  { const h=areaAt(x,z,['hospital']); if(h&&h.n) return distAt(x,z)?h.n:'LUTH · Idi-Araba'; }
   let best=null,bd=30; for(const e of roadsNear(x,z)){ if(!e.name) continue; const d=segD(e,x,z)-e.hw; if(d<bd){ bd=d; best=e.name; } }
   return best?`${best} · ${dist}`:dist; }
 const ICONS={sun:'<circle cx="12" cy="12" r="4.5" fill="#F2B705"/><g stroke="#F2B705" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g>',
@@ -2257,7 +2271,7 @@ function updateClockHUD(){ $('#clockT').textContent=CLOCK.fmtHour(ENV.hour); $('
   const ic=ENV.icon==='sun'&&ENV.night?'moon':ENV.icon; if(ic!==lastIcon){ lastIcon=ic; $('#wIcon').innerHTML=ICONS[ic]||ICONS.sun; } }
 const mm=$('#mm'), mg=mm.getContext('2d');
 // the whole map as one picture for the big map (sharp detail is drawn on top when you zoom in)
-const MMB={x0:-WB.x-20,z0:AIRPORT?AIRPORT.RZ-140:-WB.z-20,x1:TMB?TMB.xBlock+260:WB.x+20,z1:WB.z+20,ppm:.45}; let mmCache=null;   // the map reaches the airport and the bridge
+const MMB={x0:Math.min(-WB.x-20,...DISTS.map(d=>d.x0-20)),z0:AIRPORT?AIRPORT.RZ-140:-WB.z-20,x1:TMB?TMB.xBlock+260:WB.x+20,z1:Math.max(WB.z+20,...DISTS.map(d=>d.z1+20)),ppm:.45}; let mmCache=null;   // the map reaches the airport and the bridge
 const COND_COL={good:'#8d939e',bad:'#7b7468',dirt:'#9a6440'};
 const AREA_COL={pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
 function buildMinimapCache(){ const W=Math.ceil((MMB.x1-MMB.x0)*MMB.ppm), H=Math.ceil((MMB.z1-MMB.z0)*MMB.ppm); mmCache=document.createElement('canvas'); mmCache.width=W; mmCache.height=H;
@@ -2337,15 +2351,15 @@ function drawMinimap(){ if(!mmCW) mmCW=mm.clientWidth||190; const S=mm.width, R0
   const hd=mode==='drive'?Math.atan2(-Math.sin(drive.v.h),Math.cos(drive.v.h)):Math.atan2(Math.cos(player.yaw),Math.sin(player.yaw));
   mg.save(); mg.translate(R0,R0); mg.rotate(hd+th); mg.scale(k,k); mg.fillStyle='#F7EFDF'; mg.strokeStyle='#0E1014'; mg.lineWidth=4; mg.beginPath(); mg.moveTo(20,0); mg.lineTo(-13,-13); mg.lineTo(-6,0); mg.lineTo(-13,13); mg.closePath(); mg.stroke(); mg.fill(); mg.restore(); }
 function openMap(){ if(!mmCache) buildMinimapCache(); mapView.image=mmCache; mapView.open(); for(const kk in K) K[kk]=false; joy.x=joy.y=0; if(document.pointerLockElement) document.exitPointerLock(); }
-function nearestVehicle(maxD=3.9){ let best=null,bd=maxD; for(const v of vehicles){ if(v.wreck||v.fire) continue; const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd&&Math.abs(v.speed)<7){ bd=d; best=v; } } return best; }
+function nearestVehicle(maxD=3.9){ let best=null,bd=maxD; for(const v of vehicles){ if(v.wreck||v.fire||flyUp(v)) continue; const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd&&Math.abs(v.speed)<7){ bd=d; best=v; } } return best; }
 const nearDoor=()=>Math.hypot(player.x-APT.front.x,player.z-APT.front.z)<2.4;
 const nearExit=()=>Math.hypot(player.x-ROOM.exit.x,player.z-ROOM.exit.z)<(ROOM===INT?1.2:1.8);
 let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$('#speedo'), SPD=$('#spd');
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+    else if(mode==='drive'){ if(!drive.ride&&gateNear()) txt=`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
@@ -2387,6 +2401,7 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(DEALER.open&&(k==='escape'||k==='e')){ closeShop(); K[k]=true; return; }
   if(MENU.open&&(k==='escape'||k==='e')){ closeMenu(); K[k]=true; return; }
   if(k==='escape'&&PH&&PH.cam()){ PH.closeCamera(); return; }
+  if(k==='backspace'&&PHONE.open&&PH&&!PH.cam()){ e.preventDefault(); PH.back(); return; }
   if(k==='enter'&&PH&&PH.cam()){ PH.test('shoot'); return; }
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
@@ -2519,8 +2534,9 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
-  else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  else if(mode==='drive'){ if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); }
+    if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1,bike2:1,sbike:1,skate:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
@@ -2648,13 +2664,13 @@ function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBra
   v.lift=B?SKL.hop+(SKL.wh>0?v.c.def.L*.36*Math.sin(SKL.wh):0)+(SKL.st>0?v.c.def.L*.4*Math.sin(SKL.st):0):0; v.wh=B?SKL.wh-SKL.st:0;
   const surf=condAt(v.x,v.z), lim=surf==='dirt'?(BIKE[v.type]||v.type==='skate'?.72:.55):surf==='bad'?.85:1; if(Math.abs(sp)>DT[1]*lim) sp-=Math.sign(sp)*Math.min(Math.abs(sp)-DT[1]*lim,dt*(surf==='dirt'?7:4));
   const fx=Math.cos(v.h), fz=-Math.sin(v.h), mfx=Math.cos(v.mh), mfz=-Math.sin(v.mh); let nx=v.x+mfx*sp*dt, nz=v.z+mfz*sp*dt;
-  { const ph=bumpPothole(v,fx,fz,Math.abs(sp),true); if(ph){ const hit=ph.depth*Math.min(Math.abs(sp),16); camState.shake=Math.min(1.4,camState.shake+hit*.08); if(hit>3){ clunk(Math.min(1,hit/10)); sp*=1-Math.min(.22,hit*.012); } if(hit>9&&!ph.told){ ph.told=1; toast(mpick(['Ehn! This pothole no get mercy','Lagos road wahala!','Small small, this road don spoil'])); } } }
+  { const ph=(v.fh||0)>.3?null:bumpPothole(v,fx,fz,Math.abs(sp),true); if(ph){ const hit=ph.depth*Math.min(Math.abs(sp),16); camState.shake=Math.min(1.4,camState.shake+hit*.08); if(hit>3){ clunk(Math.min(1,hit/10)); sp*=1-Math.min(.22,hit*.012); } if(hit>9&&!ph.told){ ph.told=1; toast(mpick(['Ehn! This pothole no get mercy','Lagos road wahala!','Small small, this road don spoil'])); } } }
   if(!onLand(nx,nz,1.2)||!onLand(nx+fx*2.2,nz+fz*2.2,1.2)||!onLand(nx-fx*2.2,nz-fz*2.2,1.2)){ nx=v.x; nz=v.z; if(Math.abs(sp)>4) bump(Math.abs(sp)); crashDamage(v,Math.abs(sp)); sp*=-.25; }
   const P={x:nx,z:nz}; let hit=false;
   const cr=v.c.def.W/2*.95, ck=Math.max(0,v.c.def.L/2-cr);
-  for(const k of (ck>.2?[ck,-ck]:[0])){ const c={x:P.x+fx*k,z:P.z+fz*k}, ox=c.x, oz=c.z; if(resolveCircle(c,cr)){ hit=true; P.x+=c.x-ox; P.z+=c.z-oz; } }
+  for(const k of (ck>.2?[ck,-ck]:[0])){ const c={x:P.x+fx*k,z:P.z+fz*k}, ox=c.x, oz=c.z; RC_FLY=FLYP.F; const hc=resolveCircle(c,cr,null,v.fh||0); RC_FLY=null; if(hc){ hit=true; P.x+=c.x-ox; P.z+=c.z-oz; } }
   if(hit){ if(Math.abs(sp)>6){ bump(Math.abs(sp)); crashDamage(v,Math.abs(sp)); sp*=.55; SKL.wh=0; } sp*=Math.max(0,1-dt*5); }
-  for(const o of vehicles){ if(o===v) continue; const dx=o.x-P.x, dz=o.z-P.z; if(Math.abs(dx)>5||Math.abs(dz)>5) continue; const d=Math.hypot(dx,dz), lim=(v.c.def.L+o.c.def.L)/2*.7;
+  for(const o of vehicles){ if(o===v||Math.abs((o.fh||0)-(v.fh||0))>2.5) continue; const dx=o.x-P.x, dz=o.z-P.z; if(Math.abs(dx)>5||Math.abs(dz)>5) continue; const d=Math.hypot(dx,dz), lim=(v.c.def.L+o.c.def.L)/2*.7;
     if(d<lim&&d>.01){ const push=lim-d; P.x-=dx/d*push; P.z-=dz/d*push; if(Math.abs(sp)>4){ bump(Math.abs(sp)); if(Math.abs(sp)>7){ crashDamage(v,Math.abs(sp)); crashDamage(o,Math.abs(sp)*1.1); } if(o.ai){ o.ai.wait=3; if(MR()<.7) setTimeout(horn,250); } } sp*=.5; } }
   v.x=P.x; v.z=P.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z;
   headSpot.intensity=ENV.spot; const bo=Math.min(.7,ENV.spot/220); BEAM.visible=bo>.03; if(BEAM.visible){ const d=v.c.def.L/2+9; BEAM.position.set(v.x+fx*d,groundY(v.x+fx*d,v.z+fz*d)+.06,v.z+fz*d); BEAM.rotation.set(-Math.PI/2,Math.atan2(-fx,-fz),0); BEAM.material.opacity=bo; } }
@@ -2693,11 +2709,11 @@ function updateTraffic(dt){
     if(ai.ghost>0) ai.ghost-=dt;   // a car just put on the road may slip out of a crowd unseen, but never while you watch
     if(!(ai.ghost>0)||inView(v.x,1,v.z,4)){
       const look=Math.max(22,Math.abs(v.speed)*2.4+8);   // fast cars look further ahead
-      for(const o of vehicles){ if(o===v) continue; const dx=o.x-v.x, dz=o.z-v.z; if(Math.abs(dx)>look||Math.abs(dz)>look) continue; const ah=dx*fx+dz*fz; if(ah<=0||ah>look) continue;
+      for(const o of vehicles){ if(o===v||Math.abs((o.fh||0)-(v.fh||0))>2.5) continue; const dx=o.x-v.x, dz=o.z-v.z; if(Math.abs(dx)>look||Math.abs(dz)>look) continue; const ah=dx*fx+dz*fz; if(ah<=0||ah>look) continue;
         if(Math.abs(-dx*fz+dz*fx)<(v.c.def.W+o.c.def.W)/2+.12){ const gap=ah-((v.c.def.L+o.c.def.L)/2+1.8), os=Math.max(0,(Math.cos(o.h)*fx-Math.sin(o.h)*fz)*o.speed);
           const lim=Math.max(0,Math.min(gap*1.3+os*.9,brakeTo(gap)+os*.95)); if(lim<target){ target=lim; if(o.ai&&o.ai.waiting) waiting=true; } if(ah<blkAh){ blk=o; blkAh=ah; } } }
-      if((mode==='walk'||mode==='enter')&&inPath(v,fx,fz,player.x,player.z)) target=0;
-      for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0;
+      if((mode==='walk'||mode==='enter')&&!flyUp(v)&&inPath(v,fx,fz,player.x,player.z)) target=0;
+      if(!flyUp(v)) for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0;
       for(const k of SKATERS) if(Math.abs(k.x-v.x)<12&&Math.abs(k.z-v.z)<12&&inPath(v,fx,fz,k.x,k.z)) target=0; }   // and for the street skaters
     if(ai.hs){ const r=busStopFor(v,ai,fx,fz,target); target=r; if(target===0) waiting=true; }
     // a car that won't move (parked, broken down, burnt, you): go round it on the left when the way is clear; never through it
@@ -2730,7 +2746,7 @@ function syncCar(v,dt){ const c=v.c, fx=Math.cos(v.h), fz=-Math.sin(v.h), d2=(v.
   if(v!==drive.v&&d2<80*80) bumpPothole(v,fx,fz,sp,false);
   const surf=condAt(v.x,v.z); if(surf==='dirt'&&sp>2&&MR()<dt*6) v.bobV+=(MR()-.5)*Math.min(1,sp/9)*(BIKE[v.type]?.9:.5); else if(surf==='bad'&&sp>3&&MR()<dt*3) v.bobV+=(MR()-.5)*.3;
   v.bobV+=(-95*v.bob-10*v.bobV)*dt; v.bob+=v.bobV*dt; v.bob=clamp(v.bob,-.14,.12); v.pitchV=(v.pitchV||0)*Math.exp(-6*dt); v.pitch=(v.pitch||0)+v.pitchV*dt*8; v.pitch*=Math.exp(-5*dt);
-  const gy=groundY(v.x,v.z); v.y+=(gy-v.y)*Math.min(1,dt*10); const yA=groundY(v.x+fx*2,v.z+fz*2), yB=groundY(v.x-fx*2,v.z-fz*2);
+  const gy=groundY(v.x,v.z)+(v.fh||0); v.y+=(gy-v.y)*Math.min(1,dt*10); const yA=groundY(v.x+fx*2,v.z+fz*2), yB=groundY(v.x-fx*2,v.z-fz*2);
   let w=(v.h-v.lastH); w=((w+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; v.lastH=v.h; const om=dt>0?w/dt:0;
   const steer=v===drive.v?drive.steer:clamp(Math.atan(om*c.def.L*.62/Math.max(sp,1.5)),-.55,.55); v.steerVis+=(steer-v.steerVis)*Math.min(1,dt*8);
   const leanT=v.type==='skate'?clamp(-Math.atan(om*sp/9.81)*.4,-.16,.16):BIKE[v.type]||v.type==='keke'?clamp(-om*sp*(BIKE[v.type]?.075:.02),-.5,.5):0; v.lean+=(leanT-v.lean)*Math.min(1,dt*5);   // a board leans less than its rider (the trucks stop it)
@@ -2800,7 +2816,7 @@ function fareBoard(v){ const n=(FARE.trip?FARE.trip.pax.length:0)+peds.filter(p=
   for(const p of peds){ if(room<=0) break; const want=(p.state==='spot'&&p.wants&&p.spot&&p.spot.hailV===v)||(p.fareHail===v&&p.state==='react'); if(!want) continue;
     if(Math.hypot(p.x-v.x,p.z-v.z)>9) continue; p.fareHail=null; p.state='board'; p.bv=v; p.fare=true; p.timer=7; p.speed=0; if(p.spot) p.spot.boarding=(p.spot.boarding||0)+1; room--; } }
 // ---- people are solid: they step around each other instead of walking through
-const SOLID=new Set(['walk','idle','spot','react','shop','tsell','fight','flee','toll','tollchase','cop','copguard','dealer','arrest','hurt']);
+const SOLID=new Set(['walk','idle','spot','react','shop','tsell','fight','flee','toll','tollchase','cop','copguard','dealer','arrest','hurt','crook','gateguard']);
 const HEAVY=new Set(['spot','shop','tsell','toll','copguard','dealer','idle','react']);   // standing still: they hardly give way
 const SEP=[];
 function sidestep(w,sx,sz,d,dt){ if(w.state!=='walk'||w.speed<.3) return; const fx=Math.sin(w.yaw), fz=Math.cos(w.yaw); if((sx*fx+sz*fz)/d<.55) return;
@@ -2844,11 +2860,11 @@ function stareAt(p,dt,d){ p.stare=(p.stare||0)+dt*(d<2.5?1.3:1);
 function updatePeds(dt){ NPCF++; CROWD.list.length=0; if(NPCF%30===0){ NWALK=0; for(const p of peds) if(p.state==='walk'&&!p.spot) NWALK++; }
   for(const p of peds){ if(p.state==='off') continue;
     const dxp=p.x-player.x, dzp=p.z-player.z, d2=dxp*dxp+dzp*dzp;
-    if(d2>230*230&&!p.spot&&p.state!=='xbr'&&p.state!=='tsell'&&p.state!=='shop'&&!p.carried){ if(p.cop||p.toll){ offPed(p); continue; } if(p.body) freeBody(p);
+    if(d2>230*230&&!p.spot&&p.state!=='xbr'&&p.state!=='tsell'&&p.state!=='shop'&&!p.carried){ if(p.cop||p.toll||p.crook){ offPed(p); continue; } if(p.body) freeBody(p);
       if(NWALK>Q.peds){ offPed(p); NWALK--; continue; }   // people who ran off after a fight go back to the pool
       p.far=false; recast(p); placePed(p,70,170); continue; }
     if(p.cool>0) p.cool-=dt;
-    if(p.state!=='down'&&p.state!=='dead'&&p.state!=='board'&&p.state!=='getup'&&p.state!=='takedown'&&p.state!=='arrest'&&!p.carried&&p.y<1) for(const v of vehicles){ const sp=Math.abs(v.speed); if(sp<2.5||v.type==='skate') continue; const dx=p.x-v.x, dz=p.z-v.z; if(Math.abs(dx)>4||Math.abs(dz)>4) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
+    if(p.state!=='down'&&p.state!=='dead'&&p.state!=='board'&&p.state!=='getup'&&p.state!=='takedown'&&p.state!=='arrest'&&!p.carried&&p.y<1) for(const v of vehicles){ const sp=Math.abs(v.speed); if(sp<2.5||v.type==='skate'||flyUp(v)) continue; const dx=p.x-v.x, dz=p.z-v.z; if(Math.abs(dx)>4||Math.abs(dz)>4) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
       if(Math.abs(dx*fx+dz*fz)<v.c.def.L/2+.3&&Math.abs(-dx*fz+dz*fx)<v.c.def.W/2+.35){ knock(p,v,fx,fz,sp); break; } }
     if(p.state==='dead'){ p.deadT+=dt; { const c={x:p.x+p.vx*dt,z:p.z+p.vz*dt}; resolveCircle(c,.3); if(onLand(c.x,c.z)){ p.x=c.x; p.z=c.z; } } p.vx*=Math.exp(-4*dt); p.vz*=Math.exp(-4*dt);
       p.fall=Math.min(1,p.fall+dt*4); if(p.deadT>200||(p.deadT>25&&d2>150*150)||(p.deadT>8&&NPCF%10===0&&!inView(p.x,p.y+.4,p.z,1.3))){ offPed(p); continue; } }   // taken away as soon as you look away
@@ -2871,7 +2887,7 @@ function updatePeds(dt){ NPCF++; CROWD.list.length=0; if(NPCF%30===0){ NWALK=0; 
     else if(p.state==='arrest'){ if(!RAID.v){ p.state='flee'; p.timer=mrr(3,5); } }   // walked to the van by updateRaid
     else if(p.state==='carried'){ carriedPed(p); }
     else if(p.state==='shop') shopPed(p,dt);
-    else if(p.state==='cop'||p.state==='copguard'||p.state==='toll'||p.state==='tollchase'){}   // updateCops / updateTolls move them
+    else if(p.state==='cop'||p.state==='copguard'||p.state==='toll'||p.state==='tollchase'||p.state==='crook'||p.state==='gateguard'){}   // updateCops / updateTolls / Under Bridge move them
     else if(p.state==='flee'){ p.timer-=dt; p.speed=4.6; const c={x:p.x+Math.sin(p.yaw)*p.speed*dt,z:p.z+Math.cos(p.yaw)*p.speed*dt}; if(resolveCircle(c,.35)) p.yaw+=Math.PI*.5*dt*6; if(!onLand(c.x,c.z)){ p.yaw+=Math.PI; } else { p.x=c.x; p.z=c.z; } if(p.timer<=0) replanPed(p); }
     else { const t=p.q[0]; if(!t){ pedPlan(p); continue; } const dx=t.x-p.x, dz=t.z-p.z, d=Math.hypot(dx,dz);
       if(d<.5){ p.q.shift(); if(!p.q.length){ if(MR()<.08){ p.state='idle'; p.timer=mrr(3,7); p.phone=MR()<.6&&!CAST[p.cast].tray; p.stand=p.phone?(MR()<.55?'text':'phone'):mpick(CAST[p.cast].idle); } pedPlan(p); } }
@@ -2881,7 +2897,7 @@ function updatePeds(dt){ NPCF++; CROWD.list.length=0; if(NPCF%30===0){ NWALK=0; 
     if(mode==='walk'&&started&&d2<1.8*1.8&&!(p.cool>0)&&!p.dealer&&(p.body||CROWD.c[p.cast])&&(p.state==='walk'||p.state==='idle'||p.state==='spot')) bumped(p);
     if(p.state!=='xbr'&&!p.carried){ const gy=groundY(p.x,p.z); p.y+=(gy-p.y)*Math.min(1,dt*12); }
     p.far=false;
-    if(p.body){ poseBody(p,dt); if(p.cop) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); pedPhone(p); continue; }
+    if(p.body){ poseBody(p,dt); if(p.cop||p.crook) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); pedPhone(p); continue; }
     if(d2>150*150) continue;
     p.ph+=dt*(p.state==='flee'?10:p.speed*4.4);   // where they are in their step
     if(CROWD.c[p.cast]&&!CROWD.hide) CROWD.list.push(p); }   // drawn by crowdDraw, once the camera has moved
@@ -3174,6 +3190,8 @@ function poseBody(p,dt){ const b=p.body, C=PEOPLE.casts[b.id], cl=C.clips, st=p.
   else if(st==='takedown'){ name='takedown_v'; ts=1.7; }
   else if(st==='toll'){ name=cl[p.tact]?p.tact:(cl.idle_1?'idle_1':C.idle0); }
   else if(st==='tollchase'){ if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=cl.argue?'argue':C.idle0; }
+  else if(st==='crook'){ if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=p.act&&cl[p.act]?p.act:(cl.idle_1?'idle_1':C.idle0); }   // Under Bridge
+  else if(st==='gateguard'){ name=p.act&&cl[p.act]?p.act:C.idle0; }
   else if(st==='copguard'&&p.asking&&p.speed<=.3&&cl.talk&&RAID.phase==='ask'){ name='talk'; }
   else if(st==='cop'||st==='copguard'){ if(p.atk){ name=p.atk; ts=AI_INFO[p.atk].ts; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=p.near&&cl.fight_idle?'fight_idle':cl.idle_1?'idle_1':C.idle0; }
   const again=b.seq!==p.seq&&ONCE.has(name); b.seq=p.seq; const a=bodyPlay(b,name,name==='lie'?.5:.25,again); if(a) a.timeScale=ts;
@@ -3361,7 +3379,7 @@ function boardPed(p,dt){ const v=p.bv; p.timer-=dt; let done=p.timer<=0||!v||!(v
     if(d<.45) done=true; else { p.speed+=(1.5-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=dx/d*st; p.z+=dz/d*st; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); } }
   if(done){ const s=p.spot; if(s){ s.boarding=Math.max(0,s.boarding-1); s.peds=s.peds.filter(q=>q!==p); } if(p.fare){ p.fare=false; if(!(v===drive.v&&Math.hypot(p.x-v.x,p.z-v.z)<v.c.def.L/2+2.2)){ p.state='walk'; p.bv=null; p.spot=null; replanPed(p); return; } fareIn(p.cast,v); } offPed(p); } }   // you drove off: they walk on
 function offPed(p){ if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
-  Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0}); }   // back to the pool as nobody in particular
+  Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0,crook:null,stolen:0,post:null,aimOn:false}); }   // back to the pool as nobody in particular
 function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ p.cast=c; p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
 function spotOn(s){ s.on=true; s.peds=[]; s.boarding=0; s.hailV=null; const night=ENV.hour>=21||ENV.hour<5.5;
   for(const m of s.m){ const p=peds.find(q=>q.state==='off'); if(!p) break; const c=night&&m.cast==='schoolboy'?'areaboy':m.cast;
@@ -3571,9 +3589,9 @@ function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); if(FIGHT.ko) 
   drive.steer+=(-s*.55-drive.steer)*Math.min(1,dt*7); const omMax=Math.max(1.1,6.5/Math.max(sp,.1)), om=clamp(Math.max(sp,.6)/1.15*Math.tan(drive.steer),-omMax,omMax)*(S.air?.3:1); v.h+=om*dt; S.om=om;
   const fx=Math.cos(v.h), fz=-Math.sin(v.h); let nx=v.x+fx*sp*dt, nz=v.z+fz*sp*dt;
   if(!onLand(nx,nz,.5)){ if(sp>3.5){ skBail(); return; } nx=v.x; nz=v.z; sp=0; }
-  const c={x:nx,z:nz}; if(resolveCircle(c,.28,null,S.h)){ if(sp>4.2&&!S.air){ skBail(); return; } sp*=.4; }   // jump high enough and you clear low things
-  for(const o of vehicles){ if(o===v||Math.abs(o.x-c.x)>6||Math.abs(o.z-c.z)>6) continue; const hx=Math.cos(o.h), hz=-Math.sin(o.h), dx=c.x-o.x, dz=c.z-o.z; if(Math.abs(dx*hx+dz*hz)<o.c.def.L/2+.25&&Math.abs(-dx*hz+dz*hx)<o.c.def.W/2+.25&&S.h<.9){ if(sp>2.5||Math.abs(o.speed)>3){ skBail(); return; } c.x=v.x; c.z=v.z; sp=0; } }
-  for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.state==='down'||p.carried||Math.abs(p.x-c.x)>1||Math.abs(p.z-c.z)>1) continue; if(Math.hypot(p.x-c.x,p.z-c.z)<.55&&S.h<.8){ if(sp>3){ react(p,'argue',c.x,c.z,3); p.cool=6; skBail('Bail! You jam person.'); return; } sp*=.5; } }
+  const c={x:nx,z:nz}; if(resolveCircle(c,.28,null,S.h+(v.fh||0))){ if(sp>4.2&&!S.air){ skBail(); return; } sp*=.4; }   // jump high enough and you clear low things
+  for(const o of vehicles){ if(o===v||Math.abs(o.x-c.x)>6||Math.abs(o.z-c.z)>6||Math.abs((o.fh||0)-(v.fh||0))>2.5) continue; const hx=Math.cos(o.h), hz=-Math.sin(o.h), dx=c.x-o.x, dz=c.z-o.z; if(Math.abs(dx*hx+dz*hz)<o.c.def.L/2+.25&&Math.abs(-dx*hz+dz*hx)<o.c.def.W/2+.25&&S.h<.9){ if(sp>2.5||Math.abs(o.speed)>3){ skBail(); return; } c.x=v.x; c.z=v.z; sp=0; } }
+  if(!flyUp(v)) for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.state==='down'||p.carried||Math.abs(p.x-c.x)>1||Math.abs(p.z-c.z)>1) continue; if(Math.hypot(p.x-c.x,p.z-c.z)<.55&&S.h<.8){ if(sp>3){ react(p,'argue',c.x,c.z,3); p.cool=6; skBail('Bail! You jam person.'); return; } sp*=.5; } }
   S.sp=sp; v.x=c.x; v.z=c.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false;
   skPose(dt); }
 /* ---- your board in your hands: when you're not riding it, pick it up (G, or PICK UP on a phone) and it goes in your
@@ -4846,12 +4864,19 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  badge:n=>$('#phoneBtn').classList.toggle('badge',n>0), beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
-  setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); toast(`Your map don show the way to ${pl.name}.`,2.6); },
+  setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); if(!PHONE.open) toast(`Your map don show the way to ${pl.name}.`,2.6); },
   denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone() });
+// the guide: what is happening now, so it knows when a first-time tip is due
+GD=createGuide({ touch:()=>touchUI, click:()=>phoneBeep(1500,.02,.12), closeSettings:()=>{ $('#settings').hidden=true; },
+  unlock:()=>{ if(document.pointerLockElement) document.exitPointerLock(); }, calm:()=>{ for(const kk in K) K[kk]=false; joy.x=joy.y=0; },
+  state:()=>({ on:started&&!busy&&!FIGHT.dead&&$('#rotate').hidden&&$('#loading').hidden, mode, veh:mode==='drive'&&drive.v?drive.v.type:null, ride:mode==='drive'&&!!drive.ride,
+    foe:!$('#foe').hidden, stars:starCount(), jail:!$('#jailBox').hidden, armed:Object.keys(ARMS.own).some(k=>k!=='fists'&&k!=='board'&&ARMS.own[k]), board:ARMS.cur==='board',
+    map:mapView.isOpen, dest:!!mapView.dest, job:!!JOB.state, shop:DEALER.open, phone:PHONE.open, cam:!!(PH&&PH.cam()), phoneHome:PHONE.open&&!PH.app()&&!PH.cam(),
+    panel:!$('#settings').hidden||WARD.open||MENU.open||BL.edit }) });
 function togglePhone(){ if(PHONE.open) closePhone(); else openPhone(); }
 function openPhone(){ if(!started||busy||PHONE.open||mode==='interior'||mode==='enter'||(mode==='drive'&&!drive.ride)) return; loadPhone(); PHONE.open=true; closeWard(); $('#settings').hidden=true;
   if(document.pointerLockElement) document.exitPointerLock(); PH.open(); $('#phoneBtn').setAttribute('aria-pressed','true'); }
@@ -5035,7 +5060,7 @@ function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
   if(!CASH.geo){ CASH.geo=new THREE.BoxGeometry(.18,.06,.1); CASH.mat=new THREE.MeshStandardMaterial({color:0x3a9c5a,emissive:0x2a8a48,emissiveIntensity:.55,roughness:.6}); }
   const m=new THREE.Mesh(CASH.geo,CASH.mat); m.position.set(x,.06,z); m.castShadow=true; scene.add(m); CASH.drops.push({x,z,amt,t:0,m}); if(CASH.drops.length>24){ const o=CASH.drops.shift(); scene.remove(o.m); } }
 // someone's money falls out when you floor them (once each)
-function lootPed(p,k=1){ if(p.looted||p.carried) return; p.looted=true; const a=cashOf(p.cast,k); if(a>0) dropCash(p.x+mrr(-.4,.4),p.z+mrr(-.4,.4),a); }
+function lootPed(p,k=1){ if(p.looted||p.carried) return; p.looted=true; const a=cashOf(p.cast,k)+(p.stolen||0); if(p.stolen&&sayT<=0){ sayT=3; toast('Your money don drop for ground. Pick am up!',2.2); } p.stolen=0; if(a>0) dropCash(p.x+mrr(-.4,.4),p.z+mrr(-.4,.4),a); }
 function updateMoney(dt){ for(let i=CASH.drops.length-1;i>=0;i--){ const d=CASH.drops[i]; d.t+=dt; d.m.position.y=.08+Math.sin(d.t*3)*.03; d.m.rotation.y+=dt*1.6;
     if(mode==='walk'&&!FIGHT.ko&&Math.hypot(player.x-d.x,player.z-d.z)<1.25){ addCash(d.amt); scene.remove(d.m); CASH.drops.splice(i,1); toast('+'+naira(d.amt),1.4); continue; }
     if(d.t>150){ scene.remove(d.m); CASH.drops.splice(i,1); } }
@@ -5500,7 +5525,7 @@ function raidCops(v){ const d1=vanDoor(v,-1), d2=vanDoor(v,1); const a=makeCop(v
   for(const q of [a,b]) if(q){ q.wid='baton'; const r=mrr(2.5,4), t=MR()*6.28; q.gx=Math.sin(t)*r; q.gz=Math.cos(t)*r; }
   RAID.cops=[a,b].filter(Boolean); }
 // the weapon in an officer's hands (only when he has a real body near you)
-function pedWeapon(p){ const b=p.body, id=(p.state==='cop'||p.state==='copguard')?p.wid:null;
+function pedWeapon(p){ const b=p.body, id=(p.state==='cop'||p.state==='copguard'||p.state==='gateguard'||p.state==='crook')?p.wid:null;
   if(p.wm&&(p.wmB!==b||p.wmId!==id)){ if(p.wm.parent) p.wm.parent.remove(p.wm); p.wm=null; }
   if(!b||!id||id==='fists') return; if(!p.wm){ if(!ARMS.lib[id]){ loadWeapon(id); return; } p.wm=cloneWeapon(id); p.wmB=b; p.wmId=id; p.wc={}; }
   if(id!=='ak'){ const hand=boneOf(b.inner,/RightHand$/,p.wc,'hand'); if(hand) attachTo(p.wm,hand,holdOf(id)); return; }
@@ -5564,6 +5589,213 @@ function updateCops(dt){ const S=starCount(); COPS.cuffing=false; COPS.pulling=f
     if(d<70&&v.ai.chase){ const D=goalField(chaseGoal()), fx=Math.cos(v.h), fz=-Math.sin(v.h); far=D[v.ai.b]>d*2.5+40||(player.x-v.x)*fx+(player.z-v.z)*fz<-4; }   // close, but the way round by road is long (or you are behind them): they stop and run
     if(d<30||far||(d<55&&v.slowFor>1.5)||(d<110&&v.slowFor>6)) deployCops(v); }
   updateBlock(dt,S); }
+
+/* ================= Ikeja Under Bridge =================
+   West of Mushin, behind a police toll gate on the road from Isolo Road: the real streets of Ikeja (OpenStreetMap,
+   tools/merge_district.py) round the Ikeja flyover, Computer Village and the rail line. The long flyovers are real decks you
+   drive up onto (and traffic too); under them the stalls, shacks and fire drums of Under Bridge, and the people who rob there:
+   pickpockets in the crowd, armed robbers (mostly at night), area boys and cult boys round their drums. A chop shop under the
+   bridge buys any car you bring. At the gate the police search you: wanted, or carrying a gun or a bomb, and they stop you.
+   Models from the user's Blender: tools/blender_underbridge.py (ub_*). */
+const UB=DISTS.find(d=>d.id==='ikeja')||null;
+const inUB=(x,z)=>!!UB&&x>=UB.x0-2&&x<=UB.x1+2&&z>=UB.z0-2&&z<=UB.z1+2;
+const ubCore=(x,z)=>!!UB&&Math.hypot(x-UB.core.x,z-UB.core.z)<UB.core.r;
+// ---- the flyovers: one deck per one-way carriageway, ramps at both ends, piers under the high part
+const FLY=[], FLYE=new Map(), FLYN=new Map(), FLY_H=6.9;
+const flyH=(F,s)=>{ const a=clamp(s/F.R,0,1), b=clamp((F.L-s)/F.R,0,1); return FLY_H*a*a*(3-2*a)*b*b*(3-2*b); };
+if(UB) for(const f of UB.fly||[]){ const pts=[]; for(let i=0;i<f.p.length;i+=2) pts.push([f.p[i],f.p[i+1]]);
+  const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  const L=cum[cum.length-1], F={i:FLY.length,pts,cum,L,R:Math.min(75,L*.3),hw:f.w/2,edges:f.e,n:f.n};
+  FLY.push(F); f.e.forEach((ei,k)=>{ FLYE.set(ei,{F,s0:cum[k]}); if(k>0) FLYN.set(ROADS[ei].a,{F,s:cum[k]}); });
+  for(const ei of f.e){ const e=ROADS[ei]; if(!e) continue; const A=nodes[e.a], B=nodes[e.b]; A.wadj=A.wadj.filter(n=>n!==e.b); B.wadj=B.wadj.filter(n=>n!==e.a); } }   // nobody walks up a flyover
+// where on a flyover: the nearest point of its centre line (near s0 if given): s along it, lateral offset (+ = left)
+function flyAt(F,x,z,s0=null,win=30){ let best=null; for(let i=0;i<F.pts.length-1;i++){ if(s0!=null&&(F.cum[i+1]<s0-win||F.cum[i]>s0+win)) continue;
+    const [ax,az]=F.pts[i],[bx,bz]=F.pts[i+1], dx=bx-ax, dz=bz-az, L=Math.hypot(dx,dz)||1e-6, ux=dx/L, uz=dz/L, t=clamp((x-ax)*ux+(z-az)*uz,0,L), px=ax+ux*t, pz=az+uz*t, d=Math.hypot(x-px,z-pz);
+    if(!best||d<best.d) best={s:F.cum[i]+t,d,lat:-(x-ax)*uz+(z-az)*ux,ux,uz,px,pz}; } return best; }
+function flyPos(F,s){ s=clamp(s,0,F.L); let i=0; while(i<F.pts.length-2&&F.cum[i+1]<s) i++; const [ax,az]=F.pts[i],[bx,bz]=F.pts[i+1], L=F.cum[i+1]-F.cum[i]||1e-6, t=(s-F.cum[i])/L;
+  return {x:ax+(bx-ax)*t,z:az+(bz-az)*t,ux:(bx-ax)/L,uz:(bz-az)/L}; }
+// the deck: a swept concrete section (asphalt on top, parapets, a dark underside); near the ends the sides go down to the ground (the ramps)
+const FLY_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.9,side:THREE.DoubleSide});
+if(FLY.length){ const _c=new THREE.Color(), col=h=>_c.set(h).convertSRGBToLinear();
+  for(const F of FLY){ const P=[], C=[], hw=F.hw, ow=hw+.38, S=[]; for(let i=0;i<F.pts.length-1;i++){ const a=F.cum[i], b=F.cum[i+1], n=Math.max(1,Math.ceil((b-a)/4)); for(let k=0;k<n;k++) S.push(a+(b-a)*k/n); } S.push(F.L);
+    const sec=s=>{ const p=flyPos(F,s), y=flyH(F,s)+.06, nx=-p.uz, nz=p.ux, bot=y<4.3?0:y-.9; return {p,y,nx,nz,bot}; };
+    const quad=(a,b,c,d,h)=>{ P.push(...a,...b,...c,...a,...c,...d); col(h); for(let i=0;i<6;i++) C.push(_c.r,_c.g,_c.b); };
+    const at=(q,l,y)=>[q.p.x+q.nx*l,y,q.p.z+q.nz*l];
+    for(let i=0;i<S.length-1;i++){ const A=sec(S[i]), B=sec(S[i+1]); if(A.y<.1&&B.y<.1) continue;
+      quad(at(A,-hw,A.y),at(B,-hw,B.y),at(B,hw,B.y),at(A,hw,A.y),'#3a3b3e');                                       // the road on top
+      for(const sd of [-1,1]){ quad(at(A,sd*(hw-.35),A.y+.012),at(B,sd*(hw-.35),B.y+.012),at(B,sd*(hw-.2),B.y+.012),at(A,sd*(hw-.2),A.y+.012),'#e9e6dc');   // edge line
+        quad(at(A,sd*hw,A.y),at(B,sd*hw,B.y),at(B,sd*hw,B.y+1),at(A,sd*hw,A.y+1),'#bdb8ae');                        // parapet, inside
+        quad(at(A,sd*hw,A.y+1),at(B,sd*hw,B.y+1),at(B,sd*ow,B.y+1),at(A,sd*ow,A.y+1),'#d2cdc3');                    // its top
+        quad(at(A,sd*ow,A.y+1),at(B,sd*ow,B.y+1),at(B,sd*ow,B.bot),at(A,sd*ow,A.bot),(i>>2)%2?'#a8a399':'#a19c92'); }   // outside face (down to the ground on the ramps)
+      if(A.bot>0&&B.bot>0) quad(at(A,-ow,A.bot),at(B,-ow,B.bot),at(B,ow,B.bot),at(A,ow,A.bot),'#77746d');          // the underside
+      // dashed centre line
+      if(((S[i]/4)|0)%3===0) quad(at(A,-.08,A.y+.014),at(B,-.08,B.y+.014),at(B,.08,B.y+.014),at(A,.08,A.y+.014),'#f2f0e6');
+      // the ramps are solid: you can't walk through them
+      const ym=(A.y+B.y)/2; if(ym>.35&&ym<4.4){ const mx=(A.p.x+B.p.x)/2, mz=(A.p.z+B.p.z)/2, len=Math.hypot(B.p.x-A.p.x,B.p.z-A.p.z); addOB(mx,mz,len/2+.05,ow,Math.atan2(A.p.uz,A.p.ux),ym-.2).fly=F; } }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(C,3)); g.computeVertexNormals(); g.computeBoundingSphere();
+    const m=new THREE.Mesh(g,FLY_MAT); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); scene.add(m); F.mesh=m; } }
+// piers every ~24 m under the high part (not on a road or the rail underneath), shacks and stalls under the deck by Under Bridge
+const UBX={piers:[],stuff:[],drums:[],spots:[]};
+const nearOtherRoad=(x,z,F,pad)=>{ for(const e of roadsNear(x,z)){ if(FLYE.get(e.i)?.F===F) continue; if(FLYE.has(e.i)) continue; if(segD(e,x,z)<e.hw+pad) return true; }
+  for(const r of RAILSEG) if(Math.abs((x-r[0])*(r[3]-r[1])-(z-r[1])*(r[2]-r[0]))/(Math.hypot(r[2]-r[0],r[3]-r[1])||1)<4.5&&x>Math.min(r[0],r[2])-5&&x<Math.max(r[0],r[2])+5&&z>Math.min(r[1],r[3])-5&&z<Math.max(r[1],r[3])+5) return true; return false; };
+if(FLY.length&&MODELS.ub_pier){ const items=[];
+  for(const F of FLY){ for(let s=F.R+6;s<F.L-F.R-4;s+=24){ let ok=null; for(const o of [0,5,-5,9,-9]){ const q=flyPos(F,s+o); if(!nearOtherRoad(q.x,q.z,F,2.2)){ ok=q; break; } } if(!ok) continue;
+      const sx=(2*F.hw+.8)/8.8; items.push({x:ok.x,y:0,z:ok.z,ry:Math.atan2(ok.ux,ok.uz),sx,sy:1,sz:1}); addOB(ok.x,ok.z,1,1,0,4.9); UBX.piers.push({x:ok.x,z:ok.z,F,s}); } }
+  if(items.length) new CullSet(modelLevels(MODELS.ub_pier,Q.lod0*1.5,Q.draw*1.6),items,{shadowDist:Q.shR,name:'ub_piers'}); }
+// under the bridge: a long row of shacks, container shops, umbrellas and tarpaulin stalls down the middle, fire drums between
+if(UB&&FLY.length){ const kinds=[['ub_shack_wood',3.4,2.6],['ub_container',6.2,2.6],['ub_shack_zinc',3.6,3.2],['mk_umb',3,3],['ub_shack_wood',3.4,2.6],['mk_tarp',4,3]], CC=['#d8a028','#2f7fc1','#c0392b','#2e8b57','#e8e6e0','#8e44ad'];
+  const per={}, add=(k,o)=>(per[k]||(per[k]=[])).push(o); let n=0;
+  for(const F of FLY){ if(Math.hypot(flyPos(F,F.L/2).x-UB.core.x,flyPos(F,F.L/2).z-UB.core.z)>UB.core.r+300) continue;
+    for(let s=F.R+10;s<F.L-F.R-6;s+=7.5){ const q=flyPos(F,s); if(nearOtherRoad(q.x,q.z,F,3)||UBX.piers.some(p=>Math.hypot(p.x-q.x,p.z-q.z)<4.2)) continue;
+      const [k,len,wid]=kinds[n%kinds.length], side=n%2?1:-1, off=side*Math.max(0,F.hw-wid/2-.6), x=q.x-q.uz*off, z=q.z+q.ux*off, ry=Math.atan2(q.ux,q.uz)+(side>0?Math.PI/2:-Math.PI/2); n++;
+      if(!MODELS[k]) continue; add(k,{x,y:0,z,ry,sc:1,...(k==='ub_container'?{col:new THREE.Color(CC[n%CC.length])}:{})}); addOB(x,z,len/2,wid/2,-ry,2.6);
+      if(n%3===0&&MODELS.ub_drum){ const dx=q.x+q.uz*off*.2, dz=q.z-q.ux*off*.2; add('ub_drum',{x:dx,y:0,z:dz,ry:0,sc:1}); UBX.drums.push({x:dx,z:dz}); } } }
+  for(const k in per) if(MODELS[k]) new CullSet(modelLevels(MODELS[k],Q.lod0,Q.draw*.9),per[k],{shadowDist:Q.shR,name:'ub_'+k});
+  // the hang-outs: by every third drum a few boys stand (they are put there when you come near)
+  UBX.spots=UBX.drums.filter((d,i)=>i%2===0).map(d=>({x:d.x,z:d.z,boys:[],t:0,warned:-99,dare:-99})); }
+// ---- the police toll gate on the road from Mushin, with the police post beside it
+const GATE=UB&&UB.gate?{x:UB.gate.x,z:UB.gate.z,fx:UB.gate.fx,fz:UB.gate.fz,ry:Math.atan2(UB.gate.fx,UB.gate.fz),open:0,paidT:-99,brokeT:-99,aiT:-99,arms:[],guards:[],side:0,said:-99,fee:300}:null;
+const gateLocal=(lx,lz)=>{ const c=Math.cos(GATE.ry), s=Math.sin(GATE.ry); return {x:GATE.x+lx*c+lz*s,z:GATE.z-lx*s+lz*c}; };
+if(GATE&&MODELS.ub_toll){ new CullSet(modelLevels(MODELS.ub_toll,Q.lod0*2,Q.draw*2),[{x:GATE.x,y:0,z:GATE.z,ry:GATE.ry,sc:1}],{shadowDist:Q.shR,name:'ub_toll'});
+  for(const [lx,lz] of [[0,0],[-7.95,0],[7.95,0]]){ const p=gateLocal(lx,lz); addOB(p.x,p.z,1,7.5,-GATE.ry,1.2); }   // the islands
+  // the barrier arms (they lift), on their posts at the lane exits
+  if(MODELS.ub_barrier){ const M=MODELS.ub_barrier; for(const [lx,lz,flip] of [[-1.15,6.2,1],[1.15,-6.2,0],[-6.85,-6.2,0],[6.85,6.2,1]]){ const p=gateLocal(lx,lz), g=new THREE.Group(), arm=new THREE.Group(), m=new THREE.Mesh(M.geo,M.mat);
+      m.position.set(M.cx0||0,0,M.cz0||0); m.castShadow=true; m.layers.set(1); arm.add(m); g.add(arm); g.position.set(p.x,1.12,p.z); g.rotation.y=GATE.ry+(flip?Math.PI:0); scene.add(g); GATE.arms.push(arm); } }
+  // the words on the canopy band, both faces
+  const band=texLabel('POLICE CHECKPOINT  ·  UNDER BRIDGE','#155e3b','#F4F2EC',1536,128);
+  for(const s of [1,-1]){ const pl=new THREE.Mesh(new THREE.PlaneGeometry(19,.9),new THREE.MeshBasicMaterial({map:band,toneMapped:false})); const p=gateLocal(0,s*4.68); pl.position.set(p.x,6.05,p.z); pl.rotation.y=GATE.ry+(s>0?0:Math.PI); scene.add(pl); }
+  // the police post, its sandbags and sign
+  if(MODELS.ub_police){ const P=UB.police, M=MODELS.ub_police, ox=M.cx0||0, oz=M.cz0||0; new CullSet(modelLevels(M,Q.lod0*2,Q.draw*1.8),[{x:P.x,y:0,z:P.z,ry:0,sc:1}],{shadowDist:Q.shR,name:'ub_police'});
+    addOB(P.x-ox,P.z-oz,5.1,3.6,0,3.6);
+    const sg=new THREE.Mesh(new THREE.PlaneGeometry(6.4,.55),new THREE.MeshBasicMaterial({map:texLabel('UNDER BRIDGE POLICE POST','#1f3f86','#F4F2EC',1280,110),toneMapped:false})); sg.position.set(P.x-(MODELS.ub_police.cx0||0),3.9,P.z+3.82-(MODELS.ub_police.cz0||0)); scene.add(sg);
+    if(MODELS.ub_sandbags){ const it=[[-3,7.5,0],[3,7.5,0],[6.4,6.4,1.2]].map(([dx,dz,r])=>({x:P.x+dx,y:0,z:P.z+dz,ry:r,sc:1})); new CullSet(modelLevels(MODELS.ub_sandbags,Q.lod0,Q.draw*.8),it,{shadowDist:Q.shR,name:'ub_sand'}); for(const o of it) addOB(o.x,o.z,1.55,.3,-o.ry,.85); } }
+  // a wall all along Ikeja's side facing Mushin (the toll road is the only way through)
+  { const conc=new THREE.MeshStandardMaterial({color:0xb4afa5,roughness:.95}), wx=UB.x1+1.2, gz0=GATE.z-62, gz1=GATE.z+62, segs=[[UB.z0,gz0],[gz1,UB.z1]];
+    for(const [a,b] of segs){ const L=b-a; if(L<2) continue; const m=new THREE.Mesh(new THREE.BoxGeometry(.4,2.8,L),conc); m.position.set(wx,1.4,(a+b)/2); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); scene.add(m); }
+    for(const z of [gz0,gz1]){ const L=-WB.x-wx+2, m=new THREE.Mesh(new THREE.BoxGeometry(L,2.8,.4),conc); m.position.set(wx+L/2,1.4,z); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); scene.add(m); } } }
+// ---- the chop shop under the bridge: bring any car (not your own) and they pay you for it, no questions
+const CHOP=(()=>{ if(!UB) return null; const cand=[]; for(const e of ROADS){ if(!e.drive||e.c<4||e.c>8||FLYE.has(e.i)||e.len<16) continue; const A=nodes[e.a]; if(!inUB(A.x,A.z)) continue; const d=Math.hypot(A.x-UB.core.x,A.z-UB.core.z); if(d<60||d>300) continue; cand.push([d,e]); }
+  cand.sort((a,b)=>a[0]-b[0]);
+  for(const [,e] of cand){ const A=nodes[e.a]; for(const t of [e.len*.5,e.len*.3,e.len*.7]) for(const sd of [1,-1]){ const off=e.hw+6.8, x=A.x+e.fx*t-e.fz*off*sd, z=A.z+e.fz*t+e.fx*off*sd;
+      if(!onLand(x,z,8)||resolveCircle({x,z},6.2)||nearOtherRoad(x,z,null,1)) continue; return {x,z,ry:Math.atan2(-e.fz*sd,e.fx*sd)+Math.PI,t:-99}; } }
+  return null; })();
+if(CHOP){ const ring=new THREE.Mesh(new THREE.RingGeometry(5.2,5.8,40),new THREE.MeshBasicMaterial({color:0xf2b705,transparent:true,opacity:.7,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.set(CHOP.x,.05,CHOP.z); scene.add(ring); CHOP.ring=ring;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('WE BUY ANY CAR · SPARE PARTS','#F2B705','#0E1014',1280,170),fog:false})); sp.scale.set(7,.93,1); sp.position.set(CHOP.x,4.2,CHOP.z); scene.add(sp);
+  if(MODELS.ub_container){ new CullSet(modelLevels(MODELS.ub_container,Q.lod0,Q.draw*.9),[{x:CHOP.x+Math.cos(CHOP.ry)*8,y:0,z:CHOP.z-Math.sin(CHOP.ry)*8,ry:CHOP.ry,sc:1,col:new THREE.Color('#5a5f63')}],{shadowDist:Q.shR,name:'ub_chop'}); }
+  PLACES.push({name:'Chop shop',sub:'Under Bridge · sells any car',kind:'service',x:CHOP.x,z:CHOP.z}); }
+const CHOP_PRICE={sedan:25000,car2:40000,benz:85000,police:60000,danfo:35000,bus:45000,keke:15000,okada:12000,bike2:30000,sbike:55000,tanker:90000};
+function chopSell(){ const v=drive.v; if(!v||!CHOP) return; if(v===myCar||v===mySkate||v.mine||v.type==='skate'){ toast('"We no dey buy your own. Bring another one."',2.2); return; }
+  const p=Math.round((CHOP_PRICE[v.type]||20000)*(1-(v.dmg||0)/200)/500)*500; exitCar(); addCash(p); CHOP.t=T0; if(v.type==='police') addHeat(.6);
+  toast(mpick([`"Fine motor! Na ${naira(p)}. Oya comot before police come."`,`Chop shop: ${naira(p)} for the ${(VT[v.type]||{name:'car'}).name}. "We never see you."`]),3); v.x=v.z=-1e5; v.speed=0; v.parked=true; v.c.g.visible=false;
+  setTimeout(()=>{ if(!vehicles.includes(v)) return; v.c.g.visible=true; v.jacked=false; if(v.type!=='police') placeCar(v,150,280); },20000); }
+const nearChop=()=>!!(CHOP&&mode==='drive'&&drive.v&&!drive.ride&&Math.abs(drive.speed)<2&&Math.hypot(drive.v.x-CHOP.x,drive.v.z-CHOP.z)<6.5);
+
+// ---- driving on a flyover: you go up the ramp at either end and stay on the deck until you come off an end
+const FLYP={F:null,s:0};
+function flyTick(dt){
+  for(const v of vehicles){ const ai=v.ai; if(!ai){ if(v!==drive.v) v.fh=Math.max(0,(v.fh||0)-dt*8); continue; } let h=0;
+    if(ai.seg.k===0){ const e=edgeOf(ai.a,ai.b), q=e&&FLYE.get(e.i); if(q){ const A=nodes[e.a]; h=flyH(q.F,q.s0+clamp((v.x-A.x)*e.fx+(v.z-A.z)*e.fz,0,e.len)); } }
+    else { const m=FLYN.get(ai.b); if(m){ const e1=edgeOf(ai.a,ai.b), e2=edgeOf(ai.b,ai.na); if(e1&&e2&&FLYE.has(e1.i)&&FLYE.has(e2.i)) h=flyH(m.F,m.s); } }
+    v.fh=h; }
+  const v=mode==='drive'&&!drive.ride?drive.v:null; if(!v){ FLYP.F=null; return; }
+  let F=FLYP.F;
+  if(F){ const q=flyAt(F,v.x,v.z,FLYP.s); if(!q||q.s<.5||q.s>F.L-.5||(q.d>F.hw+2.5&&flyH(F,q.s)<1.4)){ FLYP.F=null; v.fh=0; return; }
+    FLYP.s=q.s; const h=flyH(F,q.s); v.fh=h;
+    if(h>1.2&&Math.abs(q.lat)>F.hw-.9){ const s=Math.sign(q.lat), lim=F.hw-.9, nx=-q.uz, nz=q.ux; v.x=q.px+nx*s*lim; v.z=q.pz+nz*s*lim; player.x=v.x; player.z=v.z;   // the parapet
+      if(Math.abs(drive.speed)>6){ bump(Math.abs(drive.speed)*.6); crashDamage(v,Math.abs(drive.speed)*.8); } drive.speed*=.93; v.speed=drive.speed; } return; }
+  v.fh=0;
+  for(const G of FLY){ const q=flyAt(G,v.x,v.z); if(!q||q.d>G.hw+.6) continue; const dot=Math.cos(v.h)*q.ux-Math.sin(v.h)*q.uz;
+    if((q.s<24&&dot>.35&&drive.speed>0)||(q.s>G.L-24&&dot<-.35&&drive.speed>0)){ FLYP.F=G; FLYP.s=q.s; v.fh=flyH(G,q.s); return; } } }
+const flyUp=v=>(v&&v.fh||0)>2;
+
+// ---- the gate: pay the police, get searched, the arms lift; drive through shut and they come for you
+function gateNear(){ if(!GATE) return false; const f=mode==='drive'&&drive.v?drive.v:player; if(mode!=='walk'&&mode!=='drive') return false; return Math.abs(f.x-GATE.x)<15&&Math.abs(f.z-GATE.z)<10&&!(T0<GATE.paidT)&&!(T0-GATE.brokeT<25); }
+const gateGun=()=>['ak','gren','molo'].filter(k=>ARMS.own[k]);
+function gatePay(){ if(!GATE) return; const S=starCount(), guns=gateGun();
+  if(S>0){ gateAlarm(); toast(mpick(['Police: "Na you we dey find! Come down! Hands up!"','Police: "Stop there! You be wanted person!"']),2.6); return; }
+  if(guns.length){ const bribe=10000;
+    if(CASH.n>=bribe+GATE.fee){ addCash(-(bribe+GATE.fee)); toast(`Police search: dem see your ${guns.map(k=>WEAPONS[k].name).join(' and ')}. You "settle" them ${naira(bribe)}. "Oya pass. We no see anything."`,3.6); }
+    else { for(const k of guns) delete ARMS.own[k]; if(guns.includes('ak')){ ARMS.mag=0; ARMS.ammo=0; } if(!ARMS.own[ARMS.cur]) ARMS.cur='fists'; saveArms(); weapHUD(true); addHeat(.25);
+      toast(`Police search: dem seize your ${guns.map(k=>WEAPONS[k].name).join(' and ')}. "You dey carry this kind thing? Commot!"`,3.4); } GATE.paidT=T0+12; gateBoys('talk'); return; }
+  if(CASH.n<GATE.fee){ toast('Police: "No money? Then go back where you come from."',2.4); return; }
+  addCash(-GATE.fee); GATE.paidT=T0+12; gateBoys('talk');
+  toast(gateSideUB()?mpick(['Police: "Pass. You don see Under Bridge, abi?"','Police: "Correct. Go well."']):mpick(['Police: "Pass. Shine your eye for Under Bridge o!"','Police: "Oya go. If dem rob you there, no come cry for us."']),2.8); }
+const gateSideUB=()=>{ const f=mode==='drive'&&drive.v?drive.v:player; return f.x<GATE.x; };
+function gateBoys(act){ for(const q of GATE.guards) if(q.state==='gateguard'){ q.act=act; q.actT=2.5; } }
+function gateAlarm(){ addHeat(.7); for(const q of GATE.guards) if(q.state==='gateguard'){ q.state='cop'; q.mad=1; q.van=null; q.wid='ak'; q.atk=null; q.atkT=mrr(.2,.6); } GATE.guards=[]; GATE.alarmT=T0; }
+function updateGate(dt){ if(!GATE) return; const f=mode==='drive'&&drive.v?drive.v:mode==='walk'?player:null, d=Math.hypot(player.x-GATE.x,player.z-GATE.z);
+  // the officers on duty when you are near
+  if(d<140&&!(T0-(GATE.alarmT||-99)<60)){ GATE.guards=GATE.guards.filter(q=>q.state==='gateguard'); const posts=[[2.2,5,Math.PI],[-2.2,-5,0],[-9.6,4,Math.PI/2]];
+    while(GATE.guards.length<posts.length){ const i=GATE.guards.length, [lx,lz,a]=posts[i], p=gateLocal(lx,lz), q=freePed(); if(!q) break; wakePed(q,'police_f');
+      Object.assign(q,{x:p.x,z:p.z,y:0,yaw:GATE.ry+a,state:'gateguard',cop:1,van:null,post:{x:p.x,z:p.z,ry:GATE.ry+a},hp:HP0('police_f'),wid:'ak',fireT:1,burst:0,atk:null,atkT:.5,speed:0,losT:0,los:false,mad:0,near:false,aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0}); q.seq=(q.seq||0)+1; GATE.guards.push(q); } }
+  for(const q of GATE.guards){ if(q.state!=='gateguard') continue; const P=q.post; q.speed=0; if(q.actT>0) q.actT-=dt; else q.act=null;
+    const look=Math.hypot(player.x-q.x,player.z-q.z)<12?Math.atan2(player.x-q.x,player.z-q.z):P.ry; q.yaw=lerpA(q.yaw,look,Math.min(1,dt*3)); q.x=P.x; q.z=P.z; }
+  // AI traffic: the arms lift for them
+  for(const v of vehicles){ if(!v.ai||Math.abs(v.z-GATE.z)>9||Math.abs(v.x-GATE.x)>16) continue; GATE.aiT=T0; break; }
+  const open=T0<GATE.paidT||T0-GATE.brokeT<25||T0-GATE.aiT<1.5; GATE.open+=((open?1:0)-GATE.open)*Math.min(1,dt*3);
+  for(const a of GATE.arms) a.rotation.z=GATE.open*1.35;
+  if(!f){ GATE.side=0; return; }
+  // you: crossing the gate line shut
+  const side=Math.sign(f.x-GATE.x)||1, inLane=Math.abs(f.z-GATE.z)<10;
+  if(GATE.side&&side!==GATE.side&&inLane&&!(T0<GATE.paidT)&&!(T0-GATE.brokeT<25)){
+    if(mode==='drive'&&Math.abs(drive.speed)>8){ GATE.brokeT=T0; smack(1.4); camState.shake=Math.min(1.2,camState.shake+.5); crashDamage(drive.v,10); gateAlarm(); addHeat(.8);
+      toast(mpick(['You don break the police barrier! Dem dey come!','"Stop that motor! Fire am!"']),2.6); }
+    else if(T0-GATE.aiT<1.5){ GATE.paidT=T0+6; addHeat(.35); toast('Police: "Hey! You no pay! Come back here!"',2.2); }
+    else { const back=GATE.x+GATE.side*(mode==='drive'?drive.v.c.def.L/2+.6:.6); if(mode==='drive'){ drive.v.x=back; drive.speed=-drive.speed*.2; drive.v.speed=drive.speed; player.x=back; bump(5); } else { player.x=back; player.speed=0; }
+      if(T0-GATE.said>4){ GATE.said=T0; toast(mpick(['Police: "Where you dey go? Pay first!"','Police: "Stop! Na checkpoint be this."']),2); } return; } }
+  GATE.side=inLane||Math.abs(f.x-GATE.x)>20?side:GATE.side; }
+
+// ---- the people of Under Bridge: pickpockets, armed robbers, the boys at the drums
+const CROOK={t:12,robT:40,list:[],demand:null};
+function crookWake(kind,x,z,cast='areaboy'){ const q=freePed(); if(!q) return null; wakePed(q,cast); const c={x,z}; resolveCircle(c,.34);
+  Object.assign(q,{x:c.x,z:c.z,y:0,yaw:Math.atan2(player.x-c.x,player.z-c.z),state:'crook',crook:{k:kind,st:'go',t:0},hp:HP0(cast),speed:0,act:null,wid:kind==='rob'?'ak':null,aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0,fireT:1,stolen:0,beaten:false,looted:false});
+  q.seq=(q.seq||0)+1; CROOK.list.push(q); return q; }
+function crookOut(q){ if(q.state==='crook') offPed(q); }
+// a spot in the crowd behind you, out of sight
+function crookSpot(min,max){ for(let t=0;t<14;t++){ const a=player.yaw+Math.PI+mrr(-1.2,1.2), r=mrr(min,max), x=player.x+Math.sin(a)*r, z=player.z+Math.cos(a)*r; if(!onLand(x,z,.6)||!inUB(x,z)) continue; const c={x,z}; if(resolveCircle(c,.35)) continue; if(t<10&&inView(x,1,z,1.2)) continue; return c; } return null; }
+function updateCrooks(dt){ const here=mode!=='interior'&&inUB(player.x,player.z); CROOK.list=CROOK.list.filter(q=>q.state==='crook');
+  if(!here){ for(const q of CROOK.list) if(Math.hypot(q.x-player.x,q.z-player.z)>80) crookOut(q); CROOK.demand=null; return; }
+  const core=ubCore(player.x,player.z), night=ENV.night;
+  // a pickpocket now and then while you walk among people
+  if(mode==='walk'&&!FIGHT.ko&&(CROOK.t-=dt)<=0){ CROOK.t=core?mrr(25,45):mrr(55,100); if(!CROOK.list.some(q=>q.crook.k==='pick')&&CASH.n>200){ const c=crookSpot(9,16); if(c) crookWake('pick',c.x,c.z,MR()<.75?'areaboy':'schoolboy'); } }
+  // armed robbers: at night anywhere here, by day only under the bridge, and not too often
+  if(mode==='walk'&&!FIGHT.ko&&(CROOK.robT-=dt)<=0){ CROOK.robT=night?mrr(50,95):core?mrr(110,200):1e9; if((night||core)&&!CROOK.list.some(q=>q.crook.k==='rob')){ const c=crookSpot(14,22); if(c){ const a=crookWake('rob',c.x,c.z), b=crookWake('rob',c.x+mrr(-1.5,1.5),c.z+mrr(-1.5,1.5)); if(a&&b){ a.crook.mate=b; b.crook.mate=a; } } } }
+  for(const q of CROOK.list){ const K=q.crook, dx=player.x-q.x, dz=player.z-q.z, d=Math.hypot(dx,dz)||.01, face=Math.atan2(dx,dz); K.t+=dt; q.aimOn=false; q.recoil=(q.recoil||0)*Math.exp(-12*dt);
+    if(d>90){ crookOut(q); continue; }
+    if(K.k==='pick'){
+      if(K.st==='go'){ if(mode!=='walk'||FIGHT.ko||K.t>25){ K.st='leave'; continue; } copMove(q,dx,dz,d>4?1.6:1.15,dt); q.yaw=lerpA(q.yaw,face,Math.min(1,dt*6));
+        if(d<.95){ const amt=Math.min(CASH.n,Math.max(200,Math.round(CASH.n*mrr(.08,.18)/50)*50),25000); if(amt<=0){ K.st='leave'; continue; } addCash(-amt); q.stolen=amt; K.st='run'; K.t=0; burst(.05,1800,.1,3);
+          toast(mpick([`Pickpocket! E don take ${naira(amt)} from your pocket. Catch am!`,`"Ole!" Somebody don pick your pocket: ${naira(amt)} gone. Run am down!`]),3); } }
+      else if(K.st==='run'){ copMove(q,-dx,-dz,4.9,dt); q.yaw=lerpA(q.yaw,Math.atan2(-dx,-dz),Math.min(1,dt*8)); if(K.t>16&&d>35&&!inView(q.x,1,q.z,1)){ if(q.stolen&&sayT<=0){ sayT=4; toast('The pickpocket don disappear with your money.',2.4); } crookOut(q); } }
+      else { copMove(q,-dx,-dz,1.3,dt); q.yaw=lerpA(q.yaw,Math.atan2(-dx,-dz),Math.min(1,dt*5)); if(d>30) crookOut(q); }
+      continue; }
+    if(K.k==='rob'){ const inCar=mode==='drive';
+      if(K.st==='go'){ if(inCar||FIGHT.ko){ K.st='leave'; continue; } copMove(q,dx,dz,d>6?4.2:1.4,dt); q.yaw=lerpA(q.yaw,face,Math.min(1,dt*7)); q.aimOn=d<10; if(q.aimOn) q.aimDir.set(dx,player.y+1.2-(q.y+1.4),dz).normalize();
+        if(d<3.2){ K.st='demand'; K.t=0; if(!CROOK.demand){ CROOK.demand={a:q,t:T0}; sayT=6; toast(mpick(['"Oya! Bring all your money! Now now!"','"Shoo! No move! Wetin dey your pocket? Bring am!"','"Na robbery! Bring money or we waste you!"']),3.4); } } }
+      else if(K.st==='demand'){ q.speed=0; q.yaw=lerpA(q.yaw,face,Math.min(1,dt*8)); q.aimOn=true; q.aimDir.set(dx,player.y+1.2-(q.y+1.4),dz).normalize();
+        if(T0-FIGHT.lastAtk<.6||d>9||K.t>8||inCar){ K.st='shoot'; K.t=0; if(K.mate&&K.mate.state==='crook') { K.mate.crook.st='shoot'; K.mate.crook.t=0; } if(CROOK.demand&&CROOK.demand.a===q) CROOK.demand=null; } }
+      else if(K.st==='shoot'){ if(FIGHT.ko||FIGHT.dead||K.t>20){ K.st='leave'; continue; } const T=inCar?drive.v:player; q.aimOn=true; q.aimDir.set(T.x-q.x,(inCar?(T.y||0)+1:player.y+1.2)-(q.y+1.4),T.z-q.z).normalize();
+        copMove(q,dx,dz,d>14?3.6:0,dt); q.yaw=lerpA(q.yaw,face,Math.min(1,dt*9));
+        if((q.fireT-=dt)<=0){ q.fireT=mrr(.55,1.2); _co.set(q.x,q.y+1.45,q.z); if(q.wm&&ARMS.lib.ak&&q.wm.parent===scene) _co.copy(ARMS.lib.ak.muzzle).applyMatrix4(q.wm.matrixWorld);
+          _cdv.set(T.x-_co.x,(inCar?(T.y||0)+1:player.y+1.2)-_co.y,T.z-_co.z).normalize(); shoot(_co.clone(),_cdv,q,{dmg:7,spread:.05+d*.0015,range:70,muzzle:_co.clone()}); flash(_co); gunshot(clamp(1-d/90,.15,.9)); q.recoil=1; shotsFired(q.x,q.z,false); } }
+      else { copMove(q,-dx,-dz,4.4,dt); q.yaw=lerpA(q.yaw,Math.atan2(-dx,-dz),Math.min(1,dt*8)); if(d>45&&!inView(q.x,1,q.z,1)) crookOut(q); }
+      continue; }
+    if(K.k==='hang'){ const S=K.spot; q.speed=0; const gx=S.x+Math.sin(K.a)*1.6, gz=S.z+Math.cos(K.a)*1.6; if(Math.hypot(q.x-gx,q.z-gz)>.3) copMove(q,gx-q.x,gz-q.z,1.2,dt); else q.speed=0;
+      q.yaw=lerpA(q.yaw,d<9?face:Math.atan2(S.x-q.x,S.z-q.z),Math.min(1,dt*3)); if(!q.act||MR()<dt*.05) q.act=mpick(['smoke','talk','idle_1','argue','idle_1']);
+      // at night the cult boys don't like strangers by their fire
+      if(night&&mode==='walk'&&d<6&&!FIGHT.ko){ if(T0-S.warned>20){ S.warned=T0; S.dare=T0; if(sayT<=0){ sayT=5; toast(mpick(['"Who you be? This na our base. Comot here!"','"You no hear? Na Black Eagle base be this. Waka!"','"Stranger, wetin you dey find for here?"']),3); } }
+        else if(T0-S.dare>4.5&&d<4.5){ for(const b of S.boys) if(b.state==='crook'){ b.state='fight'; b.atk=null; b.atkT=mrr(.3,1); b.crook=null; } S.boys=[]; } } } } }
+function crookPay(){ const D=CROOK.demand; if(!D||D.a.state!=='crook'||mode!=='walk'){ CROOK.demand=null; return false; } const amt=Math.min(CASH.n,Math.max(500,Math.round(CASH.n*.4/50)*50)); if(amt>0) addCash(-amt); CROOK.demand=null;
+  for(const q of CROOK.list) if(q.crook&&q.crook.k==='rob'){ q.crook.st='leave'; q.aimOn=false; }
+  toast(amt>0?mpick([`You give them ${naira(amt)}. "Oya go! If you talk, we go find you."`,`They take ${naira(amt)} and run off into the dark.`]):'"You no get money?! Waste of time!" They push you and run.',3); return true; }
+// the boys at the drums, put there when you come near (more of them at night)
+function updateUBSpots(dt){ if(!UB||!UBX.spots.length) return; const here=inUB(player.x,player.z);
+  for(const S of UBX.spots){ const d=Math.hypot(S.x-player.x,S.z-player.z); S.boys=S.boys.filter(q=>q.state==='crook'&&q.crook&&q.crook.spot===S);
+    if(here&&d<70&&d>18&&!S.boys.length&&(S.t-=dt)<=0){ S.t=8; const n=ENV.night?4:MR()<.5?2:3; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+mrr(-.3,.3), q=crookWake('hang',S.x+Math.sin(a)*1.6,S.z+Math.cos(a)*1.6); if(!q) break; q.crook.spot=S; q.crook.a=a; q.crook.st='hang'; S.boys.push(q); } }
+    if(d>110) for(const q of S.boys) crookOut(q);
+    if(ENV.night&&d<55&&MR()<dt*9) flame(S.x,.95,S.z,.55); } }   // their fire
+function updateUnderBridge(dt){ if(!UB) return; updateGate(dt); updateCrooks(dt); updateUBSpots(dt);
+  if(CHOP&&CHOP.ring){ CHOP.ring.visible=mode==='drive'&&!!drive.v&&!drive.v.mine&&drive.v.type!=='skate'&&Math.hypot(player.x-CHOP.x,player.z-CHOP.z)<160; CHOP.ring.material.opacity=.45+.3*Math.sin(T0*4); } }
 
 /* ================= rope toll: area boys block a street with a rope =================
    On some side streets two area boys hold a rope across the road: ₦200 to pass (E). Cars that pay go through;
@@ -6142,9 +6374,9 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
+  if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -6201,6 +6433,17 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     skate(){ if(!mySkate) return null; const [e]=nearestRoad(player.x,player.z,walkable); if(e){ const A=nodes[e.a], t=clamp((player.x-A.x)*e.fx+(player.z-A.z)*e.fz,3,Math.max(3,e.len-3));
         Object.assign(mySkate,{x:A.x+e.fx*t-e.fz*e.hw*.4,z:A.z+e.fz*t+e.fx*e.hw*.4,h:Math.atan2(-e.fz,e.fx),carried:false}); delete ARMS.own.board; if(ARMS.cur==='board') ARMS.cur='fists'; player.x=mySkate.x; player.z=mySkate.z; } enterCar(mySkate); return mode; },
     skInfo:()=>({mode,sp:+SK.sp.toFixed(2),air:SK.air,h:+SK.h.toFixed(2),push:SK.push&&SK.push.st,pump:SK.pump,rest:+SK.restT.toFixed(1),trick:SK.trick&&SK.trick.k,grab:+(SK.grabW||0).toFixed(2),spin:+((drive.v&&drive.v.spinY)||0).toFixed(2),sb:SKP.B?+SKP.B.st.sb.toFixed(2):null,x:+player.x.toFixed(1),z:+player.z.toFixed(1),deck:+skDeck().toFixed(3)}),
+    ub:()=>({mode,here:inUB(player.x,player.z),core:ubCore(player.x,player.z),loc:locationName(),cash:CASH.n,stars:starCount(),gate:GATE&&{x:GATE.x,z:GATE.z,open:+GATE.open.toFixed(2),paid:T0<GATE.paidT,guards:GATE.guards.map(q=>q.state)},
+      fly:FLY.map(F=>({n:F.n,L:Math.round(F.L),a:F.pts[0].map(Math.round),b:F.pts[F.pts.length-1].map(Math.round)})),flyP:FLYP.F?{i:FLYP.F.i,s:+FLYP.s.toFixed(1),fh:+((drive.v&&drive.v.fh)||0).toFixed(2)}:null,
+      crooks:CROOK.list.map(q=>({k:q.crook&&q.crook.k,st:q.crook&&q.crook.st,d:+Math.hypot(q.x-player.x,q.z-player.z).toFixed(1),state:q.state})),demand:!!CROOK.demand,chop:CHOP&&{x:Math.round(CHOP.x),z:Math.round(CHOP.z)},
+      piers:UBX.piers.length,spots:UBX.spots.length,upCars:vehicles.filter(v=>(v.fh||0)>2).length}),
+    ubGo(x,z,yaw=0){ if(mode==='drive') exitCar(); player.x=x; player.z=z; player.yaw=yaw; player.speed=0; rig.root.position.set(x,0,z); return {x,z}; },
+    ubCar(i=0,back=6){ const F=FLY[i]; if(!F) return null; if(mode==='drive') exitCar(); const q=flyPos(F,0), v=newVehicle('sedan','#2b4b3a',true); Object.assign(v,{x:q.x-q.ux*back,z:q.z-q.uz*back,h:Math.atan2(-q.uz,q.ux),parked:true}); player.x=v.x; player.z=v.z; enterCar(v); return mode; },
+    ubCarAt(x,z,h=0){ if(mode==='drive') exitCar(); const v=newVehicle('sedan','#2b4b3a',true); Object.assign(v,{x,z,h,parked:true}); player.x=x; player.z=z; enterCar(v); return mode; },
+    aiNear:(R=250)=>{ const L=vehicles.filter(v=>v.ai&&Math.hypot(v.x-player.x,v.z-player.z)<R); return {n:L.length,all:vehicles.filter(v=>v.ai).length,tot:vehicles.length,fly:L.filter(v=>FLYE.has(edgeOf(v.ai.a,v.ai.b)?.i)).length}; },
+    aiFly:()=>vehicles.filter(v=>v.ai&&v.ai.a!=null&&FLYE.has(edgeOf(v.ai.a,v.ai.b)?.i)).map(v=>({fh:+(v.fh||0).toFixed(2),y:+v.y.toFixed(2),d:Math.round(Math.hypot(v.x-player.x,v.z-player.z))})),
+    ubCrook(k='pick'){ if(k==='pick') CROOK.t=0; else CROOK.robT=0; return true; },
+    ubPay:()=>{ if(CROOK.demand) return crookPay(); if(gateNear()){ gatePay(); return 'gate'; } if(nearChop()){ chopSell(); return 'chop'; } return null; },
     board:()=>({mode,own:!!ARMS.own.board,cur:ARMS.cur,carried:!!(mySkate&&mySkate.carried),near:boardNear(),held:!!(MYB.held&&MYB.held.visible),hp:MYB.held?MYB.held.position.toArray().map(v=>+v.toFixed(2)):null,pl:[+player.x.toFixed(2),+player.y.toFixed(2),+player.z.toFixed(2)],d:mySkate?+Math.hypot(mySkate.x-player.x,mySkate.z-player.z).toFixed(1):null}),
     boardPick:()=>boardPickUp(), boardRide:()=>{ boardRide(); return mode; }, stepOff:()=>{ if(mode==='drive'){ drive.speed=0; exitCar(); } return mode; },
     lookAt(x,y,z,back,hgt,side=0){ const v=drive.v||player, h=drive.v?drive.v.h:0, fx=Math.cos(h), fz=-Math.sin(h); DEVCAM={p:new THREE.Vector3(x+fx*back+Math.sin(h)*side,hgt,z+fz*back+Math.cos(h)*side),t:new THREE.Vector3(x,y,z)}; return true; },
@@ -6215,7 +6458,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     mapAt(x,z,sc){ if(!mapView.isOpen) openMap(); mapView.view.cx=x; mapView.view.cz=z; mapView.view.s=sc; mapView.draw(); return true; },
     enter(){ rideEnter(); return RIDE.state; }, skip(){ skipRide(); return RIDE.state; }, rideInfo(){ const v=RIDE.v; return {state:RIDE.state,leg:!!RIDE.leg,legI:RIDE.leg&&RIDE.leg.i,ai:!!(v&&v.ai),x:v&&+v.x.toFixed(1),z:v&&+v.z.toFixed(1),px:+player.x.toFixed(1),pz:+player.z.toFixed(1),mode}; },
     bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
-    phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); },
+    phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); }, guide:w=>GD.test(w),
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);

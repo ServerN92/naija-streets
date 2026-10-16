@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="c8abaf1d94">
+<meta name="ns-build" content="2531e90d9d">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -336,6 +336,13 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
       <button type="button" data-s="on" aria-pressed="true">On</button>
       <button type="button" data-s="off" aria-pressed="false">Off</button>
     </div>
+    <h3>Tips</h3>
+    <div class="seg" id="tipsSeg" role="group" aria-label="Tips">
+      <button type="button" data-t="on" aria-pressed="true">On</button>
+      <button type="button" data-t="off" aria-pressed="false">Off</button>
+    </div>
+    <div class="seg" style="margin-top:8px"><button type="button" id="tipsAgain">Show all the tips again</button></div>
+    <p class="note">A short tip shows the first time you meet something new: the phone, driving, fighting, the map and more.</p>
     <h3>Time and weather</h3>
     <p class="note" style="margin-top:0">Day, night, rain and harmattan change by themselves, at the same moment for every player in Lagos. One game day lasts 2 hours: long mornings, afternoons and evenings, and a short night.</p>
     <div id="keys">
@@ -352,7 +359,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
         <dt>L or Q</dt><dd>Dodge (hit straight after for a harder blow)</dd>
         <dt>G</dt><dd>Slam the man you are fighting down, or carry someone</dd>
         <dt>H</dt><dd>Horn</dd>
-        <dt>P</dt><dd>Your phone: calls (112 for police), messages, Gist, camera, rides (OYA RIDE) and delivery jobs (OYA WORK)</dd>
+        <dt>P</dt><dd>Your phone: calls (112 for police), messages, Gist, camera, rides (OYA RIDE) and delivery jobs (OYA WORK). Backspace goes back inside the phone</dd>
         <dt>1–6 · Tab</dt><dd>Fists, baton, katana, AK-47, grenade, petrol bomb (from Oga Shege)</dd>
         <dt>Right mouse / K</dt><dd>Aim the AK or a throw (left mouse or J fires or throws, R reloads)</dd>
         <dt>G with a weapon</dt><dd>Rob the person in front of you</dd>
@@ -442,7 +449,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=c8abaf1d94"></script>
+<script type="module" src="src/game.js?v=2531e90d9d"></script>
 
 </body>
 </html>

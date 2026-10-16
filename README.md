@@ -22,7 +22,7 @@ Then commit and push. GitHub Pages serves the `main` branch.
 - `assets/models/` – vehicles and buildings (.glb with meshopt geometry and KTX2 textures, plus `_lod1` far versions)
 - `assets/characters/` – the player (`hero.glb`; the original Mixamo .fbx files are a fallback)
 - `assets/people/` – the city's people (one .glb each) and `moves.glb` (every move, shared by all of them)
-- `assets/maps/` – real street maps from OpenStreetMap (.json); `mushin_world.json` is the city you play in
+- `assets/maps/` – real street maps from OpenStreetMap (.json); `lagos_world.json` is the city you play in (Mushin + Ikeja)
 - `tools/` – model shrinking (`lod.py`, `bake.py`), OpenStreetMap conversion (`osm_world.py`, `convert.py`), `manifest.py`, `stamp.py`,
   big Meshy/Tripo models (`fbxbin.py`, `rebake.py`, `autorig.py`)
 
@@ -33,7 +33,32 @@ Fadeyi, Onipanu and Idi-Araba. Rebuilding it from a fresh OpenStreetMap export (
 ```
 python3 tools/osm_world.py Mushin.osm assets/maps/mushin_world.json
 ```
-The same command works for another area (Oshodi, Ajegunle); the game loads `mushin_world.json`.
+The same command works for another area (Oshodi, Ajegunle). The game loads `lagos_world.json`: Mushin with Ikeja joined
+on (see below).
+
+## Ikeja Under Bridge
+West of Mushin, behind a police checkpoint, is a second city: the real streets of Ikeja from OpenStreetMap (about
+13,600 buildings), with Computer Village, Alausa, Oba Akran and the flyovers. The district is inspired by Ikeja Under
+Bridge; the shops, gangs and people in it are made up.
+- **The checkpoint.** One road joins the two cities, through a toll gate with barrier arms, booths and a police post
+  (built in Blender, `tools/blender_underbridge.py`). Press E to pay ₦300 and the arms lift. Officers search you: carry
+  an AK, grenades or molotovs and they take a ₦10,000 "settle", or seize the guns if you can't pay. Come while wanted and
+  they open fire. Walk into the shut gate and you are pushed back; drive through it fast and it breaks, and they come for you.
+- **Flyovers.** Mobolaji Bank-Anthony Way, Oba Akran, the Ikeja Flyover and Agege Motor Road are raised decks on piers.
+  Drive up the ramp at either end; you can't get out up there. Traffic uses the Mobolaji and Oba Akran ones too. Under the decks are shacks,
+  containers and stalls, and area boys stand at the drums (with fires at night).
+- **Crime.** Pickpockets brush past and run (catch them and the money drops); armed robbers come in pairs at night, and
+  under the bridge by day: press E to hand over 40% of your cash, or fight. At night the boys at the drums warn you off,
+  then fight.
+- **The chop shop.** Bring any car that isn't yours to the yellow ring by the "WE BUY ANY CAR" sign and press E: they
+  pay by type and damage, no questions (a police van also brings heat).
+
+Rebuilding the joined map (Ikeja from an OpenStreetMap export, then merged on to Mushin with the toll road and flyovers):
+```
+python3 tools/osm_world.py ikeja.osm /tmp/ikeja_world.json
+python3 tools/merge_district.py assets/maps/mushin_world.json /tmp/ikeja_world.json assets/maps/lagos_world.json
+```
+Both cities are one map; far things are hidden by distance, as in Mushin.
 
 Life on the streets: traffic moves fast on the highways and big roads, so people never walk across them: they use the footbridges; hawkers walk out between the cars when the light turns
 red and run back on green; at the motor park conductors call out, the queue climbs into a danfo and it leaves full,
