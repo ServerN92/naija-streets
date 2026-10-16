@@ -12,14 +12,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=fdd9a83565';
-import * as C2 from './char2.js?v=fdd9a83565';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=fdd9a83565';
-import { createPhone } from './phone.js?v=fdd9a83565';
-import { MapView } from './mapview.js?v=fdd9a83565';
+import * as CLOCK from './clock.js?v=ebf0a84bfb';
+import * as C2 from './char2.js?v=ebf0a84bfb';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=ebf0a84bfb';
+import { createPhone } from './phone.js?v=ebf0a84bfb';
+import { createGuide } from './guide.js?v=ebf0a84bfb';
+import { MapView } from './mapview.js?v=ebf0a84bfb';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='fdd9a83565';
+const BUILD='ebf0a84bfb';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -38,6 +39,7 @@ const R = mulberry32(90210);
 const rr = (a,b) => a + R()*(b-a), ri = (a,b) => Math.floor(rr(a,b+1)), pick = a => a[Math.floor(R()*a.length)];
 const naira=n=>'₦'+n.toLocaleString('en-NG');
 let PH=null;   // the phone (src/phone.js)
+let GD=null;   // the first-time tips (src/guide.js)
 const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
@@ -2387,6 +2389,7 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(DEALER.open&&(k==='escape'||k==='e')){ closeShop(); K[k]=true; return; }
   if(MENU.open&&(k==='escape'||k==='e')){ closeMenu(); K[k]=true; return; }
   if(k==='escape'&&PH&&PH.cam()){ PH.closeCamera(); return; }
+  if(k==='backspace'&&PHONE.open&&PH&&!PH.cam()){ e.preventDefault(); PH.back(); return; }
   if(k==='enter'&&PH&&PH.cam()){ PH.test('shoot'); return; }
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
@@ -4667,12 +4670,19 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  badge:n=>$('#phoneBtn').classList.toggle('badge',n>0), beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
-  setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); toast(`Your map don show the way to ${pl.name}.`,2.6); },
+  setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); if(!PHONE.open) toast(`Your map don show the way to ${pl.name}.`,2.6); },
   denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone() });
+// the guide: what is happening now, so it knows when a first-time tip is due
+GD=createGuide({ touch:()=>touchUI, click:()=>phoneBeep(1500,.02,.12), closeSettings:()=>{ $('#settings').hidden=true; },
+  unlock:()=>{ if(document.pointerLockElement) document.exitPointerLock(); }, calm:()=>{ for(const kk in K) K[kk]=false; joy.x=joy.y=0; },
+  state:()=>({ on:started&&!busy&&!FIGHT.dead&&$('#rotate').hidden&&$('#loading').hidden, mode, veh:mode==='drive'&&drive.v?drive.v.type:null, ride:mode==='drive'&&!!drive.ride,
+    foe:!$('#foe').hidden, stars:starCount(), jail:!$('#jailBox').hidden, armed:Object.keys(ARMS.own).some(k=>k!=='fists'&&ARMS.own[k]),
+    map:mapView.isOpen, dest:!!mapView.dest, job:!!JOB.state, shop:DEALER.open, phone:PHONE.open, cam:!!(PH&&PH.cam()), phoneHome:PHONE.open&&!PH.app()&&!PH.cam(),
+    panel:!$('#settings').hidden||WARD.open||MENU.open||BL.edit }) });
 function togglePhone(){ if(PHONE.open) closePhone(); else openPhone(); }
 function openPhone(){ if(!started||busy||PHONE.open||mode==='interior'||mode==='enter'||(mode==='drive'&&!drive.ride)) return; loadPhone(); PHONE.open=true; closeWard(); $('#settings').hidden=true;
   if(document.pointerLockElement) document.exitPointerLock(); PH.open(); $('#phoneBtn').setAttribute('aria-pressed','true'); }
@@ -5962,7 +5972,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -6030,7 +6040,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     mapAt(x,z,sc){ if(!mapView.isOpen) openMap(); mapView.view.cx=x; mapView.view.cz=z; mapView.view.s=sc; mapView.draw(); return true; },
     enter(){ rideEnter(); return RIDE.state; }, skip(){ skipRide(); return RIDE.state; }, rideInfo(){ const v=RIDE.v; return {state:RIDE.state,leg:!!RIDE.leg,legI:RIDE.leg&&RIDE.leg.i,ai:!!(v&&v.ai),x:v&&+v.x.toFixed(1),z:v&&+v.z.toFixed(1),px:+player.x.toFixed(1),pz:+player.z.toFixed(1),mode}; },
     bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
-    phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); },
+    phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); }, guide:w=>GD.test(w),
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);

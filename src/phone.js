@@ -5,8 +5,21 @@
    Wallet, Weather, Settings. The game passes in `api` (its own functions); this file only draws and runs the phone. */
 
 const CSS = `
-.iph-wrap{position:absolute;right:calc(14px + var(--sr));bottom:calc(10px + var(--sb));z-index:7;pointer-events:auto;display:flex;align-items:flex-start;gap:8px}
-.iph-close{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(12,14,18,.75);color:#fff;font-size:17px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.iph-wrap{position:absolute;right:calc(14px + var(--sr));bottom:calc(10px + var(--sb));z-index:7;pointer-events:auto;display:flex;align-items:flex-start;gap:10px}
+/* the buttons beside the phone: Close, Home, Back. Big, round and named, so nobody has to guess */
+.iph-side{display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:4px;min-width:60px;margin-right:4px}
+.iph-sb{display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;padding:0;color:#fff;cursor:pointer;font-family:var(--fb,system-ui);font-weight:700;font-size:13px;line-height:1;letter-spacing:.03em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.iph-sb i{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:rgba(12,14,18,.8);border:1.5px solid rgba(255,255,255,.28);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.4);transition:transform .12s,opacity .2s}
+.iph-sb svg{width:22px;height:22px}
+.iph-sb.home i{background:#fff;color:#0e1014;border-color:#fff}
+.iph-sb:active i{transform:scale(.88)}
+.iph-sb:disabled{opacity:.32;cursor:default}
+.iph-sb.home.ping i{animation:sbPing 1.3s ease-out 3}
+@keyframes sbPing{0%{box-shadow:0 0 0 0 rgba(255,255,255,.75)}100%{box-shadow:0 0 0 18px rgba(255,255,255,0)}}
+@media (max-height:440px){.iph-side{gap:8px;padding-top:0}.iph-sb i{width:42px;height:42px}.iph-sb{font-size:11px;gap:3px}}
+/* what the phone itself says when you do something (no popups from outside) */
+.iph-hud{position:absolute;left:50%;bottom:15cqw;transform:translateX(-50%);z-index:70;background:rgba(36,36,42,.94);color:#fff;font-size:3.6cqw;font-weight:600;padding:2.2cqw 4.4cqw;border-radius:6cqw;white-space:nowrap;max-width:86%;overflow:hidden;text-overflow:ellipsis;pointer-events:none;animation:hudIn .22s ease-out;box-shadow:0 2cqw 5cqw rgba(0,0,0,.4)}
+@keyframes hudIn{from{opacity:0;transform:translate(-50%,40%)}to{opacity:1;transform:translateX(-50%)}}
 .iph{--w:clamp(236px,calc((100vh - 70px - var(--st) - var(--sb)) * .465),320px);width:var(--w);height:min(calc(var(--w) * 2.16),calc(100vh - 24px - var(--st) - var(--sb)));
   border-radius:calc(var(--w) * .165);background:#08080a;padding:calc(var(--w) * .03);box-sizing:border-box;container-type:inline-size;position:relative;
   box-shadow:0 0 0 1.5px #4a4d55,0 0 0 4px #17181c,0 0 0 5px #2b2d33,0 26px 60px rgba(0,0,0,.65);transform-origin:100% 100%;animation:iphUp .32s cubic-bezier(.2,.9,.25,1)}
@@ -113,11 +126,6 @@ const CSS = `
 .wx-card small{opacity:.8;font-size:3.3cqw}.wx-card .ph-big{font-size:10cqw;font-weight:700;margin:1cqw 0}
 .wt{text-align:center;padding-top:4cqw}.wt .t{font-size:22cqw;font-weight:200;line-height:1}.wt .c{font-size:5cqw;font-weight:600;margin:1cqw 0}
 .wt-hours{display:flex;justify-content:space-between;background:rgba(255,255,255,.12);border-radius:4cqw;padding:3cqw;margin:5cqw 0}.wt-hours div{text-align:center;font-size:3.3cqw}.wt-hours i{display:block;font-style:normal;font-size:5.4cqw;margin:1cqw 0}
-/* banner */
-.iph-ban{position:absolute;left:2.6cqw;right:2.6cqw;top:2.4cqw;z-index:60;border-radius:5cqw;padding:2.8cqw 3.4cqw;background:rgba(40,40,46,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;gap:2.6cqw;align-items:center;animation:banIn .35s cubic-bezier(.2,.9,.3,1);box-shadow:0 2cqw 6cqw rgba(0,0,0,.4);text-align:left}
-@keyframes banIn{from{transform:translateY(-130%)}to{transform:none}}
-.iph-ban .iph-ico{width:8.4cqw;height:8.4cqw;border-radius:2cqw;box-shadow:none}
-.iph-ban b{display:block;font-size:3.5cqw}.iph-ban span{display:block;font-size:3.4cqw;opacity:.85;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 /* the camera: the game itself is the viewfinder */
 .camui{position:fixed;inset:0;z-index:12;pointer-events:none;color:#fff;font-family:-apple-system,'Segoe UI',Roboto,system-ui,sans-serif}
 .camui .g{position:absolute;inset:0;background:linear-gradient(90deg,transparent calc(33.3% - .5px),rgba(255,255,255,.28) calc(33.3% - .5px),rgba(255,255,255,.28) calc(33.3% + .5px),transparent calc(33.3% + .5px),transparent calc(66.6% - .5px),rgba(255,255,255,.28) calc(66.6% - .5px),rgba(255,255,255,.28) calc(66.6% + .5px),transparent calc(66.6% + .5px)),linear-gradient(0deg,transparent calc(33.3% - .5px),rgba(255,255,255,.28) calc(33.3% - .5px),rgba(255,255,255,.28) calc(33.3% + .5px),transparent calc(33.3% + .5px),transparent calc(66.6% - .5px),rgba(255,255,255,.28) calc(66.6% - .5px),rgba(255,255,255,.28) calc(66.6% + .5px),transparent calc(66.6% + .5px))}
@@ -134,8 +142,20 @@ const CSS = `
 @keyframes camFl{from{opacity:.95}to{opacity:0}}
 body.ph-cam .hud>*:not(.camui):not(#touch):not(#toast){visibility:hidden}
 body.ph-cam #mmWrap,body.ph-cam #phoneBtn,body.ph-cam #touch .tbtns{visibility:hidden}
-#phoneBtn.badge::after{content:'';position:absolute;right:4px;top:4px;width:10px;height:10px;border-radius:50%;background:#ff3b30;border:2px solid var(--ink)}
-#phoneBtn{position:relative}
+/* the phone button in the corner: an app icon of its own, with the number of new things on it */
+#phoneBtn{position:relative;width:44px;height:44px;border-radius:12px;padding:0;border:none;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible}
+#phoneBtn .pb-ic{position:absolute;inset:0;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:linear-gradient(155deg,#ffe36e 0%,#f2b705 45%,#d98000 100%);box-shadow:0 4px 12px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -2px 0 rgba(0,0,0,.18);transition:transform .15s}
+#phoneBtn .pb-ic::before{content:'';position:absolute;left:-30%;right:-30%;top:-70%;height:100%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,0))}
+#phoneBtn .pb-ic svg{position:relative;width:39px;height:39px;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.35))}
+#phoneBtn:active .pb-ic{transform:scale(.9)}
+#phoneBtn[aria-pressed="true"]{background:none}
+#phoneBtn[aria-pressed="true"] .pb-ic{box-shadow:0 0 0 2px #0e1014,0 0 0 4px #fff,0 4px 12px rgba(0,0,0,.45)}
+#phoneBtn .pb-n{position:absolute;right:-8px;top:-8px;min-width:21px;height:21px;padding:0 5px;box-sizing:border-box;border-radius:11px;background:#ff3b30;color:#fff;font:700 12px/17px -apple-system,'Segoe UI',Roboto,system-ui,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);z-index:2}
+#phoneBtn .pb-n[hidden]{display:none}
+#phoneBtn.bump .pb-ic{animation:pbBump .6s}
+#phoneBtn.bump .pb-n{animation:pbPop .45s}
+@keyframes pbBump{0%,100%{transform:none}25%{transform:scale(1.15) rotate(-8deg)}55%{transform:scale(.95) rotate(5deg)}80%{transform:rotate(-2deg)}}
+@keyframes pbPop{0%{transform:scale(.3)}70%{transform:scale(1.25)}100%{transform:none}}
 @media (max-height:420px){.iph-wrap{bottom:calc(6px + var(--sb))}}
 `;
 
@@ -156,6 +176,18 @@ const ICONS = {
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
 };
 const icon = k => { const [bg, fg, svg] = ICONS[k]; const d = document.createElement('div'); d.className = 'iph-ico'; d.style.background = bg; d.style.color = fg; d.innerHTML = svg; return d; };
+// the corner button: a little phone with the Lagos dusk on its screen and a few apps, tilted like it is in your hand
+const PB_SVG = `<svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="pbS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26195c"/><stop offset=".55" stop-color="#b3457c"/><stop offset="1" stop-color="#ffb35c"/></linearGradient></defs>
+<g transform="rotate(-9 16 16)"><rect x="8.6" y="2.4" width="14.8" height="27.2" rx="3.9" fill="#121318"/><rect x="9.9" y="3.7" width="12.2" height="24.6" rx="2.8" fill="url(#pbS)"/>
+<rect x="14" y="4.7" width="4" height="1.5" rx=".75" fill="#000"/>
+<g><rect x="11.2" y="8.6" width="2.5" height="2.5" rx=".7" fill="#34c759"/><rect x="14.75" y="8.6" width="2.5" height="2.5" rx=".7" fill="#0a84ff"/><rect x="18.3" y="8.6" width="2.5" height="2.5" rx=".7" fill="#ffd60a"/>
+<rect x="11.2" y="12.3" width="2.5" height="2.5" rx=".7" fill="#ff375f"/><rect x="14.75" y="12.3" width="2.5" height="2.5" rx=".7" fill="#ff9f0a"/><rect x="18.3" y="12.3" width="2.5" height="2.5" rx=".7" fill="#fff"/></g>
+<path d="M9.9 24.6v-3.4h1.6v-2.2h1.4v3h1.2v-4.2h1.5v4.6h1.3v-2.4h1.5v1.5h1.2v-3.2h1.3v3.6h1.2v3.7z" fill="#2a1638"/><rect x="13.7" y="26.4" width="4.6" height=".8" rx=".4" fill="#fff" opacity=".85"/></g></svg>`;
+const SB_ICON = {
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 2.8 11a1 1 0 0 0 1.3 1.5l.9-.8V20a1 1 0 0 0 1 1h4v-5.5h4V21h4a1 1 0 0 0 1-1v-8.3l.9.8a1 1 0 0 0 1.3-1.5z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+};
 
 /* ---- the Lagos wallpaper: dusk over the city, the bridge and the lagoon (drawn here) */
 const WALL_SVG = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 650' preserveAspectRatio='xMidYMax slice'><defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#1b1145'/><stop offset='.45' stop-color='#7a2f73'/><stop offset='.72' stop-color='#ec7a3c'/><stop offset='.86' stop-color='#ffc46b'/></linearGradient><linearGradient id='w' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#c86a4a'/><stop offset='1' stop-color='#2a1840'/></linearGradient></defs><rect width='300' height='650' fill='url(#s)'/><circle cx='205' cy='470' r='34' fill='#ffd27a' opacity='.9'/><g fill='#2a1638' opacity='.95'><rect x='8' y='420' width='26' height='140'/><rect x='38' y='380' width='20' height='180'/><rect x='62' y='440' width='30' height='120'/><rect x='96' y='350' width='18' height='210'/><rect x='118' y='400' width='34' height='160'/><rect x='156' y='455' width='22' height='105'/><rect x='228' y='410' width='24' height='150'/><rect x='256' y='372' width='20' height='188'/><rect x='278' y='430' width='22' height='130'/><path d='M100 350l5-14 5 14z'/></g><g fill='#ffd98a' opacity='.55'><rect x='42' y='392' width='3' height='3'/><rect x='50' y='410' width='3' height='3'/><rect x='100' y='370' width='3' height='3'/><rect x='106' y='395' width='3' height='3'/><rect x='124' y='420' width='3' height='3'/><rect x='140' y='440' width='3' height='3'/><rect x='260' y='392' width='3' height='3'/><rect x='266' y='420' width='3' height='3'/></g><path d='M0 540 Q75 505 150 540 T300 540' stroke='#1a0f2c' stroke-width='5' fill='none'/><g stroke='#1a0f2c' stroke-width='3'><line x1='37' y1='528' x2='37' y2='560'/><line x1='112' y1='526' x2='112' y2='560'/><line x1='188' y1='526' x2='188' y2='560'/><line x1='262' y1='528' x2='262' y2='560'/></g><rect y='558' width='300' height='92' fill='url(#w)'/><g stroke='#ffd27a' stroke-width='2' opacity='.5'><line x1='180' y1='572' x2='230' y2='572'/><line x1='190' y1='590' x2='222' y2='590'/><line x1='198' y1='608' x2='214' y2='608'/></g></svg>`;
@@ -235,7 +267,16 @@ export function createPhone(api) {
 
   // ---- the phone itself
   const dev = h('div', 'iph'), scr = h('div', 'iph-scr'); dev.append(scr); wrap.append(dev);
-  const xBtn = document.getElementById('phClose'); if (xBtn) { xBtn.className = 'iph-close'; xBtn.textContent = '✕'; wrap.prepend(xBtn); }
+  // beside the phone: Close, Home (always back to the home screen) and Back (one step back inside an app)
+  const side = h('div', 'iph-side'), sideBtn = (b, k, label) => { b.className = 'iph-sb ' + k; b.innerHTML = `<i>${SB_ICON[k]}</i><span>${label}</span>`; b.dataset.g = k; b.setAttribute('aria-label', label === 'Close' ? 'Put the phone away' : label); return b; };
+  const xBtn = document.getElementById('phClose') || h('button'); xBtn.type = 'button'; sideBtn(xBtn, 'close', 'Close');
+  const homeB = sideBtn(btn('', [], () => { api.click && api.click(); toHome(); }), 'home', 'Home');
+  const backB = sideBtn(btn('', [], () => { api.click && api.click(); goBack(); }), 'back', 'Back');
+  side.append(xBtn, homeB, backB); wrap.prepend(side);
+  side.addEventListener('pointerdown', e => e.stopPropagation());
+  // the phone button in the corner: drawn here, with the count of new messages and Gist on it
+  const pBtn = document.getElementById('phoneBtn'), pbN = h('span', 'pb-n'); pbN.hidden = true; let pbLast = 0;
+  if (pBtn) { pBtn.innerHTML = `<span class="pb-ic">${PB_SVG}</span>`; pBtn.append(pbN); pBtn.addEventListener('animationend', () => pBtn.classList.remove('bump')); }
   dev.addEventListener('pointerdown', e => e.stopPropagation());
   dev.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
   const wall = h('div', 'iph-wall'); scr.append(wall);
@@ -245,7 +286,7 @@ export function createPhone(api) {
   const bat = h('span', 'iph-bat'), batI = h('i'); bat.append(batI); sig.append(h('span', null, 'MTN'), bars, h('span', null, '5G'), bat); st.append(timeEl, sig); scr.append(st);
   const isl = h('div', 'iph-isl'); scr.append(isl);
   const home = h('div', 'iph-home'); scr.append(home);
-  const bar = h('div', 'iph-bar'), barHit = btn('iph-barhit', [], () => goHome(), 'Home'); scr.append(bar, barHit);
+  const bar = h('div', 'iph-bar'), barHit = btn('iph-barhit', [], () => toHome(), 'Home'); scr.append(bar, barHit);
 
   const APPS = [
     ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
@@ -253,7 +294,7 @@ export function createPhone(api) {
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
   const badges = {};
-  function appIcon([k, label, fn]) { const b = btn('iph-ic', [icon(k), h('span', null, label)], e => { const r = b.getBoundingClientRect(), s = scr.getBoundingClientRect(); R.origin = `${r.left - s.left + r.width / 2}px ${r.top - s.top + r.height / 3}px`; api.click && api.click(); fn(); }, label);
+  function appIcon([k, label, fn]) { const b = btn('iph-ic', [icon(k), h('span', null, label)], e => { const r = b.getBoundingClientRect(), s = scr.getBoundingClientRect(); R.origin = `${r.left - s.left + r.width / 2}px ${r.top - s.top + r.height / 3}px`; api.click && api.click(); fn(); }, label); b.dataset.g = k;
     if (k === 'gist' || k === 'msg') { const bd = h('div', 'iph-badge'); bd.hidden = true; b.append(bd); (badges[k] = badges[k] || []).push(bd); } return b; }
   let widT, widW, widC, widWi;
   function buildHome() {
@@ -263,9 +304,9 @@ export function createPhone(api) {
     const w2 = btn('iph-w', [], () => openApp('wallet'), 'Wallet'); widC = h('div', 'mid'); widWi = h('small'); widC.style.fontSize = '6.4cqw'; w2.append(h('small', null, 'Eko Bank'), widC, widWi);
     w2.style.background = 'linear-gradient(135deg,rgba(15,155,88,.75),rgba(11,94,60,.75))';
     wid.append(w1, w2); home.append(wid);
-    const grid = h('div', 'iph-grid'); APPS.forEach(a => grid.append(appIcon(a))); home.append(grid);
+    const grid = h('div', 'iph-grid'); grid.dataset.g = 'apps'; APPS.forEach(a => grid.append(appIcon(a))); home.append(grid);
     const dots = h('div', 'iph-dots'); dots.append(h('i', 'on'), h('i')); home.append(dots);
-    const dock = h('div', 'iph-dock'); DOCK.forEach(a => dock.append(appIcon(a))); home.append(dock);
+    const dock = h('div', 'iph-dock'); dock.dataset.g = 'dock'; DOCK.forEach(a => dock.append(appIcon(a))); home.append(dock);
     refreshHome(); setBadges();
   }
   function refreshHome() {
@@ -274,7 +315,9 @@ export function createPhone(api) {
   }
   const temp = () => { const hr = api.hour(), base = 27 + 5 * Math.cos((hr - 14) / 24 * 6.283); return Math.round(base - api.rain() * 4); };
   const wxIcon = () => { const w = (api.weather() || '').toLowerCase(), hr = api.hour(); return /storm|thunder/.test(w) ? '⛈️' : /rain/.test(w) ? '🌧️' : /cloud|haz|harmat/.test(w) ? '⛅' : (hr < 6.3 || hr > 18.7) ? '🌙' : '☀️'; };
-  function setBadges() { for (const k in badges) for (const b of badges[k]) { const n = R.badge[k] || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; } api.badge(Object.values(R.badge).reduce((a, b) => a + b, 0)); }
+  function setBadges() { for (const k in badges) for (const b of badges[k]) { const n = R.badge[k] || 0; b.hidden = !n; b.textContent = n > 9 ? '9+' : n; }
+    const n = Object.values(R.badge).reduce((a, b) => a + b, 0); pbN.hidden = !n; pbN.textContent = n > 99 ? '99+' : n;
+    if (pBtn) { pBtn.setAttribute('aria-label', n ? `Your phone, ${n} new` : 'Your phone'); if (n > pbLast) { pBtn.classList.remove('bump'); void pBtn.offsetWidth; pBtn.classList.add('bump'); } } pbLast = n; }
 
   // ---- apps: one screen at a time, with a back button
   function frameApp(title, { light = false, back = null, right = null } = {}) {
@@ -285,9 +328,13 @@ export function createPhone(api) {
     else nav.append(t);
     if (back) { t.style.fontSize = '4.6cqw'; t.style.textAlign = 'center'; nav.append(t); }
     nav.append(right || h('span', 'iph-act'));
-    const body = h('div', 'iph-body'); v.append(nav, body); scr.insertBefore(v, isl); R.view = v; R.body = body; if (sc0) requestAnimationFrame(() => { body.scrollTop = sc0; }); return body;
+    const body = h('div', 'iph-body'); v.append(nav, body); scr.insertBefore(v, isl); R.view = v; R.body = body; R.back = back ? back[1] : goHome; syncNav(); if (sc0) requestAnimationFrame(() => { body.scrollTop = sc0; }); return body;
   }
-  function goHome() { R.app = null; if (R.view) { const v = R.view; v.style.transition = 'transform .22s, opacity .22s'; v.style.transform = 'scale(.4)'; v.style.opacity = '0'; setTimeout(() => v.remove(), 220); R.view = null; } home.classList.remove('away'); refreshHome(); setBadges(); }
+  function goHome() { R.app = null; R.back = null; if (R.view) { const v = R.view; v.style.transition = 'transform .22s, opacity .22s'; v.style.transform = 'scale(.4)'; v.style.opacity = '0'; setTimeout(() => v.remove(), 220); R.view = null; } home.classList.remove('away'); refreshHome(); setBadges(); syncNav(); }
+  function toHome() { if (R.call) endCall(true); const b = scr.querySelector('.iph-hud'); if (b) b.remove(); goHome(); }
+  function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
+  function syncNav() { backB.disabled = !(R.app || R.call); }
+  function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
   function openApp(k, arg) { R.app = k; ({ ride: rideApp, work: workApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
@@ -315,7 +362,7 @@ export function createPhone(api) {
     if (p.text) el.append(h('p', 'gx-tx', p.text));
     if (p.img || p.card) { const m = h('div', 'gx-media'); if (p.img) { const ph = S.photos.find(q => q.id === p.img); const im = h('img'); im.alt = 'photo'; im.src = ph ? ph.src : ''; m.append(im); } else { m.style.background = p.card.bg; m.append(p.card.e); if (p.card.cap) m.append(h('em', null, p.card.cap)); } el.append(m); }
     const acts = h('div', 'gx-acts'), lk = btn(p.liked ? 'liked' : '', [p.liked ? '♥' : '♡', ' ', String(p.likes)], () => { p.liked = !p.liked; p.likes += p.liked ? 1 : -1; if (p.h === 'me') save(); lk.className = p.liked ? 'liked' : ''; lk.textContent = (p.liked ? '♥ ' : '♡ ') + p.likes; }, 'Like');
-    acts.append(lk, btn('', ['💬 ', String(p.cmN ?? p.cm.length)], () => openApp('gist', { post: p.id }), 'Comments'), btn('', ['↗'], () => api.toast('Link don copy. Share am give your paddy!'), 'Share')); el.append(acts);
+    acts.append(lk, btn('', ['💬 ', String(p.cmN ?? p.cm.length)], () => openApp('gist', { post: p.id }), 'Comments'), btn('', ['↗'], () => phToast('Link don copy ✓'), 'Share')); el.append(acts);
     for (const c of (full ? p.cm : p.cm.slice(0, 2))) { const cu = c.h === 'me' ? meP() : who(c.h), d = h('p', 'gx-cm'); d.append(h('b', null, cu.n), c.t); el.append(d); }
     if (!full && p.cm.length > 2) el.append(btn('gx-cm', [`View all ${p.cm.length} comments`], () => openApp('gist', { post: p.id })));
     return el;
@@ -330,7 +377,7 @@ export function createPhone(api) {
       b.append(chips, inp); return; }
     if (arg.compose) return compose(arg.compose);
     const b = frameApp('Gist', { right: btn('iph-act', ['＋'], () => compose(), 'New post') });
-    const seg = h('div', 'iph-seg'); [['feed', 'For you'], ['around', 'Around you'], ['me', 'My profile']].forEach(([k, l]) => seg.append(btn(R.gistTab === k ? 'on' : '', [l], () => { R.gistTab = k; openApp('gist'); })));
+    const seg = h('div', 'iph-seg'); seg.dataset.g = 'gisttabs'; [['feed', 'For you'], ['around', 'Around you'], ['me', 'My profile']].forEach(([k, l]) => seg.append(btn(R.gistTab === k ? 'on' : '', [l], () => { R.gistTab = k; openApp('gist'); })));
     b.append(seg);
     if (R.gistTab === 'feed') feedAll().slice(0, 40).forEach(p => b.append(postEl(p)));
     else if (R.gistTab === 'around') { const L = api.around(); b.append(h('div', 'iph-note', `Wetin dey happen near ${api.where()}`)); if (!L.length) b.append(h('div', 'iph-note', 'Everywhere calm for now. Check back small time.'));
@@ -339,7 +386,7 @@ export function createPhone(api) {
       b.append(btn('iph-btn', ['New post'], () => compose()));
       if (!S.mine.length) b.append(h('div', 'iph-note', 'You never post anything. Snap something with Camera and share am!'));
       S.mine.slice().sort((a, c) => c.t - a.t).forEach(p => { p.h = 'me'; b.append(postEl(p)); }); }
-    const fab = btn('gx-new', ['＋'], () => compose(), 'New post'); R.view.append(fab);
+    const fab = btn('gx-new', ['＋'], () => compose(), 'New post'); fab.dataset.g = 'gistnew'; R.view.append(fab); api.guide && api.guide('gist');
   }
   function compose(photoId) {
     const b = frameApp('New post', { back: ['Cancel', () => openApp('gist')] }); let sel = photoId || (S.photos[0] && S.photos[0].id) || null;
@@ -350,9 +397,9 @@ export function createPhone(api) {
     const inp = h('input', 'iph-in'); inp.placeholder = 'Wetin dey your mind?'; inp.maxLength = 160; inp.addEventListener('keydown', e => e.stopPropagation());
     const chips = h('div', 'iph-chips'); ['Mushin to the world 🌍', 'Lagos life 🔥', 'Who dey here? 😂', 'Correct vibes only', 'Na my area be this'].forEach(t => chips.append(btn('', [t], () => { inp.value = t; })));
     b.append(inp, chips, btn('iph-btn', ['Post'], () => {
-      const text = inp.value.trim(); if (!text && !sel) { api.toast('Write something or pick a photo.'); return; }
+      const text = inp.value.trim(); if (!text && !sel) { phToast('Write something or pick a photo'); return; }
       const p = { id: 'm' + Date.now().toString(36), h: 'me', t: Date.now(), text, img: sel, likes: 0, cm: [], cmN: 0, where: api.where() }; S.mine.push(p); if (S.mine.length > 30) S.mine.shift(); save();
-      R.gistTab = 'me'; openApp('gist'); api.toast('Your post don land for Gist!'); reactTo(p); }));
+      R.gistTab = 'me'; openApp('gist'); phToast('Your post don land ✓'); reactTo(p); }));
   }
   function reactTo(p) {   // people like and comment on your post over the next minutes; you get followers
     const total = Math.round(rr(.15, .6) * S.followers + rr(3, 18) + (p.img ? 10 : 0)); let given = 0;
@@ -410,7 +457,7 @@ export function createPhone(api) {
     const end = btn('cx-end', [], () => endCall(), 'End call'); end.innerHTML = SV('<path d="M3 15.5c5-4.6 13-4.6 18 0l-2.4 2.4-3.6-1.6v-2.6a12 12 0 0 0-6 0v2.6l-3.6 1.6z" fill="#fff" stroke="none"/>');
     box.append(av(c), h('h2', null, c.n), status, say, ch, end); scr.append(box);
     isl.classList.add('wide'); isl.textContent = '📞 ' + c.n;
-    const C = R.call = { c, box, status, say, ch, t0: 0, timers: [], on: true };
+    const C = R.call = { c, box, status, say, ch, t0: 0, timers: [], on: true }; syncNav();
     const later = (ms, fn) => { const id = setTimeout(() => { if (R.call === C) fn(); }, ms); C.timers.push(id); };
     const line = (txt, me) => { const d = h('div', me ? 'me' : null, txt); say.append(d); say.scrollTop = say.scrollHeight; };
     const ring = n => { for (let i = 0; i < n; i++) later(i * 1600, () => api.beep && api.beep(425, .5, .25)); };
@@ -433,18 +480,18 @@ export function createPhone(api) {
       if (c.place) later(t + 600, () => { const p = api.searchPlaces(c.place, 1)[0]; if (p) { choose([['📍 Show me the way', () => { api.setDest(p); line('Okay, I dey come.', true); later(1200, () => endCall()); }], ['Bye', () => endCall()]]); } });
       later(t + (c.place ? 9000 : 2600), () => endCall()); });
   }
-  function endCall(quiet) { const C = R.call; if (!C) return; R.call = null; C.timers.forEach(clearTimeout); isl.classList.remove('wide'); isl.textContent = ''; if (quiet) { C.box.remove(); return; } C.status.textContent = 'call ended'; setTimeout(() => C.box.remove(), 700); }
+  function endCall(quiet) { const C = R.call; if (!C) return; R.call = null; syncNav(); C.timers.forEach(clearTimeout); isl.classList.remove('wide'); isl.textContent = ''; if (quiet) { C.box.remove(); return; } C.status.textContent = 'call ended'; setTimeout(() => C.box.remove(), 700); }
 
   // ---------------------------------------------------------------- Camera and Photos
   const camui = h('div', 'camui'); camui.hidden = true; const grid = h('div', 'g');
   const top = h('div', 'top'), modes = h('div', 'modes'), mPhoto = btn('on', ['PHOTO'], () => setSelfie(false)), mSelfie = btn('', ['SELFIE'], () => setSelfie(true)); modes.append(mPhoto, mSelfie);
   top.append(btn('rnd', ['✕'], () => closeCamera(), 'Close camera'), modes, h('span', 'zoom', '1×'));
-  const side = h('div', 'side'), thumb = btn('thumb', [], () => { closeCamera(); api.reopen(); openApp('photos'); }, 'Your photos'), shut = btn('shut', [], () => shoot(), 'Take photo'), flip = btn('rnd', ['🔄'], () => setSelfie(!R.selfie), 'Selfie camera');
-  side.append(flip, shut, thumb); camui.append(grid, top, side);
+  const cside = h('div', 'side'), thumb = btn('thumb', [], () => { closeCamera(); api.reopen(); openApp('photos'); }, 'Your photos'), shut = btn('shut', [], () => shoot(), 'Take photo'), flip = btn('rnd', ['🔄'], () => setSelfie(!R.selfie), 'Selfie camera');
+  shut.dataset.g = 'shutter'; modes.dataset.g = 'modes'; cside.append(flip, shut, thumb); camui.append(grid, top, cside);
   (document.querySelector('.hud') || document.body).append(camui);
   function setThumb() { thumb.textContent = ''; const p = S.photos[0]; if (p) { const im = h('img'); im.src = p.src; im.alt = ''; thumb.append(im); } }
   function setSelfie(on) { R.selfie = on; mPhoto.className = on ? '' : 'on'; mSelfie.className = on ? 'on' : ''; }
-  function openCamera() { if (!api.canCamera()) { api.toast('You no fit use camera now.'); return; } R.cam = true; setSelfie(false); setThumb(); camui.hidden = false; wrap.hidden = true; document.body.classList.add('ph-cam'); api.camMode(true); }
+  function openCamera() { if (!api.canCamera()) { phToast('You no fit use camera now'); return; } R.cam = true; setSelfie(false); setThumb(); camui.hidden = false; wrap.hidden = true; document.body.classList.add('ph-cam'); api.camMode(true); api.guide && api.guide('camera'); }
   function closeCamera() { if (!R.cam) return; R.cam = false; R.selfie = false; camui.hidden = true; document.body.classList.remove('ph-cam'); api.camMode(false); if (R.open) wrap.hidden = false; }
   async function shoot() {
     if (R.shooting) return; R.shooting = true; api.beep && api.beep(1800, .05, .3);
@@ -456,7 +503,7 @@ export function createPhone(api) {
   }
   function photosApp(id) {
     if (id) { const p = S.photos.find(x => x.id === id); const b = frameApp('Photo', { back: ['Photos', () => openApp('photos')] }); if (!p) return; const v = h('div', 'px-view'), im = h('img'); im.src = p.src; im.alt = 'photo'; v.append(im, h('div', 'iph-note', `${p.where || ''} · ${ago(p.t)} ago`)); b.append(v,
-      btn('iph-btn', ['Post on Gist'], () => openApp('gist', { compose: p.id })), btn('iph-btn gray', ['Set as wallpaper'], () => { S.wall = p.id; save(); setWall(); api.toast('Wallpaper don change.'); }),
+      btn('iph-btn', ['Post on Gist'], () => openApp('gist', { compose: p.id })), btn('iph-btn gray', ['Set as wallpaper'], () => { S.wall = p.id; save(); setWall(); phToast('Wallpaper don change ✓'); }),
       btn('iph-btn red', ['Delete'], () => { S.photos = S.photos.filter(x => x !== p); if (S.wall === p.id) { S.wall = 0; setWall(); } save(); openApp('photos'); })); return; }
     const b = frameApp('Photos', { right: btn('iph-act', ['📷'], () => openCamera(), 'Camera') });
     if (!S.photos.length) { b.append(h('div', 'iph-note', 'No photos yet. Open Camera and snap Lagos!'), btn('iph-btn', ['Open Camera'], () => openCamera())); return; }
@@ -478,13 +525,10 @@ export function createPhone(api) {
     b.append(g, h('div', 'iph-note', 'Tip: open any photo in Photos to use it as wallpaper.'), h('div', 'iph-h', 'About'), h('div', 'iph-note', 'NaijaPhone 15 · MTN 5G · Storage: ' + S.photos.length + ' photos')); }
 
   // ---------------------------------------------------------------- notifications
-  let banT = null;
+  // nothing pops up, inside the phone or outside it: new things only raise the red number on the apps and on the phone button
   function notify(app, title, text, quiet) {
-    if (app === 'gist' && R.app !== 'gist') { R.badge.gist++; setBadges(); }
-    if (app === 'msg') setBadges();
-    if (quiet && !R.open) return;
-    if (R.open && !R.cam) { const old = scr.querySelector('.iph-ban'); if (old) old.remove(); const bn = btn('iph-ban', [icon(app === 'msg' ? 'msg' : 'gist'), (() => { const d = h('div'); d.append(h('b', null, title), h('span', null, text)); return d; })()], () => { bn.remove(); openApp(app); }); scr.append(bn); clearTimeout(banT); banT = setTimeout(() => bn.remove(), 4200); }
-    else if (!quiet) api.toast(`📱 ${title}: ${text.length > 70 ? text.slice(0, 68) + '…' : text}`, 3);
+    if (app === 'gist') { if (quiet || (R.open && R.app === 'gist')) return; R.badge.gist++; }
+    setBadges();
   }
 
   // ---------------------------------------------------------------- what the game tells the phone
@@ -497,7 +541,7 @@ export function createPhone(api) {
   }
 
   // ---------------------------------------------------------------- open, close, every frame
-  function open() { R.open = true; wrap.hidden = false; setWall(); if (!home.firstChild) buildHome(); refreshHome(); setBadges(); if (R.app === 'ride' || R.app === 'work') openApp(R.app); else if (!R.app) { home.classList.remove('away'); } }
+  function open() { R.open = true; wrap.hidden = false; setWall(); if (!home.firstChild) buildHome(); refreshHome(); setBadges(); if (R.app === 'ride' || R.app === 'work') openApp(R.app); else if (!R.app) { home.classList.remove('away'); } syncNav(); }
   function close() { R.open = false; endCall(true); closeCamera(); wrap.hidden = true; }
   let tk = 0;
   function tick(dt) { tk += dt; if (tk < 1) return; tk = 0; if (!api.started()) return; tickGist(); if (R.open) { timeEl.textContent = api.clock(); if (!R.app) refreshHome(); } }
@@ -509,6 +553,7 @@ export function createPhone(api) {
     const pp = p.cp - .22, sx = Math.sin(p.cy), cz = Math.cos(p.cy), ex = p.x + sx * .45, ez = p.z + cz * .45, ey = p.y + 1.62;
     cam.position.set(ex, ey, ez); cam.lookAt(ex + sx * Math.cos(pp), ey - Math.sin(pp), ez + cz * Math.cos(pp)); return true; }
   const cam = () => R.cam;
-  function test(what) { if (what === 'dispatch') return JSON.stringify(api.callPolice(api.nearPlaces(1)[0], 'Fight')); if (what === 'camera') { if (!R.open) api.reopen(); openCamera(); return 1; } if (what === 'shoot') { shoot(); return 1; } if (what === 'selfie') { setSelfie(true); return 1; } if (what === 'closecam') { closeCamera(); return 1; } if (what === 'home') { goHome(); return 1; } if (what === 'police') { openApp('phone'); startCall(CONTACTS.find(c => c.police)); return 1; } if (what && what.startsWith('call:')) { openApp('phone'); startCall(CONTACTS.find(c => c.id === what.slice(5))); return 1; } if (what && what.startsWith('tap:')) { const b = [...scr.querySelectorAll('button')].find(x => x.textContent.includes(what.slice(4))); if (b) { b.click(); return 1; } return 0; } openApp(what); return 1; }
-  return { open, close, event, tick, camHook, cam, closeCamera, test, isOpen: () => R.open };
+  function test(what) { if (what === 'dispatch') return JSON.stringify(api.callPolice(api.nearPlaces(1)[0], 'Fight')); if (what === 'camera') { if (!R.open) api.reopen(); openCamera(); return 1; } if (what === 'shoot') { shoot(); return 1; } if (what === 'selfie') { setSelfie(true); return 1; } if (what === 'closecam') { closeCamera(); return 1; } if (what === 'home') { toHome(); return 1; } if (what === 'back') { goBack(); return 1; } if (what === 'badge') return pbN.hidden ? 0 : pbN.textContent; if (what.startsWith && what.startsWith('sms:')) { sms('mama', 'Mama', '#e91e63', '👩🏾', what.slice(4)); return 1; } if (what === 'gistev') { R.badge.gist++; setBadges(); return 1; } if (what === 'police') { openApp('phone'); startCall(CONTACTS.find(c => c.police)); return 1; } if (what && what.startsWith('call:')) { openApp('phone'); startCall(CONTACTS.find(c => c.id === what.slice(5))); return 1; } if (what && what.startsWith('tap:')) { const b = [...scr.querySelectorAll('button')].find(x => x.textContent.includes(what.slice(4))); if (b) { b.click(); return 1; } return 0; } openApp(what); return 1; }
+  setBadges();
+  return { open, close, event, tick, camHook, cam, closeCamera, test, back: goBack, home: toHome, isOpen: () => R.open, app: () => R.app };
 }
