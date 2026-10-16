@@ -12,12 +12,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=7b583a7db8';
-import * as C2 from './char2.js?v=7b583a7db8';
-import { MapView } from './mapview.js?v=7b583a7db8';
+import * as CLOCK from './clock.js?v=d1af08a6c9';
+import * as C2 from './char2.js?v=d1af08a6c9';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=d1af08a6c9';
+import { createPhone } from './phone.js?v=d1af08a6c9';
+import { MapView } from './mapview.js?v=d1af08a6c9';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='7b583a7db8';
+const BUILD='d1af08a6c9';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -35,6 +37,7 @@ function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15
 const R = mulberry32(90210);
 const rr = (a,b) => a + R()*(b-a), ri = (a,b) => Math.floor(rr(a,b+1)), pick = a => a[Math.floor(R()*a.length)];
 const naira=n=>'₦'+n.toLocaleString('en-NG');
+let PH=null;   // the phone (src/phone.js)
 const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
@@ -383,7 +386,7 @@ const MODEL_FILES={danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.7
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
   jet:['ns_jet','h',34.4,1],jetw:['ns_jet_wide','h',60.4,1],terminal:['ns_terminal','h',252.4,1],tower:['ns_tower','h',18,1],jetbridge:['ns_jetbridge','h',4,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],stadium:['ns_stadium','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
-  tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
+  tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
 const WORLD_URL=(()=>{ const u='assets/maps/mushin_world.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; })(); DL.exp[WORLD_URL]=MANIFEST['assets/maps/mushin_world.json']||1230000;
@@ -1295,17 +1298,31 @@ function texOldZinc(){ const S=256, [c,g]=cv(S,S); g.fillStyle='#8c9196'; g.fill
     { const [x,z]=at(0,D); DEN.gate=addOB(x,z,.85,.12,Math.atan2(uz,ux),2.2); }   // the gap: shut until you pay
     addOB(...at(-W+.9,-D+.4),.7,.2,Math.atan2(uz,ux),.45); addOB(...at(W-.6,-D+.5),.38,.28,Math.atan2(uz,ux),.95); } }
 // ---- market stalls: tables of tomatoes, pepper, onions, yams and cloth under umbrellas and sheds
-const STALLS=[];
+const STALLS=[], BOLAS=[];
 { const inDen=(x,z)=>DEN.ok&&Math.abs((x-DEN.x)*DEN.ux+(z-DEN.z)*DEN.uz)<6&&(x-DEN.x)*DEN.nx+(z-DEN.z)*DEN.nz<8&&(x-DEN.x)*DEN.nx+(z-DEN.z)*DEN.nz>-5;
   const free=(x,z)=>onLand(x,z,2)&&!roadAt(x,z,1.2)&&!resolveCircle({x,z},1.5)&&!inDen(x,z);
   for(const m of MARKETS){ const pts=m.a.pts, xs=pts.map(p=>p[0]), zs=pts.map(p=>p[1]), x0=Math.min(...xs), x1=Math.max(...xs), z0=Math.min(...zs), z1=Math.max(...zs);
-    const [e]=nearestRoad((x0+x1)/2,(z0+z1)/2), ax=e?e.fx:1, az=e?e.fz:0, bx=-az, bz=ax, lim=m.a.a>60000?260:150, cx0=(x0+x1)/2, cz0=(z0+z1)/2, ext=Math.hypot(x1-x0,z1-z0)/2;
-    for(let i=-ext;i<ext&&m.stalls.length<lim;i+=3.3) for(let j=-ext;j<ext&&m.stalls.length<lim;j+=4.8){ const x=cx0+ax*i+bx*j, z=cz0+az*i+bz*j;
+    const [e]=nearestRoad((x0+x1)/2,(z0+z1)/2), ax=e?e.fx:1, az=e?e.fz:0, bx=-az, bz=ax, lim=m.a.a>60000?420:240, cx0=(x0+x1)/2, cz0=(z0+z1)/2, ext=Math.hypot(x1-x0,z1-z0)/2;
+    for(let i=-ext;i<ext&&m.stalls.length<lim;i+=2.95) for(let j=-ext;j<ext&&m.stalls.length<lim;j+=3.9){ const x=cx0+ax*i+bx*j, z=cz0+az*i+bz*j;
       if(!inPoly(pts,x,z)||!free(x,z)) continue; 
-      const st={x,z,ang:Math.atan2(az,ax),side:(Math.round(j/4.8)&1)?1:-1,goods:ri(0,5),m}; m.stalls.push(st); STALLS.push(st); }
+      const st={x,z,ang:Math.atan2(az,ax),side:(Math.round(j/3.9)&1)?1:-1,goods:ri(0,5),m}; m.stalls.push(st); STALLS.push(st); }
     for(const b of MARKET_SHEDS) if(inPoly(pts,b.cx,b.cz)){ const n=Math.max(1,Math.floor(Math.max(b.w,b.d)/3.4)), long=b.w>=b.d, L=Math.max(b.w,b.d);
       for(let k=0;k<n;k++){ const t=-L/2+L*(k+.5)/n, x=b.cx+(long?b.c*t:-b.s*t), z=b.cz+(long?b.s*t:b.c*t); const st={x,z,ang:long?b.ang:b.ang+Math.PI/2,side:1,goods:ri(0,5),m,shed:true}; m.stalls.push(st); STALLS.push(st); } } }
-  if(STALLS.length){ const tables=[], umb=[], goods=[[],[],[],[],[],[]];
+  // the market made in Blender (tools: the user's Blender, Documents/naija_rooms/market): stall by stall, zinc roofs, umbrellas,
+  // blue tarpaulin, wooden kiosks, tables of basins, and the bola (refuse heap) at the edge of each market
+  if(STALLS.length&&MODELS.mk_zinc&&MODELS.mk_table){ const items={}, put=(k,o)=>(items[k]||(items[k]=[])).push(o), hs=(x,z)=>{ const n=Math.sin(x*12.9898+z*78.233)*43758.5453; return n-Math.floor(n); };
+    for(const st of STALLS){ const h=hs(st.x,st.z), k=st.shed?'mk_table':h<.3?'mk_zinc':h<.55?'mk_umb':h<.7?'mk_tarp':h<.82?'mk_wood':'mk_table', K=MODELS[k]?k:'mk_table';
+      st.kind=K; put(K,{x:st.x,y:0,z:st.z,ry:-st.ang+(st.side<0?Math.PI:0),sc:1}); /* the seller's side away from the lane */ if(K==='mk_wood') addOB(st.x,st.z,1.15,.8,st.ang,2.2); else addOB(st.x,st.z,.95,.5,st.ang,.9); }
+    for(const [k,list] of Object.entries(items)) new CullSet(modelLevels(MODELS[k],Q.lod0*.6,Q.draw*.6),list,{shadowDist:Q.shR,name:k});
+    if(MODELS.mk_bola){ const heaps=[];
+      for(const m of MARKETS){ if(!m.stalls.length) continue; const pts=m.a.pts; let cx=0,cz=0; for(const q of pts){ cx+=q[0]; cz+=q[1]; } cx/=pts.length; cz/=pts.length;
+        const want=m.stalls.length>60?3:m.stalls.length>15?2:1, got=[];
+        for(let i=0;i<pts.length&&got.length<want;i+=Math.max(1,Math.floor(pts.length/(want*3)))){ for(const f of [.82,.7,.58]){ const x=cx+(pts[i][0]-cx)*f, z=cz+(pts[i][1]-cz)*f;
+          if(!inPoly(pts,x,z)||!free(x,z)||roadAt(x,z,3.6)||resolveCircle({x,z},3)||m.stalls.some(s2=>Math.hypot(s2.x-x,s2.z-z)<3.6)||got.some(g=>Math.hypot(g.x-x,g.z-z)<15)) continue;
+          got.push({x,z}); break; } }
+        for(const g of got){ const ry=hs(g.x,g.z)*6.28; const sc=1.15+hs(g.z,g.x)*.4; heaps.push({x:g.x,y:0,z:g.z,ry,sc}); BOLAS.push({x:g.x,z:g.z,m:m.name}); addOB(g.x,g.z,2.4*sc,1.8*sc,-ry,1.4); } }
+      if(heaps.length) new CullSet(modelLevels(MODELS.mk_bola,Q.lod0*.6,Q.draw*.6),heaps,{shadowDist:Q.shR,name:'bola'}); } }
+  else if(STALLS.length){ const tables=[], umb=[], goods=[[],[],[],[],[],[]];
     const GC=['#c8261e','#e85d14','#a8743d','#e9d9b0','#5b8f2e','#3d64b8'];
     for(const st of STALLS){ tables.push({x:st.x,y:0,z:st.z,ry:-st.ang}); if(!st.shed) umb.push({x:st.x+Math.sin(st.ang)*.4,y:0,z:st.z-Math.cos(st.ang)*.4,ry:R()*6,col:new THREE.Color(pick(['#d23c2c','#2f7bbf','#f2b705','#1f8a5c','#e46b1e','#ffffff']))});
       for(let k=-1;k<=1;k++) goods[st.goods].push({x:st.x+Math.cos(st.ang)*k*.55,y:.82,z:st.z+Math.sin(st.ang)*k*.55,ry:R()*6,sx:rr(.8,1.1),sy:rr(.7,1.1),sz:rr(.8,1.1)});
@@ -2071,6 +2088,7 @@ function onResize(){ Q.pr=fitPR(); if(PR>Q.pr) PR=Q.pr; renderer.setPixelRatio(P
 addEventListener('resize',onResize); addEventListener('orientationchange',()=>setTimeout(onResize,250));
 function setScene(sc){ curScene=sc; if(renderPass) renderPass.scene=sc; }
 let usePost=true;
+function grabFrame(){ const src=renderer.domElement, W=Math.min(1280,src.width), c=document.createElement('canvas'); c.width=W; c.height=Math.round(W*src.height/src.width); c.getContext('2d').drawImage(src,0,0,c.width,c.height); return c; }
 function renderFrame(dt){ if(PERF) renderer.info.reset(); if(composer&&usePost) composer.render(dt); else renderer.render(curScene,camera); }
 
 /* ================= world clock: sun, sky and weather (the same for every player) ================= */
@@ -2326,12 +2344,12 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?'Ride your skateboard':v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
-  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':'visible'; }
+  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':''; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ const job=pl&&pl.job; mapView.clearRoute(); if(!job) toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
@@ -2368,10 +2386,12 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   const k=keyOf(e); if(k===' '||k==='tab'||k.startsWith('arrow')) e.preventDefault(); if(!started||e.repeat) return;
   if(DEALER.open&&(k==='escape'||k==='e')){ closeShop(); K[k]=true; return; }
   if(MENU.open&&(k==='escape'||k==='e')){ closeMenu(); K[k]=true; return; }
+  if(k==='escape'&&PH&&PH.cam()){ PH.closeCamera(); return; }
+  if(k==='enter'&&PH&&PH.cam()){ PH.test('shoot'); return; }
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crPress(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='6') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crPress(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(ARMS.cur==='board'&&mode==='walk') boardRide(); else if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='7') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
 addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
@@ -2380,7 +2400,7 @@ const cvs=renderer.domElement; let dragging=false;
 function look(dx,dy){ const a=gunOut()&&ARMS.aim; camState.yaw-=dx*(a?.0021:.0028); camState.pitch=clamp(camState.pitch+dy*(a?.0017:.0022),a?-.6:-.15,1.15); camState.last=T0; }
 function lockPointer(){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{}); }catch(_){} }
 cvs.addEventListener('contextmenu',e=>e.preventDefault());
-cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') return; if(document.pointerLockElement===cvs&&mode==='walk'){ if(gunOut()){ if(e.button===0) ARMS.trig=true; else if(e.button===2) ARMS.aim=true; } else if(e.button===0) playerAttack('punch'); else if(e.button===2) playerAttack('kick'); }
+cvs.addEventListener('pointerdown',e=>{ if(!started||e.pointerType!=='mouse') return; if(PHONE.cam){ dragging=true; return; } if(document.pointerLockElement===cvs&&mode==='walk'){ if(gunOut()){ if(e.button===0) ARMS.trig=true; else if(e.button===2) ARMS.aim=true; } else if(e.button===0) playerAttack('punch'); else if(e.button===2) playerAttack('kick'); }
   $('#settings').hidden=true; dragging=true; if(document.pointerLockElement!==cvs) lockPointer(); $('#lookhint').hidden=true; });
 addEventListener('pointerup',()=>{ dragging=false; });
 document.addEventListener('mouseup',e=>{ if(e.button===0) ARMS.trig=false; else if(e.button===2&&!touchUI) ARMS.aim=false; });
@@ -2461,7 +2481,7 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   $('#tJump').addEventListener('pointerdown',e=>{ e.preventDefault(); if(fightNear()) playerDodge(); else playerJump(); });
   $('#tCrouch').addEventListener('pointerdown',e=>{ e.preventDefault(); crPress(); TB.k=null; }); }
 // one ATTACK button: tap, tap, tap = jab, cross and the kick that floors him (running: a takedown); with a gun it fires
-function tapAttack(){ if(gunOut()){ ARMS.trig=true; return; } const nxt=T0-FIGHT.swingT<1.05?FIGHT.chain+1:0; playerAttack(nxt>=2&&FIGHT.chain>=0?'kick':'punch'); }
+function tapAttack(){ if(ARMS.cur==='board'&&mode==='walk'){ boardRide(); return; } if(gunOut()){ ARMS.trig=true; return; } const nxt=T0-FIGHT.swingT<1.05?FIGHT.chain+1:0; playerAttack(nxt>=2&&FIGHT.chain>=0?'kick':'punch'); }
 // a fight going on around you: JUMP becomes DODGE
 const fightNear=()=>mode==='walk'&&(FIGHT.near||(FIGHT.foe&&FIGHT.foeT>0&&FIGHT.foe.state!=='down'&&FIGHT.foe.state!=='dead'&&Math.hypot(FIGHT.foe.x-player.x,FIGHT.foe.z-player.z)<5)||COPS.list.some(p=>p.atk&&Math.hypot(p.x-player.x,p.z-player.z)<4));
 // the buttons that show only when they can do something: GRAB (or ROB, or AIM with a gun), JUMP or DODGE
@@ -2470,9 +2490,10 @@ function touchButtons(dt){ if(!touchUI||BL.edit||mode!=='walk'||!fightReady()) r
   let g='', cls='';
   if(gunOut()){ g='AIM'; cls=ARMS.aim?'on':''; }
   else if(CARRY.p) g='DROP';
-  else { const f=pickFoe(2.4,1.6); if(f&&f.state!=='down'&&f.state!=='dead'){ g=ARMS.cur!=='fists'&&!f.cop&&!f.dealer&&!f.looted&&!(f.state==='fight'||f.state==='hurt')?'ROB':'GRAB'; } else { let n=null; for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.carried) continue; if(Math.abs(p.x-player.x)<1.9&&Math.abs(p.z-player.z)<1.9&&Math.hypot(p.x-player.x,p.z-player.z)<1.9){ n=p; break; } } if(n) g='GRAB'; } }
-  // ATTACK only with a weapon in hand, someone right by you or a fight on; with a gun: AIM and FIRE
-  const W=WEAPONS[ARMS.cur]||{}, gun=gunOut(), at=gun?(W.throw?'THROW':'FIRE'):(ARMS.cur!=='fists'||g==='GRAB'||g==='ROB'||fightNear()||T0-FIGHT.lastAtk<3)?'ATTACK':'';
+  else { const f=pickFoe(2.4,1.6); if(f&&f.state!=='down'&&f.state!=='dead'){ g=armed()&&!f.cop&&!f.dealer&&!f.looted&&!(f.state==='fight'||f.state==='hurt')?'ROB':'GRAB'; } else { let n=null; for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.carried) continue; if(Math.abs(p.x-player.x)<1.9&&Math.abs(p.z-player.z)<1.9&&Math.hypot(p.x-player.x,p.z-player.z)<1.9){ n=p; break; } } if(n) g='GRAB'; } }
+  if(!gunOut()&&!CARRY.p&&boardNear()) g='PICK UP';   // your board on the ground
+  // ATTACK only with a weapon in hand, someone right by you or a fight on; with a gun: AIM and FIRE; with your board: RIDE
+  const W=WEAPONS[ARMS.cur]||{}, gun=gunOut(), at=gun?(W.throw?'THROW':'FIRE'):ARMS.cur==='board'?'RIDE':(armed()||g==='GRAB'||g==='ROB'||fightNear()||T0-FIGHT.lastAtk<3)?'ATTACK':'';
   const c=CR.sp?'SLIDE':CR.on?'CROUCH':player.speed>WALK_V+.35?'SLIDE':'CROUCH', con=CR.on||!!CR.sp;
   const j=fightNear()?'DODGE':'JUMP', k=g+'|'+cls+'|'+j+'|'+at+'|'+c+con; if(k===TB.k) return; TB.k=k;
   const b=$('#tGrab'); b.hidden=!g; if(g){ b.textContent=g; b.classList.toggle('on',cls==='on'); b.classList.toggle('fightb',g==='ROB'); }
@@ -2487,7 +2508,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1,bike2:1,sbike:1,skate:1};
@@ -2525,7 +2546,7 @@ function jackOut(v){ if(v.out) return; v.out=true; const p=freePed(); fleeFrom(v
   setTimeout(()=>toast(p.fightAfter?'"Ehen? You wan take my motor? I go show you!"':v.type==='okada'?'"Take am! Na only okada I get o!"':v.type==='danfo'?'"Everybody come down! Run!"':mpick(['"Take am! Take am! No wahala!"','"Oga abeg, no kill me!"','"Ah! Na my daily bread o!"']),2.2),450); }
 // the player sits on okada / in keke and is seen riding
 function seatHero(v,idx=0){ if(v.type==='skate'&&hero&&v.c.hi){ const a=hero.act; heroQuiet(); a.car.stop(); a.idle.setEffectiveWeight(0); hero.w.idle=0; skPoses(true);   // feet on the deck, side-on like a skater
-    v.c.g.add(rig.root); rig.root.position.set(0,skDeck(),0); rig.root.rotation.set(0,.1,0); rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPose(0); return; }
+    v.c.g.add(rig.root); rig.root.position.set(0,skDeck(),0); rig.root.rotation.set(0,0,0); rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPose(0); return; }
   const st=(SEATS[v.type]||[])[idx]||(SEATS[v.type]||[])[0]; if(!st||!v.c.hi){ rig.root.visible=false; return; }
   if(hero){ const a=hero.act; heroQuiet(); a.car.reset(); a.car.setEffectiveWeight(1); a.car.play(); a.car.time=a.car.getClip().duration-.02; a.car.paused=true; hero.mixer.update(0);
     v.c.hi.add(rig.root); rig.root.position.set(0,0,0); rig.root.rotation.set(0,0,0); rig.root.updateMatrixWorld(true);
@@ -2661,7 +2682,8 @@ function updateTraffic(dt){
         if(Math.abs(-dx*fz+dz*fx)<(v.c.def.W+o.c.def.W)/2+.12){ const gap=ah-((v.c.def.L+o.c.def.L)/2+1.8), os=Math.max(0,(Math.cos(o.h)*fx-Math.sin(o.h)*fz)*o.speed);
           const lim=Math.max(0,Math.min(gap*1.3+os*.9,brakeTo(gap)+os*.95)); if(lim<target){ target=lim; if(o.ai&&o.ai.waiting) waiting=true; } if(ah<blkAh){ blk=o; blkAh=ah; } } }
       if((mode==='walk'||mode==='enter')&&inPath(v,fx,fz,player.x,player.z)) target=0;
-      for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0; }
+      for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0;
+      for(const k of SKATERS) if(Math.abs(k.x-v.x)<12&&Math.abs(k.z-v.z)<12&&inPath(v,fx,fz,k.x,k.z)) target=0; }   // and for the street skaters
     if(ai.hs){ const r=busStopFor(v,ai,fx,fz,target); target=r; if(target===0) waiting=true; }
     // a car that won't move (parked, broken down, burnt, you): go round it on the left when the way is clear; never through it
     if(ai.pcool>0) ai.pcool-=dt;
@@ -2696,8 +2718,8 @@ function syncCar(v,dt){ const c=v.c, fx=Math.cos(v.h), fz=-Math.sin(v.h), d2=(v.
   const gy=groundY(v.x,v.z); v.y+=(gy-v.y)*Math.min(1,dt*10); const yA=groundY(v.x+fx*2,v.z+fz*2), yB=groundY(v.x-fx*2,v.z-fz*2);
   let w=(v.h-v.lastH); w=((w+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; v.lastH=v.h; const om=dt>0?w/dt:0;
   const steer=v===drive.v?drive.steer:clamp(Math.atan(om*c.def.L*.62/Math.max(sp,1.5)),-.55,.55); v.steerVis+=(steer-v.steerVis)*Math.min(1,dt*8);
-  const leanT=BIKE[v.type]||v.type==='keke'||v.type==='skate'?clamp(-om*sp*(BIKE[v.type]?.075:v.type==='skate'?.05:.02),-.5,.5):0; v.lean+=(leanT-v.lean)*Math.min(1,dt*5);
-  c.g.position.set(v.x,v.y+v.bob-(v.wreck?.12:0)+(v.lift||0),v.z); c.g.rotation.set(v.lean+(v.wreck?.07:0),v.h,Math.atan((yA-yB)/4)*.9+v.pitch+(v.wreck?.03:0)+(v.wh||0));
+  const leanT=v.type==='skate'?clamp(-Math.atan(om*sp/9.81)*.4,-.16,.16):BIKE[v.type]||v.type==='keke'?clamp(-om*sp*(BIKE[v.type]?.075:.02),-.5,.5):0; v.lean+=(leanT-v.lean)*Math.min(1,dt*5);   // a board leans less than its rider (the trucks stop it)
+  c.g.position.set(v.x,v.y+v.bob-(v.wreck?.12:0)+(v.lift||0),v.z); c.g.rotation.set(v.lean+(v.wreck?.07:0),v.h+(v.spinY||0),Math.atan((yA-yB)/4)*.9+v.pitch+(v.wreck?.03:0)+(v.wh||0));
   const near=d2<HI_D*HI_D||v===drive.v; if(c.hi){ c.hi.visible=near||!c.lo.children.length; c.lo.visible=!c.hi.visible; }
   if(c.occ){ c.occ.visible=c.hi.visible&&d2<OCC_D*OCC_D&&!!v.ai; }
   if(!near&&c.lo&&c.lo.children.length) return;
@@ -3450,47 +3472,50 @@ const fightReady=()=>!!(hero&&hero.act.punch);
 function whoosh(){ burst(.16,1500,.16,1.4); }
 function skid(k){ burst(.34,3200,.06+.1*k,2.2); }   // tyres crying in a drift
 /* ================= the skateboard =================
-   W (joystick forward) pushes with the back foot (Shift / joystick all the way: harder pushes, more speed), S drags the
-   foot to brake, A/D carve. Space (OLLIE) jumps; in the air J (FLIP) kickflip, K heelflip (FLIP + joystick left),
-   L (SPIN) shove-it, I 360 flip (FLIP + joystick up). Land your tricks: half-done when you touch down and you bail.
-   Tricks in one jump and the ones you land soon after it make a combo: points times the number of tricks. */
-const TRICKS={'KICKFLIP':{dur:.42,roll:1,spin:0,pts:150},'HEELFLIP':{dur:.42,roll:-1,spin:0,pts:150},'SHOVE-IT':{dur:.36,roll:0,spin:.5,pts:110},'360 FLIP':{dur:.56,roll:1,spin:1,pts:320}};
-const SK={h:0,vy:0,air:false,pushPh:-1,crouch:0,land:0,trick:null,prev:{},combo:null,brake:0,w:{ride:1,crouch:0,air:0,push:0,brake:0},deck:0};
-function skReset(){ Object.assign(SK,{h:0,vy:0,air:false,pushPh:-1,crouch:0,land:0,trick:null,prev:{},combo:null,brake:0}); }
-function skDeck(){ if(SK.deck) return SK.deck; const M=MODELS.skate; if(!M) return .12; const P=M.geo.attributes.position; let hi=0;   // the top of the deck between the trucks (not the kicked-up tail)
-  for(let i=0;i<P.count;i++) if(Math.abs(P.getX(i))<.14) hi=Math.max(hi,P.getY(i)); return SK.deck=hi||M.H*.6; }
-// skater poses from where the bones point (+Z = the way he faces = the board's right side, +X = his left = the board's nose)
-const SKP={for:null,clips:null,acts:{},foot:{}};
-function skClips(){ if(SKP.for===hero.cObj&&SKP.clips) return SKP.clips; const D=homeInfo(), U=(f=0,sd=0)=>[sd,1,f];
-  const armsOut=(a=.62,f=.15)=>({LeftArm:[.75,-a,f],LeftForeArm:[.7,-a,f+.18],LeftHand:[.65,-a-.08,f+.15],RightArm:[-.75,-a,f],RightForeArm:[-.7,-a,f+.18],RightHand:[-.65,-a-.08,f+.15]});
-  const legs=(ul,ll,ur,lr)=>({LeftUpLeg:ul,LeftLeg:ll,LeftFoot:[0,-.35,1],RightUpLeg:ur,RightLeg:lr,RightFoot:[0,-.35,1]});
-  const ride={Spine:U(.16),Spine1:U(.1),Spine2:U(.05),Neck:U(.15),Head:U(.1),...armsOut(.55,.2),...legs([.3,-.9,.34],[.2,-1,-.3],[-.3,-.9,.34],[-.2,-1,-.3])};
-  const crouch={Spine:U(.55),Spine1:U(.35),Spine2:U(.15),Neck:U(.25),Head:U(.2),...armsOut(.3,.55),...legs([.3,-.5,.86],[.18,-1,-.72],[-.3,-.5,.86],[-.18,-1,-.72])};
-  const air={Spine:U(.3),Spine1:U(.2),Spine2:U(.1),Neck:U(.2),Head:U(.15),...armsOut(-.1,.25),...legs([.3,-.45,.85],[.2,-1,-.25],[-.3,-.45,.85],[-.2,-1,-.25])};
-  const pushArms={LeftArm:[.6,-.62,.45],LeftForeArm:[.55,-.55,.62],LeftHand:[.5,-.6,.6],RightArm:[-.55,-.7,-.25],RightForeArm:[-.5,-.75,-.2],RightHand:[-.45,-.8,-.15]};
-  // pushing: the front leg bends deep so the back foot, almost straight, reaches the road beside the board and sweeps back
-  const pushBase={Spine:U(.3),Spine1:U(.2),Spine2:U(.08),Neck:U(.22),Head:U(.1),...pushArms,LeftUpLeg:[.24,-.55,.86],LeftLeg:[.15,-1,-.66],LeftFoot:[0,-.45,1],RightFoot:[0,-.3,1]};
-  const push=[{t:0,d:{...pushBase,RightUpLeg:[-.12,-.8,.5],RightLeg:[-.1,-1,-.25]}},{t:.3,d:{...pushBase,RightUpLeg:[-.04,-1,.16],RightLeg:[-.02,-1,.06]}},
-    {t:.62,d:{...pushBase,RightUpLeg:[-.22,-1,.06],RightLeg:[-.2,-1,.02],LeftArm:[.6,-.55,.55],RightArm:[-.55,-.6,-.4]}},{t:.85,d:{...pushBase,RightUpLeg:[-.3,-.75,.42],RightLeg:[-.3,-1,-.5]}}];
-  const brake={...pushBase,Spine:U(.05),Spine1:U(.05),RightUpLeg:[-.22,-1,.14],RightLeg:[-.2,-1,.08],RightFoot:[-.3,-.4,1]};   // the back foot drags on the road
-  const C={ride:C2.poseClip(D,'sk_ride',[{t:0,d:ride}]),crouch:C2.poseClip(D,'sk_crouch',[{t:0,d:crouch}]),air:C2.poseClip(D,'sk_air',[{t:0,d:air}]),push:C2.poseClip(D,'sk_push',push,{loop:true,dur:1}),brake:C2.poseClip(D,'sk_brake',[{t:0,d:brake}])};
-  // how high the front (planted) foot sits in each pose, to keep it on the deck
-  for(const k in C){ const r=hero.root, p=r.position.clone(), ry=r.rotation.y; r.position.set(0,0,0); r.rotation.set(0,0,0); const m=new THREE.AnimationMixer(hero.cObj); m.clipAction(C[k]).play(); m.setTime(0); r.updateMatrixWorld(true);
-    let lo=1e9; hero.cObj.traverse(o=>{ if(o.isBone&&/Left(Foot|ToeBase)$/.test(o.name)) lo=Math.min(lo,o.getWorldPosition(new THREE.Vector3()).y); }); SKP.foot[k]=lo<1e8?lo:0;
-    m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; }
-  hero.mixer.update(0); SKP.for=hero.cObj; SKP.acts={}; return SKP.clips=C; }
-function skPoses(on){ if(!hero) return; if(!on){ for(const k in SKP.acts) SKP.acts[k].stop(); return; } const C=skClips(); for(const k in C){ const a=SKP.acts[k]||(SKP.acts[k]=hero.mixer.clipAction(C[k])); a.reset().play(); a.setEffectiveWeight(k==='ride'?1:0); if(k==='push') a.paused=true; } }
-// the board, the rider and their poses, every frame
-function skPose(dt){ const v=drive.v; if(!v||v.type!=='skate'||!hero) return; const S=SK, W=S.w, k=Math.min(1,dt*12);
-  const want={air:S.air?1:0,crouch:S.crouch>0||S.land>0?1:0,push:S.pushPh>=0&&!S.air?1:0,brake:!S.air?S.brake:0}; want.ride=Math.max(0,1-want.air-want.crouch-want.push-want.brake);
-  let sum=0; for(const n in W){ W[n]+=(want[n]-W[n])*k; sum+=W[n]; } let foot=0; for(const n in W){ const a=SKP.acts[n]; const w=W[n]/(sum||1); if(a) a.setEffectiveWeight(w); foot+=w*(SKP.foot[n]||0); }
-  if(SKP.acts.push&&S.pushPh>=0) SKP.acts.push.time=S.pushPh;
-  hero.mixer.update(dt);
-  // the trick: the deck turns under your feet, you lift your legs over it
-  const T=S.trick, q=T?Math.min(1,T.t/T.dur):0, e=q*q*(3-2*q), H=skDeck();
-  const roll=T?T.roll*e*Math.PI*2:0, spin=T?T.spin*e*Math.PI*2:0, up=T?Math.sin(q*Math.PI)*.22:0;
-  if(v.c.hi){ v.c.hi.rotation.set(roll,spin,0); v.c.hi.position.set(0,H*.5*(1-Math.cos(roll))+up*.6,-H*.5*Math.sin(roll)); }
-  rig.root.position.y=H-foot+up+(S.crouch>0?-.02:0); v.lift=S.h; }
+   W (joystick forward) pushes with the back foot up to top speed (Shift / joystick all the way: harder pushes, more
+   speed); then you stand and roll, and push again only when the board has slowed down. S drags the foot to brake, A/D
+   carve. Space (OLLIE) jumps. Tricks (on the ground they pop the ollie for you, or press them in the air): J (FLIP)
+   kickflip, K heelflip (FLIP + joystick left), I 360 flip (FLIP + joystick up), L (SPIN) shove-it, O or SPIN + joystick
+   left/right: a 360 spin of board and rider. Press and hold OLLIE again in the air to grab the board.
+   Land your tricks: half-done when you touch down and you bail.
+   Tricks in one jump and the ones you land soon after it make a combo: points times the number of tricks.
+   The rider's body is worked out every frame from the ride itself (src/skater.js): the pushing foot is planted on the
+   road while the board rolls past it, you lean into carves as far as the speed and the turn need, the ollie snaps the
+   tail and levels the board, the legs tuck in the air and soak up the landing, and the arms swing with all of it. */
+const TRICKS={'KICKFLIP':{dur:.42,roll:1,spin:0,pts:150},'HEELFLIP':{dur:.42,roll:-1,spin:0,pts:150},'SHOVE-IT':{dur:.36,roll:0,spin:.5,pts:110},'360 FLIP':{dur:.56,roll:1,spin:1,pts:320},
+  '360 SPIN':{dur:.6,roll:0,spin:0,body:1,pts:260}};   // body: you and the board turn round together
+const SK=Object.assign(skNew(),{prev:{},combo:null,deck:0,om:0,vy0:4.4,queue:null,grab:null,grabW:0});
+function skReset(){ Object.assign(SK,skNew(),{prev:{},combo:null,om:0,vy0:4.4,queue:null,grab:null,grabW:0}); if(SKP.B) skBodyReset(SKP.B); }
+// the top of the deck along the board (the middle, and the kicked-up nose and tail where the feet go), from the model
+function skDeck(){ if(SK.deck) return SK.deck; const M=MODELS.skate; if(!M) return .12; const P=M.geo.attributes.position, L=M.W, n=41, h=new Array(n).fill(0);
+  for(let i=0;i<P.count;i++){ if(Math.abs(P.getZ(i))>.07) continue; const f=(P.getX(i)/L+.5)*(n-1), j=Math.round(f); if(j>=0&&j<n&&Math.abs(f-j)<.75) h[j]=Math.max(h[j],P.getY(i)); }
+  const got=h.map((y,j)=>y>0?j:-1).filter(j=>j>=0); if(got.length<2) return SK.deck=M.H*.6;
+  for(let j=0;j<n;j++) if(!h[j]){ const a=got.filter(i=>i<j).pop(), b=got.find(i=>i>j); h[j]=a==null?h[b]:b==null?h[a]:h[a]+(h[b]-h[a])*(j-a)/(b-a); }   // no corners there: in between its neighbours
+  SK.deckAt=x=>{ const f=clamp((x/L+.5)*(n-1),0,n-1), j=Math.min(n-2,Math.floor(f)); return h[j]+(h[j+1]-h[j])*(f-j); };
+  return SK.deck=SK.deckAt(0); }
+// the rider's body, made once per body you wear (its rest pose, worked out with the body standing at the origin)
+const SKP={for:null,B:null};
+function skRig(){ if(!hero) return null; if(SKP.for!==hero.cObj){ SKP.for=hero.cObj; const y=hero.cObj.position.y; hero.cObj.position.y=0; SKP.B=skBody(homeInfo()); hero.cObj.position.y=y; } return SKP.B; }
+function skPoses(on){ if(!hero) return; if(on){ const B=skRig(); hero.cObj.position.y=0; if(B) skBodyReset(B); } }
+// the board, the rider and the pose, every frame
+function skPose(dt){ const v=drive.v; if(!v||v.type!=='skate'||!hero) return; const B=skRig(), M=MODELS.skate; if(!B||!M) return;
+  const T=SK.trick, q=T?Math.min(1,T.t/T.dur):0, e=q*q*(3-2*q), H=skDeck(), flip=T&&!T.body, gw=SK.grabW||0;
+  const r=skBodyPose(B,SK,dt,{deck:H,deckAt:SK.deckAt,L:M.W,W:M.D,om:SK.om,lean:v.lean,x:v.x,z:v.z,h:v.h,vy0:SK.vy0,grav:11.5,trick:flip?{q}:null,grab:gw});
+  hero.cObj.position.y=0; rig.root.position.set(r.root[0],r.root[1],r.root[2]); rig.root.rotation.set(0,0,0);
+  // the deck: the pop turns it about the back wheels; a flip rolls it, a shove-it spins it, under your lifted feet
+  const roll=flip?T.roll*e*Math.PI*2:0, spin=flip?T.spin*e*Math.PI*2:0, up=flip?Math.sin(q*Math.PI)*.22:0;
+  if(v.c.hi){ v.c.hi.rotation.set(roll,spin,r.board.pitch); v.c.hi.position.set(r.board.px,r.board.py+H*.5*(1-Math.cos(roll))+up*.6,r.board.pz-H*.5*Math.sin(roll)); }
+  v.spinY=T&&T.body?T.dir*e*Math.PI*2:0;   // a 360: board and rider turn round together
+  v.lift=SK.h+gw*.38*B.k;   // a grab: the knees and the board come up to you
+  if(gw>.02) skGrabArm(v,H,M,gw); }
+// the grab: the back hand reaches down to the toe-side edge of the deck between the feet
+const GRB={on:null,b:{}}, _ga=new THREE.Vector3(), _gb=new THREE.Vector3(), _gc=new THREE.Vector3();
+function skGrabArm(v,H,M,w){ const c=hero.cObj; if(GRB.on!==c){ GRB.on=c; GRB.b={}; }
+  const up=boneOf(c,/RightArm$/,GRB.b,'u'), lo=boneOf(c,/RightForeArm$/,GRB.b,'l'), hd=boneOf(c,/RightHand$/,GRB.b,'h'); if(!up||!lo||!hd||!v.c.hi) return;
+  v.c.g.updateMatrixWorld(true);
+  const T=v.c.hi.localToWorld(_ga.set(-.05,H+.085,M.D*.5+.01)), hn=hd.getWorldPosition(_gb); T.lerpVectors(hn,T,w);
+  ik2(up,lo,hd,T,v.c.g.localToWorld(_gc.set(-.7,H+1.1,.25))); }
+function skGrabEnd(){ const G=SK.grab; SK.grab=null; if(G&&G.t>.18) skAdd('INDY GRAB',Math.round(50+G.t*280)); }
 function skAdd(name,pts){ const C=SK.combo||(SK.combo={list:[],pts:0,t:0}); C.list.push(name); C.pts+=pts; C.t=2.4; }
 function skBank(){ const C=SK.combo; SK.combo=null; if(!C||!C.list.length) return; const n=C.list.length, cnt={}; for(const x of C.list) cnt[x]=(cnt[x]||0)+1;
   const name=Object.entries(cnt).map(([k,c])=>c===1?k:c===2?'DOUBLE '+k:c===3?'TRIPLE '+k:c+'x '+k).join(' + '), tricks=C.list.filter(x=>x!=='OLLIE').length;
@@ -3500,36 +3525,143 @@ function skBail(msg){ const v=drive.v, sp=Math.abs(drive.speed); SK.combo=null; 
   thud(); camState.shake=Math.min(1.2,camState.shake+.5); FIGHT.hp=Math.max(5,FIGHT.hp-(sp>6?8:4)); FIGHT.calmT=0; FIGHT.ko=true; FIGHT.koT=0;   // you go down, then get up
   if(hero) heroDo(hero.act.uppercut?'uppercut':'hit_body',{force:true,ts:1.3,onEnd:()=>{ if(hero.act.stand_up) heroDo('stand_up',{force:true,ts:1.8,onEnd:()=>{ FIGHT.ko=false; }}); else FIGHT.ko=false; }});
   setTimeout(()=>{ if(FIGHT.ko&&!FIGHT.dead&&FIGHT.koT>=3) FIGHT.ko=false; },3500); toast(msg||mpick(['Bail! You don fall.','Ouch! The board throw you.','Bail! Small small next time.']),2.4); }
-function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); let sp=drive.speed; if(FIGHT.ko) return;
-  const jl=Math.hypot(joy.x,joy.y), hard=K.shift||touchRun||jl>.88, keys={jump:K[' ']||TSK.b2,kick:K.j||TSK.b1&&joy.x>-.4&&joy.y>-.5,heel:K.k||TSK.b1&&joy.x<=-.4,shove:K.l||TSK.b3,flip360:K.i||TSK.b1&&joy.y<=-.5};
+function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); if(FIGHT.ko) return;
+  const jl=Math.hypot(joy.x,joy.y), hard=K.shift||touchRun||jl>.88, sideK=K.a||K.d||K.arrowleft||K.arrowright, sideJ=Math.abs(joy.x)>.45;
+  const keys={jump:K[' ']||TSK.b2,kick:K.j||TSK.b1&&joy.x>-.4&&joy.y>-.5,heel:K.k||TSK.b1&&joy.x<=-.4,shove:K.l&&!sideK||TSK.b3&&!sideJ,spin:K.o||K.l&&sideK||TSK.b3&&sideJ,flip360:K.i||TSK.b1&&joy.y<=-.5};
   const press=n=>{ const on=!!keys[n], was=S.prev[n]; S.prev[n]=on; return on&&!was; }; const P={}; for(const n in keys) P[n]=press(n);
-  const surf=condAt(v.x,v.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1, cap=hard?11:8.2;
-  if(!S.air){
-    if(S.pushPh<0&&f>.3&&sp<cap-.3&&S.crouch<=0&&S.land<=0) S.pushPh=0;   // push with the back foot
-    if(S.pushPh>=0){ const was=S.pushPh; S.pushPh+=dt/(hard?.55:.78); if(was<.42&&S.pushPh>=.42){ sp+=Math.max(0,cap-sp)*(hard?.34:.28)/Math.sqrt(rough); burst(.08,500,.05,6); } if(S.pushPh>=1) S.pushPh=f>.3&&sp<cap-.3?0:-1; }
-    if(f<-.3||touchBrake){ sp=Math.max(0,sp-3.6*dt); S.brake=Math.min(1,S.brake+dt*5); S.pushPh=-1; } else S.brake=Math.max(0,S.brake-dt*5);
-    sp=Math.max(0,sp-(.14+sp*.016)*rough*dt);   // it rolls on and on, slower on bad roads
-    if(P.jump&&S.crouch<=0&&S.land<=0){ S.crouch=.12; S.pushPh=-1; }
-    if(S.crouch>0&&(S.crouch-=dt)<=0){ S.crouch=0; S.air=true; S.vy=4.4+Math.min(sp,10)*.07; skAdd('OLLIE',40); burst(.06,900,.12,8); }   // pop!
-    if(S.land>0) S.land-=dt;
-    if(S.combo&&(S.combo.t-=dt)<=0) skBank(); }
-  else {
-    S.vy-=11.5*dt; S.h=Math.max(0,S.h+S.vy*dt);
-    if(!S.trick){ const k=P.flip360?'360 FLIP':P.kick?'KICKFLIP':P.heel?'HEELFLIP':P.shove?'SHOVE-IT':null; if(k){ const T=TRICKS[k]; S.trick={k,t:0,dur:T.dur,roll:T.roll,spin:T.spin}; whoosh(); } }
-    else if((S.trick.t+=dt)>=S.trick.dur){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
-    if(S.h<=0&&S.vy<0){ S.air=false; S.vy=0; S.h=0;
-      if(S.trick&&S.trick.t/S.trick.dur<.8){ skBail(mpick(['Bail! You no land the flip.','Bail! The board turn wrong side.'])); return; }
-      if(S.trick){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
-      S.land=.15; clunk(.45); if(S.combo) S.combo.t=2.4; } }
-  // carve: lean into the turn, tighter when slow
-  drive.steer+=(-s*.55-drive.steer)*Math.min(1,dt*7); v.h+=Math.max(sp,.6)/1.15*Math.tan(drive.steer)*dt*(S.air?.3:1);
+  const surf=condAt(v.x,v.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1, cap=hard?11:8.2, B=skRig();
+  S.sp=drive.speed; S.vy0=4.4+Math.min(S.sp,10)*.07;
+  // a trick button: on the ground it pops the ollie and the trick comes in the air; in the air it is next
+  const tk=P.flip360?'360 FLIP':P.kick?'KICKFLIP':P.heel?'HEELFLIP':P.spin?'360 SPIN':P.shove?'SHOVE-IT':null; let pop=P.jump&&!S.air;
+  if(tk&&(S.air||S.crouch<=0&&S.land<=0)){ S.queue=tk; S.queueDir=joy.x>.1||K.d||K.arrowright?-1:1; if(!S.air) pop=true; }
+  // pushes up to top speed, then a rest while it rolls (speed comes only while the foot is on the road), the foot brake, the ollie
+  const ev=skMove(S,dt,{push:f>.3,hard,brake:f<-.3||touchBrake,pop,cap,rough,rest:hard?.8:.7,vy0:S.vy0,grav:11.5,crouchT:.16,x:v.x,z:v.z,h:v.h,k:B?B.k:1});
+  if(ev.plant) burst(.08,500,.05,6);   // the shoe on the road
+  if(ev.popped){ skAdd('OLLIE',40); burst(.06,900,.12,8); }   // pop!
+  if(S.air){
+    if(!S.trick&&!S.grab&&S.queue&&S.popT>.05){ const k=S.queue, T=TRICKS[k]; S.trick={k,t:0,dur:T.dur,roll:T.roll,spin:T.spin,body:T.body,dir:S.queueDir||1}; S.queue=null; whoosh(); }
+    else if(S.trick&&(S.trick.t+=dt)>=S.trick.dur){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; }
+    // OLLIE again in the air: grab the board while you hold it (let go before you land)
+    if(P.jump) S.grabAsk=true; if(!keys.jump) S.grabAsk=false;
+    if(!S.trick&&!S.grab&&S.grabAsk&&S.popT>.1&&!(S.vy<0&&S.h<.45)) S.grab={t:0};
+    if(S.grab){ S.grab.t+=dt; if(!keys.jump||S.vy<0&&S.h<.3) skGrabEnd(); } }
+  else if(ev.landed){ S.queue=null; S.grabAsk=false; if(S.grab) skGrabEnd();
+    if(S.trick&&S.trick.t/S.trick.dur<.8){ skBail(S.trick.body?'Bail! You no finish the spin.':mpick(['Bail! You no land the flip.','Bail! The board turn wrong side.'])); return; }
+    if(S.trick){ skAdd(S.trick.k,TRICKS[S.trick.k].pts); S.trick=null; } clunk(.45); if(S.combo) S.combo.t=2.4; }
+  else if(S.combo&&(S.combo.t-=dt)<=0) skBank();
+  S.grabW+=((S.grab?1:0)-S.grabW)*Math.min(1,dt*(S.grab?9:12));
+  if(touchUI){ const b=$('#tSk2'), L=S.air?'GRAB':'OLLIE'; if(b.textContent!==L) b.textContent=L; }
+  let sp=S.sp;
+  // carve: lean into the turn, tighter when slow (no sharper than about 0.65 g sideways)
+  drive.steer+=(-s*.55-drive.steer)*Math.min(1,dt*7); const omMax=Math.max(1.1,6.5/Math.max(sp,.1)), om=clamp(Math.max(sp,.6)/1.15*Math.tan(drive.steer),-omMax,omMax)*(S.air?.3:1); v.h+=om*dt; S.om=om;
   const fx=Math.cos(v.h), fz=-Math.sin(v.h); let nx=v.x+fx*sp*dt, nz=v.z+fz*sp*dt;
   if(!onLand(nx,nz,.5)){ if(sp>3.5){ skBail(); return; } nx=v.x; nz=v.z; sp=0; }
   const c={x:nx,z:nz}; if(resolveCircle(c,.28,null,S.h)){ if(sp>4.2&&!S.air){ skBail(); return; } sp*=.4; }   // jump high enough and you clear low things
   for(const o of vehicles){ if(o===v||Math.abs(o.x-c.x)>6||Math.abs(o.z-c.z)>6) continue; const hx=Math.cos(o.h), hz=-Math.sin(o.h), dx=c.x-o.x, dz=c.z-o.z; if(Math.abs(dx*hx+dz*hz)<o.c.def.L/2+.25&&Math.abs(-dx*hz+dz*hx)<o.c.def.W/2+.25&&S.h<.9){ if(sp>2.5||Math.abs(o.speed)>3){ skBail(); return; } c.x=v.x; c.z=v.z; sp=0; } }
   for(const p of peds){ if(p.state==='off'||p.state==='dead'||p.state==='down'||p.carried||Math.abs(p.x-c.x)>1||Math.abs(p.z-c.z)>1) continue; if(Math.hypot(p.x-c.x,p.z-c.z)<.55&&S.h<.8){ if(sp>3){ react(p,'argue',c.x,c.z,3); p.cool=6; skBail('Bail! You jam person.'); return; } sp*=.5; } }
-  v.x=c.x; v.z=c.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false;
+  S.sp=sp; v.x=c.x; v.z=c.z; drive.speed=sp; v.speed=sp; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false;
   skPose(dt); }
+/* ---- your board in your hands: when you're not riding it, pick it up (G, or PICK UP on a phone) and it goes in your
+   weapon switch (7, Tab, or tap the weapon name). Choose it any time: you carry it in your hand, and E or RIDE puts it
+   down and you're on it. Leave it far behind on the road and it waits in your bag. */
+const MYB={held:null,on:null,b:{}}, _mbx=new THREE.Vector3(), _mby=new THREE.Vector3(), _mbz=new THREE.Vector3(), _mbm=new THREE.Matrix4(), _mbp=new THREE.Vector3();
+const boardNear=()=>!!(mySkate&&!mySkate.carried&&mode==='walk'&&drive.v!==mySkate&&Math.abs(mySkate.speed)<.5&&Math.hypot(mySkate.x-player.x,mySkate.z-player.z)<1.9);
+function boardStow(){ const v=mySkate; if(!v) return; Object.assign(v,{carried:true,speed:0,parked:true,x:1e5,z:1e5}); v.c.g.visible=false; }
+function boardPickUp(){ if(!boardNear()||busy||FIGHT.ko||(hero&&hero.ov&&hero.ov.lock)) return false; boardStow(); ARMS.own.board=1; saveArms(); selectWeapon('board'); clunk(.3);
+  toast(touchUI?'Board for hand. RIDE to ride, or pick it from your weapons any time.':'Board for hand. E to ride; 7 or Tab to pick it any time.',2.6); return true; }
+function boardRide(){ const v=mySkate; if(!v||!v.carried||mode!=='walk'||busy||FIGHT.ko||(hero&&hero.ov&&hero.ov.lock)) return; if(CARRY.p) carryDrop();
+  const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw), c={x:player.x+fx*.3,z:player.z+fz*.3};
+  if(!onLand(c.x,c.z,.4)||resolveCircle({x:c.x,z:c.z},.3)){ toast('No space to drop the board here.',1.6); return; }
+  delete ARMS.own.board; ARMS.cur='fists'; saveArms(); weapHUD(true); if(MYB.held) MYB.held.visible=false;
+  Object.assign(v,{x:c.x,z:c.z,y:groundY(c.x,c.z),h:Math.atan2(-fz,fx),lastH:Math.atan2(-fz,fx),speed:0,carried:false,parked:true}); v.c.g.visible=true; player.x=c.x; player.z=c.z; enterCar(v); }
+function boardTick(){ const v=mySkate; if(!v) return;
+  if(ARMS.own.board&&!v.carried&&drive.v!==v) boardStow();   // (in your hands when you last played)
+  else if(!v.carried&&drive.v!==v&&mode==='walk'&&Math.hypot(v.x-player.x,v.z-player.z)>60&&!inView(v.x,.5,v.z,1)){ boardStow(); ARMS.own.board=1; saveArms(); }
+  if(v.carried) v.c.g.visible=false;
+  if(MYB.held&&MYB.held.visible&&(mode!=='walk'||ARMS.cur!=='board')) MYB.held.visible=false; }
+// carried by the back truck, hanging from your right hand: nose down, grip toward your leg, wheels out
+function boardHand(on){ const M=MODELS.skate; if(!on||!M||!hero||!mySkate||!mySkate.carried){ if(MYB.held) MYB.held.visible=false; return; }
+  if(!MYB.held){ const m=new THREE.Mesh(M.geo1||M.geo,M.mat1||M.mat); m.castShadow=true; m.layers.set(1); m.frustumCulled=false; scene.add(m); MYB.held=m; }
+  if(MYB.on!==hero.cObj){ MYB.on=hero.cObj; MYB.b={}; } const hand=boneOf(hero.cObj,/RightHand$/,MYB.b,'h'); if(!hand) return;
+  const b=MYB.held; b.visible=true; hand.getWorldPosition(_mbp); const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
+  _mbx.set(0,-1,0); _mby.set(fz,0,-fx); _mbz.crossVectors(_mbx,_mby); b.quaternion.setFromRotationMatrix(_mbm.makeBasis(_mbx,_mby,_mbz));
+  b.position.copy(_mbp).addScaledVector(_mbx,.184).addScaledVector(_mby,-.055).addScaledVector(_mbz,-.02); }
+/* ================= street skaters =================
+   A few young people ride boards along the edge of the road with the same body physics as you (src/skater.js): pushing
+   with a planted foot, carving with the lean the turn needs, an ollie now and then. They keep off the highways, slow down
+   and wait for people and cars in their way (cars wait for them too), and a car that hits one knocks him off his board:
+   he falls, gets up and rides on. Far from you (or out of sight for a while) a skater is put back on a street near you. */
+const SKATERS=[], SKATE_CAST=['areaboy','schoolboy','girl','p_tunde','lady_black','p_ada','p_amaka'];
+let skaterT=3;
+const skaterWant=()=>mode==='interior'?0:Q===QUAL.low?2:3;
+// the riding line: the people's walking line along the street, moved out onto the edge of the road
+function skLine(k){ const [s0,s1]=k.q, A=nodes[k.a], B=nodes[k.b], dx=B.x-A.x, dz=B.z-A.z, L=Math.hypot(dx,dz)||1, nx=-dz/L, nz=dx/L;
+  const o=(s0.x-A.x)*nx+(s0.z-A.z)*nz, m=Math.sign(o)*clamp(Math.abs(o)-1.3,0,1.1); k.q=[{x:s0.x-nx*m,z:s0.z-nz*m},{x:s1.x-nx*m,z:s1.z-nz*m}]; }
+function newSkater(){ const used=new Set(SKATERS.map(k=>k.cast)); let ids=SKATE_CAST.filter(id=>PEOPLE.casts[id]&&CAST[id]&&CAST[id].w>0);
+  if(!ids.length) ids=Object.keys(PEOPLE.casts).filter(id=>CAST[id]&&CAST[id].w>0&&!CAST[id].cop); if(!ids.length) return null;
+  const free=ids.filter(id=>!used.has(id)), id=mpick(free.length?free:ids), C=PEOPLE.casts[id];
+  const inner=cloneCast(C), root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(inner); inner.position.y=C.y0; root.updateMatrixWorld(true);
+  const B=skBody(C2.skeletonInfo(root)); if(!B) return null;
+  inner.traverse(o=>{ if(o.isMesh){ o.frustumCulled=false; o.castShadow=Q.shadows; o.receiveShadow=true; } });
+  const c=makeCar('skate','#ffffff',true); c.g.add(root); c.g.visible=false; scene.add(c.g);
+  const k={cast:id,c,root,inner,B,S:skNew(),x:0,z:0,h:0,lean:0,om:0,a:0,b:0,side:1,q:[],vmax:mrr(2.8,4.3),olT:mrr(4,10),stuck:0,offT:0,vis:false,down:null,pushing:false,v:1.3,state:'walk'};
+  if(!placeSkater(k,30,75)){ scene.remove(c.g); return null; } return k; }
+function placeSkater(k,dmin,dmax){ for(let t=0;t<40;t++){ const e=streetNear(player.x,player.z,dmin,dmax,e=>walkable(e)&&!bigRoad(e)&&e.len>18); if(!e) continue;
+    const rev=MR()<.5; k.a=rev?e.b:e.a; k.b=rev?e.a:e.b; k.side=MR()<.5?1:-1; k.q=sidewalkPts(nodes[k.a],nodes[k.b],k.side); skLine(k);
+    const [s0,s1]=k.q, u=mrr(.1,.6), x=s0.x+(s1.x-s0.x)*u, z=s0.z+(s1.z-s0.z)*u, d=Math.hypot(x-player.x,z-player.z);
+    if(d<dmin||d>dmax+10||!onLand(x,z,.6)||resolveCircle({x,z},.3)||(t<30&&inView(x,1,z,2))) continue;
+    Object.assign(k,{x,z,h:Math.atan2(-(s1.z-s0.z),s1.x-s0.x),lean:0,om:0,stuck:0,offT:0,down:null}); k.S=skNew(); k.S.sp=mrr(1.5,2.5); skBodyReset(k.B);
+    if(k.root.parent!==k.c.g){ k.c.g.add(k.root); k.root.rotation.set(0,0,0); } return true; } return false; }
+// knocked off the board by a car: he falls on the road, lies a moment, gets up and rides on
+function skaterKnock(k){ if(k.down) return; const C=PEOPLE.casts[k.cast], cl=C&&C.clips, fall=cl&&(cl.uppercut?'uppercut':cl.hit_body?'hit_body':null);
+  k.S.sp=0; k.S.push=null; k.S.air=false; k.S.h=0; k.down={t:0,stage:0}; if(!fall||!cl.stand_up){ k.down.plain=true; return; }
+  scene.add(k.root); k.root.position.set(k.x,groundY(k.x,k.z),k.z); k.root.rotation.set(0,k.h+Math.PI/2,0);
+  if(!k.mixer) k.mixer=new THREE.AnimationMixer(k.inner); k.mixer.stopAllAction(); const a=k.mixer.clipAction(cl[fall]); a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.timeScale=1.2; a.play(); k.down.fall=fall; thud(); }
+function skaterDown(k,dt){ const D=k.down, cl=PEOPLE.casts[k.cast].clips; D.t+=dt;
+  if(D.plain){ if(D.t>2.5){ k.down=null; skBodyReset(k.B); } return; }
+  k.mixer.update(dt);
+  if(D.stage===0&&D.t>cl[D.fall].duration/1.2+.8){ D.stage=1; D.t=0; k.mixer.stopAllAction(); const a=k.mixer.clipAction(cl.stand_up); a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.timeScale=1.6; a.play(); }
+  else if(D.stage===1&&D.t>cl.stand_up.duration/1.6){ k.mixer.stopAllAction(); k.c.g.add(k.root); k.root.rotation.set(0,0,0); k.down=null; skBodyReset(k.B); } }
+function updateSkaters(dt){ if(!MODELS.skate||!PEOPLE.done) return;
+  const want=skaterWant(); if((skaterT-=dt)<=0){ skaterT=1.5; if(SKATERS.length<want){ const k=newSkater(); if(k) SKATERS.push(k); } }
+  for(const k of SKATERS){ const S=k.S, d=Math.hypot(k.x-player.x,k.z-player.z);
+    // too far, or long out of sight: back on a street near you
+    if(d>80&&!inView(k.x,1,k.z,2)) k.offT+=dt; else k.offT=0;
+    if(d>130||k.offT>6){ placeSkater(k,35,80); continue; }
+    k.vis=SKATERS.indexOf(k)<want&&mode!=='interior'&&d<Math.min(85,Q.draw);
+    if(k.down){ skaterDown(k,dt); k.c.g.visible=k.vis; continue; }
+    // the line ahead: aim a little down it; at its end turn into the next street (not across a big road)
+    let [A,Bq]=k.q; let lx=Bq.x-A.x, lz=Bq.z-A.z, LL=Math.hypot(lx,lz)||1; const along=(k.x-A.x)*lx/LL+(k.z-A.z)*lz/LL;
+    if(along>LL-1.5){ pedPlan(k); if(k.q.length<2){ placeSkater(k,35,80); continue; } skLine(k); [A,Bq]=k.q; lx=Bq.x-A.x; lz=Bq.z-A.z; LL=Math.hypot(lx,lz)||1; }
+    const al=clamp((k.x-A.x)*lx/LL+(k.z-A.z)*lz/LL,0,LL), la=Math.min(LL,al+3+S.sp*.6), tx=A.x+lx/LL*la, tz=A.z+lz/LL*la;
+    let err=Math.atan2(-(tz-k.z),tx-k.x)-k.h; err=Math.atan2(Math.sin(err),Math.cos(err));
+    // anyone in the way (you, people, cars): slow down, stop and wait
+    const fx=Math.cos(k.h), fz=-Math.sin(k.h); let block=99;
+    const ahead=(x,z,w)=>{ const dx=x-k.x, dz=z-k.z, ah=dx*fx+dz*fz; if(ah>0&&ah<6&&Math.abs(-dx*fz+dz*fx)<w) block=Math.min(block,ah); };
+    if(mode!=='drive') ahead(player.x,player.z,.9);
+    for(const p of peds) if(p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-k.x)<7&&Math.abs(p.z-k.z)<7) ahead(p.x,p.z,.8);
+    for(const v of vehicles) if(Math.abs(v.x-k.x)<12&&Math.abs(v.z-k.z)<12){ const dx=v.x-k.x, dz=v.z-k.z, ah=dx*fx+dz*fz-v.c.def.L/2; if(ah>-1&&ah<6&&Math.abs(-dx*fz+dz*fx)<v.c.def.W/2+.7) block=Math.min(block,Math.max(0,ah)); }
+    for(const o of SKATERS) if(o!==k&&!o.down) ahead(o.x,o.z,.8);
+    let tgt=k.vmax*(Math.abs(err)>.6?.55:1); if(block<99) tgt=Math.min(tgt,block>3?1.4:0);
+    if(S.sp<.3&&block<2.5) k.stuck+=dt; else k.stuck=Math.max(0,k.stuck-dt);
+    if(k.stuck>4){ [k.a,k.b]=[k.b,k.a]; k.side=-k.side; k.q=sidewalkPts(nodes[k.a],nodes[k.b],k.side); skLine(k); k.h+=Math.PI; k.stuck=0; S.sp=0; }   // give up: turn round
+    k.pushing=S.sp<tgt-.5?true:S.sp>tgt-.05?false:k.pushing;
+    let pop=false; if((k.olT-=dt)<=0&&!S.air&&S.sp>2.4&&Math.abs(err)<.12&&block>5){ pop=true; k.olT=mrr(5,13); }
+    const surf=condAt(k.x,k.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1;
+    skMove(S,dt,{push:k.pushing&&block>2,hard:false,brake:S.sp>tgt+.8,pop,cap:k.vmax+.8,rough,vy0:4.2,grav:11.5,x:k.x,z:k.z,h:k.h,k:k.B.k});
+    const omMax=Math.max(.8,S.sp/2.4); k.om=clamp(err*2.6,-omMax,omMax)*(S.air?.3:1); k.h+=k.om*dt;
+    let nx=k.x+Math.cos(k.h)*S.sp*dt, nz=k.z-Math.sin(k.h)*S.sp*dt; const c={x:nx,z:nz};
+    if(!onLand(nx,nz,.5)||resolveCircle(c,.28,null,S.h)){ S.sp*=.3; if(!onLand(c.x,c.z,.5)){ c.x=k.x; c.z=k.z; } }
+    k.x=c.x; k.z=c.z;
+    // a car you drive into him knocks him off
+    if(mode==='drive'&&drive.v&&drive.v.type!=='skate'&&Math.abs(drive.speed)>3){ const v=drive.v, dx=k.x-v.x, dz=k.z-v.z, hx=Math.cos(v.h), hz=-Math.sin(v.h);
+      if(Math.abs(dx*hx+dz*hz)<v.c.def.L/2+.3&&Math.abs(-dx*hz+dz*hx)<v.c.def.W/2+.3){ skaterKnock(k); continue; } }
+    // the board and the rider
+    const leanT=clamp(-Math.atan(k.om*S.sp/9.81)*.4,-.16,.16); k.lean+=(leanT-k.lean)*Math.min(1,dt*6);
+    k.c.g.visible=k.vis; if(!k.vis){ k.B.st.pel=null; continue; }   // (shown again: no jolt from the gap)
+    const H=skDeck(), M=MODELS.skate, r=skBodyPose(k.B,S,dt,{deck:H,deckAt:SK.deckAt,L:M.W,W:M.D,om:k.om,lean:k.lean,x:k.x,z:k.z,h:k.h,vy0:4.2,grav:11.5});
+    k.root.position.set(r.root[0],r.root[1],r.root[2]); k.c.hi.position.set(r.board.px,r.board.py,r.board.pz); k.c.hi.rotation.set(0,0,r.board.pitch);
+    k.c.g.position.set(k.x,groundY(k.x,k.z)+S.h,k.z); k.c.g.rotation.set(k.lean,k.h,0); } }
 /* ================= skills: drifts, wheelies, hops and skate tricks =================
    Every skill you land shows its name and points in the middle of the screen; big ones pay a little cash. */
 const SKILL={best:0,cashT:-99,timers:{},hideT:0};
@@ -3707,7 +3839,7 @@ function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); co
   player.speed=0; FIGHT.buf=null; FIGHT.chain=0; heroDo('takedown_a',{force:true,ts:1.7,to:TK,root:true,onEnd:()=>{ if(!FIGHT.ko) heroDo('rise',{force:true,ts:1.5,lock:false}); }});
   FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); camState.shake=Math.min(1,camState.shake+.2); setTimeout(()=>smack(1.4),TK*7250/1.7*.8); }
 // ---- people getting hit
-function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); crime(p,how==='drop_kick'?1.5:1); if(p.cop){ p.mad=1; FIGHT.heat=Math.max(FIGHT.heat,1.65); FIGHT.crimeT=0; }   // touch an officer: two stars
+function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); if(PH&&how!=='car') PH.event('fight',{place:placeNameAt(p.x,p.z)}); crime(p,how==='drop_kick'?1.5:1); if(p.cop){ p.mad=1; FIGHT.heat=Math.max(FIGHT.heat,1.65); FIGHT.crimeT=0; }   // touch an officer: two stars
   const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d; FIGHT.foe=p; FIGHT.foeT=4;
   if(p.hp<=0||knock) koPed(p,ux,uz,knock||2.4);
   else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?mpick(['hit_side','hit_body']):'uppercut';
@@ -3779,7 +3911,7 @@ function crime(p,k=1){ const civ=p.cast!=='areaboy'&&!p.cop; addHeat((civ?.15:.0
 // stars grow with how bad the crime is: small crimes (fights, robbery, gunfire, a stolen car) stop at two stars,
 // killings at three; only attacking the police goes higher
 const CAP={minor:1.95,kill:3.55,cop:5.4};
-function addHeat(a,cap=CAP.minor){ if(FIGHT.heat<cap) FIGHT.heat=Math.min(cap,FIGHT.heat+a); FIGHT.crimeT=0; if(copsSee()) FIGHT.seen=T0; else if(starCount()>0) caseOpen(player.x,player.z); }
+function addHeat(a,cap=CAP.minor){ const s0=starCount(); if(FIGHT.heat<cap) FIGHT.heat=Math.min(cap,FIGHT.heat+a); if(PH&&starCount()>=2&&starCount()>s0) PH.event('wanted',{area:districtAt(player.x,player.z)}); FIGHT.crimeT=0; if(copsSee()) FIGHT.seen=T0; else if(starCount()>0) caseOpen(player.x,player.z); }
 // police close enough to see it with their own eyes: then they come at once
 function copsSee(){ if(mode==='interior') return false; const f=mode==='drive'&&drive.v?drive.v:player; if(COPS.near<32) return true;
   for(const v of vehicles){ if(v.type!=='police'||v===drive.v||v.jacked||v.wreck) continue; if(Math.abs(v.x-f.x)<38&&Math.abs(v.z-f.z)<38&&Math.hypot(v.x-f.x,v.z-f.z)<38&&(v.ai||v.copsOut||v.raid)) return true; } return false; }
@@ -3828,7 +3960,7 @@ function fieldTo(s){ let d=FIELDS.get(s); if(d) return d; if(!CHASE.inn){ CHASE.
   d=dijkstra(s,u=>CHASE.inn[u]).dist; FIELDS.set(s,d); if(FIELDS.size>4) FIELDS.delete(FIELDS.keys().next().value); return d; }
 // caught: into the van, and into the cell at Mushin police station for three minutes (with whoever else they picked up)
 function jailNext(){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; }catch(e){} return JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]; }
-function arrest(){ releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
+function arrest(){ if(PH) PH.event('arrest',{place:placeNameAt(player.x,player.z)}); releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
   arrestFine(); }
 // the fine and what the police take (done the moment you are caught, so reloading can't save your money or guns)
 function arrestFine(){ if(COPS.fined&&T0-COPS.fined<10) return; COPS.fined=T0;
@@ -3842,9 +3974,9 @@ function arrestRest(){
    G (or GRAB on a phone) next to someone picks them up over your shoulder; G again puts them down.
    Area boys who see it come for you; everyone else runs, and the police are called. */
 const CARRY={p:null,t:0,cry:0};
-function carryGrab(){ if(CARRY.p){ carryDrop(); return; } if(mode!=='walk'||busy||FIGHT.ko||!hero||(hero.ov&&hero.ov.lock&&!(hero.ov.atk&&hero.ov.t>=hero.ov.cancel*hero.ov.dur))||JACK.go) return;
-  { const f=pickFoe(2.6,1.6); if(f&&f.body&&hero.act.takedown_a&&(f.state==='fight'||f.state==='hurt'||f===FIGHT.foe)&&!(f.atk&&f.cast==='areaboy')&&ARMS.cur==='fists') return takedown(f); }   // in a fight, GRAB slams him down
-  if(ARMS.cur!=='fists'){ const v=pickFoe(2.8,1.4); if(v&&!v.cop&&!v.dealer&&!v.looted&&(v.state==='walk'||v.state==='idle'||v.state==='spot'||v.state==='react'||v.state==='shop'||v.state==='tsell')){ player.yaw=Math.atan2(v.x-player.x,v.z-player.z); return robPed(v); }
+function carryGrab(){ if(CARRY.p){ carryDrop(); return; } if(boardPickUp()) return; if(mode!=='walk'||busy||FIGHT.ko||!hero||(hero.ov&&hero.ov.lock&&!(hero.ov.atk&&hero.ov.t>=hero.ov.cancel*hero.ov.dur))||JACK.go) return;
+  { const f=pickFoe(2.6,1.6); if(f&&f.body&&hero.act.takedown_a&&(f.state==='fight'||f.state==='hurt'||f===FIGHT.foe)&&!(f.atk&&f.cast==='areaboy')&&!armed()) return takedown(f); }   // in a fight, GRAB slams him down
+  if(armed()){ const v=pickFoe(2.8,1.4); if(v&&!v.cop&&!v.dealer&&!v.looted&&(v.state==='walk'||v.state==='idle'||v.state==='spot'||v.state==='react'||v.state==='shop'||v.state==='tsell')){ player.yaw=Math.atan2(v.x-player.x,v.z-player.z); return robPed(v); }
     if(v&&v.looted){ toast('"I don give you everything!"',1.6); return; } }   // a weapon in your hand: GRAB robs
   let best=null, bd=1.9; for(const p of peds){ if(!(p.state==='walk'||p.state==='idle'||p.state==='spot'||p.state==='react'||p.state==='flee'||p.state==='down'||p.state==='hurt'||p.state==='shop')) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } }
   if(!best){ toast('Nobody close enough to carry.',1.6); return; }
@@ -3897,7 +4029,7 @@ function incident(x,z,kind){ if(mode==='interior'||!started) return;
 function caseDispatch(x,z,kind){ let best=null, bd=230*230; for(const v of vehicles){ if(v.type!=='police'||!v.ai||v===drive.v||isCopVan(v)||v.ai.chase) continue; const d=(v.x-x)**2+(v.z-z)**2; if(d<bd){ bd=d; best=v; } }
   if(!best){ best=vehicles.find(v=>v.type==='police'&&!v.ai&&v!==drive.v&&!v.jacked&&!v.raid&&v!==FIGHT.cop&&!v.copsOut&&!v.block)||vehicles.find(v=>v.type==='police'&&v.ai&&!v.ai.chase&&v!==drive.v&&!isCopVan(v)&&Math.hypot(v.x-player.x,v.z-player.z)>120);   // none close: one comes from the station side
     if(!best||!placeCar(best,110,170,true,{x,z})) return false; }
-  Object.assign(RAID,{v:best,x,z,node:driveNode(x,z),phase:'drive',t:0,kind,sus:[],seen:T0,wit:[],eta:clamp(Math.hypot(best.x-x,best.z-z)/11,10,45)});
+  Object.assign(RAID,{v:best,x,z,node:driveNode(x,z),phase:'drive',t:0,kind,sus:[],seen:T0,wit:[],eta:clamp(Math.hypot(best.x-x,best.z-z)/11,10,45)}); if(PH&&kind!=='call') PH.event('police',{place:placeNameAt(x,z)});
   const ai=best.ai; ai.chase=true; ai.raid=true; ai.maxV0=ai.maxV0||ai.maxV; ai.maxV=Math.max(14,ai.maxV0*1.3); return true; }
 // the van stops anyhow: half on the kerb, at an angle
 function parkRough(v){ const e=edgeOf(v.ai.a,v.ai.b)||edgeOf(v.ai.b,v.ai.a); v.ai=null; v.raid=true; v.parked=true; v.speed=0;
@@ -4578,10 +4710,55 @@ function phoneInHand(){ const m=PHONE.mesh; if(!hero) return; const w=hero.w, wa
   if(want&&PHONE.body!==hero.cObj){ let hb=null; hero.cObj.traverse(o=>{ if(!hb&&o.isBone&&/RightHand$/.test(o.name)) hb=o; }); if(!hb) return; hero.cObj.updateMatrixWorld(true);
     const s=new THREE.Vector3(); hb.matrixWorld.decompose(_p,_q,s); m.scale.setScalar(1/s.x); m.position.set(PHONE_POSE.x/s.x,PHONE_POSE.y/s.x,PHONE_POSE.z/s.x); m.rotation.set(PHONE_POSE.rx,PHONE_POSE.ry,PHONE_POSE.rz); hb.add(m); PHONE.body=hero.cObj; }
   if(m.visible!==want) m.visible=want; }
+// ---- the phone's link to the game (what it can see and do)
+const PHN={};   // name lists for the posts people make: streets, areas, markets, places
+function phNames(k){ if(PHN[k]) return PHN[k];
+  if(k==='road'){ const S=new Set(); for(const e of ROADS) if(e.name&&e.drive&&e.c<=3) S.add(e.name); return PHN[k]=[...S].slice(0,80); }
+  if(k==='area') return PHN[k]=DISTRICTS.map(d=>d.n);
+  if(k==='market') return PHN[k]=MARKETS.filter(m=>m.stalls.length).map(m=>m.name);
+  if(k==='place') return PHN[k]=PLACES.filter(p=>p.name&&!p.minor&&p.name!=='Footbridge').map(p=>p.name);
+  return null; }
+function placeNameAt(x,z){ let best=null, bd=260; for(const p of PLACES){ if(!p.name||p.minor||p.name==='Footbridge') continue; const d=Math.hypot(p.x-x,p.z-z)-(p.r||0); if(d<bd){ bd=d; best=p.name; } } return best||districtAt(x,z); }
+function phPlaces(q,n){ const s=(q||'').trim().toLowerCase(), seen=new Set(), out=[];
+  const L=PLACES.filter(p=>p.name&&p.name!=='Footbridge'&&(!s||(p.name+' '+(p.sub||'')).toLowerCase().includes(s))).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z));
+  for(const p of L){ if(seen.has(p.name)) continue; if(!s&&(p.minor||Math.hypot(p.x-player.x,p.z-player.z)<40)) continue; seen.add(p.name); out.push({name:p.name,x:p.x,z:p.z,dist:kmOf(Math.hypot(p.x-player.x,p.z-player.z))}); if(out.length>=n) break; } return out; }
+// you call 112: a police van goes to the place you give (they ask around, and carry anybody wey dey fight)
+function phonePolice(p,kind){ if(mode==='interior'&&!p) return {ok:false,msg:'We no fit find where you dey. Comot outside, or tell us the name of the place.'};
+  const x=p?p.x:player.x, z=p?p.z:player.z, where=p?p.name:placeNameAt(x,z);
+  if(RAID.v) return {ok:false,msg:'All our vans dey another place now. Call back after small time.'};
+  if(!caseDispatch(x,z,'call')) return {ok:false,msg:'No van dey near that side now. Try again later.'};
+  const m=Math.round(RAID.eta/60); return {ok:true,where,eta:m<2?'one or two minutes':m+' minutes'}; }
+// what is happening around you (the "Around you" page of Gist)
+function phoneAround(){ const out=[], px=player.x, pz=player.z;
+  if(RAID.v){ const d=Math.hypot(RAID.x-px,RAID.z-pz); out.push({icon:'🚔',text:`Police dey ${placeNameAt(RAID.x,RAID.z)}`,sub:`${kmOf(d)} from you · ${RAID.phase==='drive'?'dem dey rush go there':'dem dey ask people questions'}`}); }
+  const st=starCount(); if(st>0) out.push({icon:'🚨',text:`Police dey find you ${'★'.repeat(st)}`,sub:'Hide or run comot. Dem go forget you small time.'});
+  let nf=0, fx=0, fz=0; for(const p of peds){ if(p.state==='fight'&&Math.hypot(p.x-px,p.z-pz)<320){ nf++; fx=p.x; fz=p.z; } }
+  if(nf) out.push({icon:'🥊',text:`Fight dey happen for ${placeNameAt(fx,fz)}`,sub:`${nf} people inside · ${kmOf(Math.hypot(fx-px,fz-pz))} away`});
+  if(RIDE.state) out.push({icon:'🚕',text:`Your ride: ${RIDE.who}`,sub:RIDE.state==='coming'?'Dey come pick you':RIDE.state==='waiting'?'Don reach, dey wait for you':'On the way'});
+  if(JOB.state) out.push({icon:'📦',text:'You get delivery job',sub:JOB.state==='pick'?'Go pick the load':'Carry am go drop'});
+  let mk=null, md=1e9; for(const m of MARKETS){ if(!m.stalls.length||m.cx==null) continue; const d=Math.hypot(m.cx-px,m.cz-pz); if(d<md){ md=d; mk=m; } }
+  const hr=ENV.hour; if(mk) out.push({icon:'🛒',text:`${mk.name} ${hr>6&&hr<19?'dey open':'don close for today'}`,sub:`${mk.stalls.length} stalls · ${kmOf(md)} away`});
+  let nv=0; for(const v of vehicles) if(v.ai&&Math.hypot(v.x-px,v.z-pz)<150) nv++; out.push({icon:'🚗',text:nv>22?'Hold-up dey near you':'Road dey free small',sub:`${nv} motors around`});
+  let np=0; for(const p of peds) if(p.state!=='off'&&p.state!=='dead'&&Math.hypot(p.x-px,p.z-pz)<70) np++; if(np) out.push({icon:'👥',text:`${np} people around you`,sub:placeNameAt(px,pz)});
+  if(ENV.rain>.2) out.push({icon:'🌧️',text:'Rain dey fall',sub:'Road dey slippery. Drive slow.'});
+  const club=PLACES.find(p=>/club/i.test((p.sub||'')+' '+p.name)&&p.kind!=='shop'); if(club&&(hr>19||hr<3)) out.push({icon:'🎉',text:`${club.name} dey open tonight`,sub:kmOf(Math.hypot(club.x-px,club.z-pz))+' away'});
+  return out; }
+function phoneBeep(f,d=.1,v=.2){ if(!AC||!soundOn) return; try{ const t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain(); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v*.25,t+.01); g.gain.setValueAtTime(v*.25,t+d); g.gain.linearRampToValueAtTime(0,t+d+.04); o.connect(g); g.connect(master); o.start(t); o.stop(t+d+.06); }catch(e){} }
+PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()=>ENV.hour, weather:()=>wLabel(), rain:()=>Math.min(1,ENV.rain||0), cash:()=>CASH.n, naira,
+  where:()=>{ try{ return mode==='interior'?(ROOM.label||'Inside'):placeNameAt(player.x,player.z); }catch(e){ return 'Lagos'; } }, playerName:()=>PROFILE&&PROFILE.name||'',
+  names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
+  rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
+  openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
+  badge:n=>$('#phoneBtn').classList.toggle('badge',n>0), beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
+  camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
+  pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
+  setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); toast(`Your map don show the way to ${pl.name}.`,2.6); },
+  denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone() });
 function togglePhone(){ if(PHONE.open) closePhone(); else openPhone(); }
 function openPhone(){ if(!started||busy||PHONE.open||mode==='interior'||mode==='enter'||(mode==='drive'&&!drive.ride)) return; loadPhone(); PHONE.open=true; closeWard(); $('#settings').hidden=true;
-  if(document.pointerLockElement) document.exitPointerLock(); phoneUI(); $('#phone').hidden=false; $('#phoneBtn').setAttribute('aria-pressed','true'); }
-function closePhone(){ if(!PHONE.open) return; PHONE.open=false; $('#phone').hidden=true; $('#phoneBtn').setAttribute('aria-pressed','false'); if(hero&&hero.fid==='text') hero.fid=null; }
+  if(document.pointerLockElement) document.exitPointerLock(); PH.open(); $('#phoneBtn').setAttribute('aria-pressed','true'); }
+function closePhone(){ if(!PHONE.open) return; PHONE.open=false; PH.close(); PHONE.cam=false; $('#phoneBtn').setAttribute('aria-pressed','false'); if(hero&&hero.fid==='text') hero.fid=null; }
 const fareOf=pl=>Math.max(500,Math.round((500+Math.hypot(pl.x-player.x,pl.z-player.z)*1.3/1000*350)/50)*50);
 const bikeFare=pl=>Math.max(200,Math.round(fareOf(pl)*.55/50)*50);   // okada: cheaper than a car
 const rideFare=pl=>PHONE.rideKind==='okada'?bikeFare(pl):fareOf(pl);
@@ -4668,7 +4845,7 @@ function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book you
   if(air){ // a taxi from the airport rank pulls up on the forecourt road
     v.ai=null; v.parked=false; v.x=clamp(player.x,AIRPORT.TX-130,AIRPORT.TX+130); v.z=AIRPORT.drop.z; v.y=0; v.h=0; v.speed=0; RIDE.state='waiting'; RIDE.t=0;
     v.taxi=true; rideSign(v,true); toast(`${RIDE.who} dey the taxi rank. The car with the OYA RIDE sign is on the road in front of the terminal. Press E to enter.`,3.2); phoneUI(); return; }
-  v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(bike?`Bike man ${RIDE.who} don accept. He dey come with the okada!`:`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); }
+  v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(bike?`Bike man ${RIDE.who} don accept. He dey come with the okada!`:`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); if(PH) PH.event('ride',{name:pl.name,fare,who:RIDE.who,bike}); }
 function cancelRide(msg){ const v=RIDE.v; if(!v) return; if(RIDE.state==='riding'){ rideExit(true); return; }
   if(v.ai){ v.ai.goal=null; v.ai.wait=0; } else v.parked=true; v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null,leg:null,fromAir:false,legDone:false}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
 const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<4.4;
@@ -4754,7 +4931,7 @@ function workUI(b,el,btn){ b.append(el('h3','ph-h','OYA WORK'));
    G next to someone with a weapon in your hand robs them (shop and market sellers carry more). Jobs on the phone pay too. */
 const CASH={n:5000,shown:null,drops:[],geo:null,mat:null,flashT:0,flash:0};
 try{ const c=localStorage.getItem('naija-cash'); if(c!==null&&isFinite(+c)) CASH.n=+c; }catch(e){}
-function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
+function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
 const CASH_OF={areaboy:[300,3500],mama:[500,4500],baba:[800,6000],suit_lady:[3000,15000],lady_red:[500,5000],lady_black:[500,5000],hawker:[200,2500],schoolboy:[50,600],girl:[500,4000],police_m:[2000,9000],police_f:[2000,9000]};
 const cashOf=(c,k=1)=>{ const r=CASH_OF[c]||[300,3000]; return Math.max(50,Math.round(mrr(r[0],r[1])*k/50)*50); };
 function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
@@ -4787,12 +4964,14 @@ const WEAPONS={
   katana:{name:'Katana',file:'weapon_katana',len:1.02,price:25000,melee:2.9,reach:.55,blade:1},
   ak:{name:'AK-47',file:'weapon_ak',len:.88,price:120000,gun:1,dmg:34,rate:.11,mag:30},
   gren:{name:'Grenade',throw:1,price:15000,pack:3},
-  molo:{name:'Petrol bomb',throw:1,price:6000,pack:3}};
-const WEAP_ORDER=['fists','baton','katana','ak','gren','molo'], AMMO_PACK={n:30,price:4500};
+  molo:{name:'Petrol bomb',throw:1,price:6000,pack:3},
+  board:{name:'Skateboard',board:1}};   // your own board, carried (see "your board in your hands")
+const WEAP_ORDER=['fists','baton','katana','ak','gren','molo','board'], AMMO_PACK={n:30,price:4500};
 const ARMS={own:{fists:1},cur:'fists',mag:0,ammo:0,lib:{},loading:{},aim:false,trig:false,fireT:0,reloadT:0,held:null,heldOn:null,shots:0,lastShot:-9,recoil:0};
 try{ const a=JSON.parse(localStorage.getItem('naija-arms')||'null'); if(a&&a.own) Object.assign(ARMS,{own:{...a.own,fists:1},cur:a.own[a.cur]?a.cur:'fists',mag:a.mag|0,ammo:a.ammo|0}); }catch(e){}
 const saveArms=()=>{ try{ localStorage.setItem('naija-arms',JSON.stringify({own:ARMS.own,cur:ARMS.cur,mag:ARMS.mag,ammo:ARMS.ammo})); }catch(e){} };
 const gunOut=()=>!!(WEAPONS[ARMS.cur].gun||WEAPONS[ARMS.cur].throw)&&mode==='walk';   // a gun, or something to throw: aim and fire/throw
+const armed=()=>ARMS.cur!=='fists'&&ARMS.cur!=='board';   // something to fight or rob with (the board is only for riding)
 // each model is turned so +z points along the blade or barrel and the grip sits at the origin
 const GRIP={ak:{rot:[0,Math.PI/2,0],grip:[.62,-.42],fore:[.3,-.12],muzzle:0},katana:{rot:[Math.PI/2,0,0],grip:[.87,0]},baton:{rot:[0,-Math.PI/2,0],grip:[.92,0]}};
 function loadWeapon(id){ const W=WEAPONS[id]; if(W.throw&&!ARMS.lib[id]){ const w=new THREE.Group(), m=throwMesh(id); m.rotation.x=Math.PI/2; w.add(m); ARMS.lib[id]={w,L:.2,H:.1,fore:null,muzzle:new THREE.Vector3()}; } if(!W.file||ARMS.lib[id]) return Promise.resolve(ARMS.lib[id]); if(ARMS.loading[id]) return ARMS.loading[id];
@@ -4816,7 +4995,8 @@ function holdOf(id){ const H=HOLD[id]; if(H.q) return H; const X=new THREE.Vecto
 function boneOf(root,re,cache,key){ if(cache&&cache[key]&&cache[key].parent) return cache[key]; let b=null; root.traverse(o=>{ if(!b&&o.isBone&&re.test(o.name)) b=o; }); if(cache) cache[key]=b; return b; }
 const _wv=new THREE.Vector3(), _wv2=new THREE.Vector3(), _wq=new THREE.Quaternion(), _ws=new THREE.Vector3();
 // the hero's weapon: in the right hand (blades, baton), on the back (AK), or in both hands while aiming (placed each frame)
-function heroWeapon(){ if(!hero) return; const id=ARMS.cur, want=(mode==='walk'||mode==='interior')&&!HL.act&&!HL.broom?id:'fists';
+function heroWeapon(){ if(!hero) return; const id=ARMS.cur==='board'?'fists':ARMS.cur, want=(mode==='walk'||mode==='interior')&&!HL.act&&!HL.broom?id:'fists';
+  boardHand(ARMS.cur==='board'&&mode==='walk'&&!HL.act&&!CARRY.p);
   if(ARMS.heldId!==want||ARMS.heldOn!==hero.cObj||!ARMS.held){ if(ARMS.held&&ARMS.held.parent) ARMS.held.parent.remove(ARMS.held); ARMS.held=null; ARMS.heldId=want; ARMS.heldOn=hero.cObj; ARMS.bones={};
     if(want!=='fists'){ if(!ARMS.lib[want]){ loadWeapon(want).then(()=>{ ARMS.heldId=null; }); return; } ARMS.held=cloneWeapon(want); } }
   const w=ARMS.held; if(!w) return;
@@ -4901,7 +5081,7 @@ function bulletPlayer(dmg,shooter){ hitPlayer(dmg*1.5,shooter,'shot'); }
 function bulletCar(v,shooter){ carDamage(v,shooter===player?9:2.5,shooter===player); if(shooter!==player||!v.ai||v===drive.v||v.type==='police'||v.fire) return; if(MR()<.45){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); } else { v.ai.wait=0; v.ai.ghost=1.5; } }
 // gunshots empty the street around them
 const PANIC={t:-9};
-function shotsFired(x,z,mine){ if(T0-PANIC.t<.8) return; PANIC.t=T0; let seen=false;
+function shotsFired(x,z,mine){ if(mine&&PH) PH.event('shots',{place:placeNameAt(x,z)}); if(T0-PANIC.t<.8) return; PANIC.t=T0; let seen=false;
   for(const p of peds){ if(p.state==='off'||p.cop||p.dealer) continue; const dd=Math.hypot(p.x-x,p.z-z); if(dd>80) continue; if(dd<70) seen=true;
     if(p.state==='walk'||p.state==='idle'||p.state==='spot'||p.state==='react'||p.state==='shop'||p.state==='tsell'||p.state==='fight'&&p.cast!=='areaboy'){
       if(p.spot){ const s=p.spot; s.peds=s.peds.filter(q=>q!==p); p.spot=null; } p.state='flee'; p.timer=mrr(6,10); p.atk=null; p.yaw=Math.atan2(p.x-x,p.z-z)+mrr(-.5,.5); p.phone=false; } }
@@ -4986,7 +5166,7 @@ function scorch(x,z,r){ if(!BOOM.sc.length){ const [c,g]=cv(64,64), gr=g.createR
 function updateBoom(dt){ for(const F of BOOM.fl){ if(!F.s.visible) continue; F.t+=dt; const k=F.t/.42; if(k>=1){ F.s.visible=false; continue; } F.s.scale.setScalar((2+k*9)*F.k); F.s.material.opacity=1-k; } }
 function boomSound(d){ const v=clamp(1.15-d/140,.08,1); burst(1.6,70,1.1*v,1.4); burst(.5,700,.75*v,3.5); burst(.2,2600,.35*v,6); }
 // a blast at (x,y,z): power 1 = a grenade, a car is a little more. byMe: you caused it (stars, money from the dead)
-function explode(x,y,z,power=1,byMe=true){ const R=6.2*power;
+function explode(x,y,z,power=1,byMe=true){ const R=6.2*power; if(PH) PH.event('explosion',{place:placeNameAt(x,z)});
   boomFlash(x,y+.6,z,power); scorch(x,z,1.6*power); boomSound(Math.hypot(x-camera.position.x,z-camera.position.z));
   for(let i=0;i<40*power;i++){ const a=MR()*6.28, s=mrr(1.5,6.5)*power; emit('fire',x+Math.cos(a)*.4,y+.3,z+Math.sin(a)*.4,Math.cos(a)*s,mrr(1.5,6.5)*power,Math.sin(a)*s,mrr(.45,1.1),mrr(1.8,3.2)*power,.6,1,.6,.25,1); }
   for(let i=0;i<18*power;i++){ const a=MR()*6.28, s=mrr(.5,2.5); emit('smoke',x+Math.cos(a)*.8,y+.5,z+Math.sin(a)*.8,Math.cos(a)*s,mrr(1.2,3),Math.sin(a)*s,mrr(3,5.5),1.6*power,5*power,.12,.11,.1,.6); }
@@ -5678,7 +5858,7 @@ function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x
 /* ---- the car stand: tokunbo cars on the lot outside, brand new ones in the showroom. Cars you buy are yours: they
    wait for you near your house every time you come back. */
 function buyLotCar(v){ const s=v.forSale; if(!s) return; if(CASH.n<s.price){ toast(`Salesman: "This one na ${naira(s.price)}. Go hustle come back!"`,3); return; }
-  addCash(-s.price); cashHUD(); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
+  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
   toast(`${s.name} na your own now! Press E to drive. Congrats!`,3.5); }
 async function enterShowroom(){ if(busy) return; const R=await intGet('int_showroom','Opening the showroom…'); if(!R) return; setupShowroom(R); R.label='Oluwaseun Motors showroom'; goRoom(R,'spawn','Welcome to Oluwaseun Motors. Brand new cars!'); }
 function setupShowroom(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
@@ -5865,9 +6045,9 @@ function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt);
-  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
+  if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -5885,7 +6065,7 @@ function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-last
   if(!started&&warm>8){ warm++; return; }   // nothing to draw behind the title screen
   T0+=dt; warm++;
   try{ simulate(dt); }catch(e){ reportErr(e); }
-  try{ if(mode!=='interior') updateCulls(); renderFrame(dt); }catch(e){ reportErr(e); }
+  try{ if(mode!=='interior') updateCulls(); if(PH&&PH.camHook(camera)) camera.updateMatrixWorld(); renderFrame(dt); if(PHONE.snapCb){ const cb=PHONE.snapCb; PHONE.snapCb=null; cb(grabFrame()); } }catch(e){ reportErr(e); }
   if(started&&!ctxLost&&!document.hidden){ if(raw>250){ perfAcc=perfN=0; perfIv.length=0; return; }   // back from another app: don't count that gap
     perfAcc+=raw; perfN++; perfIv.push(raw); if(perfN>=40){ const avg=perfAcc/perfN; perfAcc=perfN=0; prCool-=.7; tuneResolution(avg,perfIv); perfIv.length=0; } } }
 if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
@@ -5920,12 +6100,25 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       for(let i=0;i<5;i++) one(); const t=[]; for(let i=0;i<n;i++){ const a=performance.now(); one(); t.push(performance.now()-a); } t.sort((x,y)=>x-y);
       return {med:+t[n>>1].toFixed(2), p90:+t[Math.floor(n*.9)].toFixed(2), calls:renderer.info.render.calls, tris:renderer.info.render.triangles, px:[renderer.domElement.width,renderer.domElement.height]}; },
     sim(sec=1){ for(let i=0;i<sec*60;i++){ T0+=1/60; simulate(1/60); } },
+    // test helpers for the skateboard and the street skaters
+    skate(){ if(!mySkate) return null; const [e]=nearestRoad(player.x,player.z,walkable); if(e){ const A=nodes[e.a], t=clamp((player.x-A.x)*e.fx+(player.z-A.z)*e.fz,3,Math.max(3,e.len-3));
+        Object.assign(mySkate,{x:A.x+e.fx*t-e.fz*e.hw*.4,z:A.z+e.fz*t+e.fx*e.hw*.4,h:Math.atan2(-e.fz,e.fx),carried:false}); delete ARMS.own.board; if(ARMS.cur==='board') ARMS.cur='fists'; player.x=mySkate.x; player.z=mySkate.z; } enterCar(mySkate); return mode; },
+    skInfo:()=>({mode,sp:+SK.sp.toFixed(2),air:SK.air,h:+SK.h.toFixed(2),push:SK.push&&SK.push.st,pump:SK.pump,rest:+SK.restT.toFixed(1),trick:SK.trick&&SK.trick.k,grab:+(SK.grabW||0).toFixed(2),spin:+((drive.v&&drive.v.spinY)||0).toFixed(2),sb:SKP.B?+SKP.B.st.sb.toFixed(2):null,x:+player.x.toFixed(1),z:+player.z.toFixed(1),deck:+skDeck().toFixed(3)}),
+    board:()=>({mode,own:!!ARMS.own.board,cur:ARMS.cur,carried:!!(mySkate&&mySkate.carried),near:boardNear(),held:!!(MYB.held&&MYB.held.visible),hp:MYB.held?MYB.held.position.toArray().map(v=>+v.toFixed(2)):null,pl:[+player.x.toFixed(2),+player.y.toFixed(2),+player.z.toFixed(2)],d:mySkate?+Math.hypot(mySkate.x-player.x,mySkate.z-player.z).toFixed(1):null}),
+    boardPick:()=>boardPickUp(), boardRide:()=>{ boardRide(); return mode; }, stepOff:()=>{ if(mode==='drive'){ drive.speed=0; exitCar(); } return mode; },
+    lookAt(x,y,z,back,hgt,side=0){ const v=drive.v||player, h=drive.v?drive.v.h:0, fx=Math.cos(h), fz=-Math.sin(h); DEVCAM={p:new THREE.Vector3(x+fx*back+Math.sin(h)*side,hgt,z+fz*back+Math.cos(h)*side),t:new THREE.Vector3(x,y,z)}; return true; },
+    skaters:()=>SKATERS.map(k=>({cast:k.cast,x:+k.x.toFixed(1),z:+k.z.toFixed(1),d:+Math.hypot(k.x-player.x,k.z-player.z).toFixed(1),sp:+k.S.sp.toFixed(2),air:k.S.air,vis:k.vis,down:!!k.down,push:k.S.push&&k.S.push.st})),
+    skaterLook(i=0,back=4.5,hgt=1.4){ const k=SKATERS[i]; if(!k) return null; const fx=Math.cos(k.h), fz=-Math.sin(k.h); DEVCAM={p:new THREE.Vector3(k.x+fx*back+Math.sin(k.h)*back*.6,hgt,k.z+fz*back+Math.cos(k.h)*back*.6),t:new THREE.Vector3(k.x,.9,k.z)}; return {x:k.x,z:k.z}; },
+    key(k,on){ K[k]=on; return true; },
+    skaterKnock(i=0){ const k=SKATERS[i]; if(!k) return null; skaterKnock(k); return !!k.down; },
     start(){ if(!started) $('#enterBtn').click(); },
     // test helper: stand next to a place from the map (name contains the text), facing it
     // test helper: a fixed camera looking at a place from `back` metres away and `h` metres up (look() with no place gives control back)
     ride(q){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; CASH.n=Math.max(CASH.n,50000); bookRide(pl); return {state:RIDE.state,dest:RIDE.dest&&RIDE.dest.name}; },
     mapAt(x,z,sc){ if(!mapView.isOpen) openMap(); mapView.view.cx=x; mapView.view.cz=z; mapView.view.s=sc; mapView.draw(); return true; },
     enter(){ rideEnter(); return RIDE.state; }, skip(){ skipRide(); return RIDE.state; }, rideInfo(){ const v=RIDE.v; return {state:RIDE.state,leg:!!RIDE.leg,legI:RIDE.leg&&RIDE.leg.i,ai:!!(v&&v.ai),x:v&&+v.x.toFixed(1),z:v&&+v.z.toFixed(1),px:+player.x.toFixed(1),pz:+player.z.toFixed(1),mode}; },
+    bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
+    phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); },
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
