@@ -59,6 +59,20 @@ Bridge; the shops, gangs and people in it are made up.
   on you. Give them everything (they leave you ₦200 for transport), fight (your odds depend on your weapon and health:
   win and they run, drop money and leave you the motor; lose and they beat you and take it all), or jump out of the
   moving motor and keep your money.
+- **Cults.** Two made-up cults share Under Bridge: the Red Scorpions (west, red berets) and the Blue Mambas (east, blue
+  berets). Each has a base (on your map) with its Capo and boys, and the boys at the drums belong to the cult whose turf
+  it is. At night strangers get warned, then beaten; now and then the two cults shoot it out in a street. Talk to a
+  Capo to join (₦20,000, then put down three of the other cult). As a member your boys greet you, the other cult hunts
+  you, the base pays you a share over time, and the Capo can send three armed boys to follow you and fight for you for
+  three minutes (₦3,000). Hit your own people and they throw you out; ₦50,000 settles them if you want to leave.
+- **Kidnappers.** Masked men in buses grab people off the street and take them to their den (a fenced yard with an
+  unfinished house, on your map). Stop the bus (shoot it, wreck it or block it) and the person runs free: the family
+  pays you. Get there too late and they hold the person in the den: fight the guards, press E by the post to untie
+  them, and the family pays when they are out. At night, alone, they may come for you: fight them off, or wake up tied
+  in the den. Pay the ransom (60% of your cash, they give your things back), or press E again and again to work the
+  rope loose, take your things from the sack by the generator, and run for the gate past the guards.
+- **Bandits.** At night okadas come in fast, two masked bandits on each, shooting into the air. Keep away, or fight:
+  the vigilante pays ₦10,000 for every bandit you put down. They ride off after a minute or two.
 - **The chop shop.** Bring any car that isn't yours to the yellow ring by the "WE BUY ANY CAR" sign and press E: they
   pay by type and damage, no questions (a police van also brings heat).
 
@@ -67,6 +81,9 @@ Rebuilding the joined map (Ikeja from an OpenStreetMap export, then merged on to
 python3 tools/osm_world.py ikeja.osm /tmp/ikeja_world.json
 python3 tools/merge_district.py assets/maps/mushin_world.json /tmp/ikeja_world.json assets/maps/lagos_world.json
 ```
+The Under Bridge props are built in Blender by `tools/blender_underbridge.py` (gate, police post, piers, shacks) and
+`tools/blender_underbridge2.py` (cult berets, bandit masks, cult bases, kidnappers' den); run either inside Blender, or
+headless with `python3 tools/glb_build.py -m blender_underbridge2`.
 Both cities are one map; far things are hidden by distance, as in Mushin.
 
 Life on the streets: traffic moves fast on the highways and big roads, so people never walk across them: they use the footbridges; hawkers walk out between the cars when the light turns

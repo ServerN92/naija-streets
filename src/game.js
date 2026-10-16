@@ -12,15 +12,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=de0e6008ef';
-import * as C2 from './char2.js?v=de0e6008ef';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=de0e6008ef';
-import { createPhone } from './phone.js?v=de0e6008ef';
-import { createGuide } from './guide.js?v=de0e6008ef';
-import { MapView } from './mapview.js?v=de0e6008ef';
+import * as CLOCK from './clock.js?v=af9b5dffcd';
+import * as C2 from './char2.js?v=af9b5dffcd';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=af9b5dffcd';
+import { createPhone } from './phone.js?v=af9b5dffcd';
+import { createGuide } from './guide.js?v=af9b5dffcd';
+import { MapView } from './mapview.js?v=af9b5dffcd';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='de0e6008ef';
+const BUILD='af9b5dffcd';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -383,7 +383,7 @@ async function fetchBuf(url,tries=3){ for(let a=0;a<tries;a++){ const ctl=new Ab
 let MANIFEST={}; try{ const r=await fetch('assets/manifest.json',{cache:'no-cache'}); if(r.ok) MANIFEST=await r.json(); }catch(e){}
 const clockSync=CLOCK.syncClock();
 // key: [file, front direction, real size (m) along x after turning, has a low-detail file]
-const MODEL_FILES={ub_pier:['ub_pier','h',0,1],ub_toll:['ub_toll','h',0,1],ub_barrier:['ub_barrier','h',0,1],ub_police:['ub_police','h',0,1],ub_sandbags:['ub_sandbags','h',0,1],ub_shack_zinc:['ub_shack_zinc','h',0,1],ub_shack_wood:['ub_shack_wood','h',0,1],ub_container:['ub_container','h',0,1],ub_drum:['ub_drum','h',0,1],   // Ikeja Under Bridge (tools/blender_underbridge.py)
+const MODEL_FILES={ub_base_red:['ub_base_red','h',0,1],ub_base_blue:['ub_base_blue','h',0,1],ub_den:['ub_den','h',0,1],ub_pier:['ub_pier','h',0,1],ub_toll:['ub_toll','h',0,1],ub_barrier:['ub_barrier','h',0,1],ub_police:['ub_police','h',0,1],ub_sandbags:['ub_sandbags','h',0,1],ub_shack_zinc:['ub_shack_zinc','h',0,1],ub_shack_wood:['ub_shack_wood','h',0,1],ub_container:['ub_container','h',0,1],ub_drum:['ub_drum','h',0,1],   // Ikeja Under Bridge (tools/blender_underbridge.py)
   danfo:['yellowvan','-x',4.8,1],keke:['three-wheeled','-x',2.75,1],bus:['citybus','+z',10.5,1],police:['police_pickup','-x',5.3,1],okada:['red_motorcycle','-x',2.05,1],sedan:['sedancar','-x',4.55,1],
   bungalow:['ns_bungalow','h',12.5,1],house:['ns_house','h',16,1],storey:['ns_storey','h',12.5,1],
   dup1:['ns_dup1','h',14.8,1],dup2:['ns_dup2','h',15.2,1],dup3:['ns_dup3','h',15.2,1],dup4:['ns_dup4','h',14.8,1],dup5:['ns_dup5','h',14.8,1],faceme:['ns_faceme','h',18.8,1],zinc:['ns_zinc','h',7.1,1],wood:['ns_wood','h',8.2,1],
@@ -1630,6 +1630,7 @@ for(let i=0;i<Q.peds;i++){ const p=newPed(pickCast(),'walk'); p.tw=MR()<CAST[p.c
 // people who stand in groups at shop fronts, corners, gates and bus stops (given a place when the player comes near)
 const SHOP_N=Q===QUAL.low?20:Q===QUAL.medium?30:42;   // extra people for the markets
 for(let i=0;i<Q.spots+SHOP_N+5;i++) peds.push(newPed(null,'off'));   // (+5: the gun man and his boys)
+if(DISTS.length) for(let i=0;i<(Q.peds>40?28:20);i++) peds.push(newPed(null,'off'));   // Under Bridge: the gangs, kidnappers and bandits
 
 /* ================= cars ================= */
 await step('Fuelling the danfos…', 82);
@@ -2358,7 +2359,7 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(KID.tied>0) txt='Work the rope loose'; else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
@@ -2534,7 +2535,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(KID.tied>0) return kidStruggle(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
@@ -2897,7 +2898,7 @@ function updatePeds(dt){ NPCF++; CROWD.list.length=0; if(NPCF%30===0){ NWALK=0; 
     if(mode==='walk'&&started&&d2<1.8*1.8&&!(p.cool>0)&&!p.dealer&&(p.body||CROWD.c[p.cast])&&(p.state==='walk'||p.state==='idle'||p.state==='spot')) bumped(p);
     if(p.state!=='xbr'&&!p.carried){ const gy=groundY(p.x,p.z); p.y+=(gy-p.y)*Math.min(1,dt*12); }
     p.far=false;
-    if(p.body){ poseBody(p,dt); if(p.cop||p.crook) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); pedPhone(p); continue; }
+    if(p.body){ poseBody(p,dt); if(p.cop||p.crook) pedWeapon(p); else if(p.carried&&CARRY.p===p) carryPose(p); if(p.hat) pedHat(p); pedPhone(p); continue; }
     if(d2>150*150) continue;
     p.ph+=dt*(p.state==='flee'?10:p.speed*4.4);   // where they are in their step
     if(CROWD.c[p.cast]&&!CROWD.hide) CROWD.list.push(p); }   // drawn by crowdDraw, once the camera has moved
@@ -3379,7 +3380,7 @@ function boardPed(p,dt){ const v=p.bv; p.timer-=dt; let done=p.timer<=0||!v||!(v
     if(d<.45) done=true; else { p.speed+=(1.5-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=dx/d*st; p.z+=dz/d*st; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); } }
   if(done){ const s=p.spot; if(s){ s.boarding=Math.max(0,s.boarding-1); s.peds=s.peds.filter(q=>q!==p); } if(p.fare){ p.fare=false; if(!(v===drive.v&&Math.hypot(p.x-v.x,p.z-v.z)<v.c.def.L/2+2.2)){ p.state='walk'; p.bv=null; p.spot=null; replanPed(p); return; } fareIn(p.cast,v); } offPed(p); } }   // you drove off: they walk on
 function offPed(p){ if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
-  Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0,crook:null,stolen:0,post:null,aimOn:false}); }   // back to the pool as nobody in particular
+  Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0,crook:null,stolen:0,post:null,aimOn:false,hat:null,side:null,gang:null,meT:0,_dn:false}); }   // back to the pool as nobody in particular
 function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ p.cast=c; p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
 function spotOn(s){ s.on=true; s.peds=[]; s.boarding=0; s.hailV=null; const night=ENV.hour>=21||ENV.hour<5.5;
   for(const m of s.m){ const p=peds.find(q=>q.state==='off'); if(!p) break; const c=night&&m.cast==='schoolboy'?'areaboy':m.cast;
@@ -3782,7 +3783,7 @@ function groundPound(p,kind){ FIGHT.chain=T0-FIGHT.swingT<1.1?FIGHT.chain+1:0; F
   const name=FIGHT.chain%2?'gp2':'gp', mi=MOVE_INFO[name], d=Math.hypot(p.x-player.x,p.z-player.z), ts=kind==='kick'?mi.ts*.85:mi.ts; player.yaw=Math.atan2(p.x-player.x,p.z-player.z);
   heroDo(mi.act,{force:true,from:mi.from,to:mi.to,ts,atk:name,cancel:mi.cancel,foe:p,stand:.8,until:mi.hits[0],hits:mi.hits.map(at=>[at,()=>groundHit(p,mi.dmg*(kind==='kick'?1.35:1))])}); FIGHT.lastAtk=T0; whoosh(); }
 // each blow on the floor: blood, the body jolts, and after enough of them the person dies there
-function groundHit(p,dmg){ if(p.state!=='down'||Math.hypot(p.x-player.x,p.z-player.z)>2.5) return; p.hp=(p.hp??0)-dmg*mrr(.9,1.15); p.timer=Math.max(p.timer,2.4); p.jolt=1; p.stopT=.08; FIGHT.stop=.08; FIGHT.lastHit=T0; FIGHT.foe=p; FIGHT.foeT=4;
+function groundHit(p,dmg){ if(p.state!=='down'||Math.hypot(p.x-player.x,p.z-player.z)>2.5) return; p.meT=T0; p.hp=(p.hp??0)-dmg*mrr(.9,1.15); p.timer=Math.max(p.timer,2.4); p.jolt=1; p.stopT=.08; FIGHT.stop=.08; FIGHT.lastHit=T0; FIGHT.foe=p; FIGHT.foeT=4;
   const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw); bleed(p.x,.35,p.z,ux*.3,uz*.3,7,1.2); if(p.pool&&BLOOD.p.includes(p.pool)) p.pool.size=Math.min(1.9,p.pool.size+.22); else p.pool=bloodPool(p.x,p.z,.6,2);
   crime(p,1); incident(p.x,p.z,'fight'); camState.shake=Math.min(1,camState.shake+.3); smack(1.1);
   if(p.hp<=-55){ sayT=0; killPed(p,ux,uz,0,'fight'); }
@@ -3954,7 +3955,7 @@ function takedown(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); co
   player.speed=0; FIGHT.buf=null; FIGHT.chain=0; heroDo('takedown_a',{force:true,ts:1.7,to:TK,root:true,onEnd:()=>{ if(!FIGHT.ko) heroDo('rise',{force:true,ts:1.5,lock:false}); }});
   FIGHT.lastAtk=T0; crime(foe,1.2); provoke(foe); camState.shake=Math.min(1,camState.shake+.2); setTimeout(()=>smack(1.4),TK*7250/1.7*.8); }
 // ---- people getting hit
-function hurtPed(p,dmg,how,knock=0){ if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); if(PH&&how!=='car') PH.event('fight',{place:placeNameAt(p.x,p.z)}); crime(p,how==='drop_kick'?1.5:1); if(p.cop){ p.mad=1; FIGHT.heat=Math.max(FIGHT.heat,1.65); FIGHT.crimeT=0; }   // touch an officer: two stars
+function hurtPed(p,dmg,how,knock=0){ p.meT=T0; if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; incident(p.x,p.z,'fight'); if(PH&&how!=='car') PH.event('fight',{place:placeNameAt(p.x,p.z)}); crime(p,how==='drop_kick'?1.5:1); if(p.cop){ p.mad=1; FIGHT.heat=Math.max(FIGHT.heat,1.65); FIGHT.crimeT=0; }   // touch an officer: two stars
   const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz)||1, ux=dx/d, uz=dz/d; FIGHT.foe=p; FIGHT.foeT=4;
   if(p.hp<=0||knock) koPed(p,ux,uz,knock||2.4);
   else { if(p.state!=='hurt') p.after=p.state==='fight'?'fight':null; p.state='hurt'; p.react=how==='punch'?mpick(['hit_head','hit_head','hit_body']):how==='kick'?mpick(['hit_side','hit_body']):'uppercut';
@@ -3972,7 +3973,8 @@ function provoke(p){ const now=T0;
     if(q.cast==='areaboy'&&!q.beaten){ if(q.state!=='fight'&&q.state!=='hurt'){ q.state='fight'; q.atk=null; q.atkT=mrr(.4,1.4); joined++; } }
     else if(q.state==='walk'||q.state==='idle'||q.state==='spot'||q.state==='react'){ if(MR()<.6){ q.state='flee'; q.timer=mrr(4,7); q.yaw=Math.atan2(q.x-player.x,q.z-player.z)+mrr(-.5,.5); } else react(q,'no',player.x,player.z,mrr(1.5,3)); } }
   if(joined&&sayT<=0){ sayT=6; toast(mpick(['"You wan try us?!"','"Na who send you come here?"','"Boys, enter am!"']),2.2); } }
-function afterHurt(p){ if(p.cop){ p.state=p.cast==='police_m'?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=mrr(.2,.6); return; }
+function afterHurt(p){ if(p.crook&&p.gang){ p.state='crook'; p.atk=null; return; }   // gang people get straight back to it
+  if(p.cop){ p.state=p.cast==='police_m'?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=mrr(.2,.6); return; }
   if(p.after==='fight'&&!p.beaten&&p.cast==='areaboy'){ p.state='fight'; p.atk=null; p.atkT=mrr(.3,.9); return; }
   if(p.spot&&MR()<.3){ react(p,'argue',player.x,player.z,mrr(3,4)); return; }
   if(MR()<.35&&(p.cast==='mama'||p.cast==='baba')){ react(p,'argue',player.x,player.z,mrr(3,5)); if(sayT<=0){ sayT=5; toast(mpick(['"You dey mad?!"','"Na me you go beat?!"','"Shameless boy!"']),2.2); } p.fleeAfter=true; return; }
@@ -5193,7 +5195,7 @@ function shoot(o,dir,shooter,{dmg=34,range=140,spread=0,muzzle=null}={}){ const 
   return h; }
 function bulletPed(p,dmg,d,shooter,head){ const mine=shooter===player; if(p.hp==null) p.hp=HP0(p.cast); p.hp-=dmg; FIGHT.foe=p; FIGHT.foeT=4;
   bleed(p.x,head?1.62:1.25,p.z,d.x,d.z,head?12:7,2.4); p.stopT=.05;
-  if(mine){ crime(p,.6); if(p.cop){ p.mad=1; FIGHT.heat=Math.min(HEAT_MAX,Math.max(FIGHT.heat+.5,2.65)); } }   // shooting at the police: three stars
+  if(mine){ p.meT=T0; crime(p,.6); if(p.cop){ p.mad=1; FIGHT.heat=Math.min(HEAT_MAX,Math.max(FIGHT.heat+.5,2.65)); } }   // shooting at the police: three stars
   if(p.hp<=0){ killPed(p,d.x,d.z,head?1.6:1.1,mine?'gun':'shot'); return; }
   if(p.state==='down'||p.state==='dead') return;
   if(p.cop){ p.copHit=.25; return; }
@@ -5531,7 +5533,7 @@ function pedWeapon(p){ const b=p.body, id=(p.state==='cop'||p.state==='copguard'
   if(id!=='ak'){ const hand=boneOf(b.inner,/RightHand$/,p.wc,'hand'); if(hand) attachTo(p.wm,hand,holdOf(id)); return; }
   if(p.wm.parent!==scene){ if(p.wm.parent) p.wm.parent.remove(p.wm); scene.add(p.wm); p.wm.scale.setScalar(1); }
   if(p.aimOn) aimArms(b.inner,p.wc,p.wm,p.aimDir,p.recoil||0); else slingOn(p.wm,b.inner,p.wc,p.yaw); }
-function dropPedWeapon(p){ if(p.wm){ if(p.wm.parent) p.wm.parent.remove(p.wm); p.wm=null; } if(p.phm){ if(p.phm.parent) p.phm.parent.remove(p.phm); PHONE_POOL.push(p.phm); p.phm=null; } }
+function dropPedWeapon(p){ dropHat(p); if(p.wm){ if(p.wm.parent) p.wm.parent.remove(p.wm); p.wm=null; } if(p.phm){ if(p.phm.parent) p.phm.parent.remove(p.phm); PHONE_POOL.push(p.phm); p.phm=null; } }
 // weapons on the ground: walk over them to take them
 const PICKS=[];
 function dropWeapon(x,z,id){ if(!ARMS.lib[id]||mode==='interior') return; const w=cloneWeapon(id); w.rotation.order='YXZ'; w.rotation.set(0,MR()*6.28,Math.PI/2); w.position.set(x,groundY(x,z)+.035,z); scene.add(w);
@@ -5749,7 +5751,7 @@ function updateGate(dt){ if(!GATE) return; const f=mode==='drive'&&drive.v?drive
 // ---- the people of Under Bridge: pickpockets, armed robbers, the boys at the drums
 const CROOK={t:12,robT:40,list:[],demand:null};
 function crookWake(kind,x,z,cast='areaboy'){ const q=freePed(); if(!q) return null; wakePed(q,cast); const c={x,z}; resolveCircle(c,.34);
-  Object.assign(q,{x:c.x,z:c.z,y:0,yaw:Math.atan2(player.x-c.x,player.z-c.z),state:'crook',crook:{k:kind,st:'go',t:0},hp:HP0(cast),speed:0,act:null,wid:kind==='rob'?'ak':null,aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0,fireT:1,stolen:0,beaten:false,looted:false});
+  Object.assign(q,{x:c.x,z:c.z,y:0,yaw:Math.atan2(player.x-c.x,player.z-c.z),state:'crook',crook:{k:kind,st:'go',t:0},hp:HP0(cast),speed:0,act:null,wid:kind==='rob'?'ak':null,aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0,fireT:1,stolen:0,beaten:false,looted:false,hat:kind==='rob'&&MR()<.6?'mask':null});
   q.seq=(q.seq||0)+1; CROOK.list.push(q); return q; }
 function crookOut(q){ if(q.state==='crook') offPed(q); }
 // a spot in the crowd behind you, out of sight
@@ -5783,19 +5785,22 @@ function updateCrooks(dt){ const here=mode!=='interior'&&inUB(player.x,player.z)
       continue; }
     if(K.k==='hang'){ const S=K.spot; q.speed=0; const gx=S.x+Math.sin(K.a)*1.6, gz=S.z+Math.cos(K.a)*1.6; if(Math.hypot(q.x-gx,q.z-gz)>.3) copMove(q,gx-q.x,gz-q.z,1.2,dt); else q.speed=0;
       q.yaw=lerpA(q.yaw,d<9?face:Math.atan2(S.x-q.x,S.z-q.z),Math.min(1,dt*3)); if(!q.act||MR()<dt*.05) q.act=mpick(['smoke','talk','idle_1','argue','idle_1']);
-      // at night the cult boys don't like strangers by their fire
-      if(night&&mode==='walk'&&d<6&&!FIGHT.ko){ if(T0-S.warned>20){ S.warned=T0; S.dare=T0; if(sayT<=0){ sayT=5; toast(mpick(['"Who you be? This na our base. Comot here!"','"You no hear? Na Black Eagle base be this. Waka!"','"Stranger, wetin you dey find for here?"']),3); } }
-        else if(T0-S.dare>4.5&&d<4.5){ for(const b of S.boys) if(b.state==='crook'){ b.state='fight'; b.atk=null; b.atkT=mrr(.3,1); b.crook=null; } S.boys=[]; } } } } }
+      // the boys at the drums are the cult whose turf this is: friendly to members, deadly to the other cult, wary of strangers at night
+      const side=S.side, attack=()=>{ for(const b of S.boys) if(b.state==='crook'){ if(b.wid){ b.crook={k:'gang',st:'hunt',t:0}; b.gang='cult'; if(!GANG.list.includes(b)) GANG.list.push(b); } else { b.state='fight'; b.atk=null; b.atkT=mrr(.3,1); b.crook=null; } } S.boys=[]; };
+      if(mode==='walk'&&!FIGHT.ko&&!KID.held){ if((side&&enemyOf(side)&&d<16)||T0-(q.meT||-99)<2){ if(sayT<=0&&side){ sayT=4; toast(T0-(q.meT||-99)<2?'"You dey touch us?! Finish am!"':`"Na ${CULTS[rival(side)].name.slice(0,-1)} be this! Finish am!"`,2.6); } attack(); }
+        else if(side&&CULT.me===side){ if(d<5&&T0-S.warned>90){ S.warned=T0; if(sayT<=0){ sayT=4; toast(mpick(['"Our person! How far?"','"Respect, my guy. Na our side be this."']),2.2); } } }
+        else if(night&&d<6){ if(T0-S.warned>20){ S.warned=T0; S.dare=T0; if(sayT<=0){ sayT=5; toast(mpick(['"Who you be? This na our base. Comot here!"',`"You no hear? Na ${side?CULTS[side].name:'our'} base be this. Waka!"`,'"Stranger, wetin you dey find for here?"']),3); } }
+          else if(T0-S.dare>4.5&&d<4.5) attack(); } } } } }
 function crookPay(){ const D=CROOK.demand; if(!D||D.a.state!=='crook'||mode!=='walk'){ CROOK.demand=null; return false; } const amt=Math.min(CASH.n,Math.max(500,Math.round(CASH.n*.4/50)*50)); if(amt>0) addCash(-amt); CROOK.demand=null;
   for(const q of CROOK.list) if(q.crook&&q.crook.k==='rob'){ q.crook.st='leave'; q.aimOn=false; }
   toast(amt>0?mpick([`You give them ${naira(amt)}. "Oya go! If you talk, we go find you."`,`They take ${naira(amt)} and run off into the dark.`]):'"You no get money?! Waste of time!" They push you and run.',3); return true; }
 // the boys at the drums, put there when you come near (more of them at night)
 function updateUBSpots(dt){ if(!UB||!UBX.spots.length) return; const here=inUB(player.x,player.z);
   for(const S of UBX.spots){ const d=Math.hypot(S.x-player.x,S.z-player.z); S.boys=S.boys.filter(q=>q.state==='crook'&&q.crook&&q.crook.spot===S);
-    if(here&&d<70&&d>18&&!S.boys.length&&(S.t-=dt)<=0){ S.t=8; const n=ENV.night?4:MR()<.5?2:3; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+mrr(-.3,.3), q=crookWake('hang',S.x+Math.sin(a)*1.6,S.z+Math.cos(a)*1.6); if(!q) break; q.crook.spot=S; q.crook.a=a; q.crook.st='hang'; S.boys.push(q); } }
+    if(here&&d<70&&d>18&&!S.boys.length&&(S.t-=dt)<=0){ S.t=8; const n=ENV.night?4:MR()<.5?2:3; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+mrr(-.3,.3), q=crookWake('hang',S.x+Math.sin(a)*1.6,S.z+Math.cos(a)*1.6); if(!q) break; q.crook.spot=S; q.crook.a=a; q.crook.st='hang'; S.boys.push(q); if(S.side){ q.side=S.side; q.hat=S.side; q.gang='cult'; if(ENV.night&&i===0) q.wid='ak'; watchGang(q); } } }
     if(d>110) for(const q of S.boys) crookOut(q);
     if(ENV.night&&d<55&&MR()<dt*9) flame(S.x,.95,S.z,.55); } }   // their fire
-function updateUnderBridge(dt){ if(!UB) return; updateGate(dt); updateCrooks(dt); updateUBSpots(dt); updateChair(dt); updateOneChance(dt); vestSync();
+function updateUnderBridge(dt){ if(!UB) return; updateGate(dt); updateCrooks(dt); updateUBSpots(dt); updateChair(dt); updateOneChance(dt); vestSync(); updateUB2(dt);
   if(CHOP&&CHOP.ring){ CHOP.ring.visible=mode==='drive'&&!!drive.v&&!drive.v.mine&&drive.v.type!=='skate'&&Math.hypot(player.x-CHOP.x,player.z-CHOP.z)<160; CHOP.ring.material.opacity=.45+.3*Math.sin(T0*4); } }
 
 // ---- Chairman: the Under Bridge black market, beside the chop shop. Guns cheaper than Oga Shege, a bulletproof vest,
@@ -5856,17 +5861,10 @@ const rideWord=()=>RIDE.street?`Enter the ${RIDE.car} · ${naira(RIDE.fare)}`:'E
 function ocStreet(dt){ if(RIDE.state||mode!=='walk'||FIGHT.ko||!GATE||!inUB(player.x,player.z)||starCount()>0) return 'no';
   if((OC.t-=dt)>0) return 'wait'; OC.t=ENV.night?mrr(45,90):mrr(80,150);
   const [e,de]=nearestRoad(player.x,player.z,q=>q.drive); if(!e||de>12||FLYE.has(e.i)) return 'road '+(de|0);
-  const g=goalAt(player.x,player.z), v=ocPick(g); if(!v) return 'nocar'; const bus=v.type==='danfo', keke=v.type==='keke', dk=kerbPoint(GATE.x-32,GATE.z); v.ocT=T0;
+  const g=goalAt(player.x,player.z), v=vanPick(g,['danfo','keke','sedan','car2','suv']); if(!v) return 'nocar'; const bus=v.type==='danfo', keke=v.type==='keke', dk=kerbPoint(GATE.x-32,GATE.z); v.ocT=T0;
   Object.assign(RIDE,{v,kind:'car',state:'coming',dest:{name:'the toll gate',x:dk.x,z:dk.z,rx:dk.x,rz:dk.z},goal:g,t:0,hint:true,fare:bus?200:keke?150:300,who:bus?'The conductor':'The driver',car:bus?'danfo':keke?'keke':'taxi',plate:'',street:true,fromAir:false,leg:null,legDone:false,oc:ocRoll(true)});
   v.taxi=true; v.ai.goal=g; rideSign(v,true,bus?'MUSHIN · ₦200':keke?'KEKE · ₦150':'TAXI · ₦300');
   toast(keke?'A keke slows down by you: "Toll gate! ₦150! One person remain!"':bus?mpick(['A danfo slows down by you. Conductor: "Mushin! Mushin! ₦200! Enter with your change!"','Conductor: "Toll gate! Mushin! Last bus! ₦200!" The danfo dey come your side.']):'A taxi flashes its lights at you: "Oga, where you dey go? Toll gate, ₦300 only!"',3.4); }
-function ocPick(g){ const ok=v=>v.ai&&(v.type==='danfo'||v.type==='keke'||v.type==='sedan'||v.type==='car2'||v.type==='suv')&&!v.ai.chase&&!v.ai.goal&&v!==drive.v&&!v.jacked&&!v.raid&&v!==RAID.v&&!v.taxi&&!flyUp(v)&&T0-(v.ocT||-999)>300;
-  const all=vehicles.filter(ok), dan=all.filter(v=>v.type==='danfo'), c=(dan.length&&MR()<.7?dan:all).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z)); if(!c.length) return null;
-  const v=c[0], D=goalField(g), opts=[];
-  for(const n of nodes){ const dn=D[n.i]; if(dn<60||dn>260||Math.hypot(n.x-player.x,n.z-player.z)<45) continue; for(const m of n.out){ if(D[m]>=dn) continue; const e=edgeOf(n.i,m); if(e&&e.drive&&e.len>12&&!FLYE.has(e.i)) opts.push([n.i,m]); } }
-  for(let t=0;t<20&&opts.length;t++){ const [a,b]=mpick(opts), seg=lineSeg(a,b), sp=mrr(.2,.6)*seg.len; segPos(seg,sp,_sp); if(vehicles.some(o=>Math.hypot(o.x-_sp.x,o.z-_sp.z)<11)||inView(_sp.x,1,_sp.z,3)) continue; const e=edgeOf(a,b), DF=v.c.def;
-    v.ai={a,b,s:sp,seg,na:-1,maxV:mrr(DF.maxV[0],DF.maxV[1])*1.1,wait:0,ghost:0,stuck:0,cond:e.cond,ec:e.c}; v.parked=false; v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx); v.speed=v.ai.maxV*.6; v.y=groundY(v.x,v.z); v.fh=0; return v; }
-  return null; }
 const ocArmed=()=>{ const w=ARMS.cur; return w!=='fists'&&w!=='board'&&!WEAPONS[w].throw&&ARMS.own[w]&&!(w==='ak'&&ARMS.mag+ARMS.ammo<=0)?w:null; };
 function ocOdds(){ const w=ocArmed(), base=w==='ak'?.85:w==='katana'?.7:w==='baton'?.55:.28; return clamp(base*(.6+.4*FIGHT.hp/100),.05,.95); }
 const ocWord=p=>p>.75?'good chance':p>.5?'could go either way':p>.3?'risky':'very risky';
@@ -5897,6 +5895,294 @@ function updateOneChance(dt){ const R=RIDE, v=R.v;
     toast(mpick(['"ONE CHANCE! Nobody move!"','"Oga, relax. Na one chance you enter. Bring everything!"']),3); ocMenu(); return; }
   if(O.st==='demand'){ if(!MENU.open&&O.t>.6){ O.st='done'; ocFight(); return; }   // you closed it: you fight
     if(O.t>15){ closeMenu(); O.st='done'; toast('"You dey waste our time!"',2); ocFight(); } } }
+
+/* ================= Under Bridge gangs: cults, kidnappers, bandits (all names made up) =================
+   Two cults share Under Bridge: the Red Scorpions (west) and the Blue Mambas (east), each with a base and boys at the
+   drums in their berets. They fight each other at night. Join one at its base (₦20,000, then put down three of the
+   others): your boys leave you alone, the others hunt you, and the Capo can send three boys to watch your back.
+   Kidnappers grab people into buses and keep them in a den; at night they may try for you. Bandits on okadas raid
+   Under Bridge at night; the vigilante pays ₦10,000 for every one you put down. Props built in Blender
+   (tools/blender_underbridge2.py). */
+// ---- hats: a cult beret (tinted) or a black mask, on the head bone
+const HATS={lib:{},pool:{red:[],blue:[],mask:[]},loading:false}, HAT_COL={red:0xc0241d,blue:0x2456b8}, HAT_MAT={};
+function loadHats(){ if(HATS.loading) return; HATS.loading=true;
+  for(const k of ['hat_beret','hat_mask']) fetchBuf(murl(k)).then(b=>GLL.parseAsync(b,'')).then(g=>{ let m=null; g.scene.traverse(o=>{ if(o.isMesh&&!m) m=o; }); if(m) HATS.lib[k]=m.geometry; }).catch(e=>console.warn('hat',e)); }
+function hatMesh(kind){ const pool=HATS.pool[kind]; if(pool.length) return pool.pop(); const g=HATS.lib[kind==='mask'?'hat_mask':'hat_beret']; if(!g) return null;
+  const mat=HAT_MAT[kind]||(HAT_MAT[kind]=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.85,color:kind==='mask'?0xffffff:HAT_COL[kind]}));
+  const m=new THREE.Mesh(g,mat); m.castShadow=true; m.kind=kind; return m; }
+const HAT_HOLD={beret:{p:new THREE.Vector3(0,.03,.0),q:new THREE.Quaternion(),k:1.14},mask:{p:new THREE.Vector3(0,-.02,.008),q:new THREE.Quaternion(),k:1.14}};
+function pedHat(p){ const b=p.body, kind=p.hat; if(p.hm&&(p.hmB!==b||p.hm.kind!==kind)) dropHat(p); if(!b||!kind) return;
+  if(!p.hm){ const m=hatMesh(kind); if(!m){ loadHats(); return; } p.hm=m; p.hmB=b; p.hc={}; }
+  const head=boneOf(b.inner,/Head$/,p.hc,'head'), H=kind==='mask'?HAT_HOLD.mask:HAT_HOLD.beret; if(head){ attachTo(p.hm,head,H); p.hm.scale.multiplyScalar(H.k); } }
+function dropHat(p){ if(!p.hm) return; if(p.hm.parent) p.hm.parent.remove(p.hm); (HATS.pool[p.hm.kind]||[]).push(p.hm); p.hm=null; }
+if(UB) loadHats();
+
+// ---- the people of the gangs (their own list, not the street crooks')
+const GANG={list:[],watch:[]};
+// a free person for the gangs: from the pool, or a passer-by far behind you
+function gangPed(){ const q=freePed(); if(q) return q; let best=null,bd=45; for(const p of peds){ if(p.state!=='walk'||p.spot||p.crook||p.cop||p.dealer||p.carried) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d>bd&&!inView(p.x,1,p.z,1.5)){ bd=d; best=p; } }
+  if(best) offPed(best); return best; }
+function gangWake(k,x,z,o={}){ const q=gangPed(); if(!q) return null; const cast=o.cast||'areaboy'; wakePed(q,cast); const c={x,z}; resolveCircle(c,.34);
+  Object.assign(q,{x:c.x,z:c.z,y:0,yaw:o.yaw??Math.atan2(player.x-c.x,player.z-c.z),state:'crook',crook:{k,st:o.st||'idle',t:0,...(o.K||{})},hp:o.hp||HP0(cast),speed:0,act:null,wid:o.gun?'ak':null,
+    aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0,fireT:mrr(.6,1.6),stolen:0,beaten:false,looted:false,hat:o.hat||null,side:o.side||null,gang:o.gang||k});
+  q.seq=(q.seq||0)+1; GANG.list.push(q); watchGang(q); return q; }
+const gangOut=q=>{ if(q.state==='crook') offPed(q); };
+const pTarget=()=>mode==='drive'&&drive.v?drive.v:player;
+const isAlive=p=>p&&p.state!=='off'&&p.state!=='dead';
+const upright=p=>isAlive(p)&&p.state!=='down'&&p.state!=='getup';
+// shoot at a target (you, your car, or another person)
+function gangFire(q,T,dt){ const ty=T===player?player.y+1.2:T.c?(T.y||0)+1:(T.y||0)+1.2; q.aimOn=true; q.aimDir.set(T.x-q.x,ty-(q.y+1.4),T.z-q.z).normalize();
+  if((q.fireT-=dt)>0) return; q.fireT=mrr(.7,1.4); _co.set(q.x,q.y+1.45,q.z); if(q.wm&&ARMS.lib.ak&&q.wm.parent===scene) _co.copy(ARMS.lib.ak.muzzle).applyMatrix4(q.wm.matrixWorld);
+  const d=Math.hypot(T.x-q.x,T.z-q.z); _cdv.set(T.x-_co.x,ty-_co.y,T.z-_co.z).normalize(); shoot(_co.clone(),_cdv,q,{dmg:7,spread:.065+d*.002,range:85,muzzle:_co.clone()}); flash(_co);
+  gunshot(clamp(1-Math.hypot(q.x-player.x,q.z-player.z)/95,.1,.9)); q.recoil=1; shotsFired(q.x,q.z,false); }
+// in the air, to scare people
+function gangAir(q){ _co.set(q.x,q.y+1.6,q.z); _cdv.set(mrr(-.15,.15),1,mrr(-.15,.15)).normalize(); shoot(_co.clone(),_cdv,q,{dmg:0,range:30}); flash(_co); gunshot(clamp(1-Math.hypot(q.x-player.x,q.z-player.z)/95,.1,.9)); shotsFired(q.x,q.z,false); }
+// someone you (or your boys) put down: counted once, when they fall or die
+function watchGang(q){ if(!GANG.watch.includes(q)) GANG.watch.push(q); q._dn=false; }
+function watchTick(){ GANG.watch=GANG.watch.filter(q=>q.state!=='off'&&(q.side||q.gang));
+  for(const q of GANG.watch){ if(q._dn) continue; if(q.state==='down'||q.state==='dead'){ q._dn=true; if(T0-(q.meT||-99)<2.5) gangDown(q); } } }
+function gangDown(q){
+  if(q.gang==='band'){ addCash(10000); toast(mpick(['Vigilante: "Correct! ₦10,000 for that bandit."','+₦10,000 bounty from the vigilante. One bandit down!']),2.4); return; }
+  if(!q.side) return;
+  if(CULT.pend&&q.side===rival(CULT.pend)){ CULT.need=Math.max(0,CULT.need-1); if(CULT.need>0){ toast(`One ${CULTS[q.side].name.slice(0,-1)} down. ${CULT.need} more for your test.`,2.4); }
+    else { CULT.me=CULT.pend; CULT.pend=null; toast(`You don prove yourself! You be ${CULTS[CULT.me].name.slice(0,-1)} now. Your boys go respect you, the ${CULTS[rival(CULT.me)].name} go hunt you.`,4); } saveCult(); return; }
+  if(CULT.me&&q.side===CULT.me&&q.gang==='cult'){ CULT.me=null; saveCult(); toast(`You don attack your own people! The ${CULTS[q.side].name} don declare you enemy.`,3.6); CULT.foe=q.side; } }
+
+// ---- the cults
+const CULTS={red:{name:'Red Scorpions',col:'#c0241d'},blue:{name:'Blue Mambas',col:'#2456b8'}}, rival=s=>s==='red'?'blue':'red';
+const CULT={me:null,pend:null,need:0,share:0,foe:null,callT:-999,saidT:-99};
+try{ const c=JSON.parse(localStorage.getItem('naija-cult')||'null'); if(c) Object.assign(CULT,{me:c.me||null,pend:c.pend||null,need:c.need|0,share:+c.share||0,foe:c.foe||null}); }catch(e){}
+const saveCult=()=>{ try{ localStorage.setItem('naija-cult',JSON.stringify({me:CULT.me,pend:CULT.pend,need:CULT.need,share:Math.round(CULT.share),foe:CULT.foe})); }catch(e){} };
+const enemyOf=side=>CULT.me===rival(side)||CULT.pend===rival(side)||CULT.foe===side;   // this cult wants you
+// turf: the drums west of the middle are Red Scorpion, east Blue Mamba
+const TURF_X=(()=>{ if(!UB) return 0; const xs=UBX.spots.map(s=>s.x).sort((a,b)=>a-b); return xs.length>1?(xs[(xs.length/2)|0]+xs[((xs.length/2)|0)-1])/2:UB.core.x; })();
+const turfAt=x=>x<TURF_X?'red':'blue';
+for(const S of UBX.spots) S.side=turfAt(S.x);
+// the two bases: a free yard by a street on each side
+const BASES=[];
+if(UB&&MODELS.ub_base_red&&MODELS.ub_base_blue) for(const side of ['red','blue']){ const own=UBX.spots.filter(s=>s.side===side), cx=own.length?own.reduce((a,s)=>a+s.x,0)/own.length:UB.core.x+(side==='red'?-180:180), cz=own.length?own.reduce((a,s)=>a+s.z,0)/own.length:UB.core.z;
+  const cand=[]; for(const e of ROADS){ if(!e.drive||e.c<4||FLYE.has(e.i)||e.len<14) continue; const A=nodes[e.a]; if(!inUB(A.x,A.z)) continue; const d=Math.hypot(A.x-cx,A.z-cz); if(d<25||d>320||turfAt(A.x)!==side) continue; cand.push([d,e]); }
+  cand.sort((a,b)=>a[0]-b[0]); let B=null;
+  for(const [,e] of cand){ const A=nodes[e.a]; for(const t of [.5,.3,.7]) for(const sd of [1,-1]){ const off=e.hw+5.8, x=A.x+e.fx*e.len*t-e.fz*off*sd, z=A.z+e.fz*e.len*t+e.fx*off*sd;
+      if(!onLand(x,z,5)||roadAt(x,z,4.4)||resolveCircle({x,z},5.2)||nearOtherRoad(x,z,null,2)||(CHOP&&Math.hypot(x-CHOP.x,z-CHOP.z)<30)||BASES.some(b=>Math.hypot(b.x-x,b.z-z)<60)) continue;
+      const nx=-e.fz*sd, nz=e.fx*sd; B={side,x,z,ry:Math.atan2(-nx,-nz)}; break; } if(B) break; }
+  if(!B) continue; BASES.push(B); const M=MODELS['ub_base_'+side]; new CullSet(modelLevels(M,Q.lod0,Q.draw*.9),[{x:B.x,y:0,z:B.z,ry:B.ry,sc:1}],{shadowDist:Q.shR,name:'ub_base_'+side});
+  B.at=(lx,lz)=>{ const c=Math.cos(B.ry), s=Math.sin(B.ry); return {x:B.x+lx*c+lz*s,z:B.z-lx*s+lz*c}; };
+  for(const [lx,lz,hx,hz,h] of [[0,-2.45,4.05,.15,2.5],[-4,-1.05,.15,1.55,1.4],[4,-1.05,.15,1.55,1.4],[0,-1.78,1,.43,.45],[-2.2,-.2,1.1,.2,.48],[2.2,-.2,1.1,.2,.48],[2.8,-1.88,.3,.28,1.1]]){ const p=B.at(lx,lz); addOB(p.x,p.z,hx,hz,-B.ry,h); }
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(CULTS[side].name.toUpperCase()+' · BASE','#ffffff',CULTS[side].col,1024,170),fog:false})); sp.scale.set(4.6,.76,1); const sg=B.at(0,-2.4); sp.position.set(sg.x,3.4,sg.z); scene.add(sp);
+  PLACES.push({name:`${CULTS[side].name} base`,sub:`Cult · Under Bridge ${side==='red'?'west':'east'}`,kind:'place',x:B.x,z:B.z}); B.boys=[]; B.capo=null; B.t=0; B.warned=-99; B.dare=-99; }
+const capoNear=()=>BASES.find(B=>B.capo&&B.capo.state==='crook'&&mode==='walk'&&!enemyOf(B.side)&&Math.hypot(player.x-B.capo.x,player.z-B.capo.z)<2.4);
+function capoMenu(B){ const S=B.side, N=CULTS[S].name, R=CULTS[rival(S)].name;
+  openMenu(`CAPO · ${N.toUpperCase()}`,CULT.me===S?'Our person':'This na our base',()=>{ const rows=[];
+    if(CULT.me===S){ rows.push({name:'Your share',sub:CULT.share>=50?`${naira(Math.floor(CULT.share/50)*50)} from the base`:'Nothing yet. Come back later',btn:'Collect',price:0,off:CULT.share<50,act:()=>{ const a=Math.floor(CULT.share/50)*50; addCash(a); CULT.share-=a; saveCult(); toast(`The Capo counts ${naira(a)} into your hand. "Na your share."`,2.6); }});
+      rows.push({name:'Call your boys',sub:T0-CULT.callT<180?'Your boys are already with you':'Three of the boys follow you and fight for you for 3 minutes',price:T0-CULT.callT<180?0:3000,btn:T0-CULT.callT<180?'With you':null,off:T0-CULT.callT<180,act:()=>{ closeMenu(); callBoys(B); }});
+      rows.push({name:'Leave the cult','sub':'"Nobody dey leave free." Settle them with ₦50,000',price:50000,act:()=>{ CULT.me=null; saveCult(); closeMenu(); toast(`You don settle the ${N}. You no be their member again.`,3); }}); }
+    else if(CULT.pend===S) rows.push({name:'Your test',sub:`Put down ${CULT.need} more ${R} (beat them down or kill them), then you are in`,btn:'OK',price:0,act:()=>closeMenu()});
+    else if(CULT.me||CULT.pend) rows.push({name:`Join the ${N}`,sub:'"You don already join another group. Comot here before wahala start."',btn:'No',price:0,off:true,act:()=>{}});
+    else rows.push({name:`Join the ${N}`,sub:`₦20,000 to enter, then prove yourself: put down 3 ${R}. Members watch your back; the ${R} will hunt you`,price:20000,act:()=>{ CULT.pend=S; CULT.need=3; CULT.foe=null; saveCult(); closeMenu(); toast(`"Welcome. Now go show us. Put down three ${R}." Their turf is the other side of the bridge.`,4); }});
+    return rows; }); }
+// your boys: three of them follow you for three minutes and shoot whoever comes for you
+function callBoys(B){ CULT.callT=T0; let n=0; for(let i=0;i<3;i++){ const a=player.yaw+Math.PI+mrr(-.8,.8), x=player.x+Math.sin(a)*4, z=player.z+Math.cos(a)*4; const q=gangWake('cult',x,z,{side:CULT.me,hat:CULT.me,gun:true,st:'follow',K:{until:T0+180,slot:i}}); if(q) n++; }
+  toast(n?'"Oya boys, follow am. Anybody touch am, finish am."':'"No boy dey around now. Come back later."',2.6); }
+// who your boys go for: anyone hitting you, the other cult, kidnappers, bandits
+function allyFoe(q,R=34){ let best=null,bd=R; const mine=CULT.me;
+  for(const p of GANG.list){ if(p===q||!upright(p)) continue; const bad=(p.side&&mine&&p.side===rival(mine))||p.gang==='kid'||p.gang==='band'; if(!bad) continue; const d=Math.hypot(p.x-q.x,p.z-q.z); if(d<bd){ bd=d; best=p; } }
+  for(const p of FIGHT.attackers||[]){ if(!upright(p)||p===q) continue; const d=Math.hypot(p.x-q.x,p.z-q.z); if(d<bd){ bd=d; best=p; } }
+  return best; }
+// a clash: a few of each cult on one street, shooting it out
+const CLASH={t:200,on:null};
+function startClash(){ for(let t=0;t<30;t++){ const a=MR()*Math.PI*2, r=mrr(48,85), x=player.x+Math.sin(a)*r, z=player.z+Math.cos(a)*r; const [e,de]=nearestRoad(x,z,q=>q.drive&&!FLYE.has(q.i)); if(!e||de>6||e.len<34) continue;
+    const A=nodes[e.a]; if(!inUB(A.x,A.z)) continue; const t0=clamp((x-A.x)*e.fx+(z-A.z)*e.fz,14,e.len-14), P=[t0-13,t0+13].map(s=>({x:A.x+e.fx*s,z:A.z+e.fz*s}));
+    if(P.some(p=>Math.hypot(p.x-player.x,p.z-player.z)<35)) continue; const sides=MR()<.5?['red','blue']:['blue','red'], n=ENV.night?4:3, made=[];
+    P.forEach((p,i)=>{ for(let k=0;k<n;k++){ const q=gangWake('cult',p.x-e.fz*mrr(-3,3)+mrr(-1.5,1.5),p.z+e.fx*mrr(-3,3)+mrr(-1.5,1.5),{side:sides[i],hat:sides[i],gun:true,st:'clash'}); if(q) made.push(q); } });
+    if(made.length<4){ for(const q of made) gangOut(q); return false; }
+    CLASH.on={t:0,list:made}; toast(`Gunshots! The ${CULTS.red.name} and the ${CULTS.blue.name} are fighting on ${e.name||'the street'}.${CULT.me?' Your boys need you!':' Stay low!'}`,3.4); return true; }
+  return false; }
+
+// ---- the kidnappers' den: a fenced yard away from the bridge, its gate on a street
+const KID={freeT:-99,den:null,cool:mrr(150,260),ncool:mrr(90,180),ev:null,held:false,tied:0,grabT:0,box:null,hostage:null,hq:null,guards:[],letT:-99,pin:null,spotT:0};
+try{ const b=JSON.parse(localStorage.getItem('naija-kidbox')||'null'); if(b&&b.own){ Object.assign(ARMS.own,b.own); ARMS.mag+=b.mag|0; ARMS.ammo+=b.ammo|0; localStorage.removeItem('naija-kidbox'); saveArms(); } }catch(e){}
+KID.den=(()=>{ if(!UB||!MODELS.ub_den) return null; const C=UB.core, cand=[];
+  for(const e of ROADS){ if(!e.drive||e.c<4||FLYE.has(e.i)||e.len<22) continue; const A=nodes[e.a]; if(!inUB(A.x,A.z)) continue; const d=Math.hypot(A.x-C.x,A.z-C.z); if(d<200||d>700) continue; cand.push([Math.abs(d-380),e]); }
+  cand.sort((a,b)=>a[0]-b[0]);
+  for(const R of [9.6,8.4]) for(const [,e] of cand){ const A=nodes[e.a]; for(const sd of [1,-1]){ const off=e.hw+8.4, x=A.x+e.fx*e.len*.5-e.fz*off*sd, z=A.z+e.fz*e.len*.5+e.fx*off*sd;
+      if(!onLand(x,z,9)||!inUB(x,z)||roadAt(x,z,7.4)||resolveCircle({x,z},R)||nearOtherRoad(x,z,null,1)||BASES.some(b=>Math.hypot(b.x-x,b.z-z)<40)||(CHOP&&Math.hypot(x-CHOP.x,z-CHOP.z)<40)) continue;
+      const nx=-e.fz*sd, nz=e.fx*sd; return {x,z,ry:Math.atan2(-nx,-nz)}; } }
+  return null; })();
+const denAt=(lx,lz)=>{ const D=KID.den, c=Math.cos(D.ry), s=Math.sin(D.ry); return {x:D.x+lx*c+lz*s,z:D.z-lx*s+lz*c}; };
+const denLocal=(x,z)=>{ const D=KID.den, c=Math.cos(D.ry), s=Math.sin(D.ry), dx=x-D.x, dz=z-D.z; return {x:dx*c-dz*s,z:dx*s+dz*c}; };
+const inDen=(x,z)=>{ if(!KID.den) return false; const l=denLocal(x,z); return Math.abs(l.x)<8.2&&Math.abs(l.z)<7.2; };
+if(KID.den){ const D=KID.den; new CullSet(modelLevels(MODELS.ub_den,Q.lod0*1.3,Q.draw),[{x:D.x,y:0,z:D.z,ry:D.ry,sc:1}],{shadowDist:Q.shR,name:'ub_den'});
+  for(const [lx,lz,hx,hz,h] of [[-4.8,7,3.2,.07,2.4],[4.8,7,3.2,.07,2.4],[8,0,.07,7,2.4],[-8,0,.07,7,2.4],[0,-7,8,.07,2.4],[1.55,5.5,.06,1.5,2.4],[0,-6.6,5.5,.1,3],[-5.5,-3.7,.1,2.9,2.1],[5.5,-3.7,.1,2.9,2.1],[0,-.8,1.2,.1,3],
+    [-5.5,-.8,.2,.2,3],[5.5,-.8,.2,.2,3],[5.5,4.15,.5,.35,.78],[0,2.6,.5,.4,.75],[-5,5,.3,.3,.88],[3,-4.1,.1,.1,1.6]]){ const p=denAt(lx,lz); addOB(p.x,p.z,hx,hz,-D.ry,h); }
+  PLACES.push({name:"Kidnappers' den",sub:'Under Bridge · hostages are kept here',kind:'place',x:D.x,z:D.z}); }
+// your things, taken off you, in a sack by the generator
+const BOXM=(()=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(.6,.45,.45),new THREE.MeshStandardMaterial({color:0x6b5a3a,roughness:.9})); m.castShadow=true; m.visible=false; scene.add(m); return m; })();
+function boxShow(){ if(!KID.den) return; const p=denAt(4.4,3.5); BOXM.position.set(p.x,.22,p.z); BOXM.rotation.y=KID.den.ry; BOXM.visible=!!KID.box; }
+const nearBox=()=>!!KID.box&&mode==='walk'&&!KID.tied&&Math.hypot(player.x-BOXM.position.x,player.z-BOXM.position.z)<1.8;
+function takeBox(){ const b=KID.box; if(!b) return; Object.assign(ARMS.own,b.own); ARMS.mag+=b.mag|0; ARMS.ammo+=b.ammo|0; if(b.cur&&ARMS.own[b.cur]) selectWeapon(b.cur); KID.box=null; boxShow(); saveArms(); weapHUD(true); try{ localStorage.removeItem('naija-kidbox'); }catch(e){} toast('You take back your things.',2); }
+function denGuards(){ if(!KID.den) return; KID.guards=KID.guards.filter(q=>isAlive(q)&&q.crook&&q.gang==='kid');
+  const posts=[[-1.2,3.1,0],[1.2,3.1,0],[1.0,6.0,0],[2.2,-2.4,0]], want=ENV.night||KID.held||KID.hostage?4:3;
+  for(let i=KID.guards.length;i<want&&i<posts.length;i++){ const [lx,lz]=posts[i], p=denAt(lx,lz), q=gangWake('kid',p.x,p.z,{hat:'mask',gun:i<2,st:'guard',yaw:KID.den.ry,K:{post:{x:p.x,z:p.z}}}); if(q) KID.guards.push(q); } }
+// a person tied to the post (from a kidnapping you didn't stop)
+function denHostage(){ if(!KID.hostage||KID.hq&&isAlive(KID.hq)) return; const p=denAt(3,-3.5); const q=gangWake('vic',p.x,p.z,{cast:KID.hostage.cast,st:'held',yaw:KID.den.ry,hp:60}); if(q){ q.act=null; KID.hq=q; } }
+const nearHostage=()=>!!KID.hq&&KID.hq.state==='crook'&&KID.hq.crook.st==='held'&&mode==='walk'&&!KID.tied&&Math.hypot(player.x-KID.hq.x,player.z-KID.hq.z)<1.8;
+function freeHostage(){ const q=KID.hq; if(!q) return; q.crook.st='free'; q.crook.t=0; toast(`"Thank you! God bless you!" ${CAST[q.cast]?.f?'She':'He'} runs for the gate.`,2.6); }
+// they grab you: a bus stops, masked men jump out
+function kidnapPlayer(){ const ev=KID.ev; KID.grabT=0; for(const q of GANG.list) if(q.gang==='kid'&&q.crook&&q.crook.ev===ev) gangOut(q);
+  fadeSwap(()=>{ if(ev&&ev.v){ const v=ev.v; v.taxi=false; v.kidV=false; kidSign(v,false); if(v.ai){ v.ai.goal=null; v.ai.wait=0; } } KID.ev=null;
+    if(mode==='drive') exitCar(); const own={...ARMS.own}; delete own.fists; delete own.board;
+    if(Object.keys(own).length){ KID.box={own,mag:ARMS.mag,ammo:ARMS.ammo,cur:ARMS.cur}; for(const k in own) delete ARMS.own[k]; ARMS.cur='fists'; ARMS.mag=0; ARMS.ammo=0; ARMS.aim=false; weapHUD(true); saveArms(); try{ localStorage.setItem('naija-kidbox',JSON.stringify(KID.box)); }catch(e){} }
+    const P=denAt(-3.6,-4.4); KID.pin=P; player.x=P.x; player.z=P.z; player.yaw=KID.den.ry; player.speed=0; rig.root.position.set(P.x,0,P.z); camState.last=-10; KID.held=true; KID.tied=9; KID.spotT=0; FIGHT.hp=Math.max(35,FIGHT.hp); boxShow(); denGuards(); });
+  setTimeout(()=>{ toast('You wake up tied up in a dark compound. A masked man: "Call your people. Make dem pay, or you no go comot here."',4.5); kidRansom(); },1100); }
+const ransomOf=()=>Math.max(5000,Math.min(250000,Math.round(CASH.n*.6/500)*500));
+function kidRansom(){ if(!KID.held) return; const r=ransomOf();
+  openMenu('KIDNAPPED',`They want ${naira(r)}`,[
+    {name:'Call your people to pay',sub:CASH.n>=r?`${naira(r)}. They give you back your things and let you go`:'You don\'t have enough',price:r,act:()=>{ closeMenu(); kidRelease(r); }},
+    {name:'Wait for a chance',sub:'Work the rope loose (press E again and again), find your things by the generator and run for the gate. The guards have guns',btn:'Wait',price:0,act:()=>{ closeMenu(); toast(`Press ${touchUI?'the action button':'E'} again and again to loosen the rope. Quietly...`,3); }}]); }
+function kidRelease(paid){ fadeSwap(()=>{ if(KID.box) takeBox(); const P=denAt(0,10.5); player.x=P.x; player.z=P.z; player.yaw=KID.den.ry; rig.root.position.set(P.x,0,P.z); camState.last=-10; KID.held=false; KID.tied=0; KID.letT=T0;
+    for(const q of KID.guards) if(q.crook) q.crook.st='guard'; });
+  toast(`They take your ${naira(paid)}, give you back your things and push you out of the gate. "Waka. If you talk, we go find you."`,4); }
+function kidStruggle(){ KID.tied=Math.max(0,KID.tied-1); burst(.03,900,.25,3); if(KID.tied>0){ if(MR()<.18){ KID.spotT=3; toast('A guard: "Wetin you dey do there?!"',2); } else if(KID.tied===4) toast('The rope dey loose small small...',1.6); return; }
+  KID.freeT=T0; toast('The rope don loose! Your things are in a sack by the generator. Then run for the gate!',3.4); }
+function kidSign(v,on){ if(v.kidSp){ v.kidSp.parent&&v.kidSp.parent.remove(v.kidSp); v.kidSp.material.map.dispose(); v.kidSp.material.dispose(); v.kidSp=null; }
+  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('KIDNAPPERS','#ffffff','#b3221c'),fog:false,depthTest:false})); sp.scale.set(2.4,.45,1); sp.position.set(0,((v.c.def.roof&&v.c.def.roof[2])||1.9)+.8,0); sp.layers.set(1); v.c.g.add(sp); v.kidSp=sp; } }
+// a van out of sight on a street that leads to the point g
+function vanPick(g,types){ const ok=v=>v.ai&&types.includes(v.type)&&!v.ai.chase&&!v.ai.goal&&v!==drive.v&&v!==myCar&&!v.mine&&!v.jacked&&!v.raid&&v!==RAID.v&&!v.taxi&&!v.band&&!flyUp(v)&&T0-(v.ocT||-999)>300;
+  const all=vehicles.filter(ok), dan=all.filter(v=>v.type==='danfo'), c=(dan.length&&MR()<.7?dan:all).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z)); if(!c.length) return null;
+  return vanPlace(c[0],g); }
+function vanPlace(v,g){ const D=goalField(g), opts=[];
+  for(const n of nodes){ const dn=D[n.i]; if(dn<60||dn>260||Math.hypot(n.x-player.x,n.z-player.z)<45) continue; for(const m of n.out){ if(D[m]>=dn) continue; const e=edgeOf(n.i,m); if(e&&e.drive&&e.len>12&&!FLYE.has(e.i)) opts.push([n.i,m]); } }
+  for(let t=0;t<20&&opts.length;t++){ const [a,b]=mpick(opts), seg=lineSeg(a,b), sp=mrr(.2,.6)*seg.len; segPos(seg,sp,_sp); if(vehicles.some(o=>Math.hypot(o.x-_sp.x,o.z-_sp.z)<11)||inView(_sp.x,1,_sp.z,3)) continue; const e=edgeOf(a,b), DF=v.c.def;
+    v.ai={a,b,s:sp,seg,na:-1,maxV:mrr(DF.maxV[0],DF.maxV[1])*1.1,wait:0,ghost:0,stuck:0,cond:e.cond,ec:e.c}; v.parked=false; v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx); v.speed=v.ai.maxV*.6; v.y=groundY(v.x,v.z); v.fh=0; return v; }
+  return null; }
+const vanSide=(v,k)=>{ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx, ow=v.c.def.W/2+.8; return {x:v.x+lx*ow-hx*(k*.9-.6),z:v.z+lz*ow-hz*(k*.9-.6)}; };
+// for you (at night, on foot, alone in Under Bridge)
+function kidTry(dt){ if(!KID.den||KID.ev||KID.held||mode!=='walk'||FIGHT.ko||!inUB(player.x,player.z)||inDen(player.x,player.z)||starCount()>0||CASH.n<3000||RIDE.state||T0-CULT.callT<180) return;
+  if((KID.cool-=dt)>0) return; KID.cool=ENV.night?mrr(260,460):mrr(600,1000); if(!ENV.night&&MR()<.6) return;
+  const [e,de]=nearestRoad(player.x,player.z,q=>q.drive&&!FLYE.has(q.i)); if(!e||de>14) return;
+  const g=goalAt(player.x,player.z), v=vanPick(g,['danfo','sedan','car2','suv']); if(!v) return; v.ai.goal=g; v.taxi=true; v.kidV=true; v.ocT=T0; KID.ev={v,who:'me',st:'come',t:0,g,men:[]}; }
+// for someone in the street near you
+function kidNPC(dt){ if(!KID.den||KID.ev||KID.held||!inUB(player.x,player.z)||mode==='interior') return; if((KID.ncool-=dt)>0) return; KID.ncool=ENV.night?mrr(200,360):mrr(300,520);
+  let vic=null; for(const p of peds){ if(p.state!=='walk'||p.spot||p.cop||p.dealer||p.crook||p.carried||p.cast==='schoolboy'||CAST[p.cast]?.cop) continue;
+    const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<18||d>80) continue; const [e,de]=nearestRoad(p.x,p.z,q=>q.drive&&!FLYE.has(q.i)); if(!e||de>9) continue; vic=p; break; }
+  if(!vic) return; const g=goalAt(vic.x,vic.z), v=vanPick(g,['danfo','sedan','car2','suv']); if(!v) return; v.ai.goal=g; v.taxi=true; v.kidV=true; v.ocT=T0; KID.ev={v,who:'npc',st:'come',t:0,g,vic,men:[]}; }
+function kidEnd(ok){ const ev=KID.ev; if(!ev) return; const v=ev.v; if(v){ v.taxi=false; v.kidV=false; kidSign(v,false); if(v.ai){ v.ai.goal=null; v.ai.wait=0; } } for(const q of ev.men) if(q.crook&&q.crook.st!=='hunt') q.crook.st='leave'; KID.ev=null; }
+function updateKid(dt){ if(!KID.den) return; const D=KID.den, dd=Math.hypot(player.x-D.x,player.z-D.z);
+  boxShow();
+  if(KID.hq&&!isAlive(KID.hq)){ if(KID.hq.state==='dead'&&KID.hostage){ KID.hostage=null; toast('The hostage is dead.',2.4); } KID.hq=null; }
+  if((dd<90||KID.held)&&!KID.vis){ KID.vis=true; denGuards(); denHostage(); } else if(dd>140&&!KID.held&&KID.vis){ KID.vis=false; for(const q of KID.guards) gangOut(q); KID.guards=[]; if(KID.hq&&KID.hq.crook&&KID.hq.crook.st==='held'){ gangOut(KID.hq); KID.hq=null; } }
+  if(KID.vis&&KID.hostage&&!KID.hq) denHostage();
+  // held: pinned while tied; out of the yard and away = free
+  if(KID.held){ if(KID.tied>0&&KID.pin){ player.x=KID.pin.x; player.z=KID.pin.z; player.speed=0; if(mode!=='walk') KID.tied=0; }
+    if(KID.spotT>0){ KID.spotT-=dt; if(KID.spotT<=0&&KID.tied>0){ KID.tied=Math.min(9,KID.tied+4); FIGHT.hp=Math.max(5,FIGHT.hp-8); thud(); toast('The guard slaps you and ties the rope again. "No try am again!"',2.6); } }
+    if(dd>34){ KID.held=false; toast(KID.box?'You don escape! But your things are still in their yard.':'You don escape! Run!',3); } }
+  else if(!KID.tied&&mode==='walk') kidTry(dt);
+  kidNPC(dt);
+  const ev=KID.ev; if(!ev) return; ev.t+=dt; const v=ev.v;
+  if(!vehicles.includes(v)||v.fire&&ev.st==='come'){ kidEnd(); return; }
+  if(ev.st==='come'){ const tgt=ev.who==='me'?player:ev.vic; if(ev.who==='npc'&&(!ev.vic||ev.vic.state!=='walk')){ kidEnd(); return; }
+    if(ev.who==='me'&&(mode!=='walk'||KID.held||inDen(player.x,player.z))){ kidEnd(); return; }
+    if(ev.who==='npc'&&ev.vic&&Math.hypot(ev.vic.x-ev.g.x,ev.vic.z-ev.g.z)>14) Object.assign(ev.g,goalAt(ev.vic.x,ev.vic.z),{D:null});
+    const d=Math.hypot(v.x-tgt.x,v.z-tgt.z);
+    if((d<11&&Math.abs(v.speed)<2)||(d<16&&ev.t>30)){ if(v.ai){ v.ai.wait=99; v.ai.goal=null; } v.speed=0; ev.st='grab'; ev.t=0;
+      const n=ev.who==='me'?3:2; for(let k=0;k<n;k++){ const p=vanSide(v,k), q=gangWake('kid',p.x,p.z,{hat:'mask',gun:k===0,st:'grab',K:{ev}}); if(q) ev.men.push(q); }
+      if(ev.who==='me') toast(mpick(['A bus stops by you. Masked men jump out: "Na am! Carry am!"','"Oya grab am! Enter the bus!" Masked men run at you!']),3);
+      else { const V=ev.vic; V.state='crook'; V.crook={k:'vic',st:'grabbed',t:0}; V.gang='vic'; V.speed=0; GANG.list.push(V); toast(CAST[V.cast]?.f?'"Help! Help! Dem dey carry me!" Kidnappers are dragging a woman into a bus!':'"Help! Help!" Kidnappers are dragging a man into a bus!',3.2); kidSign(v,true); } }
+    else if(ev.t>70){ kidEnd(); } return; }
+  if(ev.st==='grab'){ const men=ev.men.filter(q=>upright(q)&&q.crook&&q.crook.ev===ev);
+    if(ev.who==='me'){ if(men.length<2||ev.men.some(q=>q.wid&&!upright(q))||ev.t>25||mode!=='walk'||Math.hypot(player.x-v.x,player.z-v.z)>40){ for(const q of men){ q.crook.st=q.wid&&T0-(q.meT||-99)<8?'hunt':'flee'; q.crook.t=0; } kidEnd(); toast('The kidnappers give up and run back to their bus!',2.4); return; }
+      let close=0; for(const q of men) if(Math.hypot(q.x-player.x,q.z-player.z)<1.6) close++;
+      if(close>=2||(close===1&&FIGHT.hp<45)) KID.grabT+=dt*(T0-FIGHT.lastAtk<.8?.2:1); else KID.grabT=Math.max(0,KID.grabT-dt*.5);
+      if(KID.grabT>1.6){ ev.st='taken'; kidnapPlayer(); } return; }
+    // someone else: they drag her into the bus and drive off to the den
+    const V=ev.vic; if(!isAlive(V)||!V.crook){ kidEnd(); return; } if(!men.length){ V.crook.st='free'; V.crook.t=0; kidEnd(); return; }
+    const m0=men[0]; if(Math.hypot(m0.x-V.x,m0.z-V.z)<1.2){ V.x+=(v.x-V.x)*Math.min(1,dt*.8); V.z+=(v.z-V.z)*Math.min(1,dt*.8); m0.x=V.x+.5; m0.z=V.z+.3; }
+    if(Math.hypot(V.x-v.x,V.z-v.z)<2.4||ev.t>9){ ev.cast=V.cast; V.crook=null; V.gang=null; offPed(V); for(const q of men) gangOut(q); ev.men=[]; ev.st='drive'; ev.t=0; const G=goalAt(denAt(0,10).x,denAt(0,10).z); if(v.ai){ v.ai.wait=0; v.ai.goal=G; v.ai.maxV=Math.max(v.ai.maxV,13); } ev.G=G; } return; }
+  if(ev.st==='drive'){ // stop the bus and she gets away
+    const stopped=!v.ai||v.fire||v.wreck||(Math.abs(v.speed)<.4&&Math.hypot(player.x-v.x,player.z-v.z)<15&&(ev.slowT=(ev.slowT||0)+dt)>4);
+    if(stopped){ if(v.ai){ v.ai.goal=null; v.ai.wait=99; } kidSign(v,false); ev.st='bail'; ev.t=0;
+      for(let k=0;k<2;k++){ const p=vanSide(v,k), q=gangWake('kid',p.x,p.z,{hat:'mask',gun:true,st:'hunt',K:{ev}}); if(q) ev.men.push(q); }
+      const p=vanSide(v,2), V=gangWake('vic',p.x,p.z,{cast:ev.cast||'mama',st:'free'}); ev.vq=V; toast(`The bus stops! The kidnappers jump out shooting, and the ${CAST[ev.cast]?.f?'woman':'man'} runs!`,3); return; }
+    if(Math.hypot(v.x-ev.G.x,v.z-ev.G.z)<14||ev.G.near||Math.hypot(v.x-player.x,v.z-player.z)>420){ KID.hostage={cast:ev.cast||'mama',t:T0}; v.taxi=false; v.kidV=false; kidSign(v,false); if(v.ai){ v.ai.goal=null; v.ai.wait=0; } KID.ev=null;
+      { const f=CAST[KID.hostage.cast]?.f; toast(`The kidnappers got away. They are holding ${f?'her':'him'} in their den in Under Bridge (on your map). ${f?'Her':'His'} family will pay to get ${f?'her':'him'} back.`,4); } }
+    if(ev.t>150){ kidEnd(); } return; }
+  if(ev.st==='bail'){ const men=ev.men.filter(q=>upright(q)); const V=ev.vq;
+    if(!men.length||ev.t>45){ if(V&&isAlive(V)){ const r=Math.round(mrr(20000,45000)/500)*500; addCash(r); toast(`The family calls you: "God bless you!" They send you ${naira(r)}.`,3.6); } else toast('The kidnappers ran off.',2); KID.ev=null; for(const q of men) if(q.crook) q.crook.st='leave'; } } }
+
+// ---- the bandits: okadas come in at night, two masked men on each, shooting and robbing
+const BAND={t:mrr(70,140),raid:null,own:[]};
+function banditBike(g){ let v=BAND.own.find(b=>b!==drive.v&&!b.ai&&!b.fire&&!b.wreck&&!b.band&&Math.hypot(b.x-player.x,b.z-player.z)>60);
+  if(!v&&BAND.own.length<6){ v=newVehicle('okada','#1c1c1e'); BAND.own.push(v); } if(!v) return null; return vanPlace(v,g); }
+function startRaid(){ let g=null; for(let t=0;t<25&&!g;t++){ const a=MR()*Math.PI*2, r=mrr(38,62), x=player.x+Math.sin(a)*r, z=player.z+Math.cos(a)*r; const [e,de]=nearestRoad(x,z,q=>q.drive&&!FLYE.has(q.i)); if(!e||de>7) continue; const A=nodes[e.a]; if(!inUB(A.x,A.z)||inDen(x,z)) continue; g=goalAt(x,z); }
+  if(!g) return false; const bikes=[]; for(let i=0;i<3;i++){ const v=vanPick(g,['okada'])||banditBike(g); if(!v) break; v.ai.goal=Object.assign({},g,{near:false,D:null}); v.taxi=true; v.band=true; v.ocT=T0; bikes.push({v,men:[],st:'come'}); }
+  if(bikes.length<2){ for(const b of bikes){ b.v.taxi=false; b.v.band=false; if(b.v.ai) b.v.ai.goal=null; } return false; }
+  BAND.raid={bikes,g,t:0,said:false}; toast('You hear okadas coming fast, many of them... Bandits!',2.6); return true; }
+function raidOff(){ const R=BAND.raid; if(!R) return; for(const b of R.bikes){ const v=b.v; v.taxi=false; v.band=false; if(v.ai){ v.ai.goal=null; v.ai.wait=0; v.ai.maxV=Math.max(v.ai.maxV,14); } } BAND.raid=null; }
+function updateBand(dt){ const R=BAND.raid;
+  if(!R){ if(!ENV.night||!inUB(player.x,player.z)||mode==='interior'||KID.held) { BAND.t=Math.max(BAND.t,40); return; } if((BAND.t-=dt)<=0){ BAND.t=startRaid()?mrr(260,420):35; } return; }
+  R.t+=dt; let left=0;
+  for(const b of R.bikes){ const v=b.v; if(!vehicles.includes(v)){ b.st='lost'; continue; }
+    if(b.st==='come'){ left++; const d=Math.hypot(v.x-R.g.x,v.z-R.g.z); if(d<18||v.ai&&v.ai.goal&&v.ai.goal.near||R.t>40||Math.hypot(v.x-player.x,v.z-player.z)<16||!v.ai){ if(v.ai){ v.ai=null; } v.parked=true; v.speed=0; b.st='raid';
+        for(let k=0;k<2;k++){ const p=vanSide(v,k), q=gangWake('band',p.x,p.z,{hat:'mask',gun:true,st:'raid',K:{bike:b,airT:mrr(.5,3)}}); if(q) b.men.push(q); }
+        if(!R.said){ R.said=true; toast(mpick(['"Everybody lie down! Bring money!" Bandits are raiding the street!','Bandits! Masked men jump off their okadas shooting into the air!']),3.2); } } continue; }
+    if(b.st==='raid'||b.st==='mount'){ const men=b.men.filter(q=>upright(q)&&q.crook); if(b.st==='raid') left++;
+      if(b.st==='raid'&&(R.t>85||R.bikes.every(c=>c.men.filter(upright).length===0)||men.length===0)){ b.st='mount'; for(const q of men){ q.crook.st='mount'; q.crook.t=0; } }
+      if(b.st==='mount'){ if(!men.length||men.every(q=>q.crook.st==='on')){ for(const q of men) gangOut(q); b.men=[]; if(men.length&&!v.fire&&!v.wreck){ backOnRoad(v); if(v.ai){ v.ai.maxV=Math.max(v.ai.maxV,15); } } b.st='gone'; v.taxi=false; v.band=false; } else left++; } } }
+  if(!left||R.t>160||Math.hypot(player.x-R.g.x,player.z-R.g.z)>260){ for(const b of R.bikes) for(const q of b.men) if(q.crook&&upright(q)) q.crook.st='leave'; raidOff(); } }
+
+// ---- every gang member, every frame
+function gangTick(q,dt){ const K=q.crook; K.t+=dt; q.aimOn=false; q.recoil=(q.recoil||0)*Math.exp(-12*dt);
+  const T=pTarget(), dx=T.x-q.x, dz=T.z-q.z, d=Math.hypot(dx,dz)||.01, face=Math.atan2(dx,dz), turn=(a,k=6)=>{ q.yaw=lerpA(q.yaw,a,Math.min(1,dt*k)); };
+  const hunt=()=>{ if(!q.wid){ q.state='fight'; q.atk=null; q.atkT=mrr(.3,.9); return; } K.st='hunt'; K.t=0; };
+  switch(K.st){
+    case 'idle': case 'guard': { const P=K.post; q.speed=0; if(P&&Math.hypot(q.x-P.x,q.z-P.z)>.4) copMove(q,P.x-q.x,P.z-q.z,1.2,dt); turn(d<12?face:P&&P.ry!=null?P.ry:q.yaw,3); if(!q.act||MR()<dt*.05) q.act=mpick(['smoke','talk','idle_1','idle_1','argue']);
+      if(q.gang==='kid'){ const inside=inDen(player.x,player.z), hostile=(KID.held&&!KID.tied&&d<18&&(T0-KID.freeT>5||Math.hypot(player.x-KID.pin.x,player.z-KID.pin.z)>3))||(inside&&!KID.held&&T0-KID.letT>40)||(d<20&&T0-(q.meT||-99)<3)||(KID.hostage&&d<10&&!KID.held&&T0-KID.letT>40)||(d<24&&T0-PANIC.t<1&&T0-KID.letT>40)||(d<16&&ARMS.aim&&ARMS.cur!=='fists');
+        if(hostile&&mode!=='interior'){ for(const g of KID.guards) if(g.crook&&(g.crook.st==='guard'||g.crook.st==='idle')){ if(g.wid){ g.crook.st='hunt'; g.crook.t=0; } else { g.state='fight'; g.atk=null; g.atkT=mrr(.3,.9); } } if(sayT<=0){ sayT=4; toast(mpick(['"Who send you come here?! Waste am!"','"E don escape! Catch am!"','"Shoot am!"']),2.4); } } }
+      else if(q.side&&enemyOf(q.side)&&d<22&&mode==='walk') hunt();
+      else if(q.side&&T0-(q.meT||-99)<3) hunt();
+      break; }
+    case 'hunt': { if(FIGHT.dead||d>60||K.t>60||KID.held&&KID.tied){ K.st=K.post?'guard':'leave'; K.t=0; break; } if(!q.wid){ hunt(); break; }
+      copMove(q,dx,dz,d>17?3.4:d<6?-1.2:0,dt); turn(face,9); gangFire(q,T,dt); break; }
+    case 'clash': { let foe=null,bd=75; for(const p of GANG.list){ if(p===q||!upright(p)||p.side!==rival(q.side)) continue; const e=Math.hypot(p.x-q.x,p.z-q.z); if(e<bd){ bd=e; foe=p; } }
+      if(enemyOf(q.side)&&d<Math.min(bd,40)&&mode!=='interior'){ foe=T; bd=d; }
+      if(!foe||K.t>70){ K.st='leave'; K.t=0; break; }
+      const fx=foe.x-q.x, fz=foe.z-q.z; copMove(q,fx,fz,bd>20?3.2:bd<8?-1.3:0,dt); turn(Math.atan2(fx,fz),9); gangFire(q,foe,dt); break; }
+    case 'follow': { if(K.until<T0||!CULT.me){ K.st='leave'; K.t=0; break; } const foe=allyFoe(q);
+      if(foe){ const fx=foe.x-q.x, fz=foe.z-q.z, e=Math.hypot(fx,fz); copMove(q,fx,fz,e>18?3.4:e<6?-1:0,dt); turn(Math.atan2(fx,fz),9); gangFire(q,foe,dt); break; }
+      const a=player.yaw+Math.PI+(K.slot-1)*.7, gx=player.x+Math.sin(a)*3.4, gz=player.z+Math.cos(a)*3.4, e=Math.hypot(gx-q.x,gz-q.z);
+      if(e>1) copMove(q,gx-q.x,gz-q.z,e>8?4.2:e>3?2.6:1.3,dt); else q.speed=0; turn(e>1?Math.atan2(gx-q.x,gz-q.z):player.yaw,5); if(d>80) gangOut(q); break; }
+    case 'grab': { if(KID.ev!==K.ev){ K.st='leave'; break; } if(q.wid){ copMove(q,dx,dz,d>7?2.6:0,dt); turn(face,8); q.aimOn=d<14; if(q.aimOn) q.aimDir.set(dx,player.y+1.2-(q.y+1.4),dz).normalize(); if(T0-(q.meT||-99)<3) { K.st='hunt'; K.t=0; } break; }
+      if(K.ev.who==='me'){ copMove(q,dx,dz,d>1.1?4.4:0,dt); turn(face,9); } else { const V=K.ev.vic; if(V){ const vx=V.x-q.x, vz=V.z-q.z; copMove(q,vx,vz,Math.hypot(vx,vz)>1?4.2:0,dt); turn(Math.atan2(vx,vz),9); } } break; }
+    case 'flee': case 'leave': { copMove(q,-dx,-dz,K.st==='flee'?4.4:1.6,dt); turn(Math.atan2(-dx,-dz),6); if((d>45&&!inView(q.x,1,q.z,1.2))||K.t>45) gangOut(q); break; }
+    case 'held': { q.speed=0; turn(KID.den?KID.den.ry:q.yaw,2); if(!q.act||MR()<dt*.05) q.act=mpick(['idle_2','idle_1']); break; }
+    case 'free': case 'grabbed': { if(K.st==='grabbed'){ q.speed=0; break; } const G=KID.den&&q===KID.hq?(denLocal(q.x,q.z).z<5.5?denAt(0,6):denAt(0,18)):{x:q.x+(q.x-player.x),z:q.z+(q.z-player.z)}; copMove(q,G.x-q.x,G.z-q.z,4,dt); turn(Math.atan2(G.x-q.x,G.z-q.z),6);
+      if(q===KID.hq&&K.t>2&&KID.den&&Math.hypot(q.x-KID.den.x,q.z-KID.den.z)>18){ const r=Math.round(mrr(30000,60000)/500)*500; addCash(r); { const f=CAST[q.cast]?.f; toast(`${f?'She':'He'} is free! The family sends you ${naira(r)}: "We no go forget you!"`,3.6); } KID.hostage=null; KID.hq=null; K.st='leave'; K.t=0; }
+      else if(K.t>25) gangOut(q); break; }
+    case 'raid': { const B=K.bike, bv=B&&B.v; if(bv){ const ex=bv.x-q.x, ez=bv.z-q.z, e=Math.hypot(ex,ez); if(e>14) copMove(q,ex,ez,2.4,dt); else if(MR()<dt*.4){ K.wx=bv.x+mrr(-10,10); K.wz=bv.z+mrr(-10,10); } if(K.wx!=null&&e<=14){ const wx=K.wx-q.x, wz=K.wz-q.z; copMove(q,wx,wz,Math.hypot(wx,wz)>1?1.6:0,dt); } }
+      if((K.airT-=dt)<=0){ K.airT=mrr(2.5,5.5); gangAir(q); } q.aimOn=false; turn(d<25?face:q.yaw,4);
+      if(mode!=='interior'&&((d<22&&(ARMS.cur!=='fists'||T0-FIGHT.lastAtk<2))||d<9||T0-(q.meT||-99)<3||(B&&B.men.some(m=>m!==q&&(T0-(m.meT||-99)<3||!upright(m)))))){ K.st='hunt'; K.t=0; K.back='raid'; } break; }
+    case 'mount': { const bv=K.bike&&K.bike.v; if(!bv){ K.st='leave'; break; } const ex=bv.x-q.x, ez=bv.z-q.z, e=Math.hypot(ex,ez); if(e>1.4) copMove(q,ex,ez,4,dt); else { K.st='on'; q.speed=0; } turn(Math.atan2(ex,ez),8); break; }
+    case 'on': q.speed=0; break; } }
+function updateGangs(dt){ GANG.list=GANG.list.filter(q=>q.crook&&q.state!=='off'&&q.state!=='dead');
+  for(const q of GANG.list){ if(q.state==='crook') gangTick(q,dt); else if(q.state==='walk'||q.state==='idle'||q.state==='flee'||q.state==='react'){ q.state='crook'; q.crook.st=q.wid&&q.gang!=='vic'?'hunt':'leave'; q.crook.t=0; } }
+  if(GANG.list.length>40) for(const q of GANG.list.slice(0,GANG.list.length-40)) gangOut(q);
+  watchTick(); }
+
+// ---- the bases, the share, the clashes
+function updateBases(dt){ if(CULT.me){ CULT.share=Math.min(15000,CULT.share+dt*5); if((CULT._s=(CULT._s||0)+dt)>20){ CULT._s=0; saveCult(); } }
+  for(const B of BASES){ const d=Math.hypot(player.x-B.x,player.z-B.z); B.boys=B.boys.filter(q=>isAlive(q)&&q.crook);
+    if(B.capo&&!(isAlive(B.capo)&&B.capo.crook)) B.capo=null;
+    if(d<75&&mode!=='interior'){ if(!B.capo&&(B.t-=dt)<=0){ B.t=30; const p=B.at(0,-.9); B.capo=gangWake('cult',p.x,p.z,{side:B.side,hat:B.side,gun:true,st:'idle',yaw:B.ry,hp:220,K:{post:{x:p.x,z:p.z,ry:B.ry},capo:1}}); }
+      const want=ENV.night?5:3, spots=[[-2.2,1.6],[2.2,1.8],[-.8,2.8],[1.2,3.1],[3.2,.8]];
+      for(let i=B.boys.length;i<want;i++){ const [lx,lz]=spots[i], p=B.at(lx,lz), q=gangWake('cult',p.x,p.z,{side:B.side,hat:B.side,gun:i<2,st:'idle',K:{post:{x:p.x,z:p.z,ry:B.ry+mrr(-1,1)}}}); if(!q) break; B.boys.push(q); }
+      if(mode==='walk'&&CULT.me===B.side&&d<9&&T0-B.warned>90){ B.warned=T0; if(sayT<=0){ sayT=4; toast(mpick(['"Our person! Welcome back."','"Oga! Na you be this? Sit down, sit down."']),2.4); } }
+      if(mode==='walk'&&!CULT.me&&!CULT.pend&&!enemyOf(B.side)&&d<10&&T0-B.warned>120){ B.warned=T0; if(sayT<=0){ sayT=4; toast(`"This na ${CULTS[B.side].name} base. You wan join? Talk to the Capo."`,3); } } }
+    else if(d>110){ for(const q of B.boys) gangOut(q); B.boys=[]; if(B.capo){ gangOut(B.capo); B.capo=null; } } }
+  // a clash now and then at night (more often if you are in one of them)
+  if(ENV.night&&inUB(player.x,player.z)&&mode!=='interior'&&!KID.held){ if(CLASH.on){ CLASH.on.t+=dt; if(CLASH.on.t>80||CLASH.on.list.every(q=>!upright(q)||q.crook&&q.crook.st!=='clash')) CLASH.on=null; }
+    else if((CLASH.t-=dt)<=0) CLASH.t=startClash()?mrr(CULT.me?200:280,CULT.me?380:480):40; } }
+function updateUB2(dt){ if(!UB) return; updateGangs(dt); updateBases(dt); updateKid(dt); updateBand(dt); }
 
 /* ================= rope toll: area boys block a street with a rope =================
    On some side streets two area boys hold a rope across the road: ₦200 to pass (E). Cars that pay go through;
@@ -6546,6 +6832,16 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     ub2:()=>({mode,chair:CHAIR.ok?{x:Math.round(CHAIR.x),z:Math.round(CHAIR.z),ped:!!CHAIR.ped,st:CHAIR.ped&&CHAIR.ped.state,near:nearChair()}:null,menu:MENU.open?MENU.title:null,rows:MENU.open?[...document.querySelectorAll('#menuBody .sh-row b')].map(e=>e.textContent):null,
       ride:RIDE.state,street:!!RIDE.street,oc:RIDE.oc&&RIDE.oc.st,car:RIDE.car,rt:+(RIDE.t||0).toFixed(1),rv:RIDE.v?Math.round(Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)):null,rvx:RIDE.v?RIDE.v.x:null,rvz:RIDE.v?RIDE.v.z:null,vest:Math.round(ARMS.vest||0),card:cardOn(),cash:CASH.n,hp:Math.round(FIGHT.hp),ko:FIGHT.ko,stars:starCount(),
       prompt:$('#prompt').hidden?'':$('#promptTxt').textContent}),
+    ub3:()=>({mode,cult:{me:CULT.me,pend:CULT.pend,need:CULT.need,share:Math.round(CULT.share),foe:CULT.foe},bases:BASES.map(B=>({side:B.side,x:Math.round(B.x),z:Math.round(B.z),ry:+B.ry.toFixed(2),boys:B.boys.length,capo:!!B.capo})),
+      den:KID.den&&{x:Math.round(KID.den.x),z:Math.round(KID.den.z),ry:+KID.den.ry.toFixed(2)},kid:{held:KID.held,tied:KID.tied,ev:KID.ev&&{who:KID.ev.who,st:KID.ev.st,t:+KID.ev.t.toFixed(1),vd:Math.round(Math.hypot(KID.ev.v.x-player.x,KID.ev.v.z-player.z)),men:KID.ev.men.length},guards:KID.guards.map(q=>q.crook&&q.crook.st),hostage:!!KID.hostage,hq:KID.hq&&KID.hq.crook&&KID.hq.crook.st,hql:KID.hq&&KID.den?(l=>[+l.x.toFixed(1),+l.z.toFixed(1),KID.hq.state,+KID.hq.speed.toFixed(1)])(denLocal(KID.hq.x,KID.hq.z)):null,box:!!KID.box,grab:+KID.grabT.toFixed(2)},
+      gang:GANG.list.map(q=>[q.gang,q.side||'',q.crook&&q.crook.st,q.state,Math.round(Math.hypot(q.x-player.x,q.z-player.z)),q.hat||'',!!q.hm]),clash:!!CLASH.on,raid:BAND.raid&&{t:+BAND.raid.t.toFixed(1),bikes:BAND.raid.bikes.map(b=>[b.st,b.men.length,Math.round(Math.hypot(b.v.x-player.x,b.v.z-player.z))])},
+      hp:Math.round(FIGHT.hp),cash:CASH.n,own:Object.keys(ARMS.own),prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,menu:MENU.open?MENU.title:null,night:ENV.night}),
+    clashNow:()=>startClash(), raidNow:()=>startRaid(), kidMe:()=>{ KID.cool=0; const n=ENV.night; ENV.night=true; kidTry(.01); ENV.night=n; return !!KID.ev; }, kidNpcNow:()=>{ KID.ncool=0; kidNPC(.01); return !!KID.ev; },
+    cultSet:(me,pend,need)=>{ CULT.me=me||null; CULT.pend=pend||null; CULT.need=need|0; CULT.foe=null; return CULT; }, hostageNow:()=>{ KID.hostage={cast:'mama',t:T0}; return true; }, nightSet:(n)=>{ ENV.night=!!n; return ENV.night; },
+    gangAt:(k,x,z,hat,yaw)=>{ const q=gangWake(k,x,z,{hat,st:'held',yaw,gun:k==='band'}); return !!q; },
+    hatHold:(kind,y,z,k)=>{ const H=HAT_HOLD[kind]; H.p.set(0,y,z); H.k=k; return true; },
+    heal:()=>{ FIGHT.hp=100; return true; },
+    giveGun:()=>{ ARMS.own.ak=1; ARMS.mag=30; ARMS.ammo=90; selectWeapon('ak'); return ARMS.cur; },
     kerb:(x,z)=>kerbPoint(x,z),
     ocDbg:()=>{ const g=goalAt(player.x,player.z), D=goalField(g); return vehicles.filter(v=>v.ai).map(v=>({t:v.type,d:Math.round(Math.hypot(v.x-player.x,v.z-player.z)),goal:!!v.ai.goal,chase:!!v.ai.chase,jk:!!v.jacked,taxi:!!v.taxi,raid:!!v.raid,D:Math.round(D[v.ai.b]),b:v.ai.b})); },
     ocNow:()=>{ OC.t=0; return ocStreet(.01)||'ok'; },
