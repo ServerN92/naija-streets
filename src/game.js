@@ -17,6 +17,7 @@ import * as C2 from './char2.js?v=2bcadaf1a7';
 import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=2bcadaf1a7';
 import { createPhone } from './phone.js?v=2bcadaf1a7';
 import { MapView } from './mapview.js?v=2bcadaf1a7';
+import { createNet, serverURL, sample, DELAY } from './net.js?v=2bcadaf1a7';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
 const BUILD='2bcadaf1a7';
@@ -2328,6 +2329,7 @@ function drawMinimap(){ if(!mmCW) mmCW=mm.clientWidth||190; const S=mm.width, R0
   mg.drawImage(MINI.c,MINI.x-MINI.R,MINI.z-MINI.R,MINI.R*2,MINI.R*2);
   const rt=mapView.route; if(rt&&rt.length>1){ mg.lineJoin='round'; mg.lineCap='round'; mg.strokeStyle='#F2B705'; mg.lineWidth=7; mg.beginPath(); rt.forEach(([x,z],i)=>i?mg.lineTo(x,z):mg.moveTo(x,z)); mg.stroke(); }
   for(const v of vehicles){ if(v===drive.v) continue; if(Math.abs(v.x-px)>200||Math.abs(v.z-pz)>200) continue; mg.save(); mg.translate(v.x,v.z); mg.rotate(-v.h); mg.fillStyle=v.type==='police'?'#7fa6ff':'#e7e1d3'; mg.fillRect(-2.6,-1.1,5.2,2.2); mg.restore(); }
+  netMini(mg,px,pz);
   mg.restore();
   const c=Math.cos(th), s=Math.sin(th);
   const mark=(wx,wz,col,label)=>{ let dx=(wx-px)*sc, dz=(wz-pz)*sc, sx=dx*c-dz*s, sy=dx*s+dz*c; const d=Math.max(Math.abs(sx),Math.abs(sy)), lim=R0-18*k; if(d>lim){ sx*=lim/d; sy*=lim/d; }   // off the map: it sits on the edge, pointing the way
@@ -2337,14 +2339,15 @@ function drawMinimap(){ if(!mmCW) mmCW=mm.clientWidth||190; const S=mm.width, R0
   const hd=mode==='drive'?Math.atan2(-Math.sin(drive.v.h),Math.cos(drive.v.h)):Math.atan2(Math.cos(player.yaw),Math.sin(player.yaw));
   mg.save(); mg.translate(R0,R0); mg.rotate(hd+th); mg.scale(k,k); mg.fillStyle='#F7EFDF'; mg.strokeStyle='#0E1014'; mg.lineWidth=4; mg.beginPath(); mg.moveTo(20,0); mg.lineTo(-13,-13); mg.lineTo(-6,0); mg.lineTo(-13,13); mg.closePath(); mg.stroke(); mg.fill(); mg.restore(); }
 function openMap(){ if(!mmCache) buildMinimapCache(); mapView.image=mmCache; mapView.open(); for(const kk in K) K[kk]=false; joy.x=joy.y=0; if(document.pointerLockElement) document.exitPointerLock(); }
-function nearestVehicle(maxD=3.9){ let best=null,bd=maxD; for(const v of vehicles){ if(v.wreck||v.fire) continue; const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd&&Math.abs(v.speed)<7){ bd=d; best=v; } } return best; }
+function nearestVehicle(maxD=3.9){ let best=null,bd=maxD; for(const v of vehicles){ if(v.wreck||v.fire||v.net) continue;   // (other players' vehicles: you ride with them, see netRideNear)
+    const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd&&Math.abs(v.speed)<7){ bd=d; best=v; } } return best; }
 const nearDoor=()=>Math.hypot(player.x-APT.front.x,player.z-APT.front.z)<2.4;
 const nearExit=()=>Math.hypot(player.x-ROOM.exit.x,player.z-ROOM.exit.z)<(ROOM===INT?1.2:1.8);
 let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$('#speedo'), SPD=$('#spd');
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else if(netRideNear()) txt=`Ride with ${netRideNear().n}`; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
@@ -2508,8 +2511,8 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
-  else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); { const nr=netRideNear(); if(nr) return netRideAsk(nr); } const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  else if(mode==='drive'){ { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } if(drive.ride){ if(NET.ride){ if(Math.abs(drive.speed)<3) netRideEnd(true,''); else toast('Tell am to stop first'); return; } if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1,bike2:1,sbike:1,skate:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
@@ -4580,7 +4583,7 @@ const fitOf=id=>{ const i=+V2.fit[id]; return i>=0&&i<4?i:0; };
 // Tunde, Amaka and Ada walk the streets too, each in one of their outfits
 function npcV2(id){ const C=V2.casts[id], c=CAST[id]; if(!C||!c||PEOPLE.casts[id]) return; const cl=C.npc.clips;
   PEOPLE.casts[id]={tpl:C.tpl,clips:cl,off:C.npc.off,y0:0,sc:1,f:!!c.f,v2:true,idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>cl[n]&&c.idle.includes(n))||'idle_1'}; PEOPLE.n++; }
-function wearFit(i){ const id=WARD.cur; if(!isV2(id)||!hero) return; C2.setOutfit(hero.cObj,i); V2.fit[id]=i; try{ localStorage.setItem('naija-fit',JSON.stringify(V2.fit)); }catch(e){} }
+function wearFit(i){ const id=WARD.cur; if(!isV2(id)||!hero) return; C2.setOutfit(hero.cObj,i); V2.fit[id]=i; try{ localStorage.setItem('naija-fit',JSON.stringify(V2.fit)); }catch(e){} netLook(); }
 // put on a look: the body is swapped inside the same character, so walking, driving and fighting carry on as before
 async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const v2=isV2(id), L=v2?v2Of(id):LOOK_LIST.find(l=>l.id===id); if(!L) return false; if(id===WARD.cur) return true;
   let C=null;
@@ -4605,7 +4608,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   const a=hero.act; for(const k of ['idle','walk','walk2','run']) if(a[k]){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0}); hero.k2=0;
   WALK_V=C&&C.v2&&C.f?1.45:1.7;   // her walk is a sway, a little slower
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);
-  WARD.cur=id; if(save) try{ localStorage.setItem('naija-look2',id); }catch(e){}
+  WARD.cur=id; if(save) try{ localStorage.setItem('naija-look2',id); }catch(e){} netLook();
   applyColours(); lastMode=null; if(HL.broom) holdProp(HL.broom,'Right',[0,.05,.02],[0,0,0]); return true; }
 // the look you chose last time comes back once the people files are in
 function applySavedLook(){ if(!PROFILE) return; let id=savedLook();
@@ -6022,7 +6025,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  if(started) netTick(dt); updateCamera(dt); if(PH) PH.tick(dt); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -6034,6 +6037,147 @@ function tuneResolution(avg,ivs){ const goal=capped30?33.4:16.7;
     PR=Math.max(Q.prMin,PR-.12); applyPR(); prCool=4; }
   else if(avg<goal*1.08&&PR<Q.pr-.01&&prCool<=0){ PR=Math.min(Q.pr,PR+.06); applyPR(); prCool=5; } }
 const perfIv=[];
+/* ================= other players (online, src/net.js + server/) =================
+   Real players near you walk the same Mushin: each in their own person and outfit, with their name over their head,
+   walking, running, jumping and fighting with the game's moves. A player who drives brings the vehicle along (the
+   same model, steering and bouncing on the road like the traffic); walk up to it and press E to ride with them.
+   The city's people, traffic and weather stay in each phone (time and weather already match for everyone). */
+const NET={c:null,solo:false,id:0,room:'',P:new Map(),ride:null,asked:0,n:1,log:[],open:false,tag:{},cars:[]};
+const NET_MAX=()=>Q.npc<=8?6:Q.npc<=14?10:14;   // full bodies for the nearest players (Low / Medium / High)
+const netSeats=t=>Math.max(1,(SEATS[t]||[]).length);
+const netLookNow=()=>WARD.cur&&WARD.cur!=='me'?WARD.cur:savedLook();
+function netMe(){ const m=mode==='drive'?'d':mode==='enter'?'e':mode==='interior'?'i':'w', f=n=>Math.round(n*100)/100;
+  const s={x:f(player.x),y:f(player.y),z:f(player.z),r:f(player.yaw),s:f(player.speed),m,a:hero&&hero.ov&&mode==='walk'?hero.ov.name:'',c:CR.on||CR.sl>0?1:0,car:null};
+  if(mode==='drive'&&drive.v){ const v=drive.v; s.x=f(v.x); s.y=f(v.y||0); s.z=f(v.z); s.s=0; if(!drive.ride) s.car={k:v.netType||v.type,h:Math.round(v.h*1000)/1000,s:f(v.speed),n:netSeats(v.type),col:v.col||''}; }
+  return s; }
+function netHello(){ const l=netLookNow(); return {n:(PROFILE&&PROFILE.name)||'Guest',g:isF()?'f':'m',l,o:isV2(l)?fitOf(l):0,s:netMe()}; }
+function netLook(){ if(NET.c){ const l=netLookNow(); NET.c.look(l,isV2(l)?fitOf(l):0); } }
+function netStart(){ if(NET.c||NET.solo) return; const url=serverURL(); if(!url){ NET.solo=true; return; }
+  NET.c=createNet(url,netHello,{
+    welcome(id,room,list){ NET.id=id; NET.room=room; for(const p of list) netAdd(p); netCount(); netLine('',`You dey online · ${netN()} for this side of Mushin`); },
+    join(p){ netAdd(p); netCount(); netLine('',`${p.n} don land`); },
+    quit(id){ if(id<0){ for(const k of [...NET.P.keys()]) netDrop(k); if(NET.ride) netRideEnd(false,''); netCount(); return; } const R=NET.P.get(id); if(R) netLine('',`${R.n} don comot`); netDrop(id); netCount(); },
+    update(l,t){ for(const e of l){ const R=NET.P.get(e[0]); if(!R) continue; R.seen=t; R.buf.push({t,x:e[1],y:e[2],z:e[3],r:e[4],s:e[5],m:e[6],a:e[7],c:e[8],car:e[9],pr:e[10]||null}); if(R.buf.length>24) R.buf.splice(0,R.buf.length-24); } },
+    chat(id,n,x){ if(!id){ netLine('',x); return; } const R=NET.P.get(id); netLine(n,x,id===NET.id); if(R){ R.say=x; R.sayT=7; R.tagK=''; } },
+    look(id,l,o){ const R=NET.P.get(id); if(!R) return; R.l=l; R.o=o; netBodyFree(R); },
+    ride(ok,d,i,why){ NET.asked=0; if(ok) netRideStart(d,i); else toast(why==='full'?'The motor don full':why==='moving'?'Wait make e stop first':why==='far'?'Waka closer to the motor':'E no fit carry you now'); },
+    off(why){ if(NET.ride) netRideEnd(false,why==='gone'?'Your driver don comot':'Your driver don park. You don reach.'); },
+    status(s){ netCount(); if(s==='old') netLine('','A new version of the game dey. Refresh to play online.'); } }); }
+const netN=()=>[...NET.P.values()].length+1;
+function netAdd(p){ if(p.id===NET.id) return; const R=NET.P.get(p.id)||{id:p.id,buf:[],av:null,loading:false,seen:0,car:null,tag:null,tagK:'',say:'',sayT:0};
+  Object.assign(R,{n:p.n,g:p.g,l:p.l,o:p.o}); NET.P.set(p.id,R); }
+function netDrop(id){ const R=NET.P.get(id); if(!R) return; netBodyFree(R); if(R.car) netCarFree(R); if(R.tag){ scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); } NET.P.delete(id); }
+
+// ---- their bodies: the same people files as yours, with every move fitted
+function netCast(R){ const id=R.l; if(isV2(id)) return loadV2(id).then(C=>C||loadV2(R.g==='f'?'p_amaka':'p_dayo'));
+  const C=PEOPLE.casts[id]; if(C&&C.clips.walk) return Promise.resolve(C);
+  return loadV2(R.g==='f'?'p_amaka':'p_dayo'); }   // a look we don't have here: one of our people of the same sex
+function netBody(R,C){ const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(), root=new THREE.Group(); root.rotation.order='YXZ'; wrap.scale.setScalar(C.sc||1); inner.position.y=C.y0||0; wrap.add(inner); root.add(wrap);
+  let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
+  if(C.v2) C2.setOutfit(inner,(R.o|0)%4);
+  const mixer=new THREE.AnimationMixer(inner), cl=C.clips, i0=C.idle0||'idle', act={idle:mixer.clipAction(cl[i0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk)};
+  for(const k in act){ act[k].play(); act[k].setEffectiveWeight(k==='idle'?1:0); }
+  let car=null; if(HERO_CAR&&hips){ car=mixer.clipAction(fitClip(HERO_CAR,names,hips.position)); car.setLoop(THREE.LoopOnce,1); car.clampWhenFinished=true; }
+  root.visible=false; scene.add(root); mixer.update(0);
+  return {root,inner,hips,mixer,act,car,C,i0,w:{idle:1,walk:0,run:0},ov:null,ovN:'',ovW:0,seat:null,seatI:-1,h:C.f?1.66:1.8}; }
+function netBodyFree(R){ const a=R.av; R.av=null; R.tagK=''; if(!a) return; if(a.root.parent) a.root.parent.remove(a.root); a.mixer.stopAllAction(); a.mixer.uncacheRoot(a.inner); a.inner.traverse(o=>{ if(o.isSkinnedMesh) o.skeleton.dispose(); }); }
+function netWant(R){ if(R.av||R.loading||!PEOPLE.done) return; R.loading=true; const want=R.l+'/'+R.o;
+  netCast(R).then(C=>{ R.loading=false; if(!C||!NET.P.has(R.id)||R.av||want!==R.l+'/'+R.o) return; R.av=netBody(R,C); }).catch(()=>{ R.loading=false; }); }
+// walk, run and the one-off moves (jump, punches, kicks...) blended like yours
+function netAnim(a,dt,sp,ov){ const C=a.C, wv=C.wv||1.7, rv=C.rv||4.9, w=a.w; let ti=0,tw=0,tr=0; sp=Math.abs(sp);
+  if(sp<.08) ti=1; else if(sp<=wv){ const k=sp/wv; ti=1-k; tw=k; } else { const k=clamp((sp-wv)/(rv-wv),0,1); tw=1-k; tr=k; }
+  const s=1-Math.exp(-10*dt); w.idle+=(ti-w.idle)*s; w.walk+=(tw-w.walk)*s; w.run+=(tr-w.run)*s;
+  if(ov!==a.ovN){ a.ovN=ov; const k=ov&&C.clips[ov]; if(a.ov&&(!k||a.ov.getClip()!==k)) a.ovOld=a.ov; a.ov=null;
+    if(k){ const x=a.mixer.clipAction(k); x.reset(); x.setLoop(THREE.LoopOnce,1); x.clampWhenFinished=true; x.timeScale=/^(jump)$/.test(ov)?1.35:1.6; x.setEffectiveWeight(0); x.play(); a.ov=x; } }
+  if(a.ovOld){ a.ovOld.setEffectiveWeight(Math.max(0,a.ovOld.getEffectiveWeight()-dt*6)); if(a.ovOld.getEffectiveWeight()<=0){ a.ovOld.stop(); a.ovOld=null; } }
+  const on=a.ov&&!a.ov.paused?1:0; a.ovW+=(on-a.ovW)*(1-Math.exp(-14*dt)); if(a.ov){ a.ov.setEffectiveWeight(a.ovW); if(!on&&a.ovW<.02){ a.ov.stop(); a.ov=null; } }
+  const base=1-a.ovW; a.act.idle.setEffectiveWeight(w.idle*base); a.act.walk.setEffectiveWeight(w.walk*base); a.act.run.setEffectiveWeight(w.run*base);
+  a.act.walk.timeScale=sp>.08&&sp<=wv?clamp(sp/wv,.6,1.4):1;
+  const O=C.off||{}; a.inner.position.y=(C.y0||0)+((O[a.i0]||0)*w.idle+(O.walk||0)*w.walk+(O.run||0)*w.run)*base+(a.ov?(O[ov]||0)*a.ovW:0);
+  a.mixer.update(dt); }
+// in a vehicle: sitting in a seat, like you (or standing on a skateboard)
+function netSeat(a,v,idx){ if(!v.c.hi) return false; const st=(SEATS[v.type]||[])[idx]; if(!st) return false;
+  if(a.seat!==v.c.hi||a.seatI!==idx){ v.c.hi.add(a.root); a.seat=v.c.hi; a.seatI=idx; a.ovN=''; if(a.ov){ a.ov.stop(); a.ov=null; } a.ovW=0;
+    a.root.position.set(0,0,0); a.root.rotation.set(0,0,0); a.inner.position.y=a.C.y0||0;
+    if(v.type==='skate'||!a.car){ for(const k in a.act) a.act[k].setEffectiveWeight(k==='idle'?1:0); a.mixer.update(0); a.root.position.set(st.x,st.y,st.z); return true; }
+    for(const k in a.act) a.act[k].setEffectiveWeight(0); a.car.reset(); a.car.setEffectiveWeight(1); a.car.play(); a.car.time=a.car.getClip().duration-.02; a.car.paused=true; a.mixer.update(0);
+    const RS=HERO_RIDE[v.type]||{x:0,y:0,z:0,ry:0}; a.root.rotation.y=RS.ry; v.c.hi.updateMatrixWorld(true); const hp=a.hips.getWorldPosition(new THREE.Vector3()); v.c.hi.worldToLocal(hp);
+    a.root.position.set(st.x+RS.x-hp.x,st.y+RS.y-hp.y,st.z+RS.z-hp.z); }
+  return true; }
+function netUnseat(a){ if(!a.seat) return; scene.add(a.root); a.root.rotation.set(0,0,0); a.seat=null; a.seatI=-1; if(a.car) a.car.stop(); a.w={idle:1,walk:0,run:0}; }
+// their vehicle: a real vehicle in the street (traffic waits for it) that this phone doesn't drive
+function netCarGet(R,k,col){ if(R.car&&R.car.netType===k) return R.car; if(R.car) netCarFree(R);
+  let v=NET.cars.find(v=>v.netFree&&v.netType===k); if(!v){ v=newVehicle(k,col||CAR_COLORS[0],true); v.net=true; v.netType=k; NET.cars.push(v); }
+  Object.assign(v,{netFree:false,netOf:R.id,parked:false,ai:null,speed:0,wreck:false,fire:0,dmg:0}); R.car=v; v.lastH=v.h; return v; }
+function netCarFree(R){ const v=R.car; R.car=null; if(!v) return; if(NET.ride&&NET.ride.v===v) netRideEnd(false,'Your driver don comot');
+  for(const o of NET.P.values()) if(o.av&&o.av.seat===v.c.hi){ netUnseat(o.av); o.av.root.visible=false; }
+  Object.assign(v,{netFree:true,netOf:0,x:1e5,z:1e5,speed:0,parked:true}); }
+// someone driving near you, stopped: you can ride with them
+function netRideNear(){ if(!NET.c||mode!=='walk') return null; let best=null,bd=4.2;
+  for(const R of NET.P.values()){ const v=R.car; if(!v||v.netFree||Math.abs(v.speed)>2.5||netSeats(v.type)<2) continue; const d=Math.hypot(v.x-player.x,v.z-player.z)-v.c.def.L*.25; if(d<bd){ bd=d; best=R; } } return best; }
+function netRideAsk(R){ if(T0-NET.asked<2) return; NET.asked=T0; NET.c.ride(R.id); }
+function netRideStart(d,i){ const R=NET.P.get(d), v=R&&R.car; if(!v||mode!=='walk'||busy){ NET.c.off(); return; }
+  closeWard(); carryDrop(true); if(CR.on||CR.sl>0) crOff(); drive.v=v; drive.ride=true; drive.speed=0; drive.steer=0; mode='drive'; player.speed=0; camState.last=-10; lastMode=null; NET.ride={d,i,v};
+  seatHero(v,i); toast(`You dey inside ${R.n}'s ${(VT[v.type]||{name:'motor'}).name}. Press E to get down.`,3); }
+function netRideEnd(tell,msg){ const r=NET.ride; if(!r) return; NET.ride=null; if(tell&&NET.c) NET.c.off();
+  if(mode==='drive'&&drive.v===r.v){ const sp=r.v.speed; exitCar(); r.v.parked=false; r.v.speed=sp; } if(msg) toast(msg,3); }
+
+// ---- every frame
+let netSendT=0;
+function netTick(dt){ if(!NET.c){ if(started&&PROFILE&&PEOPLE.done) netStart(); return; }
+  if((netSendT-=dt)<=0){ netSendT=.1; NET.c.state(netMe()); }
+  const now=performance.now(), t=now-DELAY, inside=mode==='interior', cam=camera.position, me=NET.id;
+  // who gets a full body: the nearest ones that are out on the street
+  const list=[]; for(const R of NET.P.values()){ const s=R.buf.length?sample(R.buf,t):null; R.st=s;
+    const stale=!s||now-R.seen>2500, gone=stale||s.m==='i'||(s.m==='d'&&!s.car&&!s.pr);   // inside a building, or in a taxi
+    if(gone){ if(R.car&&(stale||!s.car)) netCarFree(R); if(R.av) R.av.root.visible=false; if(R.tag) R.tag.visible=false; R.d=1e9; continue; }
+    R.d=Math.hypot(s.x-cam.x,s.z-cam.z); list.push(R); }
+  list.sort((a,b)=>a.d-b.d); const max=NET_MAX();
+  for(let i=0;i<list.length;i++){ const R=list[i], s=R.st;
+    // their vehicle first (passengers sit in it)
+    if(s.car&&!s.pr){ const v=netCarGet(R,s.car.k,s.car.col); v.x=s.x; v.z=s.z; v.h=s.car.h; v.speed=s.car.s; if(!v.y) v.y=groundY(v.x,v.z); }
+    else if(R.car) netCarFree(R); }
+  for(let i=0;i<list.length;i++){ const R=list[i], s=R.st; let show=i<max&&R.d<160&&!inside;
+    if(show&&!R.av) netWant(R); const a=R.av;
+    if(a){ let seatV=null, idx=0;
+      if(s.pr){ const [d,si]=s.pr, D=d===me?null:NET.P.get(d); seatV=d===me?(mode==='drive'&&!drive.ride?drive.v:null):D&&D.car; idx=si; if(!seatV) show=false; }
+      else if(s.car&&R.car){ seatV=R.car; idx=0; }
+      if(seatV&&show){ if(!netSeat(a,seatV,idx)) show=false; else if(a.seat){ a.mixer.update(0); } }
+      else { if(a.seat) netUnseat(a); if(show){ a.root.position.set(s.x,s.y,s.z); a.root.rotation.y=s.r; netAnim(a,dt,s.s,s.a||''); } }
+      a.root.visible=show; }
+    netTagUpdate(R,show&&!!a,dt); } }
+// ---- names over their heads (and what they last said)
+function netTagDraw(R){ const say=R.sayT>0?R.say:'', k=R.n+'|'+say; if(R.tagK===k) return; R.tagK=k;
+  const W=512, H=say?150:64, [c,g]=cv(W,H); g.textAlign='center'; g.textBaseline='middle';
+  if(say){ g.font='600 30px "Barlow Semi Condensed", Arial, sans-serif'; const lines=[]; let cur=''; for(const w of say.split(' ')){ const t2=cur?cur+' '+w:w; if(g.measureText(t2).width>W-40&&cur){ lines.push(cur); cur=w; } else cur=t2; } if(cur) lines.push(cur); lines.splice(2);
+    const bw=Math.min(W-8,Math.max(...lines.map(l=>g.measureText(l).width))+36); g.fillStyle='rgba(247,239,223,.95)'; g.beginPath(); g.roundRect?g.roundRect((W-bw)/2,2,bw,lines.length*34+16,14):g.rect((W-bw)/2,2,bw,lines.length*34+16); g.fill();
+    g.fillStyle='#0E1014'; lines.forEach((l,j)=>g.fillText(l,W/2,26+j*34)); }
+  g.font='32px Bungee, Impact, sans-serif'; const tw=g.measureText(R.n).width+30, y=H-32; g.fillStyle='rgba(12,14,18,.72)'; g.beginPath(); g.roundRect?g.roundRect((W-tw)/2,y-24,tw,48,24):g.rect((W-tw)/2,y-24,tw,48); g.fill();
+  g.fillStyle='#F2B705'; g.fillText(R.n,W/2,y+2);
+  const tex=new THREE.CanvasTexture(c); tex.colorSpace=THREE.SRGBColorSpace;
+  if(!R.tag){ R.tag=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,depthWrite:false,transparent:true,sizeAttenuation:false})); R.tag.renderOrder=990; R.tag.center.set(.5,0); scene.add(R.tag); }
+  else { R.tag.material.map.dispose(); R.tag.material.map=tex; }
+  R.tag.scale.set(.6,.6*H/W,1); }   // the same size on screen near or far
+function netTagUpdate(R,show,dt){ if(R.sayT>0){ R.sayT-=dt; if(R.sayT<=0) R.tagK=''; }
+  const a=R.av; show=show&&R.d<60; if(show) netTagDraw(R); if(!R.tag) return; R.tag.visible=show; if(!show) return;
+  a.root.updateMatrixWorld(true); const p=a.hips?a.hips.getWorldPosition(_fv):a.root.position; R.tag.position.set(p.x,p.y+(a.seat?a.h*.62:a.h*.55)+.25,p.z); }
+// other players on the little map: green dots
+function netMini(g,px,pz){ for(const R of NET.P.values()){ const s=R.st; if(!s||s.m==='i'||Math.abs(s.x-px)>220||Math.abs(s.z-pz)>220) continue; g.fillStyle='#16A06B'; g.strokeStyle='#0E1014'; g.lineWidth=1.2; g.beginPath(); g.arc(s.x,s.z,4.2,0,7); g.fill(); g.stroke(); } }
+
+// ---- chat
+function netCount(){ const b=$('#chatN'); if(!b) return; const st=NET.c?NET.c.status:'off'; b.textContent=st==='on'?String(netN()):'·'; $('#chatBtn').classList.toggle('off',st!=='on'); }
+function netLine(n,x,mine){ NET.log.push({n,x,mine,t:performance.now()}); if(NET.log.length>40) NET.log.shift(); netLogDraw(); }
+function netLogDraw(){ const el=$('#chatLog'); if(!el) return; el.textContent=''; const now=performance.now(), L=NET.open?NET.log.slice(-12):NET.log.filter(m=>now-m.t<14000).slice(-5);
+  for(const m of L){ const d=document.createElement('div'); d.className='cl'+(m.n?'':' sys')+(m.mine?' me':''); if(m.n){ const b=document.createElement('b'); b.textContent=m.n+': '; d.appendChild(b); } d.appendChild(document.createTextNode(m.x)); el.appendChild(d); }
+  el.hidden=!L.length; }
+setInterval(()=>{ if(!NET.open&&NET.log.length) netLogDraw(); },2000);
+function chatOpen(){ if(!started||!NET.c) return; NET.open=true; $('#chatBox').hidden=false; for(const kk in K) K[kk]=false; joy.x=joy.y=0; if(document.pointerLockElement) document.exitPointerLock(); netLogDraw(); setTimeout(()=>$('#chatIn').focus(),30); }
+function chatClose(){ NET.open=false; $('#chatBox').hidden=true; $('#chatIn').blur(); netLogDraw(); }
+$('#chatBtn').addEventListener('click',()=>NET.open?chatClose():chatOpen());
+$('#chatForm').addEventListener('submit',e=>{ e.preventDefault(); const x=$('#chatIn').value.trim(); if(x&&NET.c){ if(NET.c.status!=='on') netLine('','You no dey online now. E go try again.'); else NET.c.chat(x); } $('#chatIn').value=''; chatClose(); });
+$('#chatIn').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Escape') chatClose(); });
+addEventListener('keydown',e=>{ if(!started||NET.open||!NET.c||(e.target&&e.target.tagName==='INPUT')) return; if((e.key==='Enter'||e.key==='t'||e.key==='T')&&!e.repeat&&!PHONE.open&&!mapView.isOpen&&!(PH&&PH.cam())&&!DEALER.open&&!MENU.open&&!WARD.open){ e.preventDefault(); e.stopPropagation(); chatOpen(); } },true);
+
 function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-lastT;
   if(raw<10.5) return;   // 120 Hz+ screens: draw at ~60 fps to save battery and heat
   lastT=t; const dt=Math.min(raw/1000,.05);
@@ -6085,6 +6229,11 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     skaters:()=>SKATERS.map(k=>({cast:k.cast,x:+k.x.toFixed(1),z:+k.z.toFixed(1),d:+Math.hypot(k.x-player.x,k.z-player.z).toFixed(1),sp:+k.S.sp.toFixed(2),air:k.S.air,vis:k.vis,down:!!k.down,push:k.S.push&&k.S.push.st})),
     skaterLook(i=0,back=4.5,hgt=1.4){ const k=SKATERS[i]; if(!k) return null; const fx=Math.cos(k.h), fz=-Math.sin(k.h); DEVCAM={p:new THREE.Vector3(k.x+fx*back+Math.sin(k.h)*back*.6,hgt,k.z+fz*back+Math.cos(k.h)*back*.6),t:new THREE.Vector3(k.x,.9,k.z)}; return {x:k.x,z:k.z}; },
     key(k,on){ K[k]=on; return true; },
+    // online test helpers
+    net:()=>({status:NET.c&&NET.c.status,id:NET.id,room:NET.room,mode,ride:NET.ride&&{d:NET.ride.d,i:NET.ride.i},x:player.x,z:player.z,
+      log:NET.log.map(m=>(m.n?m.n+': ':'')+m.x),players:[...NET.P.values()].map(R=>({id:R.id,n:R.n,l:R.l,body:!!R.av,vis:!!(R.av&&R.av.root.visible),seat:!!(R.av&&R.av.seat),car:R.car?R.car.netType:null,tag:!!(R.tag&&R.tag.visible),x:R.st&&+R.st.x.toFixed(1),z:R.st&&+R.st.z.toFixed(1),a:R.st&&R.st.a}))}),
+    nearCar(){ let b=null,bd=1e9; for(const v of vehicles){ if(v.net||v.ai||v.wreck||v.forSale||v.type==='skate'||!SEATS[v.type]||SEATS[v.type].length<3) continue; const d=Math.hypot(v.x-player.x,v.z-player.z); if(d<bd){ bd=d; b=v; } } if(!b) return null; const hx=Math.cos(b.h), hz=-Math.sin(b.h); return {x:b.x,z:b.z,type:b.type,sx:b.x+hz*(b.c.def.W/2+1),sz:b.z-hx*(b.c.def.W/2+1)}; },
+    netCar:()=>{ for(const R of NET.P.values()) if(R.car) return {x:R.car.x,z:R.car.z,type:R.car.netType,h:R.car.h,W:R.car.c.def.W}; return null; },
     skaterKnock(i=0){ const k=SKATERS[i]; if(!k) return null; skaterKnock(k); return !!k.down; },
     start(){ if(!started) $('#enterBtn').click(); },
     // test helper: stand next to a place from the map (name contains the text), facing it

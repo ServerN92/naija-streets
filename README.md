@@ -26,6 +26,15 @@ Then commit and push. GitHub Pages serves the `main` branch.
 - `tools/` – model shrinking (`lod.py`, `bake.py`), OpenStreetMap conversion (`osm_world.py`, `convert.py`), `manifest.py`, `stamp.py`,
   big Meshy/Tripo models (`fbxbin.py`, `rebake.py`, `autorig.py`)
 
+## Online: real players together
+Players near you appear in your city with their own person and outfit and their name over their head. They walk, run,
+jump and fight with the same moves; a player who drives brings the vehicle along, and you can walk up to it and press E
+to ride with them (E again to get down). The chat button (or Enter / T on a keyboard) talks to everyone online, and
+what someone says shows over their head. Other players are green dots on the little map.
+The city's people and traffic still run on each phone; time and weather are already the same for everyone.
+- `src/net.js` – the connection; `server/` – the live server (Node, see `server/README.md` to run it or put it on Fly.io)
+- On localhost the game uses a server on port 2567; the live site uses `wss://naija-streets.fly.dev`; `?solo=1` plays offline
+
 ## The city: Mushin
 The streets, buildings, markets, schools, railway and footpaths are the real Mushin (Lagos) from OpenStreetMap:
 about 4,800 street pieces and 24,000 buildings over 3.3 × 3.3 km, with Ladipo, Mushin and Idi-Oro markets, Papa Ajao,

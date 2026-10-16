@@ -39,6 +39,20 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .big[hidden]{display:none}.big.wasted{color:#d6352a}.big.busted{color:#4f86f0}
 @keyframes bigIn{from{opacity:0;transform:scale(1.3)}to{opacity:1;transform:none}}
 
+/* online: player count on the chat button, the chat lines, the box you type in */
+#chatBtn{position:relative}
+#chatBtn b{position:absolute;right:-4px;top:-4px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:var(--flag);color:#fff;font:700 12px/18px var(--fb);text-align:center}
+#chatBtn.off b{background:#5a5a5a}
+.chatlog{position:absolute;left:calc(18px + var(--sl));bottom:calc(150px + var(--sb));width:min(380px,calc(100vw - 36px));display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.chatlog .cl{align-self:flex-start;max-width:100%;background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:16px;line-height:1.3;word-wrap:break-word}
+.chatlog .cl b{color:var(--danfo)}.chatlog .cl.me b{color:#7fe0b4}.chatlog .cl.sys{color:var(--muted);font-style:italic}
+.chatbox{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sb));width:min(560px,calc(100vw - 32px - var(--sl) - var(--sr)));z-index:30;pointer-events:auto}
+.chatbox form{display:flex;gap:8px}
+.chatbox input{flex:1;min-width:0;font:inherit;font-size:18px;color:var(--cream);background:rgba(12,14,18,.9);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:10px 14px;min-height:48px;box-sizing:border-box;-webkit-user-select:text;user-select:text}
+.chatbox input:focus{outline:2px solid var(--danfo);outline-offset:1px}
+.chatbox button{font-family:var(--fd);background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:0 18px;min-height:48px}
+body.touchui .chatlog{bottom:auto;top:calc(150px + var(--st));width:min(320px,40vw)}
+body.touchui .chatbox{bottom:auto;top:calc(12px + var(--st))}
 /* Loading */
 .loading{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:calc(20px + var(--st)) calc(16px + var(--sr)) calc(20px + var(--sb)) calc(16px + var(--sl));overflow:auto;background:radial-gradient(90% 70% at 70% 100%,#3a2412 0%,transparent 60%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink);transition:opacity .6s ease}
 .loading.gone{opacity:0;pointer-events:none}
@@ -274,6 +288,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>
   <div class="tr">
     <div class="chip" id="clock" aria-live="off"><svg id="wIcon" viewBox="0 0 24 24" aria-hidden="true"></svg><span class="t" id="clockT">--:--</span><span class="w" id="clockW"></span></div>
+    <button type="button" class="iconbtn" id="chatBtn" aria-label="Chat with players online"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg><b id="chatN">·</b></button>
     <button type="button" class="iconbtn" id="phoneBtn" aria-label="Your phone" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
     <button type="button" class="iconbtn" id="setBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
@@ -281,6 +296,8 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
   <div class="prompt" id="prompt" hidden role="button" tabindex="-1"><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="chatlog" id="chatLog" hidden aria-live="polite"></div>
+  <div class="chatbox" id="chatBox" hidden><form id="chatForm" autocomplete="off"><input id="chatIn" maxlength="140" placeholder="Talk to players near you…" enterkeyhint="send" aria-label="Chat message"><button type="submit">Send</button></form></div>
   <div class="trick" id="trick" hidden><b id="trickT"></b><span id="trickP"></span></div>
   <div class="jail" id="jailBox" hidden><b>MUSHIN POLICE CELL</b><span id="jailT">3:00</span><small>until they release you</small></div>
   <div class="lookhint" id="lookhint" hidden>Click the city to look around with your mouse</div>
