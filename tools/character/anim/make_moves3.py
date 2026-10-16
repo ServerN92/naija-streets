@@ -29,6 +29,9 @@ def moves(F):
         # climbing: vault a fence, climb a wall, drop down off a wall; each carries its floor (see mix3.floor)
         'v3_vault': mix3.floor(F('Jump Over Obstacle'), 'flat'), 'v3_wall': mix3.floor(F('Sprint To Wall Climb'), 'up'),
         'v3_drop': mix3.floor(F('Jumping Down'), 'down'),
+        # women: Mixamo's female idle, walk, run and jumps, and the catwalk for a slow stroll
+        'v3f_idle': F('F Idle'), 'v3f_walk': F('F Walk'), 'v3f_run': F('F Run'), 'v3f_catwalk': F('F Catwalk Walk'),
+        'v3f_jump': F('F Standing Jump'), 'v3f_jump_run': mix3.cut(F('F Running Jump'), 0, 25),
     }
 
 def write(MV, out, skel):
