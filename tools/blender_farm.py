@@ -41,6 +41,7 @@ class MB:
         self.name = name; self.detail = detail; self.bm = bmesh.new(); self.col = self.bm.loops.layers.color.new('Col'); self.R = random.Random(seed)
         self.bones = bones; self.bone = 0
         if bones: self.dl = self.bm.verts.layers.deform.verify()
+        self.cl = self.bm.faces.layers.int.new('fcls'); self.cls = 0   # what each face is made of (0 plain, 1 wood, 2 zinc, 3 mud plaster, 4 concrete)
 
     def poly(self, pts, cols, smooth=False):
         vs = [self.bm.verts.new(p) for p in pts]
@@ -48,6 +49,7 @@ class MB:
             for v in vs: v[self.dl][self.bone] = 1.0
         try: f = self.bm.faces.new(vs)
         except ValueError: return None
+        f[self.cl] = self.cls
         for l, c in zip(f.loops, cols): l[self.col] = (c[0], c[1], c[2], 1.0)
         f.smooth = smooth; return f
 
@@ -55,6 +57,7 @@ class MB:
         k = 1 + var * (vnoise(p, f, s) * 2 - 1); return (col[0] * k, col[1] * k, col[2] * k)
 
     def face(self, pts, col, var=.1, smooth=False, f=3.0, s=0):
+        self.cls = cls_of(col)
         return self.poly(pts, [self.shade(col, p, var, f, s) for p in pts], smooth)
 
     def box(self, M, sx, sy, sz, col, var=.08, bottom=False, top=True, f=3.0, smooth=False):
@@ -65,7 +68,7 @@ class MB:
 
     def cyl(self, M, r0, r1, h, col, n=10, top=True, bottom=False, smooth=True, var=.06, inner=None, col1=None):
         ring = lambda r, z: [M @ Vector((r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n), z)) for i in range(n)]
-        a, b = ring(r0, 0), ring(r1, h); c1 = col1 or col
+        a, b = ring(r0, 0), ring(r1, h); c1 = col1 or col; self.cls = cls_of(col)
         for i in range(n):
             j = (i + 1) % n; self.poly([a[i], a[j], b[j], b[i]], [self.shade(col, a[i], var), self.shade(col, a[j], var), self.shade(c1, b[j], var), self.shade(c1, b[i], var)], smooth)
             if inner: self.face([b[i], b[j], a[j], a[i]], inner, var, smooth)
@@ -76,7 +79,7 @@ class MB:
         pts = []
         for j in range(rings + 1):
             t = math.pi * j / rings; pts.append([M @ Vector((r * math.sin(t) * math.cos(2 * math.pi * i / seg), r * math.sin(t) * math.sin(2 * math.pi * i / seg), -r * math.cos(t))) for i in range(seg)])
-        cf = colf or (lambda p, lp: col); Mi = M.inverted() if colf else M
+        cf = colf or (lambda p, lp: col); Mi = M.inverted() if colf else M; self.cls = 0 if colf else cls_of(col)
         for j in range(rings):
             for i in range(seg):
                 k = (i + 1) % seg
@@ -87,7 +90,7 @@ class MB:
 
     def tube(self, pts, radii, col, n=6, smooth=True, var=.08, cols=None, cap=True):
         """A bent tube through points (stems, horns, tails, vines)."""
-        rings = []
+        rings = []; self.cls = cls_of(col)
         for i, p in enumerate(pts):
             d = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
             a = Vector((0, 0, 1)) if abs(d.z) < .9 else Vector((1, 0, 0)); u = d.cross(a).normalized(); v = d.cross(u)
@@ -101,7 +104,7 @@ class MB:
 
     def loft(self, secs, n=16, colf=None, col=None, var=.03, cap=True):
         """A smooth body through sections (centre Vector, axis-u Vector, axis-v Vector, half-width, up-height, down-height)."""
-        rings = []
+        rings = []; self.cls = 0
         for (c, u, v, hw, hu, hd) in secs:
             ring = []
             for k in range(n):
@@ -122,7 +125,7 @@ class MB:
 
     def leaf(self, base, yaw, pitch, L, W, col, droop=.5, seg=3, tip=None, twist=0.0, both=True, shape='lance'):
         """A leaf (or frond) leaving `base`, pointing `yaw` round, `pitch` up, bending down `droop` along its length."""
-        pts = []; p = Vector(base); a = pitch
+        pts = []; self.cls = 0; p = Vector(base); a = pitch
         dirh = Vector((math.cos(yaw), math.sin(yaw), 0)); side = Vector((-math.sin(yaw), math.cos(yaw), 0))
         for i in range(seg + 1):
             t = i / seg
@@ -144,6 +147,12 @@ class MB:
         if self.bones:   # smooth skin: join the corners of each part, never across parts (each part follows its own bone)
             for gi in range(len(self.bones)): bmesh.ops.remove_doubles(self.bm, verts=[v for v in self.bm.verts if gi in v[self.dl]], dist=1e-4)
         me = bpy.data.meshes.new(self.name); self.bm.to_mesh(me); self.bm.free()
+        fc = me.attributes.get('fcls')
+        if fc and not self.bones:   # the material class rides in UV channel 0 (the game picks the photo texture from it)
+            uv = me.uv_layers.new(name='cls'); vals = [0] * len(me.polygons); fc.data.foreach_get('value', vals)
+            for poly, k in zip(me.polygons, vals):
+                for li in poly.loop_indices: uv.data[li].uv = (k / 8 + 1 / 16, .5)
+        if fc: me.attributes.remove(me.attributes['fcls'])
         ob = bpy.data.objects.new(self.name, me); bpy.context.scene.collection.objects.link(ob)
         if self.bones:
             for b in self.bones: ob.vertex_groups.new(name=b)
@@ -179,6 +188,20 @@ C = {k: lin(v) for k, v in dict(
     umb_g='#1f8a5c', umb_w='#f2efe6', chair='#2f6fb0').items()}
 
 
+# what each palette colour is made of: 1 wood, 2 zinc / metal, 3 mud plaster, 4 concrete (0: painted, plants, animals...)
+CLS_NAMES = {1: 'wood wood_d wood_l wood_g plank stake basket basket_d', 2: 'zinc zinc_d rust rust_d steel tap chrome rim', 3: 'mud mud_l mud_d plaster', 4: 'conc conc_d block'}
+CLS_KEY = {k: c for c, names in CLS_NAMES.items() for k in names.split()}
+_CLS_DIR = [(tuple(v / max(1e-6, sum(C[k])) for v in C[k]), CLS_KEY.get(k, 0), C[k]) for k in C]
+def cls_of(col):
+    """The material class of a colour: exact palette colours by their name, darker or lighter copies by their hue."""
+    if col is None: return 0
+    for d, k, c in _CLS_DIR:
+        if c == tuple(col): return k
+    t = sum(col) or 1; dn = tuple(v / t for v in col)
+    best = min(_CLS_DIR, key=lambda e: sum((a - b) ** 2 for a, b in zip(e[0], dn)))
+    return best[1] if sum((a - b) ** 2 for a, b in zip(best[0], dn)) < 2e-4 else 0
+
+
 # ================================================================ small pieces
 def corrugated(B, x0, x1, y0, y1, zf, zb, seed=0, rusty=.4):
     """A zinc sheet: ridges run down the slope (along y), edge y0 at height zf, edge y1 at zb."""
@@ -192,6 +215,7 @@ def corrugated(B, x0, x1, y0, y1, zf, zb, seed=0, rusty=.4):
         x = x0 + (x1 - x0) * i / (2 * n); yy = y0 + (y1 - y0) * j / ny; zz = zf + (zb - zf) * j / ny
         return Vector((x, yy, zz + (amp if i % 2 else 0) + dz))
     up = 1 if (y1 - y0) * (zb - zf) <= 0 or True else 1
+    B.cls = 2
     for j in range(ny):
         for i in range(2 * n):
             q = [P(i, j), P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]
@@ -279,7 +303,7 @@ def barn(detail=True, seed=31):
             y0 = -D / 2 + D * i / n; y1 = -D / 2 + D * (i + 1) / n; z0 = H + 1.5 * (1 - abs(y0) / (D / 2)); z1 = H + 1.5 * (1 - abs(y1) / (D / 2))
             c = tuple(v * R.uniform(.85, 1.1) for v in C['plank']); x = sx * (W / 2 - .05)
             q = [Vector((x, y0, H)), Vector((x, y1, H)), Vector((x, y1, z1)), Vector((x, y0, z0))]
-            B.poly(q if sx > 0 else q[::-1], [B.shade(c, p, .12) for p in q]); B.poly(q[::-1] if sx > 0 else q, [tuple(v * .45 for v in c)] * 4)
+            B.cls = 1; B.poly(q if sx > 0 else q[::-1], [B.shade(c, p, .12) for p in q]); B.poly(q[::-1] if sx > 0 else q, [tuple(v * .45 for v in c)] * 4)
     # front wall with the door opening (2.8 wide, 2.5 high)
     B.box(T(0, -D / 2 + .05, .25), W, .1, .4, C['conc'], .08)
     for sx in (-1, 1): planks(B, sx * 1.4, sx * W / 2, -D / 2 + .05, .65, H, C['plank'] if sx < 0 else tuple(v * .95 for v in C['plank']))
@@ -408,7 +432,7 @@ def pen(detail=True, seed=34):
         for j in range(n):
             x0, x1 = -W / 2 + W * i / n, -W / 2 + W * (i + 1) / n; y0, y1 = -D / 2 + D * j / n, -D / 2 + D * (j + 1) / n
             q = [Vector((x0, y0, .015)), Vector((x1, y0, .015)), Vector((x1, y1, .015)), Vector((x0, y1, .015))]
-            B.poly(q, [B.shade(C['soil_d'] if vnoise(p, .7, seed) > .45 else C['laterite'], p, .2, 1.5) for p in q])
+            B.cls = 0; B.poly(q, [B.shade(C['soil_d'] if vnoise(p, .7, seed) > .45 else C['laterite'], p, .2, 1.5) for p in q])
     B.box(T(0, D / 2 - .55, 0), 3.2, .6, .55, C['wood_d'], .1, f=4)                    # trough
     B.box(T(0, D / 2 - .55, .45), 3.0, .45, .06, C['hay'], .25, f=6)
     B.cyl(T(3.3, D / 2 - .9, 0), .55, .6, .35, C['tyre'], n=12, top=False, inner=C['tyre'])   # a tyre trough of water
@@ -463,7 +487,7 @@ def office(detail=True, seed=36):
     for i in range(n):
         a0, a1 = 2 * math.pi * i / n, 2 * math.pi * (i + 1) / n; c = C['umb_g'] if i % 2 else C['umb_w']
         p0 = Vector((px, py, 2.5)); p1 = Vector((px + r * math.cos(a0), py + r * math.sin(a0), 2.05)); p2 = Vector((px + r * math.cos(a1), py + r * math.sin(a1), 2.05))
-        B.poly([p0, p1, p2], [c] * 3); B.poly([p0, p2, p1], [tuple(v * .5 for v in c)] * 3)
+        B.cls = 0; B.poly([p0, p1, p2], [c] * 3); B.poly([p0, p2, p1], [tuple(v * .5 for v in c)] * 3)
     B.box(T(px, py, .7), 1.1, .7, .05, C['wood_l'], .1)
     for sx in (-1, 1):
         for sy in (-1, 1): B.box(T(px + sx * .5, py + sy * .3, 0), .05, .05, .7, C['wood_d'], .1)
@@ -662,7 +686,7 @@ def palm(detail=True, seed=101):
         for s in range(seg):
             q0 = p.copy(); p = p + (dirh * math.cos(a) + Vector((0, 0, 1)) * math.sin(a)) * (L / seg); a -= 1.4 / seg
             t = (s + .5) / seg; w = .55 * math.sin(math.pi * min(1, t * 1.1 + .05))
-            col = C['palm_fr'] if i % 2 else C['palm_fr2']
+            col = C['palm_fr'] if i % 2 else C['palm_fr2']; B.cls = 0
             if detail:
                 for sg in (-1, 1):   # pinnae, angled down a bit
                     B.poly([q0, p, p + side * sg * w - Vector((0, 0, .12)), q0 + side * sg * w * .9 - Vector((0, 0, .12))], [B.shade(col, q0, .15)] * 4)
@@ -793,6 +817,139 @@ def truck(detail=True, seed=107):
         for k in range(3): B.sphere(T(-.2 + k * .2, 1.1, 1.55, .3, s=(.4, 1.8, .5)), .12, C['pl_fruit'], seg=5, rings=3)
     for y in (-1.45, 1.35):
         for x in (-.8, .8): wheel(B, x, y, .37, .37, .24, detail)
+    return B.finish()
+
+
+# ================================================================ grazing, produce and the farmer's lorry
+TURF_W, TURF_D = 2.3, 1.75   # one pasture tile in the cow pen (4 x 3 of them)
+
+
+def turf(detail=True, kind='full', seed=120):
+    """One pasture tile, 2.3 x 1.75 m. full: thick green grass the cows graze; low: eaten down to stubble;
+    bare: grazed out, dry cracked earth; wet: just watered, dark earth with new shoots coming up."""
+    B = MB('fm_turf' + ('' if kind == 'full' else '_' + kind) + ('' if detail else '_lod1'), detail, seed + len(kind)); R = B.R
+    hw, hd = TURF_W / 2, TURF_D / 2
+    ground = {'full': lin('#4f6a2a'), 'low': lin('#6a6a34'), 'bare': lin('#9a7048'), 'wet': lin('#6a4a30')}[kind]
+    ground2 = {'full': lin('#3e5a22'), 'low': lin('#8a7444'), 'bare': lin('#b08458'), 'wet': lin('#57391f')}[kind]
+    n = 8 if detail else 2
+    for i in range(n):
+        for j in range(n):
+            x0, x1 = -hw + TURF_W * i / n, -hw + TURF_W * (i + 1) / n; y0, y1 = -hd + TURF_D * j / n, -hd + TURF_D * (j + 1) / n
+            P = [Vector((x0, y0, .02)), Vector((x1, y0, .02)), Vector((x1, y1, .02)), Vector((x0, y1, .02))]
+            B.poly(P, [B.shade(ground2 if vnoise(p, 1.6, seed) > .55 else ground, p, .22, 3.5, seed) for p in P])
+    if kind == 'bare' and detail:   # cracks in the dry earth
+        for i in range(14):
+            x, y, a = R.uniform(-hw + .1, hw - .1), R.uniform(-hd + .1, hd - .1), R.uniform(0, 3.14)
+            B.box(T(x, y, .021, a), R.uniform(.15, .4), .012, .003, lin('#5a3e26'), .1)
+    blades = {'full': (320, 90), 'low': (140, 40), 'bare': (18, 6), 'wet': (70, 20)}[kind][0 if detail else 1]
+    for i in range(blades):
+        x, y = R.uniform(-hw + .05, hw - .05), R.uniform(-hd + .05, hd - .05)
+        if kind == 'full': L, col, tip = R.uniform(.16, .34), C['grass'] if i % 3 else C['grass_d'], C['leaf_l']
+        elif kind == 'low': L, col, tip = R.uniform(.04, .09), C['grass_d'], C['grass_y']
+        elif kind == 'bare': L, col, tip = R.uniform(.03, .07), C['leaf_dry'], C['grass_y']
+        else: L, col, tip = R.uniform(.04, .1), C['leaf_l'], lin('#9ad04a')
+        B.leaf((x, y, .02), R.uniform(0, 6.28), R.uniform(1.1, 1.5), L, .035 if detail else .07, col, droop=.5, seg=2, tip=tip, shape='blade', both=False)
+    if kind == 'wet' and detail:   # puddles
+        for i in range(3):
+            x, y = R.uniform(-hw + .4, hw - .4), R.uniform(-hd + .3, hd - .3)
+            B.cyl(T(x, y, .022, s=(1, .7, 1)), R.uniform(.12, .25), R.uniform(.12, .25), .002, lin('#2a3a44'), n=10, var=.05)
+    return B.finish()
+
+
+def milkjar(detail=True, seed=121):
+    """A big glass jar of fresh cow milk with a red lid: what a cow leaves after a good feed."""
+    B = MB('fm_milk' + ('' if detail else '_lod1'), detail, seed)
+    n = 14 if detail else 8
+    B.cyl(T(0, 0, 0), .13, .14, .03, lin('#d8d4cc'), n=n, bottom=True)                    # glass foot
+    B.cyl(T(0, 0, .03), .14, .14, .27, lin('#f6f3ea'), n=n, top=False)                    # milk in the glass
+    B.cyl(T(0, 0, .30), .14, .11, .05, lin('#e8eef0'), n=n, top=False)                    # shoulder (glass above the milk)
+    B.cyl(T(0, 0, .35), .115, .115, .06, C['red'], n=n, top=True)                         # lid
+    if detail:
+        B.cyl(T(0, 0, .2), .142, .142, .05, C['board'], n=n, top=False)                   # paper label
+        B.box(T(.06, -.12, .08, .5), .02, .01, .2, lin('#ffffff'), .02)                     # a shine on the glass
+    return B.finish()
+
+
+def egg(detail=True, seed=122):
+    """A fresh egg in a little straw nest on the ground."""
+    B = MB('fm_egg' + ('' if detail else '_lod1'), detail, seed); R = B.R
+    for i in range(26 if detail else 8):   # the nest
+        a = R.uniform(0, 6.28); d = R.uniform(.06, .13)
+        B.box(T(math.cos(a) * d, math.sin(a) * d, R.uniform(.0, .03), a + 1.4 + R.uniform(-.4, .4), ry=R.uniform(-.3, .3)), .14, .012, .012, C['hay'] if i % 3 else C['hay_d'], .15)
+    B.sphere(T(0, 0, .055, rx=.25, s=(1, 1, 1.3)), .042, C['egg'], seg=10 if detail else 6, rings=6 if detail else 4, var=.04)
+    return B.finish()
+
+
+def grain(detail=True, seed=123):
+    """A handful of maize grain thrown on the ground for the hens (about 0.6 m across)."""
+    B = MB('fm_grain' + ('' if detail else '_lod1'), detail, seed); R = B.R
+    for i in range(160 if detail else 30):
+        a = R.uniform(0, 6.28); d = abs(R.gauss(0, .14))
+        col = lin('#e8b632') if i % 4 else lin('#d08a1e')
+        B.box(T(math.cos(a) * d, math.sin(a) * d, 0, R.uniform(0, 6)), .018 if detail else .04, .014 if detail else .04, .008, col, .15)
+    return B.finish()
+
+
+def crate(detail=True, seed=124):
+    """A wooden crate of farm produce for the back of the lorry: milk jars and a tray of eggs (0.62 x 0.42 x 0.36 m)."""
+    B = MB('fm_crate' + ('' if detail else '_lod1'), detail, seed); R = B.R
+    w, d, h = .62, .42, .3
+    B.box(T(0, 0, 0), w, d, .03, C['wood_l'], .12, bottom=True)
+    for s in (-1, 1):
+        for z in (.05, .17): B.box(T(0, s * (d / 2 - .01), z), w, .02, .08, C['wood'], .15)
+        for z in (.05, .17): B.box(T(s * (w / 2 - .01), 0, z), .02, d, .08, C['wood'], .15)
+    for sx in (-1, 1):
+        for sy in (-1, 1): B.box(T(sx * (w / 2 - .02), sy * (d / 2 - .02), 0), .04, .04, h, C['wood_d'], .1)
+    if detail:
+        for i in range(3):   # three milk jars on the left
+            x, y = -.2, -.13 + i * .13
+            B.cyl(T(x, y, .03), .055, .055, .2, lin('#f6f3ea'), n=8, top=False); B.cyl(T(x, y, .23), .045, .045, .03, C['red'], n=8)
+        B.box(T(.13, 0, .03), .3, .34, .02, lin('#c9b48a'), .1)                              # egg tray
+        for i in range(12): B.sphere(T(.03 + (i % 3) * .1, -.13 + (i // 3) * .087, .07, s=(1, 1, 1.25)), .03, C['egg'], seg=6, rings=4, var=.05)
+    return B.finish()
+
+
+def lorry(detail=True, seed=125):
+    """The farmer's own lorry: an old Bedford-style lorry, cab painted blue and yellow, a high wooden body behind
+    painted like the Lagos mammy wagons, 'NO FOOD FOR LAZY MAN' across the back. Front toward -Y, wheels on the ground."""
+    B = MB('fm_lorry' + ('' if detail else '_lod1'), detail, seed); R = B.R
+    BL, YE, BLd = lin('#1f4f9a'), lin('#f2c230'), lin('#173a70')
+    bx = lambda x0, x1, y0, y1, z0, z1, c, var=.08: B.box(T((x0 + x1) / 2, (y0 + y1) / 2, z0), x1 - x0, y1 - y0, z1 - z0, c, var, bottom=True)
+    bx(-.55, .55, -2.4, 2.75, .5, .74, C['tyre'])                                         # chassis
+    # cab (rounded nose, bonnet, big grille)
+    bx(-1.0, 1.0, -1.5, -.15, .74, 1.42, BL)
+    cab = [(-.98, -1.36, 1.42), (.98, -1.36, 1.42), (.9, -1.0, 2.1), (-.9, -1.0, 2.1), (-.98, -.17, 1.42), (.98, -.17, 1.42), (.9, -.22, 2.1), (-.9, -.22, 2.1)]
+    for q, c in zip([(0, 1, 2, 3), (5, 4, 7, 6), (3, 2, 6, 7), (0, 3, 7, 4), (1, 5, 6, 2)], [C['glass'], BL, YE, C['glass'], C['glass']]):
+        B.face([Vector(cab[i]) for i in q], c, .06)
+    for x in (-.99, .99): bx(x - .012, x + .012, -.72, -.64, 1.42, 2.08, BLd)            # door pillar
+    bx(-.95, .95, -2.45, -1.5, .7, 1.3, BL)                                              # bonnet
+    bx(-.95, .95, -2.47, -2.42, .95, 1.3, YE)
+    bx(-.78, .78, -2.5, -2.45, .76, 1.22, C['chrome'])                                    # grille
+    if detail:
+        for k in range(7): bx(-.74, .74, -2.52, -2.5, .8 + k * .06, .82 + k * .06, lin('#555a5e'))
+    for x in (-.7, .7): B.cyl(T(x, -2.5, 1.08, rx=1.5708), .12, .12, .05, C['board'], n=10)
+    bx(-1.05, 1.05, -2.68, -2.48, .55, .72, C['chrome'])                                 # bumper
+    for y in (-1.6,):                                                                     # front arches
+        for x in (-1.0, 1.0): bx(x - .06, x + .06, y - .6, y + .6, .95, 1.03, BLd)
+    for x in (-1.1, 1.1): bx(x - .05, x + .05, -1.32, -1.25, 1.42, 1.62, C['tyre'])      # mirrors
+    # the body behind: floor, high plank sides painted in bands, the tailgate with its slogan
+    bx(-1.05, 1.05, -.05, 2.9, .92, 1.04, C['wood_d'])
+    bands = [lin('#c0392b'), YE, lin('#2e8a4e'), BL]
+    for x in (-1.04, 1.04):
+        for k in range(4): bx(x - .03, x + .03, -.05, 2.9, 1.04 + k * .26, 1.28 + k * .26, bands[k], .12)
+        for y in (0, .95, 1.9, 2.85): bx(x - .05, x + .05, y - .05, y + .05, 1.0, 2.15, C['wood_d'])
+    for k in range(4): bx(-1.05, 1.05, 2.86, 2.92, 1.04 + k * .26, 1.28 + k * .26, bands[(k + 2) % 4], .12)
+    bx(-1.05, 1.05, -.08, -.02, 1.04, 2.15, C['wood'])                                     # front board
+    if detail:   # a slogan board: a cream panel (the words are painted in the game), a carved rail on top, rust
+        bx(-.9, .9, 2.925, 2.935, 1.4, 1.75, C['board'])
+        for x in (-1.04, 1.04): bx(x - .035, x + .035, .2, 2.7, 1.9, 2.0, C['wood_l'])
+        for i in range(10):
+            x = 1.0 if i % 2 else -1.0; y = R.uniform(-2.3, -1.6); z = R.uniform(.8, 1.2); bx(x - .006, x + .006, y, y + R.uniform(.08, .2), z, z + .06, C['rust'])
+    for x in (-.85, .85): bx(x - .09, x + .09, 2.92, 2.94, 1.0, 1.12, C['red'])          # tail lamps
+    for y, dual in ((-1.6, False), (1.85, True)):
+        for x in (-.82, .82):
+            wheel(B, x + (.1 if x > 0 else -.1) * dual, y, .45, .45, .26 if not dual else .38, detail)
+    for x in (-1.06, 1.06): bx(x - .05, x + .05, 1.25, 2.45, .8, .9, C['tyre'])           # rear mudguards
     return B.finish()
 
 
@@ -1009,7 +1166,7 @@ def export(obs, name, anim=False):
     for o in obs: o.select_set(True)
     bpy.context.view_layer.objects.active = obs[0]
     path = os.path.join(OUT, name + '.glb')
-    args = dict(filepath=path, use_selection=True, export_format='GLB', export_yup=True, export_apply=not anim, export_texcoords=False, export_normals=True, export_extras=True)
+    args = dict(filepath=path, use_selection=True, export_format='GLB', export_yup=True, export_apply=not anim, export_texcoords=not anim, export_normals=True, export_extras=True)
     if anim:
         args.update(export_animations=True, export_skins=True, export_animation_mode='NLA_TRACKS', export_force_sampling=True, export_def_bones=False)
     for drop in ([], ['export_animation_mode'], ['export_animation_mode', 'export_def_bones'], ['export_texcoords']):
@@ -1021,82 +1178,85 @@ def export(obs, name, anim=False):
 def want(n): return not ONLY or any(n.startswith(o) for o in ONLY)
 
 
-try:
-    open(LOGF, 'w').write('farm start %s\n' % (bpy.app.version_string,))
-    # everything happens in a scene of its own ("NS Farm"); other scenes in this file are left alone
-    win = bpy.context.window; old_scene = win.scene if win else None
-    sc = bpy.data.scenes.get('NS Farm') or bpy.data.scenes.new('NS Farm')
-    if win: win.scene = sc
-    for o in list(sc.objects): bpy.data.objects.remove(o, do_unlink=True)
-    for blk in (bpy.data.meshes, bpy.data.lights, bpy.data.cameras, bpy.data.armatures, bpy.data.actions, bpy.data.materials):
-        for d in list(blk):
-            if d.name.startswith(('fm_', 'FM', 'FarmCam', 'AnimCam', 'Farm')) and (d.users == 0 or blk is bpy.data.actions): blk.remove(d)
-    w = bpy.data.worlds.get('FM World') or bpy.data.worlds.new('FM World'); sc.world = w; w.use_nodes = True
-    STATIC = [('fm_barn', barn), ('fm_house', house), ('fm_coop', coop), ('fm_pen', pen), ('fm_tank', tank), ('fm_office', office), ('fm_gate', gate), ('fm_fence', fence),
-              ('fm_bed', lambda d: bed(d, False)), ('fm_bed_wet', lambda d: bed(d, True))]
-    for crop, fn in (('maize', maize), ('cassava', cassava), ('yam', yam), ('tomato', tomato), ('pepper', pepper)):
-        for s in (1, 2, 3): STATIC.append(('fm_%s_%d' % (crop, s), (lambda f, st: (lambda d: f(st, d)))(fn, s)))
-    STATIC += [('fm_palm', palm), ('fm_plantain', plantain), ('fm_grass', grass), ('fm_scarecrow', scarecrow), ('fm_tools', tools), ('fm_produce', produce), ('fm_truck', truck)]
-    made = {}
-    for name, fn in STATIC:
-        if not want(name): continue
-        for det in (True, False):
+if not globals().get('LIB'):   # LIB = True: only load the helpers (tools/blender_animals_real.py uses them)
+    try:
+        open(LOGF, 'w').write('farm start %s\n' % (bpy.app.version_string,))
+        # everything happens in a scene of its own ("NS Farm"); other scenes in this file are left alone
+        win = bpy.context.window; old_scene = win.scene if win else None
+        sc = bpy.data.scenes.get('NS Farm') or bpy.data.scenes.new('NS Farm')
+        if win: win.scene = sc
+        for o in list(sc.objects): bpy.data.objects.remove(o, do_unlink=True)
+        for blk in (bpy.data.meshes, bpy.data.lights, bpy.data.cameras, bpy.data.armatures, bpy.data.actions, bpy.data.materials):
+            for d in list(blk):
+                if d.name.startswith(('fm_', 'FM', 'FarmCam', 'AnimCam', 'Farm')) and (d.users == 0 or blk is bpy.data.actions): blk.remove(d)
+        w = bpy.data.worlds.get('FM World') or bpy.data.worlds.new('FM World'); sc.world = w; w.use_nodes = True
+        STATIC = [('fm_barn', barn), ('fm_house', house), ('fm_coop', coop), ('fm_pen', pen), ('fm_tank', tank), ('fm_office', office), ('fm_gate', gate), ('fm_fence', fence),
+                  ('fm_bed', lambda d: bed(d, False)), ('fm_bed_wet', lambda d: bed(d, True))]
+        for crop, fn in (('maize', maize), ('cassava', cassava), ('yam', yam), ('tomato', tomato), ('pepper', pepper)):
+            for s in (1, 2, 3): STATIC.append(('fm_%s_%d' % (crop, s), (lambda f, st: (lambda d: f(st, d)))(fn, s)))
+        STATIC += [('fm_palm', palm), ('fm_plantain', plantain), ('fm_grass', grass), ('fm_scarecrow', scarecrow), ('fm_tools', tools), ('fm_produce', produce), ('fm_truck', truck)]
+        STATIC += [('fm_turf', lambda d: turf(d, 'full')), ('fm_turf_low', lambda d: turf(d, 'low')), ('fm_turf_bare', lambda d: turf(d, 'bare')), ('fm_turf_wet', lambda d: turf(d, 'wet')),
+                   ('fm_milk', milkjar), ('fm_egg', egg), ('fm_grain', grain), ('fm_crate', crate), ('fm_lorry', lorry)]
+        made = {}
+        for name, fn in STATIC:
+            if not want(name): continue
+            for det in (True, False):
+                t0 = time.time()
+                try:
+                    ob = fn(det); ok = bake_ao(ob); kb = export([ob], name + ('' if det else '_lod1'))
+                    log(ob.name, len(ob.data.polygons), 'faces', 'ao' if ok else 'no-ao', kb, 'KB', round(time.time() - t0, 1), 's')
+                    if det: made[name] = ob; ob.hide_render = True
+                    else: bpy.data.objects.remove(ob, do_unlink=True)
+                except Exception: log('FAILED piece', name, det, traceback.format_exc())
+        # ---- the animals
+        for name, mk, bones, acts in (('fm_cow', cow_mesh, COW_BONES, cow_actions), ('fm_hen', hen_mesh, HEN_BONES, hen_actions)):
+            if not want(name): continue
             t0 = time.time()
             try:
-                ob = fn(det); ok = bake_ao(ob); kb = export([ob], name + ('' if det else '_lod1'))
-                log(ob.name, len(ob.data.polygons), 'faces', 'ao' if ok else 'no-ao', kb, 'KB', round(time.time() - t0, 1), 's')
-                if det: made[name] = ob; ob.hide_render = True
-                else: bpy.data.objects.remove(ob, do_unlink=True)
-            except Exception: log('FAILED piece', name, det, traceback.format_exc())
-    # ---- the animals
-    for name, mk, bones, acts in (('fm_cow', cow_mesh, COW_BONES, cow_actions), ('fm_hen', hen_mesh, HEN_BONES, hen_actions)):
-        if not want(name): continue
-        t0 = time.time()
-        try:
-            me = mk(); bake_ao(me); arm = make_arm(name, bones); bind(me, arm); acts(arm)
-            kb = export([arm, me], name, anim=True); made[name] = arm
-            log(name, len(me.data.polygons), 'faces', len(arm.data.bones), 'bones', [t.name for t in arm.animation_data.nla_tracks], kb, 'KB', round(time.time() - t0, 1), 's')
-        except Exception: log('FAILED animal', name, traceback.format_exc())
-    # ---- a little farm to look at
-    if PREVIEW and not ONLY:
-        def put(k, x, y, rz=0):
-            if k not in made: return None
-            o = made[k].copy(); o.location = (x, y, 0); o.rotation_euler = (0, 0, rz); o.hide_render = False; sc.collection.objects.link(o); return o
-        put('fm_house', -9, 9); put('fm_barn', 3, 10); put('fm_tank', -3.5, 7); put('fm_coop', 13, 2, -1.5708); put('fm_pen', -10, -4)
-        crops = ['fm_maize_3', 'fm_cassava_3', 'fm_yam_3', 'fm_tomato_3', 'fm_pepper_3', 'fm_maize_2', 'fm_tomato_1', 'fm_yam_2']
-        for i, k in enumerate(crops):
-            x, y = -1 + (i % 4) * 4.8, -2.5 - (i // 4) * 3.8
-            put('fm_bed_wet' if i % 3 == 0 else 'fm_bed', x, y); put(k, x, y)
-        for i, (x, y) in enumerate(((-16, 12), (17, 12), (-17, -12), (20, -6), (8, 16))): put('fm_palm' if i % 2 == 0 else 'fm_plantain', x, y, i)
-        for i in range(10): put('fm_grass', -18 + i * 4, 17 + (i % 3))
-        put('fm_scarecrow', 9, -7); put('fm_tools', 7, 5.5); put('fm_truck', 10, 8, -1.2); put('fm_gate', 0, -14); put('fm_office', -6, -12)
-        for i in range(6): put('fm_fence', -14 + i * 4.2, -14) if i not in (3,) else None
-        for k, x, y in (('fm_cow', -10, -4),):
-            if k in made:
-                a = made[k]; a.location = (x, y, 0); a.rotation_euler = (0, 0, .8)
-        if 'fm_hen' in made: made['fm_hen'].location = (13, 0, 0)
-        bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -.01)); ground = bpy.context.active_object; ground.name = 'fm_GROUND'
-        gm = bpy.data.materials.new('FM Laterite'); gm.use_nodes = True; gb = gm.node_tree.nodes.get('Principled BSDF'); gb.inputs['Base Color'].default_value = lin('#8f6a3c') + (1,); gb.inputs['Roughness'].default_value = .95
-        ground.data.materials.append(gm)
-        sun = bpy.data.lights.new('Farm Sun', 'SUN'); sun.energy = 4.2; sun.angle = math.radians(2); sun.color = (1, .93, .82)
-        so = bpy.data.objects.new('Farm Sun', sun); so.rotation_euler = (math.radians(42), math.radians(10), math.radians(150)); sc.collection.objects.link(so)
-        bg = w.node_tree.nodes.get('Background')
-        if bg: bg.inputs[0].default_value = (.55, .7, .95, 1); bg.inputs[1].default_value = 1.1
-        cam = bpy.data.cameras.new('FarmCam'); cam.lens = 22; co = bpy.data.objects.new('FarmCam', cam); sc.collection.objects.link(co)
-        co.location = (4, -24, 7.5); co.rotation_euler = (math.radians(74), 0, math.radians(0)); sc.camera = co
-        sc.render.engine = 'CYCLES'; sc.cycles.samples = 64; sc.cycles.use_denoising = True
-        sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = 1280, 720, 100
-        try: sc.view_settings.view_transform = 'AgX'
-        except Exception: pass
-        sc.render.filepath = os.path.join(OUT, 'farm_preview.png'); sc.render.image_settings.file_format = 'PNG'
-        t0 = time.time(); bpy.ops.render.render(write_still=True); log('preview rendered', int(time.time() - t0), 's')
-        cam2 = bpy.data.cameras.new('AnimCam'); cam2.lens = 50; c2 = bpy.data.objects.new('AnimCam', cam2); sc.collection.objects.link(c2)
-        c2.location = (-6.5, -9.5, 2.4); c2.rotation_euler = (math.radians(80), 0, math.radians(-25)); sc.camera = c2
-        sc.render.filepath = os.path.join(OUT, 'farm_preview2.png'); bpy.ops.render.render(write_still=True); log('preview 2 rendered')
-        sc.camera = co
-    try: bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'naija_farm.blend'), copy=True)   # a copy: the open file keeps its own name
-    except Exception as e: log('save copy', e)
-    if win and old_scene and old_scene != sc and globals().get('BACK', True): win.scene = old_scene   # hand the window back to the scene that was open
-    log('ALL DONE')
-except Exception:
-    log('FAILED', traceback.format_exc())
+                me = mk(); bake_ao(me); arm = make_arm(name, bones); bind(me, arm); acts(arm)
+                kb = export([arm, me], name, anim=True); made[name] = arm
+                log(name, len(me.data.polygons), 'faces', len(arm.data.bones), 'bones', [t.name for t in arm.animation_data.nla_tracks], kb, 'KB', round(time.time() - t0, 1), 's')
+            except Exception: log('FAILED animal', name, traceback.format_exc())
+        # ---- a little farm to look at
+        if PREVIEW and not ONLY:
+            def put(k, x, y, rz=0):
+                if k not in made: return None
+                o = made[k].copy(); o.location = (x, y, 0); o.rotation_euler = (0, 0, rz); o.hide_render = False; sc.collection.objects.link(o); return o
+            put('fm_house', -9, 9); put('fm_barn', 3, 10); put('fm_tank', -3.5, 7); put('fm_coop', 13, 2, -1.5708); put('fm_pen', -10, -4)
+            crops = ['fm_maize_3', 'fm_cassava_3', 'fm_yam_3', 'fm_tomato_3', 'fm_pepper_3', 'fm_maize_2', 'fm_tomato_1', 'fm_yam_2']
+            for i, k in enumerate(crops):
+                x, y = -1 + (i % 4) * 4.8, -2.5 - (i // 4) * 3.8
+                put('fm_bed_wet' if i % 3 == 0 else 'fm_bed', x, y); put(k, x, y)
+            for i, (x, y) in enumerate(((-16, 12), (17, 12), (-17, -12), (20, -6), (8, 16))): put('fm_palm' if i % 2 == 0 else 'fm_plantain', x, y, i)
+            for i in range(10): put('fm_grass', -18 + i * 4, 17 + (i % 3))
+            put('fm_scarecrow', 9, -7); put('fm_tools', 7, 5.5); put('fm_truck', 10, 8, -1.2); put('fm_gate', 0, -14); put('fm_office', -6, -12)
+            for i in range(6): put('fm_fence', -14 + i * 4.2, -14) if i not in (3,) else None
+            for k, x, y in (('fm_cow', -10, -4),):
+                if k in made:
+                    a = made[k]; a.location = (x, y, 0); a.rotation_euler = (0, 0, .8)
+            if 'fm_hen' in made: made['fm_hen'].location = (13, 0, 0)
+            bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -.01)); ground = bpy.context.active_object; ground.name = 'fm_GROUND'
+            gm = bpy.data.materials.new('FM Laterite'); gm.use_nodes = True; gb = gm.node_tree.nodes.get('Principled BSDF'); gb.inputs['Base Color'].default_value = lin('#8f6a3c') + (1,); gb.inputs['Roughness'].default_value = .95
+            ground.data.materials.append(gm)
+            sun = bpy.data.lights.new('Farm Sun', 'SUN'); sun.energy = 4.2; sun.angle = math.radians(2); sun.color = (1, .93, .82)
+            so = bpy.data.objects.new('Farm Sun', sun); so.rotation_euler = (math.radians(42), math.radians(10), math.radians(150)); sc.collection.objects.link(so)
+            bg = w.node_tree.nodes.get('Background')
+            if bg: bg.inputs[0].default_value = (.55, .7, .95, 1); bg.inputs[1].default_value = 1.1
+            cam = bpy.data.cameras.new('FarmCam'); cam.lens = 22; co = bpy.data.objects.new('FarmCam', cam); sc.collection.objects.link(co)
+            co.location = (4, -24, 7.5); co.rotation_euler = (math.radians(74), 0, math.radians(0)); sc.camera = co
+            sc.render.engine = 'CYCLES'; sc.cycles.samples = 64; sc.cycles.use_denoising = True
+            sc.render.resolution_x, sc.render.resolution_y, sc.render.resolution_percentage = 1280, 720, 100
+            try: sc.view_settings.view_transform = 'AgX'
+            except Exception: pass
+            sc.render.filepath = os.path.join(OUT, 'farm_preview.png'); sc.render.image_settings.file_format = 'PNG'
+            t0 = time.time(); bpy.ops.render.render(write_still=True); log('preview rendered', int(time.time() - t0), 's')
+            cam2 = bpy.data.cameras.new('AnimCam'); cam2.lens = 50; c2 = bpy.data.objects.new('AnimCam', cam2); sc.collection.objects.link(c2)
+            c2.location = (-6.5, -9.5, 2.4); c2.rotation_euler = (math.radians(80), 0, math.radians(-25)); sc.camera = c2
+            sc.render.filepath = os.path.join(OUT, 'farm_preview2.png'); bpy.ops.render.render(write_still=True); log('preview 2 rendered')
+            sc.camera = co
+        try: bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, 'naija_farm.blend'), copy=True)   # a copy: the open file keeps its own name
+        except Exception as e: log('save copy', e)
+        if win and old_scene and old_scene != sc and globals().get('BACK', True): win.scene = old_scene   # hand the window back to the scene that was open
+        log('ALL DONE')
+    except Exception:
+        log('FAILED', traceback.format_exc())

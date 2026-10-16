@@ -8,6 +8,12 @@
      buyer yourself (full price), or sell to the middleman at the gate (60%).
    More land (up to 8 beds), more cows and hens, a bigger store, and a farmhand who works while you are away.
    Crops grow in real time (also while you are away), as long as they are watered; rain waters them for you.
+   Grazing (v2): the cow pen is 12 tiles of grass. A hungry cow walks to the grass and eats it (the grass goes down
+   as it eats, till the ground is bare); you water a bare tile and the grass grows back (rain waters them all).
+   The hens eat the grain you throw in their run. Every second good meal a cow leaves a jar of milk and a hen an egg
+   on the ground: walk over them to pick them into your store. An animal that has not eaten for 2 minutes gets thin
+   and runs about looking for food; at 2:20 it dies (one at a time). Hunger only runs while you are at the farm.
+   Your own farm lorry waits in the yard: pack the store onto it, drive it to the produce buyer, sell the load.
    Saved on this phone ('naija-farm'). Made to grow: a garri mill, palm oil, goats, fish ponds, night thieves later.
    The game passes in `api` (its own functions); this file builds and runs the farm. Models: tools/blender_farm.py. */
 
@@ -25,15 +31,23 @@ const COW_PRICE = 35000, HEN_PRICE = 3000, MAX_COWS = 3, MAX_HENS = 12;
 const MILK_S = 240, EGG_S = 150, FEED_COW = 600, FEED_HEN = 300, HAND_PAY = 2000, TRUCK_CAP = 40, CARRY_CAP = 12, DRIVER_CUT = .15, GATE_RATE = .6;
 const DRIVER = 'Baba Sule';
 const KEY = 'naija-farm';
+// grazing and hunger (seconds)
+const HUNGRY = 40, THIN = 120, DEAD = 140, GROW = 30, MEAL_COW = 6, MEAL_HEN = 3, BITE = .34, MILK_EVERY = 2, EGG_EVERY = 2;
+const GRAIN_COST = 200, GRAIN_MAX = 6, PILE = 2, LORRY_CAP = 40, SIM_R = 140, PICK_R = 1.4;
 
 export function createFarm(api) {
   const THREE = api.THREE, scene = api.scene, F = api.zone, YC = F.yard;
   const now = () => Date.now();
   const S = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })();
-  S.v = 1; S.got = !!S.got; S.beds = S.beds || []; S.open = S.open || 2; S.store = S.store || {}; S.cap = S.cap || 30;
+  const V0 = S.v || 1; S.got = !!S.got; S.beds = S.beds || []; S.open = S.open || 2; S.store = S.store || {}; S.cap = S.cap || 30;
   S.cows = S.cows || [{ milk: 0, at: now() }]; S.hens = S.hens || [{ at: now() }, { at: now() + 50000 }, { at: now() + 100000 }];
   S.trough = S.trough ?? 3; S.feeder = S.feeder ?? 6; S.eggs = S.eggs || 0; S.carry = S.carry || null; S.hand = S.hand || 0; S.trip = S.trip || null; S.earned = S.earned || 0;
   while (S.beds.length < 8) S.beds.push({ crop: null });
+  // v2: grass tiles in the pen ({a: how much grass 0..1, w: when it was watered}), grain piles and produce lying in the yard, the lorry's load
+  S.turf = S.turf || []; while (S.turf.length < 12) S.turf.push({ a: 1, w: 0 });
+  S.grain = S.grain || []; S.drops = S.drops || []; S.lorry = S.lorry || { load: {} };
+  S.cows.forEach(c => { c.hu = c.hu ?? 0; c.meals = c.meals || 0; }); S.hens.forEach((h, i) => { h.hu = h.hu ?? i * 12; h.meals = h.meals || 0; });
+  S.v = 2;
   let saveT = 0; const save = () => { saveT = 1; };
   const flush = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
 
@@ -56,22 +70,30 @@ export function createFarm(api) {
   const BEDS = []; for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) BEDS.push({ u: -6.9 + c * 4.6, v: 1.2 - r * 4.8 });
   const BARN = { u: -13, v: -10 }, HOUSE = { u: 13, v: -10 }, TANK = { u: 4, v: -12.5 }, PEN = { u: -15, v: 5 }, COOP = { u: 16, v: 4.5 }, TOOLS = { u: -6.5, v: -12.5 }, CROW = { u: 0, v: -1.2 };
   const GATE_V = YARD.v;
+  // the pen's grass: 4 x 3 tiles of 2.3 x 1.75 m (pen model x -> u, model y -> -v); the hens' run in front of the coop
+  const TILES = []; for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) TILES.push({ u: PEN.u - 3.45 + i * 2.3, v: PEN.v + 2.125 - j * 1.75 });
+  const RUN = { u: COOP.u, v: COOP.v + .55, hu: 1.5, hv: .7 };
+  const LORRY_AT = { u: 10.5, v: 10.5 };
   // the settlement gate where the driveway leaves the road, and the farm office beside it
   const kd = Math.hypot(K.x - YC.x, K.z - YC.z);
   const hwR = api.roadHalf(K.x, K.z), SG = W(0, kd - hwR - 2.2), OFFICE = W(-10, kd - hwR - 11.5), OFFICE_RY = ry;
   const MARKET = api.market();
 
   // ---------------------------------------------------------------- models
-  const M = {}; let ready = false, loading = false, built = false;
+  const M = {}; let ready = false, loading = false, built = false, loadLeft = () => -1;
   const STATIC = ['barn', 'house', 'coop', 'pen', 'tank', 'office', 'gate', 'fence', 'bed', 'bed_wet', 'palm', 'plantain', 'grass', 'scarecrow', 'tools', 'produce',
+    'turf', 'turf_low', 'turf_bare', 'turf_wet', 'milk', 'egg', 'grain', 'crate',
     ...Object.keys(CROPS).flatMap(c => [1, 2, 3].map(s => c + '_' + s))];
   async function load() {
     if (loading) return; loading = true;
     try {
       const jobs = STATIC.map(n => api.glb('fm_' + n).then(m => { M[n] = m; }).catch(e => console.warn('farm model', n, e)));
       jobs.push(api.skinned('fm_cow').then(g => { M.cow = g; }).catch(e => console.warn('cow', e)));
+      jobs.push(api.skinned('fm_cow2').then(g => { M.cow2 = g; }).catch(e => console.warn('cow2', e)));
       jobs.push(api.skinned('fm_hen').then(g => { M.hen = g; }).catch(e => console.warn('hen', e)));
       jobs.push(api.registerTruck().catch(e => console.warn('truck', e)));
+      jobs.push(api.registerLorry().catch(e => console.warn('lorry', e)));
+      let left = jobs.length; jobs.forEach(j => j.then(() => { left--; })); loadLeft = () => left;
       await Promise.all(jobs); ready = true; build();
     } catch (e) { console.warn('farm', e); }
   }
@@ -101,6 +123,7 @@ export function createFarm(api) {
   const yardRot = ry;   // models face +Z; turned by ry they face the road
   const beds = [];      // per bed: {base, crop, lock}
   let cows = [], hens = [], penC, coopC, sign;
+  const turfs = [], tileBy = [];   // the grass tile meshes, and which cow is eating each
 
   function build() {
     if (built || !ready) return; built = true;
@@ -136,7 +159,10 @@ export function createFarm(api) {
     if (MARKET) { mesh('produce', MARKET.x, MARKET.z, MARKET.ry || 0); label('FARM PRODUCE BUYER', 'WE BUY FROM FARMERS', 2.4, .55, MARKET.x, 2.2, MARKET.z, (MARKET.ry || 0), true, '#ffe9a8', '#5a2a0a');
       api.spot('mama', MARKET.x + Math.sin((MARKET.ry || 0) + 1.6) * 1.4, MARKET.z + Math.cos((MARKET.ry || 0) + 1.6) * 1.4, MARKET.ry || 0, ['talk', 'argue', 'idle_2']); }
     scenery();
-    animals(); refresh();
+    // the pen's grass tiles
+    TILES.forEach(p => { const w = W(p.u, p.v); turfs.push(mesh('turf', w.x, w.z, yardRot, .006)); });
+    if (V0 < 2 && S.got && !S.grain.length) throwGrain(true);
+    animals(); refresh(); turfShow(); spawnLorry();
   }
   const farmName = () => { const n = (api.playerName() || '').trim(); return n ? (n.toUpperCase() + "'S FARM").slice(0, 22) : 'YOUR FARM'; };
 
@@ -172,34 +198,127 @@ export function createFarm(api) {
     api.mapPlace({ name: 'Farm Settlement', sub: 'Farms · get your free farm here', kind: 'place', x: SG.x, z: SG.z });
   }
 
-  // ---- the animals: skinned, each with its own moves
-  function makeAnimal(g, sc = 1) {
-    const root = api.clone(g.scene); root.scale.setScalar(sc); root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; o.layers.set(1); if (o.material) o.material.side = THREE.DoubleSide; } });
+  // ---- the animals: skinned, each with its own moves; each one is tied to its saved state (a.s)
+  function makeAnimal(g, sc = 1, tint = null) {
+    const root = api.clone(g.scene); root.scale.setScalar(sc); root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; o.layers.set(1);
+      if (o.material) { if (tint) { o.material = o.material.clone(); o.material.color.setRGB(tint[0], tint[1], tint[2]); } o.material.side = THREE.DoubleSide; } } });
     scene.add(root); const mix = new THREE.AnimationMixer(root), acts = {};
     for (const c of g.animations) acts[c.name] = mix.clipAction(c);
-    return { root, mix, acts, cur: null, x: 0, z: 0, h: 0, tx: 0, tz: 0, t: 0, mode: 'idle' };
+    const bub = new THREE.Sprite(BUB.hungry); bub.scale.setScalar(.62); bub.visible = false; bub.layers.set(1); scene.add(bub);
+    return { root, mix, acts, cur: null, x: 0, z: 0, h: 0, tx: 0, tz: 0, t: 0, mode: 'idle', sc, thin: 0, bub, dead: 0 };
   }
+  const HEN_TINT = [null, [.82, .55, .34], [.58, .4, .3], [.95, .8, .62]];
+  // the little bubble over a hungry animal: green leaf (hungry), red (starving, it will die)
+  const BUB = (() => { const mk = (em, ring) => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+      g.fillStyle = 'rgba(255,255,255,.92)'; g.beginPath(); g.arc(64, 58, 50, 0, Math.PI * 2); g.fill(); g.beginPath(); g.moveTo(52, 100); g.lineTo(64, 124); g.lineTo(76, 100); g.fill();
+      g.lineWidth = 8; g.strokeStyle = ring; g.beginPath(); g.arc(64, 58, 46, 0, Math.PI * 2); g.stroke();
+      g.font = '60px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(em, 64, 62);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return new THREE.SpriteMaterial({ map: t, depthTest: true, fog: false }); };
+    return { hungry: mk('🌿', '#5aa832'), grain: mk('🌽', '#e0a020'), thin: mk('😫', '#d02a1a') }; })();
   function play(a, name, fade = .35) { if (a.cur === name || !a.acts[name]) return; const n = a.acts[name]; n.reset().setEffectiveWeight(1).fadeIn(fade).play(); if (a.cur && a.acts[a.cur]) a.acts[a.cur].fadeOut(fade); a.cur = name; }
+  function drop(a) { scene.remove(a.root); scene.remove(a.bub); }
   function animals() {
-    for (const a of cows) scene.remove(a.root); for (const a of hens) scene.remove(a.root); cows = []; hens = [];
+    for (const a of cows) drop(a); for (const a of hens) drop(a); cows = []; hens = [];
     if (!S.got) return;
-    if (M.cow) S.cows.forEach((c, i) => { const a = makeAnimal(M.cow); const p = W(PEN.u - 2 + i * 2.2, PEN.v + .5 - i); Object.assign(a, { x: p.x, z: p.z, h: yardRot + i, kind: 'cow', t: Math.random() * 3 }); cows.push(a); play(a, 'Graze'); });
-    if (M.hen) S.hens.forEach((c, i) => { const a = makeAnimal(M.hen, 1.15); const p = W(COOP.u - 1.2 + (i % 4) * .8, COOP.v + .6 + Math.floor(i / 4) * .3); Object.assign(a, { x: p.x, z: p.z, h: Math.random() * 6, kind: 'hen', t: Math.random() * 2 }); hens.push(a); play(a, 'Idle'); });
+    if (M.cow) S.cows.forEach((c, i) => { const a = makeAnimal(i % 2 && M.cow2 ? M.cow2 : M.cow); /* a brown zebu, then a Holstein, then a zebu */ const p = W(PEN.u - 2 + i * 2.2, PEN.v + .5 - i); Object.assign(a, { s: c, x: p.x, z: p.z, h: yardRot + i, kind: 'cow', t: Math.random() * 3 }); cows.push(a); play(a, 'Graze'); });
+    if (M.hen) S.hens.forEach((c, i) => { const a = makeAnimal(M.hen, .95 + (i % 3) * .04, HEN_TINT[i % HEN_TINT.length]); /* local hens: light, brown, dark */ const p = W(COOP.u - 1.2 + (i % 4) * .8, COOP.v + .6 + Math.floor(i / 4) * .3); Object.assign(a, { s: c, x: p.x, z: p.z, h: Math.random() * 6, kind: 'hen', t: Math.random() * 2 }); hens.push(a); play(a, 'Idle'); });
   }
-  function wander(a, dt, box, spd, near) {
+  // walk (or run) toward a.tx, a.tz; true once there
+  function step(a, dt, spd, turn) {
+    const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz); if (d < .18) return true;
+    const want = Math.atan2(dx, dz); let dh = want - a.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); a.h += Math.sign(dh) * Math.min(Math.abs(dh), dt * turn);
+    if (Math.abs(dh) < .7) { const s = Math.min(d, spd * dt); a.x += Math.sin(a.h) * s; a.z += Math.cos(a.h) * s; } return false;
+  }
+  function roamTo(a, box) { const p = W(box.u + (Math.random() * 2 - 1) * box.hu, box.v + (Math.random() * 2 - 1) * box.hv); a.tx = p.x; a.tz = p.z; }
+  function wander(a, dt, box, spd) {   // a fed animal: strolls, grazes a little, pecks, stands about
     a.t -= dt;
     if (a.t <= 0) {
       if (a.mode === 'walk' || Math.random() < .45) { a.mode = a.kind === 'cow' ? (Math.random() < .6 ? 'graze' : 'idle') : (Math.random() < .55 ? 'peck' : 'idle'); a.t = a.kind === 'cow' ? 4 + Math.random() * 8 : 1.5 + Math.random() * 3; }
-      else { const p = W(box.u + (Math.random() * 2 - 1) * box.hu, box.v + (Math.random() * 2 - 1) * box.hv); a.tx = p.x; a.tz = p.z; a.mode = 'walk'; a.t = 12; }
+      else { roamTo(a, box); a.mode = 'walk'; a.t = 12; }
     }
-    if (a.mode === 'walk') { const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
-      if (d < .15) { a.t = 0; } else { const want = Math.atan2(dx, dz); let dh = want - a.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); a.h += Math.sign(dh) * Math.min(Math.abs(dh), dt * (a.kind === 'cow' ? 1.2 : 5));
-        if (Math.abs(dh) < .6) { const s = Math.min(d, spd * dt); a.x += Math.sin(a.h) * s; a.z += Math.cos(a.h) * s; } }
-      play(a, 'Walk'); }
+    if (a.mode === 'walk') { if (step(a, dt, spd, a.kind === 'cow' ? 1.2 : 5)) a.t = 0; play(a, 'Walk'); }
     else play(a, a.mode === 'graze' ? 'Graze' : a.mode === 'peck' ? 'Peck' : 'Idle');
+  }
+  const PENBOX = { u: PEN.u, v: PEN.v - .2, hu: 3.6, hv: 2.1 };
+  let lastDie = { cow: -99, hen: -99 }, clock = 0;
+  // one animal, every frame: hunger, looking for food, eating, getting thin, running about, dying
+  function animalTick(a, dt, sim, near) {
+    const cow = a.kind === 'cow', c = a.s;
+    if (a.dead) {   // falls on its side, lies there, sinks away
+      a.dead += dt; a.root.rotation.z = Math.min(1, a.dead / .9) * Math.PI / 2 * a.side; a.root.position.y = a.dead > 3 ? -(a.dead - 3) * (cow ? .7 : .25) : 0;
+      if (a.dead > 5) { drop(a); const L0 = cow ? cows : hens, i = L0.indexOf(a); if (i >= 0) L0.splice(i, 1); }
+      return;
+    }
+    if (sim) c.hu += dt;
+    if (sim && c.hu >= DEAD) { if (clock - lastDie[a.kind] > 4) { die(a); return; } c.hu = DEAD; }
+    const hungry = c.hu >= HUNGRY, thin = c.hu >= THIN;
+    a.thin += ((thin ? 1 : 0) - a.thin) * Math.min(1, dt * .6);
+    const run = thin ? (cow ? 2.6 : 1.7) : (cow ? 1.0 : .7);
+    if (a.acts.Walk) a.acts.Walk.timeScale = thin ? 2.1 : 1;
+    if (a.mode === 'eat') {   // eating: the grass (or grain) goes down while it eats
+      a.et -= dt;
+      const left = cow ? eatTurf(a.food, BITE * dt / MEAL_COW) : eatGrain(a.food, dt / MEAL_HEN);
+      play(a, cow ? 'Graze' : 'Peck');
+      if (a.et <= 0 || left <= .01) { c.hu = 0; c.meals++; save(); if (cow) tileBy[a.food] = null;
+        if (c.meals % (cow ? MILK_EVERY : EGG_EVERY) === 0) layDrop(cow ? 'milk' : 'egg', a);
+        a.food = null; a.mode = 'idle'; a.t = 1.5 + Math.random() * 3; }
+    } else if (hungry) {
+      if (a.mode !== 'seek' || a.food == null || !foodLeft(a)) { const f = cow ? pickTile(a) : pickGrain(a); if (a.food != null && cow && tileBy[a.food] === a) tileBy[a.food] = null;
+        a.food = f; if (f != null) { const p = cow ? TILES[f] : S.grain[f]; const w = W(p.u + (Math.random() - .5) * (cow ? 1 : .2), p.v + (Math.random() - .5) * (cow ? .7 : .2)); a.tx = w.x; a.tz = w.z; a.mode = 'seek'; if (cow) tileBy[f] = a; }
+        else if (a.mode !== 'search') { a.mode = 'search'; a.rt = 0; } }
+      if (a.mode === 'seek') { if (step(a, dt, run, cow ? (thin ? 3 : 1.5) : 6)) { a.mode = 'eat'; a.et = cow ? MEAL_COW : MEAL_HEN; } else play(a, 'Walk'); }
+      else {   // nothing to eat: wander looking, and when starving, run about
+        a.rt -= dt; if (a.rt <= 0 || step(a, 0, 0, 0)) { roamTo(a, cow ? PENBOX : RUN); a.rt = thin ? 1.5 + Math.random() : 3 + Math.random() * 3; }
+        if (step(a, dt, run, cow ? (thin ? 3 : 1.2) : 6)) a.rt = 0; play(a, 'Walk'); }
+    } else wander(a, dt, cow ? PENBOX : RUN, cow ? .8 : .45);
     a.root.position.set(a.x, 0, a.z); a.root.rotation.y = a.h;
+    a.root.scale.set(a.sc * (1 - .24 * a.thin), a.sc, a.sc * (1 - .06 * a.thin));
+    a.bub.visible = hungry && a.root.visible; if (a.bub.visible) { a.bub.material = thin ? BUB.thin : cow ? BUB.hungry : BUB.grain; a.bub.position.set(a.x, (cow ? 1.95 : .68) + Math.sin(clock * 3) * .05, a.z); }
     if (near) a.mix.update(dt);
   }
+  function die(a) {
+    const L0 = a.kind === 'cow' ? S.cows : S.hens, i = L0.indexOf(a.s); if (i >= 0) L0.splice(i, 1); save(); flush();
+    if (a.kind === 'cow' && a.food != null && tileBy[a.food] === a) tileBy[a.food] = null;
+    lastDie[a.kind] = clock; a.dead = .001; a.side = Math.random() < .5 ? 1 : -1; a.bub.visible = false; play(a, 'Idle', .2);
+    api.toast(a.kind === 'cow' ? '💀 One of your cows don die of hunger. Water the grass so they fit chop!' : '💀 One of your hens don die of hunger. Throw grain for them!', 3.4);
+  }
+
+  // ---- the grass tiles, the grain piles, the produce on the ground
+  function turfAmt(i) { const t = S.turf[i]; if (!t.w) return t.a; const a = Math.max(0, Math.min(1, t.a + (now() - t.w) / 1000 / GROW)); if (a >= 1) { t.a = 1; t.w = 0; save(); } return a; }
+  function eatTurf(i, x) { const t = S.turf[i], cur = turfAmt(i), take = Math.min(cur, x); t.a = (t.w ? t.a : cur) - take; if (!t.w) t.a = Math.max(0, t.a); return cur - take; }
+  const needsWater = i => !S.turf[i].w && turfAmt(i) < .95;
+  function waterTurf(i, quiet) { if (!needsWater(i)) return false; const t = S.turf[i]; t.a = turfAmt(i); t.w = now(); save(); turfShow(); if (!quiet) { api.splash && api.splash(); api.toast('💧 You watered the grass. E go grow back small small.', 2); } return true; }
+  function pickTile(a) { let best = null, bd = 1e9; TILES.forEach((p, i) => { if (turfAmt(i) < .15 || (tileBy[i] && tileBy[i] !== a)) return; const w = W(p.u, p.v), d = Math.hypot(w.x - a.x, w.z - a.z); if (d < bd) { bd = d; best = i; } }); return best; }
+  function pickGrain(a) { let best = null, bd = 1e9; S.grain.forEach((p, i) => { if (p.n <= 0) return; const w = W(p.u, p.v), d = Math.hypot(w.x - a.x, w.z - a.z); if (d < bd) { bd = d; best = i; } }); return best; }
+  const foodLeft = a => a.kind === 'cow' ? turfAmt(a.food) >= .15 : !!(S.grain[a.food] && S.grain[a.food].n > 0);
+  function eatGrain(i, x) { const p = S.grain[i]; if (!p) return 0; p.n = Math.max(0, p.n - x); if (p.n <= .01) { S.grain.splice(i, 1); for (const h of hens) if (h.food != null && h.food > i) h.food--; else if (h.food === i && h.mode !== 'eat') h.food = null; save(); grainShow(); return 0; } grainShow(); return p.n; }
+  function throwGrain(free) {
+    if (S.grain.length >= GRAIN_MAX) { api.toast('Plenty grain dey ground already. Let them chop am first.'); return false; }
+    if (!free) { if ((S.store.maize || 0) >= 1) { S.store.maize--; } else { if (api.cash() < GRAIN_COST) { api.toast(`A bowl of grain costs ${naira(GRAIN_COST)}.`); return false; } api.addCash(-GRAIN_COST); } }
+    for (let k = 0; k < 3 && S.grain.length < GRAIN_MAX; k++) S.grain.push({ u: RUN.u + (Math.random() * 2 - 1) * RUN.hu * .85, v: RUN.v + (Math.random() * 2 - 1) * RUN.hv * .8, n: PILE });
+    save(); grainShow(); if (!free) api.toast('🌽 You threw grain for the hens. Watch them run come!', 2.2); return true;
+  }
+  function layDrop(k, a) { const l = L(a.x - Math.sin(a.h) * (k === 'milk' ? 1.3 : .2), a.z - Math.cos(a.h) * (k === 'milk' ? 1.3 : .2)), B = k === 'milk' ? PENBOX : RUN;   // kept inside the pen / the run
+    const u = Math.max(B.u - B.hu, Math.min(B.u + B.hu, l.u)), v = Math.max(B.v - B.hv, Math.min(B.v + B.hv, l.v)); S.drops.push({ k, u, v, t: now() }); save(); dropShow();
+    notify(k === 'milk' ? '🥛 Your cow don give milk! Go pick the jar.' : '🥚 A hen don lay egg! Go pick am.'); }
+  // the meshes for them
+  const grainObjs = [], dropObjs = [];
+  function turfShow() { if (!built) return; turfs.forEach((o, i) => { if (!o) return; const a = turfAmt(i), wet = !!S.turf[i].w;
+    const n = a > .45 ? 'turf' : a > .08 ? 'turf_low' : wet ? 'turf_wet' : 'turf_bare'; if (o.userData.lod !== n || !o.visible) setGeo(o, n); o.scale.y = n === 'turf' ? .35 + .65 * a : 1; }); }
+  function pool(objs, name, n) { while (objs.length < n) { const m = M[name]; if (!m) return; const o = new THREE.Mesh(m.geo, m.mat); o.castShadow = true; o.receiveShadow = true; o.layers.set(1); scene.add(o); objs.push(o); } for (let i = 0; i < objs.length; i++) objs[i].visible = i < n; }
+  function grainShow() { if (!built) return; pool(grainObjs, 'grain', S.grain.length); S.grain.forEach((p, i) => { const o = grainObjs[i]; if (!o) return; const w = W(p.u, p.v); o.position.set(w.x, .015, w.z); o.rotation.y = i * 1.7; const k = .45 + .55 * Math.min(1, p.n / PILE); o.scale.set(k, 1, k); }); }
+  function dropShow() { if (!built) return;
+    while (dropObjs.length < S.drops.length) { const o = new THREE.Group(); o.layers.set(1); scene.add(o); dropObjs.push(o); }
+    dropObjs.forEach((o, i) => { const d = S.drops[i]; o.visible = !!d; if (!d) return; if (o.userData.k !== d.k) { o.clear(); const m = M[d.k]; if (m) { const me = new THREE.Mesh(m.geo, m.mat); me.castShadow = true; me.layers.set(1); me.scale.setScalar(d.k === 'egg' ? 2.2 : 1.35); o.add(me); } o.userData.k = d.k; }
+      const w = W(d.u, d.v); o.position.set(w.x, 0, w.z); }); }
+  function tickDrops(dt) {   // they bob so you see them; walk over one and it goes into your store
+    dropObjs.forEach((o, i) => { if (!o.visible) return; o.children[0] && (o.children[0].position.y = .05 + Math.abs(Math.sin(clock * 2.4 + i)) * .12); o.rotation.y += dt * 1.2; });
+    if (!api.walking()) return; const p = api.player();
+    for (let i = S.drops.length - 1; i >= 0; i--) { const d = S.drops[i], w = W(d.u, d.v); if (Math.hypot(p.x - w.x, p.z - w.z) > PICK_R) continue;
+      if (!room(1)) { if (clock - fullT > 4) { fullT = clock; api.toast(`Your store is full (${stored()}/${S.cap}). Load your lorry or sell first.`, 2.6); } continue; }
+      S.drops.splice(i, 1); put(d.k, 1); dropShow(); api.toast(d.k === 'milk' ? `🥛 +1 jar of milk · store ${stored()}/${S.cap}` : `🥚 +1 egg · store ${stored()}/${S.cap}`, 1.4); }
+  }
+  let fullT = -9;
 
   // ---------------------------------------------------------------- the state of things
   function bedState(i) { const b = S.beds[i]; if (i >= S.open) return 'locked'; if (!b.crop) return 'empty'; if (b.stage >= 3) return 'ready'; return b.wet ? 'growing' : 'dry'; }
@@ -209,12 +328,6 @@ export function createFarm(api) {
       if (!b.wet && rain) { b.wet = true; b.until = t + CROPS[b.crop].stage * 1000; save(); }
       if (b.wet && t >= b.until) { b.stage++; b.wet = false; save(); if (b.stage >= 3) { notify(`${CROPS[b.crop].em} Your ${CROPS[b.crop].n.toLowerCase()} don ready! Harvest am.`); } } });
   }
-  function tickAnimals() {
-    const t = now();
-    for (const c of S.cows) { if (c.milk) continue; if (S.trough <= 0) { c.at = t; continue; } if (t - c.at >= MILK_S * 1000) { c.milk = 1; c.at = t; S.trough--; save(); } }
-    for (const h of S.hens) { if (S.eggs >= S.hens.length * 2) { h.at = t; continue; } if (S.feeder <= 0) { h.at = t; continue; } if (t - h.at >= EGG_S * 1000) { S.eggs++; h.at = t; S.feeder--; save(); } }
-  }
-  const milkReady = () => S.cows.reduce((a, c) => a + (c.milk || 0), 0);
   function room(n) { return S.cap - stored() >= n; }
   function put(k, n) { S.store[k] = (S.store[k] || 0) + n; save(); }
 
@@ -226,19 +339,12 @@ export function createFarm(api) {
   function harvest(i) { const b = S.beds[i], C = CROPS[b.crop]; if (!room(C.yield)) { api.toast(`Your store is full (${stored()}/${S.cap}). Sell something first.`, 2.6); return; }
     put(b.crop, C.yield); api.toast(`${C.em} You harvested ${C.yield} ${C.n.toLowerCase()}! It's in your store.`, 2.6); Object.assign(b, { crop: null, stage: 0, wet: false }); save(); refresh(); api.gist('harvest', { what: C.n.toLowerCase() }); }
   function buyBed(i) { const p = BED_PRICE[i]; if (api.cash() < p) { api.toast(`This land costs ${naira(p)}. Make more money first.`); return; } api.addCash(-p); S.open = i + 1; save(); refresh(); api.toast('🚜 The land is yours! Plant something.', 2.4); }
-  function milk() { const n = milkReady(); if (!n) return; if (!room(n)) { api.toast('Your store is full. Sell something first.'); return; } for (const c of S.cows) c.milk = 0; put('milk', n); api.toast(`🥛 You milked ${n} jug${n > 1 ? 's' : ''} of fresh milk.`, 2.2); refresh(); }
-  function eggs() { const n = S.eggs; if (!n) return; if (!room(n)) { api.toast('Your store is full. Sell something first.'); return; } S.eggs = 0; put('egg', n); api.toast(`🥚 You collected ${n} egg${n > 1 ? 's' : ''}.`, 2.2); refresh(); }
-  function feedCow(useMaize) { if (S.trough >= 6) { api.toast('The trough is full.'); return; }
-    if (useMaize) { if ((S.store.maize || 0) < 2) { api.toast('You need 2 maize in your store.'); return; } S.store.maize -= 2; } else { if (api.cash() < FEED_COW) { api.toast(`Cow feed costs ${naira(FEED_COW)}.`); return; } api.addCash(-FEED_COW); }
-    S.trough = Math.min(6, S.trough + 3); save(); api.toast('🐄 The trough is full of feed. Your cow go give milk.', 2.2); }
-  function feedHens(useMaize) { if (S.feeder >= 12) { api.toast('The feeder is full.'); return; }
-    if (useMaize) { if ((S.store.maize || 0) < 1) { api.toast('You need 1 maize in your store.'); return; } S.store.maize -= 1; } else { if (api.cash() < FEED_HEN) { api.toast(`Chicken feed costs ${naira(FEED_HEN)}.`); return; } api.addCash(-FEED_HEN); }
-    S.feeder = Math.min(12, S.feeder + 4); save(); api.toast('🐔 The feeder is full. Your hens go lay.', 2.2); }
-  function buyCow() { if (S.cows.length >= MAX_COWS) return; if (api.cash() < COW_PRICE) { api.toast(`A cow costs ${naira(COW_PRICE)}.`); return; } api.addCash(-COW_PRICE); S.cows.push({ milk: 0, at: now() }); save(); animals(); api.toast('🐄 Your new cow don land!', 2.2); }
-  function buyHen() { if (S.hens.length >= MAX_HENS) return; if (api.cash() < HEN_PRICE) { api.toast(`A hen costs ${naira(HEN_PRICE)}.`); return; } api.addCash(-HEN_PRICE); S.hens.push({ at: now() }); save(); animals(); api.toast('🐔 New hen for your coop!', 2.2); }
+  function buyCow() { if (S.cows.length >= MAX_COWS) return; if (api.cash() < COW_PRICE) { api.toast(`A cow costs ${naira(COW_PRICE)}.`); return; } api.addCash(-COW_PRICE); S.cows.push({ hu: 0, meals: 0 }); save(); animals(); api.toast('🐄 Your new cow don land!', 2.2); }
+  function buyHen() { if (S.hens.length >= MAX_HENS) return; if (api.cash() < HEN_PRICE) { api.toast(`A hen costs ${naira(HEN_PRICE)}.`); return; } api.addCash(-HEN_PRICE); S.hens.push({ hu: 0, meals: 0 }); save(); animals(); api.toast('🐔 New hen for your coop!', 2.2); }
   function bigger() { const up = STORE_UP.find(([c]) => c > S.cap); if (!up) return; if (api.cash() < up[1]) { api.toast(`That costs ${naira(up[1])}.`); return; } api.addCash(-up[1]); S.cap = up[0]; save(); api.toast(`Your store now holds ${S.cap}.`, 2.2); }
-  function claim() { if (S.got) return; S.got = true; Object.assign(S, { open: 2, trough: 3, feeder: 6, cows: [{ milk: 0, at: now() }], hens: [{ at: now() }, { at: now() + 50000 }, { at: now() + 100000 }] }); save(); flush(); animals(); refresh();
-    api.toast('🚜 Welcome, farmer! The farm behind this gate is yours: land, a cow and three hens.', 4); api.gist('farm', { place: 'Farm Settlement' }); api.guide('farm_yard'); }
+  function claim() { if (S.got) return; S.got = true; Object.assign(S, { open: 2, cows: [{ hu: 0, meals: 0 }], hens: [{ hu: 0, meals: 0 }, { hu: 12, meals: 0 }, { hu: 24, meals: 0 }], grain: [], drops: [], lorry: { load: {} } });
+    S.turf.forEach(t => { t.a = 1; t.w = 0; }); throwGrain(true); save(); flush(); animals(); refresh(); turfShow(); spawnLorry();
+    api.toast('🚜 Welcome, farmer! The farm behind this gate is yours: land, a cow, three hens and your own lorry.', 4); api.gist('farm', { place: 'Farm Settlement' }); api.guide('farm_yard'); }
   function sellGate() { const load = { ...S.store }, v = Math.round(valueOf(load) * GATE_RATE); if (!v) { api.toast('Your store is empty.'); return; } S.store = {}; save(); api.addCash(v); S.earned += v; api.toast(`The middleman paid ${naira(v)} for ${list(load)}. (Cheap, but quick.)`, 3.2); }
   function takeCarry() { if (S.carry) { api.toast('You are already carrying goods. Sell them at the market first.'); return; } if (!stored()) { api.toast('Your store is empty.'); return; }
     const load = {}; let n = 0; for (const k of Object.keys(S.store)) { const t = Math.min(S.store[k], CARRY_CAP - n); if (t > 0) { load[k] = t; S.store[k] -= t; n += t; } }
@@ -253,9 +359,9 @@ export function createFarm(api) {
   let handT = 0;
   function tickHand(dt) { if (!handOn()) { if (handSp) { api.unspot(handSp); handSp = null; } return; } handSpot(); if ((handT -= dt) > 0) return; handT = 8;
     for (let i = 0; i < S.open; i++) { const st = bedState(i); if (st === 'dry') { water(i); return; } if (st === 'ready' && room(CROPS[S.beds[i].crop].yield)) { harvest(i); return; } }
-    if (milkReady() && room(milkReady())) { milk(); return; } if (S.eggs && room(S.eggs)) { eggs(); return; }
-    if (S.trough <= 1) { if ((S.store.maize || 0) >= 2) feedCow(true); else if (api.cash() > FEED_COW * 3) feedCow(false); }
-    if (S.feeder <= 2) { if ((S.store.maize || 0) >= 1) feedHens(true); else if (api.cash() > FEED_HEN * 3) feedHens(false); } }
+    { let best = -1, ba = 2; S.turf.forEach((t, i) => { const a = turfAmt(i); if (needsWater(i) && a < ba) { ba = a; best = i; } }); if (best >= 0 && ba < .6) { waterTurf(best, true); return; } }
+    if (S.drops.length && room(S.drops.length)) { for (const d of S.drops) put(d.k, 1); S.drops = []; save(); dropShow(); return; }
+    if (S.grain.length < 2 && hens.some(h => h.s.hu > HUNGRY * .5) && ((S.store.maize || 0) >= 1 || api.cash() > GRAIN_COST * 5)) throwGrain(false); }
 
   // ---- Baba Sule's pickup: drives to the farm, loads, drives to the market, sells, comes back with your money
   let truck = null;
@@ -288,6 +394,29 @@ export function createFarm(api) {
     api.sms(`${DRIVER} (pickup)`, `I don come back. Market price ${naira(gross)}, my transport ${naira(cut)}. Your ${naira(net)} don enter. Call me anytime!`);
     api.toast(`🚚 ${DRIVER} brought your money: ${naira(net)} (he took ${naira(cut)}).`, 3.4); }
 
+  // ---- your own farm lorry: waits in the yard; pack the store onto it, drive it to the produce buyer, sell the load
+  let lorry = null; const crates = [];
+  const loaded = () => Object.values(S.lorry.load).reduce((a, b) => a + b, 0);
+  function spawnLorry() { if (!built || !S.got || (lorry && api.lorryAlive(lorry))) return; const w = W(LORRY_AT.u, LORRY_AT.v); lorry = api.myLorry(w.x, w.z, yardRot); }
+  function lorryFwd() { return { x: Math.cos(lorry.h), z: -Math.sin(lorry.h) }; }       // a car's nose: its local +x
+  function lorryRear() { const f = lorryFwd(); return { x: lorry.x - f.x * 3.4, z: lorry.z - f.z * 3.4 }; }
+  const lorryNear = (P, r) => lorry && api.lorryAlive(lorry) && Math.hypot(lorry.x - P.x, lorry.z - P.z) < r;
+  function packLorry() {
+    if (!stored()) { api.toast('Your store is empty. Pick the milk and eggs, harvest your crops.'); return; }
+    const room2 = LORRY_CAP - loaded(); if (room2 <= 0) { api.toast(`Your lorry is full (${LORRY_CAP}). Drive am go market!`); return; }
+    const moved = {}; let n = 0; for (const k of Object.keys(S.store)) { const t = Math.min(S.store[k], room2 - n); if (t > 0) { moved[k] = t; S.store[k] -= t; S.lorry.load[k] = (S.lorry.load[k] || 0) + t; n += t; } }
+    save(); flush(); cratesShow();
+    if (MARKET) api.gps(MARKET.x, MARKET.z, { name: 'Farm produce buyer', sub: MARKET.name || 'Market' });
+    api.toast(`📦 You packed ${list(moved)} into your lorry (${loaded()}/${LORRY_CAP}). Drive to the produce buyer at ${MARKET && MARKET.name || 'the market'} (GPS on).`, 3.6); api.guide && api.guide('farm_lorry'); }
+  function sellLorry() { const load = S.lorry.load, v = valueOf(load); if (!v) return; const what = list(load); S.lorry.load = {}; save(); flush(); cratesShow(); api.addCash(v); S.earned += v; api.clearGps && api.clearGps();
+    api.toast(`🚚 The buyer bought your whole lorry load: ${what}. ${naira(v)} for you, full price!`, 3.6); api.gist('market', { place: MARKET && MARKET.name || 'the market' }); }
+  function cratesShow() { const n = Math.min(24, Math.ceil(loaded() / 2)); pool(crates, 'crate', n); }
+  function tickCrates() {   // the crates ride on the lorry's back: 3 across, 4 along, 2 high
+    if (!lorry || !crates.length) return; const alive = api.lorryAlive(lorry); const f = lorryFwd(), sx = Math.sin(lorry.h), sz = Math.cos(lorry.h);
+    crates.forEach((o, i) => { if (!o.visible) return; if (!alive) { o.visible = false; return; }
+      const layer = Math.floor(i / 12), k = i % 12, lx = -.4 - Math.floor(k / 3) * .66, lz = ((k % 3) - 1) * .66;
+      o.position.set(lorry.x + f.x * lx + sx * lz, (lorry.y || 0) + 1.04 + layer * .36, lorry.z + f.z * lx + sz * lz); o.rotation.y = lorry.h - Math.PI / 2; }); }
+
   // ---------------------------------------------------------------- the beds and animals on screen
   function refresh() {
     if (!built) return;
@@ -302,14 +431,24 @@ export function createFarm(api) {
   function hud() { if (!hudEl) { hudEl = document.createElement('div'); hudEl.className = 'farmhud'; hudEl.hidden = true; const st = document.createElement('style');
       st.textContent = '.farmhud{position:absolute;left:50%;top:calc(118px + var(--st));transform:translateX(-50%);background:rgba(12,14,18,.78);color:#F7EFDF;border:1px solid rgba(242,183,5,.6);border-radius:999px;padding:6px 14px;font:700 15px var(--fb,system-ui);pointer-events:none;white-space:nowrap}';
       document.head.append(st); (document.querySelector('.hud') || document.body).append(hudEl); }
-    hudEl.hidden = !S.carry; if (S.carry) hudEl.textContent = `🧺 ${list(S.carry)} · sell to the farm produce buyer`; }
+    let t = '';
+    if (S.carry) t = `🧺 ${list(S.carry)} · sell to the farm produce buyer`;
+    else if (lorry && api.driving(lorry) && loaded()) t = `🚚 ${loaded()} in your lorry · drive to the produce buyer`;
+    else if (S.got && inYardNow()) { const hc = S.cows.filter(c => c.hu >= HUNGRY).length, hh = S.hens.filter(c => c.hu >= HUNGRY).length, st = [...S.cows, ...S.hens].some(c => c.hu >= THIN);
+      if (hc || hh || S.drops.length) t = `${st ? '⚠️ ' : ''}🌿 grass ${grassLeft()}/12${hc ? ` · 🐄 ${hc} hungry` : ''}${hh ? ` · 🐔 ${hh} hungry` : ''}${S.drops.length ? ` · ${S.drops.length} to pick` : ''}`; }
+    hudEl.hidden = !t; if (t) hudEl.textContent = t; }
+  const inYardNow = () => { const p = api.player(), l = L(p.x, p.z); return Math.abs(l.u) < YARD.u + 2 && Math.abs(l.v) < YARD.v + 2; };
 
   // ---------------------------------------------------------------- what is near you, and E
   let here = null;
   const near = (p, x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
   function findHere() {
     const p = api.player(); here = null; if (!built) return;
+    if (!api.walking()) return;
+    if (MARKET && loaded() && near(p, MARKET.x, MARKET.z, 8) && lorryNear(MARKET, 40)) { here = { t: `Sell your lorry load to the buyer (${naira(valueOf(S.lorry.load))})`, act: sellLorry }; return; }
     if (MARKET && S.carry && near(p, MARKET.x, MARKET.z, 6)) { here = { t: `Sell your farm produce (${naira(valueOf(S.carry))})`, act: sellCarry }; return; }
+    if (S.got && lorry && api.lorryAlive(lorry) && Math.hypot(lorry.x - YC.x, lorry.z - YC.z) < kd + 25) { const r = lorryRear();
+      if (near(p, r.x, r.z, 2.4)) { here = { t: stored() ? `Pack your produce onto the lorry (${Math.min(stored(), LORRY_CAP - loaded())}) · lorry ${loaded()}/${LORRY_CAP}` : `Your lorry · ${loaded() ? list(S.lorry.load) : 'empty'}`, act: () => stored() ? packLorry() : api.toast(loaded() ? 'Drive your lorry to the produce buyer and sell the load.' : 'Pick milk and eggs, harvest crops, then pack them onto the lorry here.', 2.6) }; return; } }
     if (Math.hypot(p.x - YC.x, p.z - YC.z) > kd + 30) return;
     if (near(p, OFFICE.x, OFFICE.z, 5.5) || near(p, SG.x, SG.z, 3.2)) { here = { t: S.got ? 'Farm office: workers, pickup, prices' : 'Talk to the farm officer (free farm!)', act: officeMenu }; return; }
     const l = L(p.x, p.z); if (Math.abs(l.u) > YARD.u + 1 || Math.abs(l.v) > YARD.v + 1) return;
@@ -324,8 +463,11 @@ export function createFarm(api) {
       else here = { t: `Harvest ${C.n.toLowerCase()} (${C.yield})`, act: () => harvest(i) };
       return; }
     const nearPen = Math.abs(l.u - PEN.u) < 5.6 && Math.abs(l.v - PEN.v) < 4.2, nearCoop = Math.abs(l.u - COOP.u) < 2.8 && Math.abs(l.v - COOP.v) < 3.2;
-    if (nearPen) { const m = milkReady(); here = { t: m ? `Milk the cow (${m})` : `Cow pen · trough ${S.trough}/6${S.trough ? ` · milk in ${fmtT(MILK_S - (now() - Math.max(...S.cows.map(c => c.at))) / 1000)}` : ' · EMPTY'}`, act: () => m ? milk() : penMenu() }; return; }
-    if (nearCoop) { here = { t: S.eggs ? `Collect eggs (${S.eggs})` : `Chicken coop · feeder ${S.feeder}/12${S.feeder ? '' : ' · EMPTY'}`, act: () => S.eggs ? eggs() : coopMenu() }; return; }
+    if (nearPen) {   // the grass tile you stand on (or next to) that needs water
+      let bi = -1, bd = 1.9; TILES.forEach((t, i) => { if (!needsWater(i)) return; const d = Math.hypot(l.u - t.u, l.v - t.v); if (d < bd) { bd = d; bi = i; } });
+      if (bi >= 0) { const a = turfAmt(bi); here = { t: a < .08 ? '💧 Water the bare ground (grass go grow back)' : `💧 Water the grass (${Math.round(a * 100)}%)`, act: () => waterTurf(bi) }; return; }
+      here = { t: `Cow pen · grass ${grassLeft()}/12 · ${S.cows.length} cow${S.cows.length === 1 ? '' : 's'}`, act: penMenu }; return; }
+    if (nearCoop) { here = S.grain.length < GRAIN_MAX ? { t: `🌽 Throw grain for the hens (${(S.store.maize || 0) >= 1 ? '1 maize' : naira(GRAIN_COST)})`, act: () => throwGrain(false) } : { t: `Chicken coop · ${S.hens.length} hens`, act: coopMenu }; return; }
     if (Math.abs(l.u - BARN.u) < 4.6 && l.v > BARN.v + 2 && l.v < BARN.v + 6.5) { here = { t: `Your store (${stored()}/${S.cap})`, act: storeMenu }; return; }
   }
 
@@ -337,6 +479,7 @@ export function createFarm(api) {
     for (const [k, n] of Object.entries(S.store)) if (n > 0) rows.push({ name: `${GOODS[k].em} ${GOODS[k].n}: ${n}`, sub: `Market price today ${naira(price(k))} each · ${naira(price(k) * n)}`, btn: '·', off: true, act: () => { } });
     if (!rows.length) rows.push({ name: 'Your store is empty', sub: 'Harvest crops, milk the cow, collect eggs.', btn: '·', off: true, act: () => { } });
     const v = valueOf(S.store);
+    rows.push({ name: '📦 Pack it onto your lorry', sub: `Your lorry: ${loaded()}/${LORRY_CAP}. Then drive it to the produce buyer, full price`, btn: 'PACK', off: !stored() || loaded() >= LORRY_CAP || !lorryNear(YC, kd + 25), act: () => { api.closeMenu(); packLorry(); } });
     rows.push({ name: `🚚 Send it with ${DRIVER}'s pickup`, sub: S.trip ? `He is on a trip now (${S.trip.phase})` : `Up to ${TRUCK_CAP} items to ${MARKET && MARKET.name || 'the market'}. He keeps 15% (about ${naira(Math.round(Math.min(v * .5, Math.max(300, v * DRIVER_CUT)) / 10) * 10)})`, btn: 'CALL HIM', off: !!S.trip || !stored(), act: () => { api.closeMenu(); callTruck(); } });
     rows.push({ name: '🧺 Carry it to market yourself', sub: `Up to ${CARRY_CAP} items, full price at the produce buyer`, btn: 'CARRY', off: !!S.carry || !stored(), act: () => { api.closeMenu(); takeCarry(); } });
     rows.push({ name: '🤝 Sell to the middleman here', sub: `Quick money, only 60%: ${naira(Math.round(v * GATE_RATE))}`, btn: 'SELL', off: !stored(), act: () => { sellGate(); } });
@@ -344,15 +487,13 @@ export function createFarm(api) {
     return rows;
   }
   function storeMenu() { api.openMenu(`YOUR STORE · ${stored()}/${S.cap}`, 'Everything you harvest, milk and collect', storeRows); }
-  function penMenu() { api.openMenu('COW PEN', `${S.cows.length} cow${S.cows.length > 1 ? 's' : ''} · trough ${S.trough}/6`, () => [
-    { name: `🥛 Milk the cow${S.cows.length > 1 ? 's' : ''}`, sub: milkReady() ? `${milkReady()} jug ready` : 'Not ready yet', btn: 'MILK', off: !milkReady(), act: () => milk() },
-    { name: '🌽 Fill the trough with your maize', sub: `Uses 2 maize from your store (you have ${S.store.maize || 0})`, btn: 'FILL', off: (S.store.maize || 0) < 2 || S.trough >= 6, act: () => feedCow(true) },
-    { name: '🌾 Buy a bag of cow feed', sub: 'Fills the trough for 3 milkings', price: FEED_COW, off: S.trough >= 6, act: () => feedCow(false) },
-    { name: '🐄 Buy another cow', sub: S.cows.length >= MAX_COWS ? 'The pen is full' : 'More milk', price: COW_PRICE, off: S.cows.length >= MAX_COWS, act: () => buyCow() }]); }
-  function coopMenu() { api.openMenu('CHICKEN COOP', `${S.hens.length} hens · feeder ${S.feeder}/12`, () => [
-    { name: '🥚 Collect the eggs', sub: S.eggs ? `${S.eggs} eggs` : 'No eggs yet', btn: 'COLLECT', off: !S.eggs, act: () => eggs() },
-    { name: '🌽 Fill the feeder with your maize', sub: `Uses 1 maize (you have ${S.store.maize || 0})`, btn: 'FILL', off: (S.store.maize || 0) < 1 || S.feeder >= 12, act: () => feedHens(true) },
-    { name: '🌾 Buy chicken feed', sub: 'Fills the feeder for 4 eggs', price: FEED_HEN, off: S.feeder >= 12, act: () => feedHens(false) },
+  const grassLeft = () => S.turf.reduce((n, t, i) => n + (turfAmt(i) > .45 ? 1 : 0), 0);
+  function penMenu() { api.openMenu('COW PEN', `${S.cows.length} cow${S.cows.length === 1 ? '' : 's'} · grass ${grassLeft()}/12`, () => [
+    { name: '💧 Water all the grass', sub: 'Walk round the pen and water each bare patch (E). Rain waters it for you.', btn: '·', off: true, act: () => { } },
+    ...S.cows.map((c, i) => ({ name: `🐄 Cow ${i + 1}`, sub: c.hu >= THIN ? `STARVING! Dies in ${fmtT(DEAD - c.hu)}` : c.hu >= HUNGRY ? 'Hungry, looking for grass' : 'Fed and happy', warn: c.hu >= HUNGRY, btn: '·', off: true, act: () => { } })),
+    { name: '🐄 Buy another cow', sub: S.cows.length >= MAX_COWS ? 'The pen is full' : 'More milk (more grass eaten too)', price: COW_PRICE, off: S.cows.length >= MAX_COWS, act: () => buyCow() }]); }
+  function coopMenu() { api.openMenu('CHICKEN COOP', `${S.hens.length} hens · ${S.grain.length} grain on the ground`, () => [
+    { name: '🌽 Throw grain', sub: (S.store.maize || 0) >= 1 ? `Uses 1 maize from your store (you have ${S.store.maize})` : `A bowl of grain, ${naira(GRAIN_COST)}`, btn: 'THROW', off: S.grain.length >= GRAIN_MAX, act: () => throwGrain(false) },
     { name: '🐔 Buy another hen', sub: S.hens.length >= MAX_HENS ? 'The coop is full' : 'More eggs', price: HEN_PRICE, off: S.hens.length >= MAX_HENS, act: () => buyHen() }]); }
   function officeMenu() {
     if (!S.got) { api.openMenu('FARM OFFICE', 'Officer: "Welcome to Oya Farm Settlement! Every Lagos person fit farm."', [
@@ -360,6 +501,8 @@ export function createFarm(api) {
       { name: 'How it works', sub: 'Plant, water, harvest. Feed the cow and hens. Sell at the market.', btn: '·', off: true, act: () => { } }]); return; }
     api.openMenu('FARM OFFICE', 'Officer: "How the farm dey go?"', () => [
       { name: '👨🏾‍🌾 Hire Musa the farmhand', sub: handOn() ? `Working till ${new Date(S.hand).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}` : 'Waters, harvests, milks, collects eggs, feeds the animals (one game day)', price: handOn() ? 0 : HAND_PAY, btn: handOn() ? 'HIRED' : undefined, off: handOn(), act: () => hireHand() },
+      { name: '🐔 Buy a hen', sub: S.hens.length >= MAX_HENS ? 'The coop is full' : `${S.hens.length} hens now`, price: HEN_PRICE, off: S.hens.length >= MAX_HENS, act: () => buyHen() },
+      { name: '🐄 Buy a cow', sub: S.cows.length >= MAX_COWS ? 'The pen is full' : `${S.cows.length} now`, price: COW_PRICE, off: S.cows.length >= MAX_COWS, act: () => buyCow() },
       { name: `🚚 Call ${DRIVER}'s pickup`, sub: S.trip ? `On a trip (${S.trip.phase})` : `Takes ${TRUCK_CAP} items from your store to market, keeps 15%`, btn: 'CALL', off: !!S.trip || !stored(), act: () => { api.closeMenu(); callTruck(); } },
       ...Object.keys(GOODS).map(k => ({ name: `${GOODS[k].em} ${GOODS[k].n}`, sub: `Market price today, per ${GOODS[k].unit}`, btn: naira(price(k)), off: true, act: () => { } }))]); }
 
@@ -368,17 +511,20 @@ export function createFarm(api) {
     if (!S.got) return { title: 'Oya Farm', sections: [{ rows: [{ name: 'Get your free farm', sub: 'Go to the Farm Settlement (north-east Mushin, by the lagoon) and talk to the farm officer.', btn: 'SHOW WAY', act: () => api.gps(OFFICE.x, OFFICE.z, { name: 'Farm Settlement' }) }] }] };
     const bedRows = S.beds.slice(0, S.open).map((s, i) => { const st = bedState(i), C = s.crop && CROPS[s.crop];
       return { name: `Bed ${i + 1}: ${C ? C.em + ' ' + C.n : 'empty'}`, sub: st === 'empty' ? 'Plant something' : st === 'dry' ? 'Needs water!' : st === 'growing' ? `Growing · ${fmtT((s.until - now()) / 1000)}` : 'Ready to harvest!', warn: st === 'dry' || st === 'ready' }; });
-    const m = milkReady();
+    const hc = S.cows.filter(c => c.hu >= HUNGRY).length, hh = S.hens.filter(c => c.hu >= HUNGRY).length, starving = [...S.cows, ...S.hens].some(c => c.hu >= THIN);
     return { title: 'Oya Farm', sections: [
-      { h: 'Your farm', rows: [...bedRows, { name: `🐄 ${S.cows.length} cow${S.cows.length > 1 ? 's' : ''}`, sub: m ? `${m} milk ready` : S.trough ? `Trough ${S.trough}/6` : 'Trough empty! Feed the cow', warn: !!m || !S.trough },
-        { name: `🐔 ${S.hens.length} hens`, sub: S.eggs ? `${S.eggs} eggs waiting` : S.feeder ? `Feeder ${S.feeder}/12` : 'Feeder empty!', warn: !!S.eggs || !S.feeder },
+      { h: 'Your farm', rows: [...bedRows, { name: `🐄 ${S.cows.length} cow${S.cows.length === 1 ? '' : 's'} · grass ${grassLeft()}/12`, sub: hc ? `${hc} hungry${starving ? ' · STARVING!' : ''}` : 'Fed', warn: !!hc },
+        { name: `🐔 ${S.hens.length} hens · grain ${S.grain.length}`, sub: hh ? `${hh} hungry, throw grain!` : 'Fed', warn: !!hh },
+        { name: `🥛🥚 On the ground`, sub: S.drops.length ? `${S.drops.length} to pick up` : 'Nothing yet', warn: !!S.drops.length },
+        { name: `🚚 Your lorry ${loaded()}/${LORRY_CAP}`, sub: loaded() ? `${list(S.lorry.load)} · drive it to the produce buyer` : 'Empty' },
         { name: `🏚️ Store ${stored()}/${S.cap}`, sub: stored() ? `${list(S.store)} · worth ${naira(valueOf(S.store))}` : 'Empty' },
         { name: '👨🏾‍🌾 Farmhand', sub: handOn() ? 'Musa is working' : 'Not hired (hire at the farm office)' }] },
       { h: 'Sell', rows: [
         { name: `🚚 ${DRIVER}'s pickup`, sub: S.trip ? `On the way (${S.trip.phase})` : 'Takes your goods to market, keeps 15%', btn: S.trip ? 'BUSY' : 'CALL', off: !!S.trip || !stored(), act: callTruck },
         { name: '🧺 You carry', sub: S.carry ? list(S.carry) : 'Pick up at your store', btn: S.carry ? 'SHOW BUYER' : 'SHOW STORE', act: () => S.carry ? api.gps(MARKET.x, MARKET.z, { name: 'Farm produce buyer' }) : api.gps(W(BARN.u, BARN.v + 4).x, W(BARN.u, BARN.v + 4).z, { name: 'Your farm store' }) }] },
       { h: 'Prices today', rows: Object.keys(GOODS).map(k => ({ name: `${GOODS[k].em} ${GOODS[k].n}`, sub: `per ${GOODS[k].unit}`, btn: naira(price(k)), off: true })) },
-      { rows: [{ name: 'Show the way to your farm', btn: 'GPS', act: () => api.gps(W(0, GATE_V).x, W(0, GATE_V).z, { name: 'Your farm' }) }] }] };
+      { rows: [{ name: 'Show the way to your farm', btn: 'GPS', act: () => api.gps(W(0, GATE_V).x, W(0, GATE_V).z, { name: 'Your farm' }) }] },
+      { h: 'Credits', rows: [{ name: 'Cows and hens: 3D scans from Sketchfab (CC BY 4.0)', sub: 'Zebu by rt699448 · Holstein and hen by Hdjusj', btn: '·', off: true }] }] };
   }
   const notify = t => { if (!S.got) return; const p = api.player(); if (Math.hypot(p.x - YC.x, p.z - YC.z) < 60) api.toast(t, 2.6); };
 
@@ -388,31 +534,47 @@ export function createFarm(api) {
     if (!api.started()) return;
     const p = api.player(), dFarm = Math.hypot(p.x - YC.x, p.z - YC.z);
     if (!loading && (dFarm < 700 || S.carry || S.trip)) load();
-    if ((t1 -= dt) <= 0) { t1 = .5; tickBeds(); tickAnimals(); tickHand(.5); if (built) refreshSoft(); }
+    if ((t1 -= dt) <= 0) { t1 = .5; tickBeds(); tickHand(.5); if (built) { tickTurfRain(); turfShow(); refreshSoft(); if (!lorry || !api.lorryAlive(lorry)) { if (dFarm > 90 || !lorry) spawnLorry(); } } }
     tickTruck(dt);
     if (saveT > 0 && (saveT -= dt) <= 0) flush();
     if (!built) return;
     findHere();
     if ((lodT -= dt) <= 0) { lodT = .5; const far = dFarm > api.Q.lod0 * .6; for (const o of dyn) { if (o.userData.far !== far) { o.userData.far = far; if (o.visible && o.userData.lod) setGeo(o, o.userData.lod); } } }
-    const vis = dFarm < 260;
-    for (const a of cows) { a.root.visible = vis; if (vis) wander(a, dt, { u: PEN.u, v: PEN.v - .2, hu: 3.6, hv: 2.1 }, .8, dFarm < 90); }
-    for (const a of hens) { a.root.visible = vis && dFarm < 160; if (a.root.visible) wander(a, dt, { u: COOP.u, v: COOP.v + .55, hu: 1.6, hv: .8 }, .45, dFarm < 60); }
+    clock += dt; const sim = S.got && dFarm < SIM_R, vis = dFarm < 260;   // hunger runs only while you are at the farm
+    for (const a of cows.slice()) { a.root.visible = vis; if (vis || sim) animalTick(a, dt, sim, dFarm < 90); }
+    for (const a of hens.slice()) { a.root.visible = vis && dFarm < 160; if (a.root.visible || sim) animalTick(a, dt, sim, dFarm < 60); }
+    if (dFarm < 200) tickDrops(dt); tickCrates();
   }
   let sig = '';
+  function tickTurfRain() { if (api.rain() > .3) S.turf.forEach((t, i) => { if (needsWater(i)) waterTurf(i, true); }); }
   function refreshSoft() { const s = S.beds.map((b, i) => bedState(i) + (b.crop || '') + b.stage).join() + S.open + S.got; if (s !== sig) { sig = s; refresh(); } hud(); }
 
   function test(c) {
     const parts = (c || '').split(':');
-    if (c === 'state') return JSON.stringify({ got: S.got, open: S.open, beds: S.beds.slice(0, S.open).map((b, i) => bedState(i) + ':' + (b.crop || '')), store: S.store, cap: S.cap, trough: S.trough, feeder: S.feeder, eggs: S.eggs, milk: milkReady(), trip: S.trip && S.trip.phase, carry: S.carry, built, ready, here: here && here.t });
+    if (c === 'state') return JSON.stringify({ got: S.got, open: S.open, beds: S.beds.slice(0, S.open).map((b, i) => bedState(i) + ':' + (b.crop || '')), store: S.store, cap: S.cap, trip: S.trip && S.trip.phase, carry: S.carry, built, ready, loading, left: loadLeft(), missing: STATIC.filter(n => !M[n]).concat(['cow','hen'].filter(n => !M[n])), here: here && here.t,
+      turf: S.turf.map((t, i) => +turfAmt(i).toFixed(2) + (t.w ? 'w' : '')), cows: S.cows.map(c => [Math.round(c.hu), c.meals]), hens: S.hens.map(c => [Math.round(c.hu), c.meals]), grain: S.grain.length, drops: S.drops.map(d => d.k), lorry: S.lorry.load, lorryAt: lorry && { x: Math.round(lorry.x), z: Math.round(lorry.z), alive: api.lorryAlive(lorry) } });
     if (c === 'go') { const o = W(-10, kd - hwR - 11.5 + 3.6); api.teleport(o.x, o.z, ry + Math.PI); return 1; }
     if (c === 'yard') { const o = W(0, 3.4); api.teleport(o.x, o.z, ry + Math.PI); return 1; }
     if (c === 'claim') { claim(); return 1; }
     if (parts[0] === 'open') { S.open = Math.min(8, +parts[1]); save(); refresh(); return 1; }
-    if (c === 'animals') return JSON.stringify({ cows: cows.map(a => { const l = L(a.x, a.z); return [+l.u.toFixed(1), +l.v.toFixed(1), a.mode, a.cur, a.root.visible]; }), hens: hens.map(a => { const l = L(a.x, a.z); return [+l.u.toFixed(1), +l.v.toFixed(1), a.mode, a.cur]; }) });
     if (c === 'ripe') { for (const b of S.beds) if (b.crop) { b.stage = 3; b.wet = false; } refresh(); return 1; }
     if (parts[0] === 'plant') { plant(+parts[1], parts[2]); return 1; }
     if (parts[0] === 'water') { water(+parts[1]); return 1; }
-    if (c === 'grow') { for (const b of S.beds) if (b.crop && b.wet) b.until = now(); for (const cw of S.cows) cw.at -= MILK_S * 1000; for (const h of S.hens) h.at -= EGG_S * 1000; tickBeds(); tickAnimals(); return 1; }
+    if (c === 'grow') { for (const b of S.beds) if (b.crop && b.wet) b.until = now(); for (const t of S.turf) if (t.w) t.w -= GROW * 1000; tickBeds(); turfShow(); return 1; }
+    if (parts[0] === 'hunger') { for (const x of parts[1] === 'hen' ? S.hens : S.cows) x.hu = +parts[2]; return 1; }   // hunger:cow:115
+    if (parts[0] === 'grass') { S.turf.forEach((t, i) => { t.a = +parts[1]; t.w = 0; }); turfShow(); return 1; }       // grass:0 eats it all
+    if (parts[0] === 'wateri') { return waterTurf(+parts[1], true) ? 1 : 0; }
+    if (c === 'grain') { return throwGrain(true) ? 1 : 0; }
+    if (c === 'addhen' || c === 'addcow') { (c === 'addhen' ? S.hens : S.cows).push({ hu: 0, meals: 0 }); save(); animals(); return 1; }
+    if (c === 'nograin') { S.grain = []; grainShow(); return 1; }
+    if (parts[0] === 'drop') { const a = (parts[1] === 'egg' ? hens : cows)[0]; if (a) layDrop(parts[1], a); return 1; }
+    if (c === 'pick') { const d = S.drops[0]; if (!d) return 0; const o = W(d.u, d.v); api.teleport(o.x, o.z); return 1; }
+    if (c === 'pack') { packLorry(); return 1; }
+    if (c === 'sell') { sellLorry(); return 1; }
+    if (c === 'lorryrear') { if (!lorry) return 0; const r = lorryRear(); api.teleport(r.x, r.z); return 1; }
+    if (c === 'lorrymarket') { if (!lorry || !MARKET) return 0; lorry.x = MARKET.x + 12; lorry.z = MARKET.z + 12; api.teleport(MARKET.x + 2, MARKET.z + 2, 0); return 1; }
+    if (c === 'pen') { const o = W(PEN.u, PEN.v + 5.5); api.teleport(o.x, o.z, ry + Math.PI); return 1; }
+    if (c === 'animals') return JSON.stringify({ cows: cows.map(a => { const l = L(a.x, a.z); return [+l.u.toFixed(1), +l.v.toFixed(1), a.mode, a.cur, Math.round(a.s.hu), +a.thin.toFixed(2), !!a.dead]; }), hens: hens.map(a => { const l = L(a.x, a.z); return [+l.u.toFixed(1), +l.v.toFixed(1), a.mode, a.cur, Math.round(a.s.hu), !!a.dead]; }) });
     if (parts[0] === 'harvest') { harvest(+parts[1]); return 1; }
     if (c === 'truck') { callTruck(); return 1; }
     if (parts[0] === 'phase' && S.trip) { S.trip.phase = parts[1]; S.trip.t = now() - (+parts[2] || 0) * 1000; return 1; }

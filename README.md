@@ -402,3 +402,10 @@ Phones draw the game smaller than the screen; the browser stretches it and it lo
 for very little cost. Hook them in after the scene is drawn whenever the pixel ratio is below the screen's.
 
 Map data © OpenStreetMap contributors, ODbL.
+
+## Credits: farm animals
+The farm's cows and hen are scanned models from Sketchfab, used under CC BY 4.0, rigged and animated for the game
+in Blender (tools/blender_animals_real.py):
+- Brown zebu cow: "Low poly Realistic cow 3d modle free" by rt699448 — https://sketchfab.com/3d-models/b47bf894ce6641fd9c033aaa260ca902
+- Holstein cow: "Realistic Holstein Cow - Game Ready Asset" by Hdjusj — https://sketchfab.com/3d-models/0bd2f1c0c79a4b5b9d36e67f0f700c5e
+- Hen: "Realistic Brown Chicken Hen - Game Ready Asset" by Hdjusj — https://sketchfab.com/3d-models/43f9097171404f3cadce8b5fea33ce95

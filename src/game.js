@@ -6978,10 +6978,37 @@ function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-last
   if(started&&!ctxLost&&!document.hidden){ if(raw>250){ perfAcc=perfN=0; perfIv.length=0; return; }   // back from another app: don't count that gap
     perfAcc+=raw; perfN++; perfIv.push(raw); if(perfN>=40){ const avg=perfAcc/perfN; perfAcc=perfN=0; prCool-=.7; tuneResolution(avg,perfIv); perfIv.length=0; } } }
 // the farm: its own module, given what it needs from the game
-async function farmTruckType(){ if(MODELS.fmtruck) return; const [,out]=await loadModelEntry(['fmtruck',['fm_truck','+z',5.05,1]]); MODELS.fmtruck=out;
+// the farm's photo textures: every farm model marks each face wood / zinc / mud plaster / concrete (UV channel 0, set in
+// tools/blender_farm.py); this lays the matching photo (fm_detail.jpg: raw planks, rusty zinc, clay plaster, concrete from
+// Poly Haven) over the model's own colours, projected from the three sides so nothing needs unwrapping
+let FDET=null;
+function farmDetailTex(){ if(!FDET){ const p='assets/models/fm_detail.jpg', k=AV[p]||MANIFEST[p]; FDET=new THREE.TextureLoader().load(k?p+'?v='+k:p); FDET.anisotropy=Math.min(8,maxAniso); } return FDET; }
+function farmDetail(geo,mat){
+  if(geo&&geo.attributes.uv&&!geo.attributes.fcls){ geo.setAttribute('fcls',geo.attributes.uv); geo.deleteAttribute('uv'); }
+  if(!mat||mat.userData.fdet) return; mat.userData.fdet=1; const tex=farmDetailTex();
+  mat.customProgramCacheKey=()=>'farmdet';
+  mat.onBeforeCompile=sh=>{ sh.uniforms.fDet={value:tex};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec2 fcls;\nvarying float vFk;\nvarying vec3 vFW;\nvarying vec3 vFN;')
+      .replace('#include <begin_vertex>',`#include <begin_vertex>
+      vFk=fcls.x*8.0; vec4 fw=vec4(transformed,1.0); vec3 fn=objectNormal;
+      #ifdef USE_INSTANCING
+        fw=instanceMatrix*fw; fn=mat3(instanceMatrix)*fn;
+      #endif
+      vFW=(modelMatrix*fw).xyz; vFN=mat3(modelMatrix)*fn;`);
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+      uniform sampler2D fDet; varying float vFk; varying vec3 vFW; varying vec3 vFN;
+      vec3 fdS(vec2 q,vec2 cell){ vec2 uv=cell+.004+fract(q)*.492; return textureGrad(fDet,uv,dFdx(q)*.492,dFdy(q)*.492).rgb; }`)
+      .replace('#include <color_fragment>',`#include <color_fragment>
+      if(vFk>=1.){ float k=floor(vFk+.01)-1.; vec2 cell=vec2(mod(k,2.),1.-floor(k/2.))*.5;
+        vec3 n=abs(normalize(vFN)); n=n*n*n*n; n/=(n.x+n.y+n.z); vec3 p=vFW*.5;
+        vec3 d=fdS(p.zy,cell)*n.x+fdS(p.xz,cell)*n.y+fdS(p.xy,cell)*n.z;
+        float fl=dot(diffuseColor.rgb,vec3(.3,.59,.11)); vec3 fm=clamp(1.+(d*2.-1.)*1.9,.3,1.9); diffuseColor.rgb=diffuseColor.rgb*fm+d*d*.22*(1.-smoothstep(.05,.25,fl)); }`); }; }
+async function farmTruckType(){ if(MODELS.fmtruck) return; const [,out]=await loadModelEntry(['fmtruck',['fm_truck','+z',5.05,1]]); MODELS.fmtruck=out; farmDetail(out.geo,out.mat); farmDetail(out.geo1,out.mat1);
   WHEEL.fmtruck={r:.37,hw:.15}; VT.fmtruck={maxV:[9,12],name:'farm pickup'}; HERO_RIDE.fmtruck={x:0,y:.04,z:0,ry:0}; SEATS.fmtruck=[{x:.8,y:.95,z:-.42,k:'seat',drv:1},{x:.8,y:.95,z:.42,k:'seat',p:.4}]; }
+async function farmLorryType(){ if(MODELS.fmlorry) return; const [,out]=await loadModelEntry(['fmlorry',['fm_lorry','+z',5.62,1]]); MODELS.fmlorry=out; farmDetail(out.geo,out.mat); farmDetail(out.geo1,out.mat1);
+  WHEEL.fmlorry={r:.45,hw:.17}; VT.fmlorry={maxV:[8,11],name:'farm lorry'}; HERO_RIDE.fmlorry={x:0,y:.1,z:0,ry:0}; SEATS.fmlorry=[{x:.96,y:1.05,z:-.45,k:'seat',drv:1},{x:.96,y:1.05,z:.45,k:'seat',p:.4}]; }
 async function farmGlb(name){ const g=await GLL.parseAsync(await fetchBuf(murl(name)),''); const out={};
-  const one=gl=>{ const m=meshOf(gl); const geo=floatGeo(m.geometry.clone()); geo.applyMatrix4(m.matrixWorld); geo.computeBoundingSphere(); const mat=m.material; mat.side=THREE.DoubleSide; mat.roughness=.9; mat.metalness=0; return [geo,mat]; };
+  const one=gl=>{ const m=meshOf(gl); const geo=floatGeo(m.geometry.clone()); geo.applyMatrix4(m.matrixWorld); geo.computeBoundingSphere(); const mat=m.material; mat.side=THREE.DoubleSide; mat.roughness=.9; mat.metalness=0; farmDetail(geo,mat); return [geo,mat]; };
   [out.geo,out.mat]=one(g); try{ const g1=await GLL.parseAsync(await fetchBuf(murl(name+'_lod1')),''); [out.geo1,out.mat1]=one(g1); }catch(e){} return out; }
 const FARM_MARKET=(()=>{ let best=null,bd=1e18; for(const m of MARKETS){ if(m.stalls.length<6) continue; const pts=m.a.pts; let cx=0,cz=0; for(const q of pts){ cx+=q[0]; cz+=q[1]; } cx/=pts.length; cz/=pts.length; const d=Math.hypot(cx,cz); if(d<bd){ bd=d; best={m,cx,cz}; } }
   if(!best) return null; const k=kerbPoint(best.cx,best.cz), dx=best.cx-k.x, dz=best.cz-k.z, L=Math.hypot(dx,dz)||1, x=k.x+dx/L*4.5, z=k.z+dz/L*4.5;
@@ -7002,7 +7029,11 @@ FARM=createFarm({ THREE, scene, zone:FARMZ, Q, CullSet, addOB, naira, dirtMat:MA
   unspot:sp=>{ if(sp.on) spotOff(sp); const i=SPOTS.indexOf(sp); if(i>=0) SPOTS.splice(i,1); },
   sms:(who,text)=>{ if(PH) PH.event('sms',{id:'farm_'+who.split(' ')[0].toLowerCase(),n:who,c:'#2e7d3c',e:'🚚',x:text}); },
   gist:(kind,d)=>{ if(PH) PH.event(kind,d||{}); }, guide:id=>{ if(GD) GD.hit(id); },
-  truckReady:()=>!!MODELS.fmtruck,
+  truckReady:()=>!!MODELS.fmtruck, registerLorry:farmLorryType,
+  // the farmer's own lorry: parked in the yard, yours to drive (it stays where you leave it)
+  myLorry:(x,z,yaw)=>{ if(!MODELS.fmlorry) return null; const v=newVehicle('fmlorry','#ffffff',true); if(v.type!=='fmlorry'){ const i=vehicles.indexOf(v); if(i>=0) vehicles.splice(i,1); scene.remove(v.c.g); return null; }
+    Object.assign(v,{x,z,y:groundY(x,z),h:carYaw(yaw),lastH:carYaw(yaw),keep:1,mine:true,parked:true,farmLorry:true}); return v; },
+  lorryAlive:v=>vehicles.includes(v)&&!v.wreck, driving:v=>mode==='drive'&&drive.v===v, walking:()=>mode==='walk',
   newTruck:K=>{ if(!MODELS.fmtruck) return null; const v=newVehicle('fmtruck','#ffffff'); if(!placeCar(v,140,320,true,K)&&!placeCar(v,40,600,true,K)){ const i=vehicles.indexOf(v); if(i>=0) vehicles.splice(i,1); scene.remove(v.c.g); return null; }
     Object.assign(v,{keep:1,farm:true,taxi:true}); v.ai.goal=goalAt(K.x,K.z); return v; },
   truckAlive:v=>vehicles.includes(v), stolen:v=>drive.v===v&&!drive.ride, far:v=>Math.hypot(v.x-player.x,v.z-player.z)>250,
