@@ -26,7 +26,7 @@ export const BUKA = {
   priceMin: .5, priceMax: 2.5,
 };
 // the eight spots (their places in the city are in the game, src/business.js); busier streets bring more people
-export const SITES = { buka_1: 1.25, buka_2: 1.1, buka_3: 1, buka_4: 1.15, buka_5: .95, buka_6: 1, buka_7: 1.2, buka_8: .9 };
+export const SITES = { buka_1: 1, buka_2: 1.05, buka_3: 1.1, buka_4: 1, buka_5: 1.2, buka_6: 1.25, buka_7: 1.15, buka_8: 1.3 };
 
 const DK = Object.keys(BUKA.dishes);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

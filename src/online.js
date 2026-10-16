@@ -63,16 +63,17 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': S.busy = false; showErr(m.w, m.m); break;
-      case 'ok': S.busy = false; showOk(m.w, m.m); break;
+      case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } S.busy = false; showOk(m.w, m.m); break;
+      case 'bz': case 'bzd': case 'bzate': api.biz && api.biz(m); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
       case 'n': S.n = m.n; ui(); break;
       case 'w': world(m); break;
       case 'say': heard(m); break;
       case '$': money(m); break;
-      case 'kick': S.kicked = true; S.me = null; dropAll(); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
-      case 'out': S.me = null; save(null); dropAll(); restoreGuest(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
+      case 'kick': S.kicked = true; S.me = null; dropAll(); api.bizOut && api.bizOut(); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
+      case 'out': S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); restoreGuest(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
       case 'old': S.old = true; api.toast(m.m, 6); try { S.ws && S.ws.close(); } catch (e) { /* gone */ } ui(); break;
     }
   }
@@ -422,8 +423,9 @@ export function createOnline(api) {
   ui();
 
   return {
-    frame, cash, openPanel, openChat,
+    frame, cash, openPanel, openChat, send,
     get signedIn() { return !!S.me; },
+    get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },
     debug: () => ({ st: S.st, me: S.me, n: S.n, others: [...RS.values()].map(R => ({ id: R.id, n: R.n, c: R.c, body: !!R.root, vis: !!(R.root && R.root.visible), car: R.ck, clip: R.cn, d: Math.round(R.d), s: R.s && { x: R.s.x, z: R.s.z, a: R.s.a } })), cash: { srv: S.srv, pend: S.cpend.length }, chat: CH.lines.length }),
   };
