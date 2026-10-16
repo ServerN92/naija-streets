@@ -1,0 +1,37 @@
+# Naija Streets game server on Fly.io (deployed by .github/workflows/server.yml)
+app = "naija-streets-lagos"
+primary_region = "lhr"            # London: the closest fast route from Lagos
+kill_signal = "SIGTERM"
+kill_timeout = "10s"
+
+[env]
+  PORT = "8080"
+  DB_PATH = "/data/naija.db"
+  ORIGINS = "https://servern92.github.io"
+  TRUST_PROXY = "1"
+
+[[mounts]]
+  source = "naija_data"           # the accounts live here (1 GB, snapshotted daily by Fly)
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"      # always on: players can come at any time
+  auto_start_machines = true
+  min_machines_running = 1
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 1500
+    hard_limit = 2000
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

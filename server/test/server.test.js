@@ -1,0 +1,164 @@
+// End to end: start the real server on a spare port with a fresh database, then talk to it like the game does.
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import net from 'node:net';
+
+let proc, port, dir; const codes = {};
+const PROTO = 1;
+
+function freePort() { return new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); }); }
+before(async () => {
+  port = await freePort(); dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
+  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  await new Promise((res, rej) => { proc.stdout.on('data', d => { const t = String(d); for (const m of t.matchAll(/MAILCODE (\S+) (\d{6})/g)) codes[m[1]] = m[2]; if (/listening/.test(t)) res(); }); proc.on('exit', c => rej(new Error('server exited ' + c))); });
+});
+after(() => { proc.kill('SIGTERM'); });
+
+function client() {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`), got = [], waits = [];
+  ws.onmessage = e => { const m = JSON.parse(e.data); got.push(m); for (const w of waits.slice()) if (w.f(m)) { waits.splice(waits.indexOf(w), 1); w.r(m); } };
+  const c = {
+    ws, got,
+    open: new Promise((r, j) => { ws.onopen = r; ws.onerror = j; }),
+    send: o => ws.send(JSON.stringify(o)),
+    next(f, ms = 3000) {
+      const what = String(f).slice(0, 80);
+      if (typeof f === 'string') { const t = f; f = m => m.t === t; }
+      const have = got.find(f); if (have) { got.splice(got.indexOf(have), 1); return Promise.resolve(have); }
+      return new Promise((r, j) => { const w = { f: m => { if (f(m)) { got.splice(got.indexOf(m), 1); return true; } return false; }, r }; waits.push(w); setTimeout(() => j(new Error('no message in time: ' + what + ' got ' + JSON.stringify(got).slice(0, 300))), ms); });
+    },
+    close: () => ws.close(),
+  };
+  return c;
+}
+async function account(name, pass = 'secret77', extra = {}) {
+  const c = client(); await c.open; c.send({ t: 'hi', v: PROTO }); await c.next('guest');
+  c.send({ t: 'reg', u: name, p: pass, ...extra }); const me = await c.next(m => m.t === 'me' || m.t === 'err');
+  return [c, me];
+}
+
+test('health', async () => {
+  const r = await fetch(`http://127.0.0.1:${port}/health`); assert.equal(await r.text(), 'ok');
+});
+
+test('make an account, bad names and passwords refused, sign in again with the token and with the password', async () => {
+  const c = client(); await c.open; c.send({ t: 'hi', v: PROTO }); await c.next('guest');
+  for (const [u, p] of [['ab', 'secret77'], ['has space', 'secret77'], ['admin', 'secret77'], ['Tunde_1', '123'], ['Tunde_1', 'password'], ['Tunde_1', 'tunde_1']]) {
+    c.send({ t: 'reg', u, p }); const e = await c.next('err'); assert.equal(e.w, 'reg', u + ' ' + p);
+  }
+  c.send({ t: 'reg', u: 'Tunde_1', p: 'mushin2026', e: 'Tunde@Example.com', cash: 999999, look: { c: 'p_dayo', f: 2, g: 'm' } });
+  const me = await c.next('me');
+  assert.equal(me.name, 'Tunde_1'); assert.equal(me.cash, 50000, 'guest money is capped'); assert.equal(me.email, 'tu***@example.com'); assert.ok(me.tok.length > 30);
+  c.close();
+  // the same name in other letters is taken
+  const [d, e] = await account('tunde_1'); assert.equal(e.t, 'err'); assert.match(e.m, /taken/); d.close();
+  // back with the token
+  const t = client(); await t.open; t.send({ t: 'hi', v: PROTO, tok: me.tok }); const me2 = await t.next('me'); assert.equal(me2.name, 'Tunde_1'); assert.equal(me2.cash, 50000); assert.deepEqual(me2.look, { c: 'p_dayo', f: 2, g: 'm' });
+  // signing in again elsewhere kicks the first one
+  const w = client(); await w.open; w.send({ t: 'login', u: 'TUNDE_1', p: 'wrong-one' }); assert.equal((await w.next('err')).m, 'Wrong username or password.');
+  w.send({ t: 'login', u: 'TUNDE_1', p: 'mushin2026' }); const wm = await w.next('me'); assert.equal(wm.name, 'Tunde_1');
+  assert.equal((await t.next('kick')).t, 'kick');
+  // sign out: that phone's token stops working (the other phone's still works)
+  w.send({ t: 'out' }); await w.next('out');
+  const z = client(); await z.open; z.send({ t: 'hi', v: PROTO, tok: wm.tok }); await z.next('guest');
+  z.send({ t: 'hi', v: PROTO, tok: me.tok }); await z.next('me');
+  for (const x of [t, w, z]) x.close();
+});
+
+test('old game version is told to reload', async () => {
+  const c = client(); await c.open; c.send({ t: 'hi', v: 0 }); assert.equal((await c.next('old')).t, 'old'); c.close();
+});
+
+test('two players near each other see each other move, far ones do not; chat near and to all', async () => {
+  const [a] = await account('Amaka'), [b] = await account('Bayo'), [f] = await account('Farfar');
+  a.send({ t: 'look', c: 'p_amaka', f: 1, g: 'f' });
+  a.send({ t: 'p', x: 10, y: 0, z: 10, r: 1.5, a: 'w', s: 1.6, v: '', q: 0 });
+  b.send({ t: 'p', x: 30, y: 0, z: 20, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  f.send({ t: 'p', x: 2000, y: 0, z: 2000, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  const w = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'Amaka'));
+  const ja = w.j.find(j => j.n === 'Amaka'); assert.equal(ja.c, 'p_amaka'); assert.equal(ja.g, 'f');
+  const st = w.p.find(p => p[0] === ja.i); assert.deepEqual(st.slice(1, 8), [10, 0, 10, 1.5, 'w', 1.6, '']);
+  // she drives off in a car
+  a.send({ t: 'p', x: 12.345, y: 0.2, z: 11, r: 2, a: 'd', s: 8, v: 'sedan', vc: '#c0102c', q: 1 });
+  const w2 = await b.next(m => m.t === 'w' && m.p && m.p.some(p => p[0] === ja.i && p[7] === 'sedan'));
+  assert.equal(w2.p.find(p => p[0] === ja.i)[8], '#c0102c');
+  // nobody far sees them
+  await new Promise(r => setTimeout(r, 300));
+  assert.ok(!f.got.some(m => m.t === 'w' && m.j), 'far player saw someone');
+  // near chat reaches Bayo, not Farfar; all-Lagos chat reaches everyone; links are cut
+  a.send({ t: 'say', m: 'How far, Bayo! see www.scam.com', ch: 'n' });
+  const s = await b.next('say'); assert.equal(s.n, 'Amaka'); assert.equal(s.m, 'How far, Bayo! see ***');
+  a.send({ t: 'say', m: 'Who dey Mushin?', ch: 'a' });
+  assert.equal((await f.next(m => m.t === 'say' && m.ch === 'a')).m, 'Who dey Mushin?');
+  assert.ok(!f.got.some(m => m.t === 'say' && m.ch === 'n'));
+  // she goes inside a house: hidden, and Bayo is told she left
+  a.send({ t: 'p', h: 1 });
+  const l = await b.next(m => m.t === 'w' && m.l && m.l.includes(ja.i)); assert.ok(l);
+  for (const x of [a, b, f]) x.close();
+});
+
+test('money: spending works, earning is capped by time, the server number is the real one', async () => {
+  const [c, me] = await account('Cash_Man'); assert.equal(me.cash, 0);
+  c.send({ t: '$', d: 5000, s: 1 }); assert.deepEqual(await c.next('$'), { t: '$', n: 5000, s: 1 });
+  c.send({ t: '$', d: -7000, s: 2 }); assert.equal((await c.next('$')).n, 0, 'never below zero');
+  c.send({ t: '$', d: 4000000, s: 3 }); const big = await c.next('$'); assert.ok(big.n <= 250100 && big.n >= 245000, 'held at the cap: ' + big.n);
+  c.send({ t: '$', d: 1000, s: 4, e: 'page1' }); const n4 = (await c.next('$')).n;
+  c.send({ t: '$', d: 1000, s: 4, e: 'page1' }); assert.equal((await c.next('$')).n, n4, 'the same message twice counts once');
+  c.send({ t: '$', d: 1.5, s: 5 }); c.send({ t: '$', d: 'lots', s: 6 });
+  await new Promise(r => setTimeout(r, 200)); assert.ok(!c.got.some(m => m.t === '$'), 'bad amounts are ignored');
+  c.close();
+  // it is saved: sign in with the password
+  const d = client(); await d.open; d.send({ t: 'login', u: 'cash_man', p: 'secret77' }); const me2 = await d.next('me');
+  assert.equal(me2.cash, n4); d.close();
+});
+
+test('chat flood is slowed down; broken messages are ignored', async () => {
+  const [c] = await account('Talker'); c.send({ t: 'p', x: 0, y: 0, z: 0, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  c.ws.send('not json'); c.ws.send('{"t":5}'); c.send({ t: 'p', x: 'a' }); c.send({ t: 'p', x: 1e9, y: 0, z: 0, r: 0, s: 0 });
+  for (let i = 0; i < 8; i++) c.send({ t: 'say', m: 'spam ' + i, ch: 'n' });
+  const e = await c.next('err'); assert.equal(e.w, 'say');
+  const said = c.got.filter(m => m.t === 'say').length; assert.ok(said <= 4, 'said ' + said);
+  c.close();
+});
+
+test('login guessing is stopped', async () => {
+  const [a] = await account('Guessme'); a.close();
+  const c = client(); await c.open; let stopped = false;
+  for (let i = 0; i < 10 && !stopped; i++) { c.send({ t: 'login', u: 'guessme', p: 'nope' + i }); const e = await c.next('err'); if (/Too many/.test(e.m)) stopped = true; }
+  assert.ok(stopped); c.close();
+});
+
+test('password change signs other phones out; reset says email is off when not set up', async () => {
+  const [a, me] = await account('Changer', 'firstpass');
+  a.send({ t: 'pw', old: 'bad', p: 'secondpass' }); assert.equal((await a.next('err')).w, 'pw');
+  a.send({ t: 'pw', old: 'firstpass', p: 'secondpass' }); const tk = await a.next('tok'); assert.ok(tk.tok);
+  const old = client(); await old.open; old.send({ t: 'hi', v: PROTO, tok: me.tok }); await old.next('guest');
+  const nw = client(); await nw.open; nw.send({ t: 'hi', v: PROTO, tok: tk.tok }); assert.equal((await nw.next('me')).name, 'Changer');
+  assert.equal((await a.next('kick')).t, 'kick');   // the new phone took over
+  nw.send({ t: 'email', e: 'not-an-email' }); assert.equal((await nw.next('err')).w, 'email');
+  nw.send({ t: 'email', e: 'changer@mail.ng' }); assert.equal((await nw.next('email')).email, 'ch*****@mail.ng');
+  for (const x of [a, old, nw]) x.close();
+});
+
+test('a big message closes the line', async () => {
+  const c = client(); await c.open; const closed = new Promise(r => { c.ws.onclose = e => r(e.code); });
+  c.ws.send(JSON.stringify({ t: 'say', m: 'x'.repeat(10000) })); assert.equal(await closed, 1009);
+});
+
+test('forgot password: a code by email sets a new one; wrong codes run out', async () => {
+  const [a] = await account('Forgetful', 'longlost1', { e: 'f@mail.ng' }); a.close();
+  const [b] = await account('NoMail', 'longlost1'); b.close();
+  const c = client(); await c.open;
+  c.send({ t: 'forgot', u: 'nomail' }); await c.next('ok');
+  c.send({ t: 'forgot', u: 'forgetful' }); await c.next('ok');
+  await new Promise(r => setTimeout(r, 200)); assert.ok(codes.Forgetful && !codes.NoMail);
+  c.send({ t: 'reset', u: 'forgetful', code: '000000', p: 'newpass22' }); assert.equal((await c.next('err')).w, 'reset');
+  c.send({ t: 'reset', u: 'forgetful', code: codes.Forgetful, p: 'newpass22' }); assert.equal((await c.next('me')).name, 'Forgetful');
+  c.send({ t: 'reset', u: 'forgetful', code: codes.Forgetful, p: 'again3333' }); assert.equal((await c.next('err')).w, 'reset', 'a code works once');
+  c.close();
+  const d = client(); await d.open; d.send({ t: 'login', u: 'forgetful', p: 'newpass22' }); assert.equal((await d.next('me')).name, 'Forgetful'); d.close();
+});

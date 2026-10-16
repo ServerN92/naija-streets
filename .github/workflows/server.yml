@@ -1,0 +1,47 @@
+# Tests the game server, then puts it live on Fly.io.
+# Needs one repository secret: FLY_API_TOKEN (a Fly.io access token). Without it, only the tests run.
+name: Game server
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', '.github/workflows/server.yml']
+  workflow_dispatch:
+concurrency:
+  group: game-server
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: server } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm test
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: server } }
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tok
+        run: |
+          if [ -n "$FLY_API_TOKEN" ]; then echo "ok=1" >> "$GITHUB_OUTPUT"; else echo "::warning::No FLY_API_TOKEN secret yet, so the server was not deployed."; fi
+      - if: steps.tok.outputs.ok == '1'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - if: steps.tok.outputs.ok == '1'
+        name: Make the app and its disk the first time
+        run: |
+          APP=$(sed -n 's/^app = "\(.*\)"/\1/p' fly.toml)
+          flyctl status -a "$APP" >/dev/null 2>&1 || flyctl apps create "$APP" --org personal
+          flyctl volumes list -a "$APP" | grep -q naija_data || flyctl volumes create naija_data -a "$APP" -r lhr -s 1 -y
+      - if: steps.tok.outputs.ok == '1'
+        name: Deploy
+        run: flyctl deploy --remote-only --ha=false
+      - if: steps.tok.outputs.ok == '1'
+        name: Check it answers
+        run: |
+          APP=$(sed -n 's/^app = "\(.*\)"/\1/p' fly.toml)
+          for i in 1 2 3 4 5 6; do curl -fsS "https://$APP.fly.dev/health" && exit 0; sleep 10; done; exit 1
