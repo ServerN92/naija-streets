@@ -73,9 +73,10 @@ export function skBodyReset(B) {
 }
 
 // ================================================================ the ride: pushes, brakes, the ollie (shared by you and the street skaters)
-// S: the skater's state; inp: {push, hard, brake, pop, cap, rough, vy0, grav, x, z, h (the board on the map), k (body size)}
+// S: the skater's state; inp: {push, hard, brake, pop, cap, rough, vy0, grav, x, z, h (the board on the map), k (body size),
+//   rest (optional: after pushing up to top speed, ride free until the speed is down to this share of it)}
 // returns what happened: {popped, landed, kick (speed added this frame)}
-export function skNew() { return { sp: 0, h: 0, vy: 0, air: false, crouch: 0, popT: 9, land: 0, landV: 0, push: null, brake: 0, trick: null, t: 0 }; }
+export function skNew() { return { sp: 0, h: 0, vy: 0, air: false, crouch: 0, popT: 9, land: 0, landV: 0, push: null, brake: 0, trick: null, t: 0, pump: false, restT: 0 }; }
 const PLANT = k => [.30 * k, 0, .27 * k];   // where the pushing foot (the ball of it) comes down, by the board's side
 export function skMove(S, dt, inp) {
   const ev = { popped: false, landed: false }, k = inp.k || 1, cap = inp.cap || 8;
@@ -83,17 +84,27 @@ export function skMove(S, dt, inp) {
   const toBoard = (wx, wz) => { const dx = wx - inp.x, dz = wz - inp.z, c = Math.cos(inp.h), s = Math.sin(inp.h); return [dx * c - dz * s, dx * s + dz * c]; };
   const toWorld = (bx, bz) => { const c = Math.cos(inp.h), s = Math.sin(inp.h); return [inp.x + bx * c + bz * s, inp.z - bx * s + bz * c]; };
   if (!S.air) {
-    const Pu = S.push;
+    const Pu = S.push, want = inp.push && !inp.brake;
+    // push up to top speed (until a push hardly adds any more), then rest on the board and roll; push again once the
+    // speed has dropped to `rest` of the top it reached
+    if (inp.rest) { S.restT = Math.max(0, S.restT - dt);
+      if (!want) S.pump = false;
+      else if (!S.pump && (S.restT <= 0 && S.sp < (S.top || cap) * inp.rest || S.sp < 1.2)) { S.pump = true; S.plantSp = null; }
+      if (S.pump && S.sp >= cap - .6) { S.pump = false; S.top = Math.min(cap, S.sp); S.restT = 2.5; } }
+    const go = inp.rest ? S.pump && want : want;
     if (S.crouch > 0 || inp.brake) { if (Pu && Pu.st !== 'home') S.push = { st: 'home', t: 0, dur: .14 }; }
-    else if (!Pu && inp.push && S.sp < cap - .3 && S.land <= 0) S.push = { st: 'swing', t: 0, dur: inp.hard ? .17 : .24, hard: inp.hard };
+    else if (!Pu && go && S.sp < cap - .3 && S.land <= 0) S.push = { st: 'swing', t: 0, dur: inp.hard ? .17 : .24, hard: inp.hard };
     const p = S.push;
     if (p) { p.t += dt;
-      if (p.st === 'swing' && p.t >= p.dur) {   // the foot comes down: it stays on that spot of the road
+      if (p.st === 'swing' && p.t >= p.dur && inp.rest && S.pump && S.plantSp != null && S.sp > 2.5 && S.sp - S.plantSp < .12) {   // the last push hardly added anything: that's the top, rest
+        S.pump = false; S.top = Math.min(cap, S.sp); S.restT = 2.5; S.push = { st: 'home', t: 0, dur: .3 }; }
+      else if (p.st === 'swing' && p.t >= p.dur) {   // the foot comes down: it stays on that spot of the road
+        if (inp.rest) S.plantSp = S.sp;
         const pl = PLANT(k), [wx, wz] = toWorld(pl[0], pl[2]), dv = Math.max(0, cap - S.sp) * (inp.hard ? .34 : .28) / Math.sqrt(inp.rough || 1), tc = clamp(.62 * k / Math.max(S.sp, .8), .14, .38);
         Object.assign(p, { st: 'contact', t: 0, wx, wz, a: dv / tc, hard: inp.hard }); ev.plant = true; }
       if (p.st === 'contact') { const [bx] = toBoard(p.wx, p.wz); S.sp += p.a * dt; ev.kick = p.a * dt;
         if (bx < -.34 * k || p.t > .42) {   // the leg is stretched out behind: lift it, push again or step back on
-          const again = inp.push && !inp.brake && S.sp < cap - .3; S.push = again ? { st: 'swing', t: 0, dur: (inp.hard ? .17 : .24) + .1, hard: inp.hard } : { st: 'home', t: 0, dur: .3 }; } }
+          const again = go && S.sp < cap - .3; S.push = again ? { st: 'swing', t: 0, dur: (inp.hard ? .17 : .24) + .1, hard: inp.hard } : { st: 'home', t: 0, dur: .3 }; } }
       else if (p.st === 'home' && p.t >= p.dur) S.push = null; }
     if (inp.brake) { S.sp = Math.max(0, S.sp - 3.6 * dt); S.brake = Math.min(1, S.brake + dt * 5); } else S.brake = Math.max(0, S.brake - dt * 5);
     S.sp = Math.max(0, S.sp - (.14 + S.sp * .016) * (inp.rough || 1) * dt);   // it rolls on and on, slower on bad roads
@@ -108,12 +119,13 @@ export function skMove(S, dt, inp) {
 }
 
 // ================================================================ the pose
-// env: {deck (top of the deck above the board's bottom), L (board length), W (board width), om (turn rate, + = left),
-//       lean (how far the board itself is leant), x, z, h (the board on the map), trick: {roll, spin, q} or null, vy0}
+// env: {deck (top of the deck above the board's bottom), deckAt (optional: x -> top of the deck there, for the kicked
+//       nose and tail), L (board length), W (board width), om (turn rate, + = left), lean (how far the board itself is
+//       leant), x, z, h (the board on the map), trick: {roll, spin, q} or null, grab (0..1: knees up, chest down), vy0}
 // returns {root: [x,y,z] (where the body's root goes in the board's space), board: {px,py,pz,pitch} (the deck's own move)}
 const _m4 = new THREE.Matrix4(), _qa = new THREE.Quaternion(), _qs = new THREE.Quaternion(), _qt = new THREE.Quaternion(), _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _vr = new THREE.Vector3(), _vh = new THREE.Vector3(), _I = new THREE.Quaternion();
 export function skPose(B, S, dt, env) {
-  const st = B.st, k = B.k, L = env.L || .82, Wd = (env.W || .22) / .22, deck = env.deck || .12, sp = S.sp, om = env.om || 0;
+  const st = B.st, k = B.k, L = env.L || .82, deck = env.deck || .12, sp = S.sp, om = env.om || 0;
   const dts = Math.max(dt, 1e-4);
   // ---- the deck: the tail snaps down (pivot on the back wheels), then the front foot drags it level
   const pivX = .225 * L; let al = 0;
@@ -121,7 +133,9 @@ export function skPose(B, S, dt, env) {
   else if (S.air) { const t = S.popT; al = t < .22 ? .42 * (1 - smoother(0, .22, t)) : -.05 * smooth(.22, .32, t) * (1 - smooth(.42, .62, t)); }
   const Rb = Rz(al), tb = [-pivX + pivX * Math.cos(al), pivX * Math.sin(al), 0];
   const trick = env.trick;   // a flip or a shove-it: the feet come off and the legs pull up over the board
-  const deckPt = (x, z, lift = 0) => add(tb, mv(Rb, [x, deck + lift, z]));
+  const deckH = env.deckAt || (() => deck), slopeAt = x => env.deckAt ? Math.atan((deckH(x + .02) - deckH(x - .02)) / .04) : 0;
+  const deckPt = (x, z, lift = 0) => add(tb, mv(Rb, [x, deckH(x) + lift, z]));
+  const grab = env.grab || 0;
 
   // ---- stance: side-on riding (sb 1) or facing the nose to push (sb 0)
   const pushing = S.push && S.push.st !== 'home', braking = S.brake > .05;
@@ -134,15 +148,17 @@ export function skPose(B, S, dt, env) {
 
   // ---- the feet
   const crouchK = S.crouch > 0 ? smooth(.16, .04, S.crouch) : 0, flick = S.air ? smooth(0, .12, S.popT) * (1 - smooth(.3, .5, S.popT)) : 0;
-  const xfRide = (.19 - .07 * crouchK + .2 * flick) * L, zf = -.065 * Wd;
+  const xfRide = (.19 - .07 * crouchK + .2 * flick) * L, zf = -.068 * k;   // the ankles a little toward the heel side: the feet themselves lie across the middle
+  // the back foot rides over the back bolts and slides onto the tail to pop
+  const onTail = Math.max(crouchK, S.air ? 1 - smooth(.3, .6, S.popT) : 0), xb = lerp(-.30, -.37, onTail) * L;
   const xfF = lerp(.15 * L, xfRide, sb), zfF = lerp(0, zf, sb), yawF = lerp(Math.PI / 2 - .12, .25 - .2 * flick, sb);
   let liftF = .03 * flick * k, liftB = (S.air ? .025 * smooth(.08, .2, S.popT) * (1 - smooth(.3, .5, S.popT)) : 0) * k;
   if (trick) { const e = Math.sin(Math.PI * clamp(trick.q, 0, 1)); liftF += .16 * k * e; liftB += .16 * k * e; }
-  const RfF = mm(trick ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : Rb, mm(Ry(yawF), Rx(-.2 * flick)));
+  const RfF = mm(trick ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : mm(Rb, Rz(slopeAt(xfF))), mm(Ry(yawF), Rx(-.2 * flick)));
   const ptF = trick ? [xfF, deck + liftF, zfF] : deckPt(xfF, zfF, liftF);
   const ankF = add(ptF, mv(RfF, [0, B.ankH, 0]));
   // the back foot: on the tail, swinging out to push, planted on the road, or dragging to brake
-  const tailPt = trick ? [-.39 * L, deck + liftB, zf] : deckPt(-.39 * L, zf, liftB), RfTail = mm(trick ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : Rb, Ry(.08));
+  const tailPt = trick ? [xb, deck + liftB, zf] : deckPt(xb, zf, liftB), RfTail = mm(trick ? [[1, 0, 0], [0, 1, 0], [0, 0, 1]] : mm(Rb, Rz(slopeAt(xb))), Ry(.08));
   const ankTail = add(tailPt, mv(RfTail, [0, B.ankH, 0]));
   const ball = [0, -B.ankH, B.ballF];   // the ball of the foot from the ankle (foot's own space)
   const toBoard = (wx, wz) => { const dx = wx - env.x, dz = wz - env.z, c = Math.cos(env.h), s = Math.sin(env.h); return [dx * c - dz * s, dx * s + dz * c]; };
@@ -154,7 +170,7 @@ export function skPose(B, S, dt, env) {
   } else if (p) {   // in the air: from where it was to the next spot on the road (or back onto the tail)
     const u = smoother(0, 1, p.t / p.dur), from = p.from || (p.from = st.lastB || { a: ankTail, R: RfTail });
     if (p.st === 'swing') { const Rpl = Ry(Math.PI / 2), a1 = sub(PLANT(k), mv(Rpl, ball)); ankB = add(lerpv(from.a, a1, u), [0, .11 * k * Math.sin(Math.PI * u), 0]); RfB = Ry(lerp(yawOf(from.R), Math.PI / 2, u)); depth = 1 - smooth(0, .5, u); legBack = lerp(1, -.6, u); }
-    else { ankB = add(lerpv(from.a, ankTail, u), [0, .1 * k * Math.sin(Math.PI * u), 0]); RfB = mm(Rb, Ry(lerp(yawOf(from.R), .08, u))); }
+    else { ankB = add(lerpv(from.a, ankTail, u), [0, .1 * k * Math.sin(Math.PI * u), 0]); RfB = mm(Rb, mm(Rz(slopeAt(xb) * u), Ry(lerp(yawOf(from.R), .08, u)))); }
   } else if (braking && !S.air) {   // the back foot comes off and drags its heel on the road beside the tail
     const Rd = mm(Ry(.9), Rx(-.35)), a = add([-.12 * L, 0, .2 * k], mv(Rd, [0, B.ankH * .9, 0]));
     ankB = lerpv(ankTail, a, S.brake); RfB = S.brake > .5 ? Rd : RfTail;
@@ -165,17 +181,17 @@ export function skPose(B, S, dt, env) {
   const leg = B.leg, ride = B.ankH + .88 * leg - .06 * leg * carve;
   let extT = ride;
   if (S.crouch > 0) extT = B.ankH + .63 * leg;
-  else if (S.air) { const v0 = env.vy0 || 4.4, r = clamp(S.vy / v0, -1, 1); extT = B.ankH + (r > 0 ? lerp(.62, .92, r * r) : lerp(.62, .86, Math.sqrt(-r))) * leg; if (trick) extT = Math.min(extT, B.ankH + .6 * leg); }
+  else if (S.air) { const v0 = env.vy0 || 4.4, r = clamp(S.vy / v0, -1, 1); extT = B.ankH + (r > 0 ? lerp(.62, .92, r * r) : lerp(.62, .86, Math.sqrt(-r))) * leg; if (trick) extT = Math.min(extT, B.ankH + .6 * leg); extT = lerp(extT, B.ankH + .22 * leg, grab); }
   if (st.ext == null) st.ext = ride;
   if (S.land > .24 && S.landV < 0) { st.extV = Math.min(st.extV, S.landV * .32); S.landV = 0; }   // touchdown: the legs give
   if (S.air && !st.popped) { st.extV += 2.2 * k; st.popped = true; } else if (!S.air) st.popped = false;   // the pop: the legs drive up
   { const w = S.crouch > 0 ? 22 : 15, z = .78, n = Math.max(1, Math.ceil(dts / .008)), h = dts / n; for (let i = 0; i < n; i++) { st.extV += (w * w * (extT - st.ext) - 2 * z * w * st.extV) * h; st.ext += st.extV * h; } }
-  st.ext = clamp(st.ext, B.ankH + .5 * leg, B.ankH + .99 * leg);
-  const hipRide = [(xfF + -.39 * L) / 2, deck + st.ext, -.02 * k], hipPush = [(.06 - .04 * depth) * k, deck + B.ankH + (.79 - .07 * depth) * leg, .075 * k];
+  st.ext = clamp(st.ext, B.ankH + lerp(.5, .2, grab) * leg, B.ankH + .99 * leg);
+  const hipRide = [(xfF + xb) / 2, deck + st.ext, -.02 * k], hipPush = [(.06 - .04 * depth) * k, deck + B.ankH + (.79 - .07 * depth) * leg, .075 * k];
   let hipT = lerpv(hipPush, hipRide, sb);
   // ---- turns of the hips, chest and head
   const crouchW = S.crouch > 0 ? 1 : S.land > 0 ? .7 * S.land / .25 : 0;
-  const yawP = lerp(1.45, .12, sb), pitP = lerp(.26, .12, sb) + .18 * crouchW, yawC = lerp(1.52, .40, sb) + .6 * st.lean * sb, pitC = lerp(.36 + .12 * depth, .2, sb) + .3 * crouchW - (S.air ? .08 : 0);
+  const yawP = lerp(1.45, .12, sb), pitP = lerp(.26, .12, sb) + .18 * crouchW + .4 * grab, yawC = lerp(1.52, .40, sb) + .6 * st.lean * sb - .35 * grab, pitC = lerp(.36 + .12 * depth, .2, sb) + .3 * crouchW - (S.air ? .08 : 0) + .85 * grab;
   const yawH = lerp(1.57, 1.2, sb), pitH = lerp(.22, .12, sb) + .15 * crouchW;
   const Rp = partR(leanX, yawP, pitP), Rc = partR(leanX, yawC, pitC), Rh = partR(.35 * leanX, yawH, pitH);
   const pivot = [0, deck, 0];
