@@ -98,6 +98,9 @@ The Under Bridge props are built in Blender by `tools/blender_underbridge.py` (g
 `tools/blender_underbridge2.py` (cult berets, bandit masks, cult bases, kidnappers' den) and `tools/blender_forest.py`
 (the bandits' truck, forest trees, bushes, rocks, tents, cooking fire, log, post, the third cult's base); run any of them
 inside Blender, or headless with `python3 tools/glb_build.py -m blender_forest`.
+The kidnap moves (a bandit carrying you over his shoulder, walking and standing; you hanging over it; you tied at the
+post) are keyed in Blender by `tools/blender_carry.py` (with `tools/carry_src.json` next to it) into
+`assets/people/moves4.glb`; until that file is in, the game bends the arms and body itself.
 Both cities are one map; far things are hidden by distance, as in Mushin.
 
 Life on the streets: traffic moves fast on the highways and big roads, so people never walk across them: they use the footbridges; hawkers walk out between the cars when the light turns

@@ -12,15 +12,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=91d91588cb';
-import * as C2 from './char2.js?v=91d91588cb';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=91d91588cb';
-import { createPhone } from './phone.js?v=91d91588cb';
-import { createGuide } from './guide.js?v=91d91588cb';
-import { MapView } from './mapview.js?v=91d91588cb';
+import * as CLOCK from './clock.js?v=898ff0cada';
+import * as C2 from './char2.js?v=898ff0cada';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=898ff0cada';
+import { createPhone } from './phone.js?v=898ff0cada';
+import { createGuide } from './guide.js?v=898ff0cada';
+import { MapView } from './mapview.js?v=898ff0cada';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='91d91588cb';
+const BUILD='898ff0cada';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -3198,7 +3198,7 @@ function poseBody(p,dt){ const b=p.body, C=PEOPLE.casts[b.id], cl=C.clips, st=p.
   else if(st==='takedown'){ name='takedown_v'; ts=1.7; }
   else if(st==='toll'){ name=cl[p.tact]?p.tact:(cl.idle_1?'idle_1':C.idle0); }
   else if(st==='tollchase'){ if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=cl.argue?'argue':C.idle0; }
-  else if(st==='crook'){ if(p.mvT>0&&cl[p.mv]){ name=p.mv; ts=1.05; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=p.act&&cl[p.act]?p.act:(cl.idle_1?'idle_1':C.idle0); }   // Under Bridge
+  else if(st==='crook'){ if(p.crook&&p.crook.st==='carry'&&(cl.g_carry||v4For(p.cast))){ name=p.speed>.3?'g_carry':'g_carry_idle'; ts=name==='g_carry'?clamp(p.speed/1.35,.7,1.5):1; } else if(p.mvT>0&&cl[p.mv]){ name=p.mv; ts=1.05; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=p.act&&cl[p.act]?p.act:(cl.idle_1?'idle_1':C.idle0); }   // Under Bridge
   else if(st==='gateguard'){ name=p.act&&cl[p.act]?p.act:C.idle0; }
   else if(st==='copguard'&&p.asking&&p.speed<=.3&&cl.talk&&RAID.phase==='ask'){ name='talk'; }
   else if(st==='cop'||st==='copguard'){ if(p.atk){ name=p.atk; ts=AI_INFO[p.atk].ts; } else if(p.speed>.3){ name=p.speed>2.4&&cl.run?'run':'walk'; ts=name==='run'?clamp(p.speed/2.4,1.2,2):clamp(p.speed/1.35,.7,1.6); } else name=p.near&&cl.fight_idle?'fight_idle':cl.idle_1?'idle_1':C.idle0; }
@@ -6174,7 +6174,7 @@ function gangTick(q,dt){ const K=q.crook; K.t+=dt; q.aimOn=false; q.recoil=(q.re
     case 'grab': { if(KID.ev!==K.ev){ K.st='leave'; break; } if(q.wid){ copMove(q,dx,dz,d>7?2.6:0,dt); turn(face,8); q.aimOn=d<14; if(q.aimOn) q.aimDir.set(dx,player.y+1.2-(q.y+1.4),dz).normalize(); if(T0-(q.meT||-99)<3) { K.st='hunt'; K.t=0; } break; }
       if(K.ev.who==='me'){ copMove(q,dx,dz,d>1.1?4.4:0,dt); turn(face,9); } else { const V=K.ev.vic; if(V){ const vx=V.x-q.x, vz=V.z-q.z; copMove(q,vx,vz,Math.hypot(vx,vz)>1?4.2:0,dt); turn(Math.atan2(vx,vz),9); } } break; }
     case 'flee': case 'leave': { copMove(q,-dx,-dz,K.st==='flee'?4.4:1.6,dt); turn(Math.atan2(-dx,-dz),6); if((d>45&&!inView(q.x,1,q.z,1.2))||K.t>45) gangOut(q); break; }
-    case 'held': { q.speed=0; turn(KID.den?KID.den.ry:q.yaw,2); if(!q.act||MR()<dt*.05) q.act=mpick(['idle_2','idle_1']); break; }
+    case 'held': { q.speed=0; turn(KID.den?KID.den.ry:q.yaw,2); if(v4For(q.cast)) q.act='g_tied'; else if(!q.act||MR()<dt*.05) q.act=mpick(['idle_2','idle_1']); break; }
     case 'free': case 'grabbed': { if(K.st==='grabbed'){ q.speed=0; break; } const G=KID.den&&q===KID.hq?(denLocal(q.x,q.z).z<5.5?denAt(0,6):denAt(0,18)):{x:q.x+(q.x-player.x),z:q.z+(q.z-player.z)}; copMove(q,G.x-q.x,G.z-q.z,4,dt); turn(Math.atan2(G.x-q.x,G.z-q.z),6);
       if(q===KID.hq&&K.t>2&&KID.den&&Math.hypot(q.x-KID.den.x,q.z-KID.den.z)>18){ const r=Math.round(mrr(30000,60000)/500)*500; addCash(r); { const f=CAST[q.cast]?.f; toast(`${f?'She':'He'} is free! The family sends you ${naira(r)}: "We no go forget you!"`,3.6); } KID.hostage=null; KID.hq=null; K.st='leave'; K.t=0; }
       else if(K.t>25) gangOut(q); break; }
@@ -6276,6 +6276,18 @@ function campPeople(){ if(!CAMP) return; CAMPP.men=CAMPP.men.filter(q=>isAlive(q
   const g=CAMPP.grp=GRP('the bandits in the forest',true); const spots=[[1.6,1.2,'idle',0],[-1.5,1.4,'idle',0],[0,-2.2,'idle',0],[13,0,'guard',1],[-6,9,'guard',1],[2,11,'guard',1],[-14,-8,'guard',1]];
   for(const [lx,lz,st,gun] of spots){ const p=campAt(lx,lz); const q=gangWake('band',p.x,p.z,{hat:'mask',gun:!!gun||MR()<.4,st:st==='guard'?'guard':'idle',hp:340,K:{post:{x:p.x,z:p.z,ry:Math.atan2(CAMP.fire.x-p.x,CAMP.fire.z-p.z)},camp:1}}); if(q){ grpAdd(g,q); CAMPP.men.push(q); if(st==='idle') q.act=mpick(['talk','idle_1','smoke']); } } }
 
+// ---- the carry, the carried and the tied moves made in Blender (tools/blender_carry.py -> assets/people/moves4.glb)
+const V4={job:null,done:null,casts:{},hero:null};
+function v4Moves(){ if(!V4.job&&!MANIFEST['assets/people/moves4.glb']) V4.job=Promise.resolve();   // not made yet: the game bends the body itself
+  return V4.job||(V4.job=fetchBuf(purl('moves4')).then(b=>GLL.parseAsync(b,'')).then(g=>{ const S=C2.skeletonInfo(g.scene); V4.done={g,S,H:S.lp.get('Hips')?S.lp.get('Hips').y:1}; }).catch(e=>{ console.warn('moves4',e); })); }
+const V4N={carry_walk:'g_carry',carry_idle:'g_carry_idle',carried:'g_carried',tied:'g_tied'};
+function v4For(cast){ if(V4.casts[cast]!==undefined) return V4.casts[cast]; const C=PEOPLE.casts[cast], M=V4.done; if(!M){ v4Moves(); return false; } if(!C) return false;
+  try{ const D=C.D||(C.D=C2.skeletonInfo(C.tpl)); for(const a of M.g.animations){ const n=V4N[a.name]; if(!n) continue; const k=C2.retargetClip(a,M.S,D,{hipsH:M.H}); if(k){ k.name=n; C.clips[n]=k; } } return V4.casts[cast]=!!C.clips.g_carry; }catch(e){ console.warn('moves4 '+cast,e); return V4.casts[cast]=false; } }
+function v4Hero(){ if(!hero||!V4.done) { v4Moves(); return false; } if(V4.hero===hero.cObj) return true;
+  try{ const D=homeInfo(), M=V4.done; for(const a of M.g.animations){ const n=V4N[a.name]; if(!n) continue; const k=C2.retargetClip(a,M.S,D,{hipsH:M.H}); if(k){ k.name='v4_'+a.name; hero.act['v4_'+a.name]=hero.mixer.clipAction(k); } } V4.hero=hero.cObj; return true; }catch(e){ console.warn('moves4 hero',e); return false; } }
+function heroHold(name){ if(!v4Hero()||!hero.act[name]) return false; if(hero.ov&&hero.ov.name===name) return true; return heroDo(name,{pause:true,lock:true,force:true}); }
+function heroRelease(name){ if(hero&&hero.ov&&hero.ov.name===name) heroEnd(); }
+if(UB) v4Moves();
 // ---- being carried: the man's right shoulder under your middle, your back hanging down behind him
 let NOMOVE=false;
 function heroCarried(){ const q=BT.carrier; if(!q||!hero||!hero.hips||BT.st!=='carry') return;
@@ -6285,11 +6297,12 @@ function heroCarried(){ const q=BT.carrier; if(!q||!hero||!hero.hips||BT.st!=='c
   const Y=u.clone().multiplyScalar(-.8).addScaledVector(f,-.6).normalize(), Z=f.clone().addScaledVector(Y,-f.dot(Y)).normalize(), X=new THREE.Vector3().crossVectors(Y,Z);
   const hips=b.hips; hips.parent.updateWorldMatrix(true,false); _cq.setFromRotationMatrix(_cm.makeBasis(X,Y,Z));
   hips.quaternion.copy(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(_cq)); hips.position.copy(hips.parent.worldToLocal(H.clone())); hips.updateMatrixWorld(true);
+  if(hero.ov&&hero.ov.name==='v4_carried') return;   // the arms and legs come from the move made in Blender
   const aim=(n,cn,dir)=>{ const bn=boneOf(b.inner,new RegExp(n+'$'),C,n), ch=boneOf(b.inner,new RegExp(cn+'$'),C,cn); if(!bn||!ch) return; const a=bn.getWorldPosition(new THREE.Vector3()), c=ch.getWorldPosition(new THREE.Vector3()); turnBone(bn,c,a.clone().addScaledVector(dir,a.distanceTo(c))); };
   const sw=Math.sin(T0*7)*.12, L=u.clone().multiplyScalar(-.8).addScaledVector(f,.6).normalize(), L2=u.clone().multiplyScalar(-1).addScaledVector(f,.12).normalize(), A=u.clone().multiplyScalar(-1).addScaledVector(f,-.12+sw).normalize();
   for(const s of ['Left','Right']){ aim(s+'UpLeg',s+'Leg',L); aim(s+'Leg',s+'Foot',L2); aim(s+'Arm',s+'ForeArm',A); aim(s+'ForeArm',s+'Hand',A); } }
 // his right arm round your legs
-function pedCarryArms(q){ const b=q.body; if(!b) return; const C=q.bc||(q.bc={}), ru=boneOf(b.inner,/RightArm$/,C,'ru'), rl=boneOf(b.inner,/RightForeArm$/,C,'rl'), rh=boneOf(b.inner,/RightHand$/,C,'rh'); if(!ru||!rl||!rh) return;
+function pedCarryArms(q){ const b=q.body; if(!b||b.clip==='g_carry'||b.clip==='g_carry_idle') return; const C=q.bc||(q.bc={}), ru=boneOf(b.inner,/RightArm$/,C,'ru'), rl=boneOf(b.inner,/RightForeArm$/,C,'rl'), rh=boneOf(b.inner,/RightHand$/,C,'rh'); if(!ru||!rl||!rh) return;
   const f=new THREE.Vector3(Math.sin(q.yaw),0,Math.cos(q.yaw)), u=new THREE.Vector3(0,1,0), r=new THREE.Vector3().crossVectors(f,u), S=ru.getWorldPosition(new THREE.Vector3());
   ik2(ru,rl,rh,S.clone().addScaledVector(f,.2).addScaledVector(u,-.1).addScaledVector(r,.02),S.clone().addScaledVector(r,.3).addScaledVector(u,-.45).addScaledVector(f,.15)); }
 
@@ -6311,7 +6324,7 @@ function btLoad(){ const v=BT.v, q=BT.carrier; BT.st='load'; BT.t=0; BT.carrier=
     const G=goalAt(CAMP.road.x,CAMP.road.z); if(!v.ai) backOnRoad(v); if(v.ai){ v.ai.goal=G; v.ai.wait=0; v.ai.maxV=15; } BT.G=G; BT.st='ride'; BT.t=0; });
   setTimeout(()=>toast('They throw you in the back of the truck and tie your hands. "No shout o!" The truck drives off...',3.6),500); }
 function btArrive(){ const v=BT.v; fadeSwap(()=>{ if(mode==='drive'&&drive.v===v){ drive.ride=false; unseatHero(); drive.v=null; mode='walk'; lastMode=null; } btHome(); BT.st='home'; BT.t=mrr(400,700);
-    const P=campAt(6.4,5); KID.site='camp'; KID.pin=P; player.x=P.x; player.z=P.z; player.yaw=Math.atan2(CAMP.x-P.x,CAMP.z-P.z); player.speed=0; rig.root.position.set(P.x,0,P.z); rig.root.visible=true; camState.last=-10;
+    const po=CAMP.post, dd=Math.hypot(CAMP.x-po.x,CAMP.z-po.z)||1, P={x:po.x+(CAMP.x-po.x)/dd*.42,z:po.z+(CAMP.z-po.z)/dd*.42}; KID.site='camp'; KID.pin=P; player.x=P.x; player.z=P.z; player.yaw=Math.atan2(CAMP.x-P.x,CAMP.z-P.z); player.speed=0; rig.root.position.set(P.x,0,P.z); rig.root.visible=true; camState.last=-10;
     KID.held=true; KID.tied=12; KID.spotT=0; FIGHT.hp=Math.max(35,FIGHT.hp); campPeople(); });
   setTimeout(()=>{ toast('You are tied to a post in the forest. The bandits\' boss: "Call your people. Na big money we want, or you go die here."',4.5); kidRansom(); },1100); }
 function btGiveUp(msg){ const v=BT.v; for(const q of BT.men) if(q.crook&&upright(q)&&q.crook.st!=='hunt'){ q.crook.st=q.wid?'hunt':'flee'; q.crook.t=0; } BT.men=[]; BT.grab=BT.carrier=null; BT.st='back'; BT.t=0;
@@ -6344,6 +6357,7 @@ function updateBT(dt){ btMake(); const v=BT.v; if(!v) return; BT.t+=dt;
 
 // ---- once a frame
 function updateUB3(dt){ if(!UB) return; NOMOVE=KID.tied>0||BT.st==='carry'||BT.st==='ride'||BT.st==='load';
+  if(hero&&mode==='walk'){ if(BT.st==='carry'&&BT.carrier) heroHold('v4_carried'); else heroRelease('v4_carried'); if(KID.tied>0&&KID.held) heroHold('v4_tied'); else heroRelease('v4_tied'); }
   if(lawless()&&FIGHT.heat>0){ if(T0-UB3.lawSaid>120&&starCount()>0){ UB3.lawSaid=T0; toast('Police no dey enter Under Bridge. Your stars dey fade.',2.6); } FIGHT.heat=Math.max(0,FIGHT.heat-dt*.45); if(FIGHT.heat<.1) CASE.on=false; }
   updateBT(dt);
   if(CAMP){ const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z); if(d<110||KID.site==='camp'&&KID.held){ if(!CAMPP.vis){ CAMPP.vis=true; campPeople(); } if(ENV.night||d<60){ if(MR()<dt*12) flame(CAMP.fire.x+mrr(-.15,.15),.35,CAMP.fire.z+mrr(-.15,.15),.6); } }
