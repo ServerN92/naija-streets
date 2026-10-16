@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="d1af08a6c9">
+<meta name="ns-build" content="c8abaf1d94">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -110,6 +110,7 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .seg{display:flex;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:3px}
 .seg button{flex:1;background:none;border:none;padding:9px 6px;border-radius:999px;font-weight:700;font-size:15px;color:var(--muted);min-height:44px}
 .seg button[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
+.slide{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-weight:700;color:var(--muted)}.slide input{flex:1;accent-color:var(--danfo);min-height:32px}.slide b{min-width:46px;text-align:right;color:var(--cream)}
 .panel .note{font-size:13px;color:var(--muted);margin:8px 0 0}
 .panel dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:15px}
 .panel dt{font-weight:700;white-space:nowrap}.panel dd{margin:0;color:var(--muted)}
@@ -322,6 +323,14 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 330px))}
     <div id="btnSet" hidden><h3>Phone buttons</h3>
     <div class="seg"><button type="button" id="btnEdit" aria-pressed="false">Move and size buttons</button></div>
     <p class="note">Drag each button where your thumb likes it, set the size and how see-through they are. Kept for this phone, upright and sideways separately.</p></div>
+    <h3>Camera</h3>
+    <label class="slide"><span>Turn speed</span><input type="range" id="camSens" min="40" max="250" step="10" value="100"><b id="camSensV">100%</b></label>
+    <div class="seg" id="camFol" role="group" aria-label="Camera follows you">
+      <button type="button" data-c="0" aria-pressed="false">Free</button>
+      <button type="button" data-c="1" aria-pressed="true">Follow</button>
+      <button type="button" data-c="2" aria-pressed="false">Follow more</button>
+    </div>
+    <p class="note">Follow: the camera swings round behind you as you move, so you don't keep turning it yourself.</p>
     <h3>Sound</h3>
     <div class="seg" id="snd" role="group" aria-label="Sound">
       <button type="button" data-s="on" aria-pressed="true">On</button>
@@ -433,7 +442,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=d1af08a6c9"></script>
+<script type="module" src="src/game.js?v=c8abaf1d94"></script>
 
 </body>
 </html>

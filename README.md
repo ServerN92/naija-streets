@@ -216,8 +216,21 @@ Real Mixamo moves (Y Bot, FBX without skin, 30 fps), put together by `tools/char
   into the run, let go and you end crouched. JUMP jumps you out of it.
 - **Jump**: standing you spring up (`Standing Jump`); moving you leap and land running (`Standing Jump Running` and its
   `Landing`). Crouched, JUMP stands you up.
+- **Aim while you slide or crouch:** with the gun up you can still slide (from a run) or crouch (walking), and keep
+  shooting.
+- **Prone:** hold CROUCH for 2 seconds and you lie flat (`Crouch To Prone`, `Prone Idle`); move and you crawl (`Prone
+  Forward`); aiming the rifle you shoot lying down. Tap CROUCH or JUMP to come back up to the kneel (`Prone To Crouch`).
+- **Climb:** JUMP (it says CLIMB) in front of a fence or wall you can reach. Up to about 1.4 m you vault it with a hand on
+  top (`Jump Over Obstacle`); up to 2.6 m you run up it and pull yourself on (`Sprint To Wall Climb`), and a thin wall you
+  drop down the other side (`Jumping Down`). Each climb carries its floor (`mix3.floor`), raised or lowered to the real
+  wall's height. You can stand on what you climbed; step off and you fall.
 To rebuild: put the FBX files in one folder, `python3 tools/character/anim/make_moves3.py <folder> raw.glb`, then
 `gltfpack -i raw.glb -o assets/people/moves3.glb -cc -kn -af 30` and `python3 tools/manifest.py`.
+
+## Camera
+Settings → Camera: **Turn speed** (how fast the view turns under your finger or mouse) and **Follow** (the camera swings
+round behind you as you move, so you don't keep turning it; "Follow more" swings faster, "Free" never). It waits while
+you turn it yourself or aim, and doesn't swing round when you run towards it. Kept on this device.
 
 ## Skating, bike and car skills
 - **Skateboard:** W pushes with the back foot up to top speed (hold Shift or push the stick all the way for faster
