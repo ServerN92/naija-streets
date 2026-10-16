@@ -12,15 +12,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=2531e90d9d';
-import * as C2 from './char2.js?v=2531e90d9d';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=2531e90d9d';
-import { createPhone } from './phone.js?v=2531e90d9d';
-import { createGuide } from './guide.js?v=2531e90d9d';
-import { MapView } from './mapview.js?v=2531e90d9d';
+import * as CLOCK from './clock.js?v=de0e6008ef';
+import * as C2 from './char2.js?v=de0e6008ef';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=de0e6008ef';
+import { createPhone } from './phone.js?v=de0e6008ef';
+import { createGuide } from './guide.js?v=de0e6008ef';
+import { MapView } from './mapview.js?v=de0e6008ef';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='2531e90d9d';
+const BUILD='de0e6008ef';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2358,8 +2358,8 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt='Enter your ride'; else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?'Enter your ride':v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(!drive.ride&&gateNear()) txt=`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+    else if(mode==='drive'){ if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
@@ -2534,7 +2534,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
@@ -4005,7 +4005,7 @@ function calmPed(p){ p.atk=null; p.giveUp=0; if(p.spot){ p.state='spot'; p.act=n
 // you are tougher than the people on the street, but a gang of area boys can still beat you to death
 function hitPlayer(dmg,from,how){ if(FIGHT.ko||FIGHT.dead||busy||mode==='interior'||(hero&&hero.ov&&hero.ov.name==='takedown_a')) return;
   if(T0<FIGHT.inv&&how!=='car'){ FIGHT.counter=T0+1.2; whoosh(); return; }   // dodged: your next blow lands harder
-  FIGHT.hp-=dmg/1.5; FIGHT.calmT=0; camState.shake=Math.min(1.2,camState.shake+.45); thud();
+  dmg=vestTake(dmg,how); FIGHT.hp-=dmg/1.5; FIGHT.calmT=0; camState.shake=Math.min(1.2,camState.shake+.45); thud();
   { const ux=from?player.x-from.x:0, uz=from?player.z-from.z:0, l=Math.hypot(ux,uz)||1; bleed(player.x,1.5,player.z,ux/l,uz/l,how==='car'?10:3,1.4); } if(CARRY.p) carryDrop(true);
   if(FIGHT.hp<=0){ if(how==='baton'){ FIGHT.hp=1; busted(); return; } playerDie(how||'beaten'); return; }
   if(how==='shot'&&(MR()<.7||aimingNow())) return;   // a bullet: a jolt, not always a stagger
@@ -4949,8 +4949,8 @@ function pickBike(g){ const ok=v=>v.ai&&v.type==='okada'&&v!==myCar&&!v.ai.chase
   return placeCar(v,90,170,true)?v:null; }
 // the bike's own back-seat passenger gets off while you ride
 function bikeBack(v,show){ for(const o of v.c.seats||[]) if(!o.st.drv) o.h.root.visible=show; }
-function rideSign(v,on){ if(RIDE.sign){ RIDE.sign.parent&&RIDE.sign.parent.remove(RIDE.sign); RIDE.sign.material.map.dispose(); RIDE.sign.material.dispose(); RIDE.sign=null; }
-  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('OYA RIDE','#F2B705','#0E1014'),fog:false})); sp.scale.set(1.6,.3,1); sp.position.set(0,((v.c.def.roof&&v.c.def.roof[2])||1.45)+.32,0); sp.layers.set(1); v.c.g.add(sp); RIDE.sign=sp; } }
+function rideSign(v,on,label='OYA RIDE'){ if(RIDE.sign){ RIDE.sign.parent&&RIDE.sign.parent.remove(RIDE.sign); RIDE.sign.material.map.dispose(); RIDE.sign.material.dispose(); RIDE.sign=null; }
+  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(label,'#F2B705','#0E1014'),fog:false})); sp.scale.set(label.length>9?2.4:1.6,.3,1); sp.position.set(0,((v.c.def.roof&&v.c.def.roof[2])||1.45)+.32,0); sp.layers.set(1); v.c.g.add(sp); RIDE.sign=sp; } }
 // the airport lies beyond the street map: rides to it follow the streets to the end of Agege Motor Road, then the
 // driver takes the airport road himself (and the other way round when you book a ride from the airport)
 const atAirport=()=>!!AIRPORT&&player.z<-WB.z+2;
@@ -4963,14 +4963,14 @@ function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book you
   const v=air?vehicles.find(c=>c.ai&&(c.type==='sedan'||c.type==='suv')&&!c.ai.chase&&!c.ai.goal&&c!==drive.v&&!c.jacked&&!c.raid&&c!==RAID.v):bike?pickBike(g):pickCab(g);
   if(!v){ toast(bike?'"No bike man dey around now. Try again small time."':'"No driver dey around now. Try again small time."',2.6); return; }
   Object.assign(RIDE,{v,kind:bike?'okada':'car',state:'coming',dest:{...pl,rx:dk.x,rz:dk.z},goal:g,t:0,hint:false,fare,who:mpick(RIDE_WHO),car:bike?mpick(['Bajaj Boxer','TVS Star','Honda CG 125','Qlink okada']):mpick(RIDE_CAR),plate:(bike?'OKD':mpick(['LND','KJA','AAA','EKY','MUS','APP']))+' '+(100+Math.floor(MR()*899))+' '+mpick(['XA','GH','KT','BD','FE'])});
-  RIDE.fromAir=air; RIDE.leg=null; RIDE.legDone=false;
+  RIDE.fromAir=air; RIDE.leg=null; RIDE.legDone=false; RIDE.street=false; RIDE.oc=air||bike?null:ocRoll(false);   // a cab in Under Bridge may be a one chance
   if(air){ // a taxi from the airport rank pulls up on the forecourt road
     v.ai=null; v.parked=false; v.x=clamp(player.x,AIRPORT.TX-130,AIRPORT.TX+130); v.z=AIRPORT.drop.z; v.y=0; v.h=0; v.speed=0; RIDE.state='waiting'; RIDE.t=0;
     v.taxi=true; rideSign(v,true); toast(`${RIDE.who} dey the taxi rank. The car with the OYA RIDE sign is on the road in front of the terminal. Press E to enter.`,3.2); phoneUI(); return; }
   v.taxi=true; v.ai.goal=g; rideSign(v,true); toast(bike?`Bike man ${RIDE.who} don accept. He dey come with the okada!`:`${RIDE.who} don accept your ride. He dey come!`,2.6); phoneUI(); if(PH) PH.event('ride',{name:pl.name,fare,who:RIDE.who,bike}); }
 function cancelRide(msg){ const v=RIDE.v; if(!v) return; if(RIDE.state==='riding'){ rideExit(true); return; }
   if(v.ai){ v.ai.goal=null; v.ai.wait=0; } else v.parked=true; v.taxi=false; rideSign(v,false); Object.assign(RIDE,{v:null,state:null,dest:null,goal:null,leg:null,fromAir:false,legDone:false}); if(msg) toast(msg,2.6); if(PHONE.open) phoneUI(); }
-const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<4.4;
+const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Math.abs(RIDE.v.speed)<1.5&&Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)<(RIDE.street&&RIDE.car==='danfo'?6.5:4.4);
 function rideEnter(){ const v=RIDE.v, d=RIDE.dest; if(!v||(!v.ai&&!RIDE.fromAir)) return; closeWard(); RIDE.state='riding'; RIDE.t=0; RIDE.goal=goalAt(d.rx,d.rz);
   if(RIDE.fromAir){ const G=RIDE.goal; RIDE.leg={pts:airportPath(false),i:-1,cb:()=>{ v.x=AIRPORT.hand.x; v.z=AIRPORT.hand.z+4; player.x=v.x; player.z=v.z; if(!(placeCar(v,0,60)||placeCar(v,0,160))||!v.ai){ cancelRide(); return; }   /* back on the street network at the end of Agege Motor Road */ v.ai.goal=G; v.ai.wait=0; }}; }
   else { v.ai.goal=RIDE.goal; v.ai.wait=1.2; }
@@ -4995,7 +4995,7 @@ function updateRide(dt){ const R=RIDE, v=R.v; if(!v) return; R.t+=dt;
   if(R.state!=='riding'&&!v.ai){ cancelRide('Your driver had to go. Book again.'); return; }   // someone took the car
   if(v.ai&&v.ai.goal!==R.goal) v.ai.goal=R.goal;   // keep the destination if the car was moved
   if(R.state==='coming'){ const G=R.goal;
-    if((G.near||Math.hypot(v.x-player.x,v.z-player.z)<9)&&Math.abs(v.speed)<.5){ R.state='waiting'; R.t=0; toast(`${R.who} don reach! The car with the OYA RIDE sign. Press E to enter.`,3.2); if(PHONE.open) phoneUI(); }
+    if((G.near||Math.hypot(v.x-player.x,v.z-player.z)<9)&&Math.abs(v.speed)<.5){ R.state='waiting'; R.t=0; toast(R.street?(R.car==='danfo'?'The danfo stops by you. Conductor: "Enter, enter! Shift for front!" Press E to enter.':'The taxi stops by you. Press E to enter.'):`${R.who} don reach! The car with the OYA RIDE sign. Press E to enter.`,3.2); if(PHONE.open) phoneUI(); }
     else if(R.t>100){ placeCar(v,35,70,true); v.ai.goal=G; R.t=50; }   // stuck somewhere: he takes a shorter way
     else if(Math.hypot(player.x-G.x,player.z-G.z)>30){ Object.assign(G,goalAt(player.x,player.z)); } }   // you walked off: he comes to where you are now
   else if(R.state==='waiting'){ v.speed=0; if(v.ai) v.ai.wait=1; if(R.t>80) cancelRide(`${R.who} don wait tire. He don go.`); else if(Math.hypot(player.x-v.x,player.z-v.z)>60){ R.state='coming'; v.ai.wait=0; Object.assign(R.goal,goalAt(player.x,player.z)); } }
@@ -5090,8 +5090,8 @@ const WEAPONS={
   board:{name:'Skateboard',board:1}};   // your own board, carried (see "your board in your hands")
 const WEAP_ORDER=['fists','baton','katana','ak','gren','molo','board'], AMMO_PACK={n:30,price:4500};
 const ARMS={own:{fists:1},cur:'fists',mag:0,ammo:0,lib:{},loading:{},aim:false,trig:false,fireT:0,reloadT:0,held:null,heldOn:null,shots:0,lastShot:-9,recoil:0};
-try{ const a=JSON.parse(localStorage.getItem('naija-arms')||'null'); if(a&&a.own) Object.assign(ARMS,{own:{...a.own,fists:1},cur:a.own[a.cur]?a.cur:'fists',mag:a.mag|0,ammo:a.ammo|0}); }catch(e){}
-const saveArms=()=>{ try{ localStorage.setItem('naija-arms',JSON.stringify({own:ARMS.own,cur:ARMS.cur,mag:ARMS.mag,ammo:ARMS.ammo})); }catch(e){} };
+try{ const a=JSON.parse(localStorage.getItem('naija-arms')||'null'); if(a&&a.own) Object.assign(ARMS,{own:{...a.own,fists:1},cur:a.own[a.cur]?a.cur:'fists',mag:a.mag|0,ammo:a.ammo|0,vest:+a.vest||0}); }catch(e){}
+const saveArms=()=>{ try{ localStorage.setItem('naija-arms',JSON.stringify({own:ARMS.own,cur:ARMS.cur,mag:ARMS.mag,ammo:ARMS.ammo,vest:Math.round(ARMS.vest||0)})); }catch(e){} };
 const gunOut=()=>!!(WEAPONS[ARMS.cur].gun||WEAPONS[ARMS.cur].throw)&&mode==='walk';   // a gun, or something to throw: aim and fire/throw
 const armed=()=>ARMS.cur!=='fists'&&ARMS.cur!=='board';   // something to fight or rob with (the board is only for riding)
 // each model is turned so +z points along the blade or barrel and the grip sits at the origin
@@ -5713,6 +5713,7 @@ function gateNear(){ if(!GATE) return false; const f=mode==='drive'&&drive.v?dri
 const gateGun=()=>['ak','gren','molo'].filter(k=>ARMS.own[k]);
 function gatePay(){ if(!GATE) return; const S=starCount(), guns=gateGun();
   if(S>0){ gateAlarm(); toast(mpick(['Police: "Na you we dey find! Come down! Hands up!"','Police: "Stop there! You be wanted person!"']),2.6); return; }
+  if(cardOn()){ GATE.paidT=T0+12; gateBoys('talk'); toast(mpick(['Police: "Chairman card? Ah, oga, pass. Greet am for us."','The officer looks at the card and waves you on. "Go well, my oga."']),2.6); return; }
   if(guns.length){ const bribe=10000;
     if(CASH.n>=bribe+GATE.fee){ addCash(-(bribe+GATE.fee)); toast(`Police search: dem see your ${guns.map(k=>WEAPONS[k].name).join(' and ')}. You "settle" them ${naira(bribe)}. "Oya pass. We no see anything."`,3.6); }
     else { for(const k of guns) delete ARMS.own[k]; if(guns.includes('ak')){ ARMS.mag=0; ARMS.ammo=0; } if(!ARMS.own[ARMS.cur]) ARMS.cur='fists'; saveArms(); weapHUD(true); addHeat(.25);
@@ -5794,8 +5795,108 @@ function updateUBSpots(dt){ if(!UB||!UBX.spots.length) return; const here=inUB(p
     if(here&&d<70&&d>18&&!S.boys.length&&(S.t-=dt)<=0){ S.t=8; const n=ENV.night?4:MR()<.5?2:3; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+mrr(-.3,.3), q=crookWake('hang',S.x+Math.sin(a)*1.6,S.z+Math.cos(a)*1.6); if(!q) break; q.crook.spot=S; q.crook.a=a; q.crook.st='hang'; S.boys.push(q); } }
     if(d>110) for(const q of S.boys) crookOut(q);
     if(ENV.night&&d<55&&MR()<dt*9) flame(S.x,.95,S.z,.55); } }   // their fire
-function updateUnderBridge(dt){ if(!UB) return; updateGate(dt); updateCrooks(dt); updateUBSpots(dt);
+function updateUnderBridge(dt){ if(!UB) return; updateGate(dt); updateCrooks(dt); updateUBSpots(dt); updateChair(dt); updateOneChance(dt); vestSync();
   if(CHOP&&CHOP.ring){ CHOP.ring.visible=mode==='drive'&&!!drive.v&&!drive.v.mine&&drive.v.type!=='skate'&&Math.hypot(player.x-CHOP.x,player.z-CHOP.z)<160; CHOP.ring.material.opacity=.45+.3*Math.sin(T0*4); } }
+
+// ---- Chairman: the Under Bridge black market, beside the chop shop. Guns cheaper than Oga Shege, a bulletproof vest,
+// a card the checkpoint police respect, and one phone call that makes a police case disappear
+if(CHOP&&MODELS.ub_container) addOB(CHOP.x+Math.cos(CHOP.ry)*8,CHOP.z-Math.sin(CHOP.ry)*8,3.1,1.3,-CHOP.ry,2.6);   // the chop shop's container is solid
+if(GATE) GATE.passT=-99;
+const CHAIR={x:0,z:0,ry:0,ped:null,deadT:-99,ok:false,stall:null,dressed:false}, VEST_PRICE=18000, CARD_PRICE=4000, CARD_T=1200;
+if(CHOP){ for(let t=0;t<60&&!CHAIR.ok;t++){ const a=(t%12)/12*Math.PI*2, r=8+((t/12)|0)*1.6, x=CHOP.x+Math.cos(a)*r, z=CHOP.z+Math.sin(a)*r;
+    if(!onLand(x,z,2)||roadAt(x,z,1.4)||resolveCircle({x,z},1.6)) continue; Object.assign(CHAIR,{x,z,ry:Math.atan2(CHOP.x-x,CHOP.z-z),ok:true}); } }
+if(CHAIR.ok){ const g=new THREE.Group(), wood=new THREE.MeshStandardMaterial({color:0x5b3d24,roughness:.85}), top=new THREE.Mesh(new THREE.BoxGeometry(1.6,.06,.75),wood); top.position.y=.8; g.add(top);
+  for(const [lx,lz] of [[-.72,-.3],[.72,-.3],[-.72,.3],[.72,.3]]){ const l=new THREE.Mesh(new THREE.BoxGeometry(.06,.8,.06),wood); l.position.set(lx,.4,lz); g.add(l); }
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,2.4,6),new THREE.MeshStandardMaterial({color:0x777777})); pole.position.set(.6,1.2,0); g.add(pole);
+  const um=new THREE.Mesh(new THREE.ConeGeometry(1.35,.5,10,1,true),new THREE.MeshStandardMaterial({color:0x1f6b3a,side:THREE.DoubleSide,roughness:.8})); um.position.set(.6,2.4,0); g.add(um);
+  const crate=new THREE.Mesh(new THREE.BoxGeometry(.6,.45,.45),new THREE.MeshStandardMaterial({color:0x7a6a3a,roughness:.9})); crate.position.set(-1.25,.22,.1); g.add(crate);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1.12,36),new THREE.MeshBasicMaterial({color:0xd0573e,transparent:true,opacity:.7,depthWrite:false,fog:false})); ring.rotation.x=-Math.PI/2; ring.position.set(0,.04,-1.1); g.add(ring);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); const fx=Math.sin(CHAIR.ry), fz=Math.cos(CHAIR.ry);
+  g.position.set(CHAIR.x+fx*.9,0,CHAIR.z+fz*.9); g.rotation.y=CHAIR.ry; scene.add(g); CHAIR.stall=g;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('CHAIRMAN · ANY ANY','#F2B705','#0E1014',1024,170),fog:false})); sp.scale.set(4.2,.7,1); sp.position.set(g.position.x,3.3,g.position.z); scene.add(sp);
+  addCol({x0:g.position.x-.7,x1:g.position.x+.7,z0:g.position.z-.7,z1:g.position.z+.7,h:.85});
+  PLACES.push({name:'Chairman',sub:'Under Bridge black market · guns, vests, police "settle"',kind:'guns',x:CHAIR.x,z:CHAIR.z}); }
+function updateChair(dt){ if(!CHAIR.ok||mode==='interior') return; const d=Math.hypot(player.x-CHAIR.x,player.z-CHAIR.z); let p=CHAIR.ped;
+  if(d<90&&!CHAIR.dressed){ CHAIR.dressed=true; Promise.all(['ak','katana'].map(loadWeapon)).then(()=>{ for(const [id,pp,r] of [['ak',[-.15,.86,-.05],[-Math.PI/2,0,Math.PI/2]],['katana',[.25,.86,.2],[-Math.PI/2,0,1.3]]]){ const w=cloneWeapon(id); if(!w) continue; w.position.set(...pp); w.rotation.set(...r); CHAIR.stall.add(w); } }); }
+  if(p&&(p.state==='off'||p.state==='dead'||!p.chair)){ if(p.state==='dead') CHAIR.deadT=T0+240; else p.dealer=false; p.chair=false; CHAIR.ped=null; return; }
+  if(!p&&d<120&&T0>CHAIR.deadT){ const q=freePed(); if(!q) return; wakePed(q,'areaboy'); Object.assign(q,{x:CHAIR.x,z:CHAIR.z,y:0,yaw:CHAIR.ry,state:'dealer',speed:0,hp:180,dealer:true,chair:true}); q.seq=(q.seq||0)+1; CHAIR.ped=q; return; }
+  if(!p) return;
+  if(d>150){ p.dealer=false; p.chair=false; offPed(p); CHAIR.ped=null; return; }
+  if(p.state==='walk'||p.state==='idle') p.state='dealer';
+  if(p.state==='dealer'){ if(Math.hypot(p.x-CHAIR.x,p.z-CHAIR.z)>.6){ p.x+=(CHAIR.x-p.x)*Math.min(1,dt*2); p.z+=(CHAIR.z-p.z)*Math.min(1,dt*2); }
+    p.yaw=lerpA(p.yaw,d<8?Math.atan2(player.x-p.x,player.z-p.z):CHAIR.ry,Math.min(1,dt*3)); } }
+const nearChair=()=>!!CHAIR.ped&&CHAIR.ped.state==='dealer'&&mode==='walk'&&Math.hypot(player.x-CHAIR.x,player.z-CHAIR.z)<2.6;
+const cardOn=()=>!!GATE&&T0<GATE.passT;
+function chairRows(){ const S=starCount(), P=k=>Math.round(WEAPONS[k].price*.85/500)*500, rows=[];
+  const gun=(id,sub,fn)=>{ const own=!!ARMS.own[id]; rows.push({name:WEAPONS[id].name,sub:own?'You have one':sub,price:own?0:P(id),btn:own?'Yours':null,off:own,act:()=>{ fn(); saveArms(); weapHUD(true); }}); };
+  gun('ak','Cheaper than Oga Shege. Comes with 30 bullets',()=>{ ARMS.own.ak=1; ARMS.mag=WEAPONS.ak.mag; selectWeapon('ak'); toast('"Na from barracks e come. No ask me question."',2.4); });
+  gun('katana','A long blade, cheaper than Oga Shege',()=>{ ARMS.own.katana=1; selectWeapon('katana'); toast('"E sharp. No cut yourself."',2); });
+  gun('baton','Hits hard, floors people',()=>{ ARMS.own.baton=1; selectWeapon('baton'); toast('"Na real police baton o."',2); });
+  rows.push({name:`Bullets ×${AMMO_PACK.n}`,sub:ARMS.own.ak?`You have ${ARMS.mag+ARMS.ammo}`:'For the AK-47',price:ARMS.own.ak?Math.round(AMMO_PACK.price*.85/50)*50:0,btn:ARMS.own.ak?null:'Need AK',off:!ARMS.own.ak,act:()=>{ ARMS.ammo+=AMMO_PACK.n; saveArms(); weapHUD(true); toast(`+${AMMO_PACK.n} bullets`,1.4); }});
+  const vest=Math.round(ARMS.vest||0);
+  rows.push({name:'Bulletproof vest',sub:vest>0?`Yours, ${vest}% left. Buy again to fix it`:'Takes most of a bullet, a blade or a blow, until it wears out',price:vest>=100?0:VEST_PRICE,btn:vest>=100?'Full':null,off:vest>=100,act:()=>{ ARMS.vest=100; saveArms(); vestHUD(); toast('"Na police own. E don stop bullet before."',2.4); }});
+  if(GATE) rows.push({name:"Chairman's card",sub:cardOn()?'Yours. The checkpoint police wave you through':'Show it at the police checkpoint: no fee, no search, for 20 minutes',price:cardOn()?0:CARD_PRICE,btn:cardOn()?'Yours':null,off:cardOn(),act:()=>{ GATE.passT=T0+CARD_T; toast('"Show them this card. Dem know me well well."',2.6); }});
+  if(S>0) rows.push({name:'Make your case disappear',sub:`One call to "Oga for station". Your ${S} star${S>1?'s':''} go`,price:6000*S,act:()=>{ FIGHT.heat=0; FIGHT.seen=-99; releaseCop(); CASE.on=false; closeMenu(); toast('Chairman makes one call... "E don settle. Police don forget your face."',3.2); }});
+  return rows; }
+function openChair(){ openMenu('CHAIRMAN · UNDER BRIDGE','Cash only',chairRows); if(sayT<=0){ sayT=4; toast(mpick(['"My guy! Wetin you need? Everything dey here."','"Under Bridge price. Oga Shege no fit beat am."','"Talk fast. Police dey pass here."']),2.4); } }
+// your vest: a thin blue bar under your health
+const VITALS=$('#vitals'), VEST_EL=(()=>{ const v=VITALS; if(!v) return null; const d=document.createElement('div'); d.className='hpbar'; d.setAttribute('aria-label','Your vest'); d.style.cssText='height:4px;margin-top:3px'; const i=document.createElement('i'); i.style.background='#4a9be0'; d.append(i); v.after(d); return d; })();
+function vestHUD(){ if(!VEST_EL) return; const v=Math.round(ARMS.vest||0); VEST_EL.hidden=v<=0||VITALS.hidden; VEST_EL.firstChild.style.width=v+'%'; VEST_EL._v=v; VEST_EL._h=VITALS.hidden; }
+const vestSync=()=>{ if(VEST_EL&&(VEST_EL._v!==Math.round(ARMS.vest||0)||VEST_EL._h!==VITALS.hidden)) vestHUD(); };
+vestHUD();
+// the vest takes most of a hit (not a car)
+function vestTake(dmg,how){ if(!(ARMS.vest>0)||how==='car') return dmg; const a=Math.min(ARMS.vest/.8,dmg*.65); ARMS.vest=Math.max(0,ARMS.vest-a*.8); vestHUD(); saveArms();
+  if(ARMS.vest<=0) toast('Your vest don tear finish. Buy another one from Chairman.',2.6); return dmg-a; }
+
+// ---- "one chance": a danfo or a cab that picks you up in Under Bridge is a trap. The "passengers" are robbers
+const OC={t:45};
+function ocRoll(street){ if(!UB||!inUB(player.x,player.z)) return null; const p=street?(ENV.night?.8:.55):(ENV.night?.4:.2); return MR()<p?{at:street?mrr(6,11):mrr(9,16),st:'wait',t:0}:null; }
+const rideWord=()=>RIDE.street?`Enter the ${RIDE.car} · ${naira(RIDE.fare)}`:'Enter your ride';
+// a bus or a "taxi" slows down by you with a cheap fare (only when you are on foot near a road in Under Bridge)
+function ocStreet(dt){ if(RIDE.state||mode!=='walk'||FIGHT.ko||!GATE||!inUB(player.x,player.z)||starCount()>0) return 'no';
+  if((OC.t-=dt)>0) return 'wait'; OC.t=ENV.night?mrr(45,90):mrr(80,150);
+  const [e,de]=nearestRoad(player.x,player.z,q=>q.drive); if(!e||de>12||FLYE.has(e.i)) return 'road '+(de|0);
+  const g=goalAt(player.x,player.z), v=ocPick(g); if(!v) return 'nocar'; const bus=v.type==='danfo', keke=v.type==='keke', dk=kerbPoint(GATE.x-32,GATE.z); v.ocT=T0;
+  Object.assign(RIDE,{v,kind:'car',state:'coming',dest:{name:'the toll gate',x:dk.x,z:dk.z,rx:dk.x,rz:dk.z},goal:g,t:0,hint:true,fare:bus?200:keke?150:300,who:bus?'The conductor':'The driver',car:bus?'danfo':keke?'keke':'taxi',plate:'',street:true,fromAir:false,leg:null,legDone:false,oc:ocRoll(true)});
+  v.taxi=true; v.ai.goal=g; rideSign(v,true,bus?'MUSHIN · ₦200':keke?'KEKE · ₦150':'TAXI · ₦300');
+  toast(keke?'A keke slows down by you: "Toll gate! ₦150! One person remain!"':bus?mpick(['A danfo slows down by you. Conductor: "Mushin! Mushin! ₦200! Enter with your change!"','Conductor: "Toll gate! Mushin! Last bus! ₦200!" The danfo dey come your side.']):'A taxi flashes its lights at you: "Oga, where you dey go? Toll gate, ₦300 only!"',3.4); }
+function ocPick(g){ const ok=v=>v.ai&&(v.type==='danfo'||v.type==='keke'||v.type==='sedan'||v.type==='car2'||v.type==='suv')&&!v.ai.chase&&!v.ai.goal&&v!==drive.v&&!v.jacked&&!v.raid&&v!==RAID.v&&!v.taxi&&!flyUp(v)&&T0-(v.ocT||-999)>300;
+  const all=vehicles.filter(ok), dan=all.filter(v=>v.type==='danfo'), c=(dan.length&&MR()<.7?dan:all).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z)); if(!c.length) return null;
+  const v=c[0], D=goalField(g), opts=[];
+  for(const n of nodes){ const dn=D[n.i]; if(dn<60||dn>260||Math.hypot(n.x-player.x,n.z-player.z)<45) continue; for(const m of n.out){ if(D[m]>=dn) continue; const e=edgeOf(n.i,m); if(e&&e.drive&&e.len>12&&!FLYE.has(e.i)) opts.push([n.i,m]); } }
+  for(let t=0;t<20&&opts.length;t++){ const [a,b]=mpick(opts), seg=lineSeg(a,b), sp=mrr(.2,.6)*seg.len; segPos(seg,sp,_sp); if(vehicles.some(o=>Math.hypot(o.x-_sp.x,o.z-_sp.z)<11)||inView(_sp.x,1,_sp.z,3)) continue; const e=edgeOf(a,b), DF=v.c.def;
+    v.ai={a,b,s:sp,seg,na:-1,maxV:mrr(DF.maxV[0],DF.maxV[1])*1.1,wait:0,ghost:0,stuck:0,cond:e.cond,ec:e.c}; v.parked=false; v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx); v.speed=v.ai.maxV*.6; v.y=groundY(v.x,v.z); v.fh=0; return v; }
+  return null; }
+const ocArmed=()=>{ const w=ARMS.cur; return w!=='fists'&&w!=='board'&&!WEAPONS[w].throw&&ARMS.own[w]&&!(w==='ak'&&ARMS.mag+ARMS.ammo<=0)?w:null; };
+function ocOdds(){ const w=ocArmed(), base=w==='ak'?.85:w==='katana'?.7:w==='baton'?.55:.28; return clamp(base*(.6+.4*FIGHT.hp/100),.05,.95); }
+const ocWord=p=>p>.75?'good chance':p>.5?'could go either way':p>.3?'risky':'very risky';
+function ocMenu(){ const R=RIDE, w=ocArmed(), p=ocOdds();
+  openMenu('ONE CHANCE!',R.car==='danfo'?'The "passengers" pull out knives and a gun. The conductor locks the door':'The man in the back puts a gun to your side. The doors lock',[
+    {name:'Give them everything',sub:'All your money. They push you out and drive off',btn:'Give',price:0,act:()=>{ closeMenu(); ocGive(); }},
+    {name:'Fight them',sub:w?`With your ${WEAPONS[w].name}: ${ocWord(p)}`:`Bare hands against three of them: ${ocWord(p)}`,btn:'Fight',price:0,act:()=>{ closeMenu(); ocFight(); }},
+    {name:'Jump out',sub:'Open the door and roll out of the moving motor. You keep your money but you land hard',btn:'Jump',price:0,act:()=>{ closeMenu(); ocJump(); }}]); }
+// out of the motor at the roadside; it drives off
+function ocOut(fn){ const v=RIDE.v; if(!v) return; RIDE.oc.st='done'; fadeSwap(()=>{ v.speed=0; drive.speed=0; rideExit(true); if(v.ai){ v.ai.goal=null; v.ai.wait=1.2; v.ai.maxV=Math.max(v.ai.maxV,14); } fn&&fn(v); }); }
+function ocGive(){ const amt=Math.max(0,CASH.n-200); ocOut(()=>{ if(amt>0) addCash(-amt); FIGHT.hp=Math.max(5,FIGHT.hp-8);
+  toast(amt>0?`They take ${naira(amt)} and push you out. "Take ₦200 for transport. Thank God say we no kill you."`:'"You no get money?!" They slap you and push you out of the motor.',4); }); }
+function ocFight(){ const won=MR()<ocOdds(), w=ocArmed();
+  if(won) ocOut(v=>{ if(v.ai){ v.ai=null; v.parked=true; v.speed=0; v.jacked=true; } FIGHT.hp=Math.max(10,FIGHT.hp-mrr(6,22)); if(w==='ak'){ ARMS.mag=Math.max(0,ARMS.mag-4); weapHUD(true); }
+      for(let i=0;i<3;i++){ const a=crookWake('pick',v.x+mrr(-2.5,2.5),v.z+mrr(-2.5,2.5)); if(a){ a.crook.st='run'; a.crook.t=0; } } dropCash(v.x+1.5,v.z+1,Math.round(mrr(3000,12000)/50)*50);
+      toast(mpick(['You beat them well well! The one chance boys jump out and run. The motor is yours now, and they dropped money.','"Abeg! Abeg!" They run for their lives. Their money don fall for ground and the motor dey there.']),4); });
+  else { const amt=CASH.n; ocOut(()=>{ if(amt>0) addCash(-amt); FIGHT.hp=Math.max(5,FIGHT.hp-45); FIGHT.ko=true; FIGHT.koT=0; FIGHT.calmT=0;
+      toast(`They beat you down, take all your ${naira(amt)} and throw you out of the motor.`,4); }); } }
+function ocJump(){ const v=RIDE.v; if(!v) return; const sp=Math.abs(v.speed||0); RIDE.oc.st='done'; rideExit(true); if(v.ai){ v.ai.goal=null; v.ai.maxV=Math.max(v.ai.maxV,14); }
+  FIGHT.hp=Math.max(5,FIGHT.hp-clamp(10+sp*1.6,12,38)); FIGHT.ko=true; FIGHT.koT=0; FIGHT.calmT=0; thud(); camState.shake=Math.min(1.2,camState.shake+.6);
+  toast('You jump out! Your body don scatter, but your money still dey your pocket.',3.4); }
+function updateOneChance(dt){ const R=RIDE, v=R.v;
+  if(!v){ R.oc=null; R.street=false; ocStreet(dt); return; }
+  if(R.street&&R.state==='waiting'&&R.t>25){ cancelRide(R.car==='danfo'?'Conductor: "You no dey enter? Driver, oya move!"':'"Wasting my time!" The taxi drives off.'); return; }
+  if(R.street&&(R.state==='coming'||R.state==='waiting')&&(R.t>70||Math.hypot(v.x-player.x,v.z-player.z)>70)){ cancelRide(null); return; }
+  const O=R.oc; if(!O||R.state!=='riding') return; O.t+=dt;
+  if(O.st==='wait'&&R.t>O.at){ O.st='demand'; O.t=0; if(v.ai) v.ai.goal=null; mapView.clearRoute(); closePhone(); burst(.08,1500,.2,4);
+    toast(mpick(['"ONE CHANCE! Nobody move!"','"Oga, relax. Na one chance you enter. Bring everything!"']),3); ocMenu(); return; }
+  if(O.st==='demand'){ if(!MENU.open&&O.t>.6){ O.st='done'; ocFight(); return; }   // you closed it: you fight
+    if(O.t>15){ closeMenu(); O.st='done'; toast('"You dey waste our time!"',2); ocFight(); } } }
 
 /* ================= rope toll: area boys block a street with a rope =================
    On some side streets two area boys hold a rope across the road: ₦200 to pass (E). Cars that pay go through;
@@ -6442,6 +6543,15 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     ubCarAt(x,z,h=0){ if(mode==='drive') exitCar(); const v=newVehicle('sedan','#2b4b3a',true); Object.assign(v,{x,z,h,parked:true}); player.x=x; player.z=z; enterCar(v); return mode; },
     aiNear:(R=250)=>{ const L=vehicles.filter(v=>v.ai&&Math.hypot(v.x-player.x,v.z-player.z)<R); return {n:L.length,all:vehicles.filter(v=>v.ai).length,tot:vehicles.length,fly:L.filter(v=>FLYE.has(edgeOf(v.ai.a,v.ai.b)?.i)).length}; },
     aiFly:()=>vehicles.filter(v=>v.ai&&v.ai.a!=null&&FLYE.has(edgeOf(v.ai.a,v.ai.b)?.i)).map(v=>({fh:+(v.fh||0).toFixed(2),y:+v.y.toFixed(2),d:Math.round(Math.hypot(v.x-player.x,v.z-player.z))})),
+    ub2:()=>({mode,chair:CHAIR.ok?{x:Math.round(CHAIR.x),z:Math.round(CHAIR.z),ped:!!CHAIR.ped,st:CHAIR.ped&&CHAIR.ped.state,near:nearChair()}:null,menu:MENU.open?MENU.title:null,rows:MENU.open?[...document.querySelectorAll('#menuBody .sh-row b')].map(e=>e.textContent):null,
+      ride:RIDE.state,street:!!RIDE.street,oc:RIDE.oc&&RIDE.oc.st,car:RIDE.car,rt:+(RIDE.t||0).toFixed(1),rv:RIDE.v?Math.round(Math.hypot(RIDE.v.x-player.x,RIDE.v.z-player.z)):null,rvx:RIDE.v?RIDE.v.x:null,rvz:RIDE.v?RIDE.v.z:null,vest:Math.round(ARMS.vest||0),card:cardOn(),cash:CASH.n,hp:Math.round(FIGHT.hp),ko:FIGHT.ko,stars:starCount(),
+      prompt:$('#prompt').hidden?'':$('#promptTxt').textContent}),
+    kerb:(x,z)=>kerbPoint(x,z),
+    ocDbg:()=>{ const g=goalAt(player.x,player.z), D=goalField(g); return vehicles.filter(v=>v.ai).map(v=>({t:v.type,d:Math.round(Math.hypot(v.x-player.x,v.z-player.z)),goal:!!v.ai.goal,chase:!!v.ai.chase,jk:!!v.jacked,taxi:!!v.taxi,raid:!!v.raid,D:Math.round(D[v.ai.b]),b:v.ai.b})); },
+    ocNow:()=>{ OC.t=0; return ocStreet(.01)||'ok'; },
+    giveCash(n){ addCash(n); return CASH.n; },
+    heat(h){ FIGHT.heat=h; return starCount(); },
+    hitMe(d){ hitPlayer(d,null,'shot'); return {hp:FIGHT.hp,vest:ARMS.vest}; },
     ubCrook(k='pick'){ if(k==='pick') CROOK.t=0; else CROOK.robT=0; return true; },
     ubPay:()=>{ if(CROOK.demand) return crookPay(); if(gateNear()){ gatePay(); return 'gate'; } if(nearChop()){ chopSell(); return 'chop'; } return null; },
     board:()=>({mode,own:!!ARMS.own.board,cur:ARMS.cur,carried:!!(mySkate&&mySkate.carried),near:boardNear(),held:!!(MYB.held&&MYB.held.visible),hp:MYB.held?MYB.held.position.toArray().map(v=>+v.toFixed(2)):null,pl:[+player.x.toFixed(2),+player.y.toFixed(2),+player.z.toFixed(2)],d:mySkate?+Math.hypot(mySkate.x-player.x,mySkate.z-player.z).toFixed(1):null}),

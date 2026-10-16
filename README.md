@@ -50,6 +50,15 @@ Bridge; the shops, gangs and people in it are made up.
 - **Crime.** Pickpockets brush past and run (catch them and the money drops); armed robbers come in pairs at night, and
   under the bridge by day: press E to hand over 40% of your cash, or fight. At night the boys at the drums warn you off,
   then fight.
+- **Chairman.** The Under Bridge black market, by the chop shop (on your map). Guns and bullets 15% cheaper than Oga
+  Shege, a bulletproof vest (a blue bar under your health: it takes most of a bullet, blade or blow until it wears out),
+  Chairman's card (the checkpoint police wave you through free, no search, for 20 minutes), and when you are wanted,
+  one phone call that makes your stars go (₦6,000 a star).
+- **One chance.** In Under Bridge a danfo, keke or taxi may slow down by you with a cheap fare to the toll gate, and an
+  OYA RIDE cab you book there can be one too. Most of them are traps: a few seconds into the ride the "passengers" turn
+  on you. Give them everything (they leave you ₦200 for transport), fight (your odds depend on your weapon and health:
+  win and they run, drop money and leave you the motor; lose and they beat you and take it all), or jump out of the
+  moving motor and keep your money.
 - **The chop shop.** Bring any car that isn't yours to the yellow ring by the "WE BUY ANY CAR" sign and press E: they
   pay by type and damage, no questions (a police van also brings heat).
 
