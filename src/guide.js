@@ -94,8 +94,11 @@ const TIPS = [
     k: 'Hold [W] to go, [S] to slow down or reverse, [A] [D] to turn. [Space] brakes hard, [H] blows the horn. Stop, then press [E] to come down.',
     m: 'Drag the left side: up to go, down to slow or reverse, left and right to turn. {BRAKE} stops hard, <<HORN>> clears the road. Stop, then tap {E} to come down.' },
   { id: 'skate', ctx: 'play', when: s => s.veh === 'skate', atM: '#tSk2', t: 'Skateboard',
-    k: 'Push with [W] ([Shift] pushes harder), [S] brakes, [A] [D] carve. [Space] = OLLIE. In the air: [J] kickflip, [K] heelflip, [L] shove-it. Land clean to score.',
-    m: 'Drag the left side to push and carve. <<OLLIE>> jumps; in the air tap <<FLIP>> or <<SPIN>> for tricks. Land clean to score.' },
+    k: 'Push with [W] ([Shift] pushes harder), [S] brakes, [A] [D] carve. [Space] = OLLIE. Tricks: [J] kickflip, [K] heelflip, [L] shove-it (on the ground they jump for you). Hold [Space] in the air to grab the board. Land clean to score.',
+    m: 'Drag the left side to push and carve. <<OLLIE>> jumps. <<FLIP>> and <<SPIN>> do tricks (they jump for you). Hold <<OLLIE>> in the air to grab the board. Land clean to score.' },
+  { id: 'board', ctx: 'play', when: s => s.board && s.mode === 'walk', at: '#weap', atM: '#tPunch|#weap', t: 'Your skateboard',
+    k: 'You dey carry your board. Press [E] or [J] to put it down and ride. [1]–[6] or [Tab] changes what you hold.',
+    m: 'You dey carry your board. Tap <<RIDE>> to put it down and ride. Tap the name under your money to change what you hold.' },
   { id: 'ride', ctx: 'play', when: s => s.ride, t: 'Your ride', k: 'Sit back, the driver go carry you reach. When the car stops, press [E] to come down anywhere.',
     m: 'Sit back, the driver go carry you reach. When the car stops, tap {E} to come down anywhere.' },
   { id: 'job', ctx: 'play', also: ['gps'], when: s => s.job, at: '#job', t: 'Delivery job', k: 'Follow the yellow line to the PICK UP ring and collect the load. Then carry am to the green DROP OFF ring before the time finish. Late = small pay.' },
@@ -108,7 +111,7 @@ const TIPS = [
   { id: 'inside', ctx: 'play', when: s => s.mode === 'interior' && !s.jail, t: 'Inside', k: 'Walk to things and press [E] when the sign shows: bed, TV, kitchen, wardrobe and more. Go back to the door and press [E] to go outside.',
     m: 'Walk to things and tap {E} when it shows: bed, TV, kitchen, wardrobe and more. Go back to the door and tap {E} to go outside.' },
   { id: 'moves', ctx: 'play', when: (s, g) => s.mode === 'walk' && g.sinceWelcome > 50, atM: '#tJump', t: 'More moves',
-    k: '[Space] jumps, [X] crouches, and [X] while running slides. The mouse [Wheel] brings the camera closer or farther.',
+    k: '[Space] jumps, [X] crouches (and [X] again stands), [X] while running slides. The mouse [Wheel] brings the camera closer or farther.',
     m: '<<JUMP>> jumps, <<CROUCH>> crouches, and <<CROUCH>> while running slides. Settings → Phone buttons lets you move them.' },
 ];
 

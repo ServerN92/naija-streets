@@ -190,12 +190,14 @@ A few seconds into the game a blue car, a black Benz, a fuel tanker (main roads 
 bike load in the background and join the traffic (the Benz and sport bike are rare; a Benz is also parked at the hotel).
 Take any of them like other vehicles: the sport bike is the fastest thing on the road, the tanker the slowest.
 They also pick up passengers and come as OYA RIDE cabs. Your skateboard waits by your door next to the okada: E to ride
-(you stand side-on), E to step off. It doesn't knock people over.
+(you stand side-on), E to step off. It doesn't knock people over. When you're not on it, pick it up (G, or PICK UP on a
+phone): it goes in your weapon switch as Skateboard (7, Tab, or tap the weapon name). With it in your hand (it hangs from
+your right hand by the back truck), E or RIDE drops it at your feet and you're on it. Leave it far away on the road and
+it waits in your bag.
 
 ## Phone controls and full screen
-The buttons show only what you can do right now. On foot with your fists: CROUCH and JUMP. Running, CROUCH becomes
-SLIDE (like CODM: you slide along the ground and end crouched; keep running and you come straight up). Crouched you
-creep about; tap again (or jump) to stand. GRAB and ATTACK come up when someone is right by you or a fight is on; E when
+The buttons show only what you can do right now. On foot with your fists: JUMP over CROUCH. Running, CROUCH becomes
+SLIDE (see Crouch, slide and jump below). Crouched you kneel, and creep about when you move; tap again (or jump) to stand. GRAB and ATTACK come up when someone is right by you or a fight is on; E when
 there is a vehicle, a door or a place to use (the prompt says what); a gun or a throw gives AIM and FIRE/THROW. On a
 keyboard X crouches or slides. The minimap sits small in the top right, away from the move pad. On phones and tablets the
 game goes full screen when you tap ENTER (Settings → Full screen to turn it off); on an iPhone, Add to Home Screen.
@@ -203,25 +205,49 @@ The two on-foot buttons sit one above the other on the right. Settings → Phone
 drag every button where your thumb likes it, make them bigger or smaller (they spread apart so they never overlap) and
 more see-through; Reset puts them back. The layout is kept on that phone, upright and sideways separately.
 
+## Crouch, slide and jump (moves3)
+Real Mixamo moves (Y Bot, FBX without skin, 30 fps), put together by `tools/character/anim/make_moves3.py` (see
+`mix3.py`) into `assets/people/moves3.glb` and fitted to whoever you are when the game starts:
+- **Crouch** is CODM's: still, you go down on one knee (`Idle Crouching`); moving, you creep low (`Walk Crouching
+  Forward`, made at 1.64 m/s, played at your speed). Aiming the rifle you hold it as made; otherwise (rifle on your back, or empty hands)
+  the kneel takes the resting arms of `Crouching Idle` and the creep takes the chest and loose arms of `Crouched
+  Walking`, kept where they are in the world, so nothing holds an invisible rifle.
+- **Slide** (`Running Slide`): from a run you drop and slide; your speed follows the move. Keep running and you come up
+  into the run, let go and you end crouched. JUMP jumps you out of it.
+- **Jump**: standing you spring up (`Standing Jump`); moving you leap and land running (`Standing Jump Running` and its
+  `Landing`). Crouched, JUMP stands you up.
+To rebuild: put the FBX files in one folder, `python3 tools/character/anim/make_moves3.py <folder> raw.glb`, then
+`gltfpack -i raw.glb -o assets/people/moves3.glb -cc -kn -af 30` and `python3 tools/manifest.py`.
+
 ## Skating, bike and car skills
-- **Skateboard:** W pushes with the back foot (hold Shift or push the stick all the way for faster pushes), S or BRAKE
-  drags the foot, A/D carve. Space (OLLIE on phones) pops an ollie; in the air J kickflip, K heelflip, L shove-it,
-  I 360 flip (on phones FLIP, FLIP with the stick left = heelflip, up = 360 flip, SPIN = shove-it). Tricks in one jump make
-  a combo (DOUBLE, TRIPLE…); land it straight or you bail and fall. Rough roads slow you, walls and people throw you off.
+- **Skateboard:** W pushes with the back foot up to top speed (hold Shift or push the stick all the way for faster
+  pushes); then he stands and rolls, and only pushes again once the board has slowed to about 70% of it. S or BRAKE
+  drags the foot, A/D carve (no sharper than about 0.65 g sideways, so fast turns are wide). Space (OLLIE on phones) pops
+  an ollie. Tricks: J kickflip, K heelflip, I 360 flip, L shove-it, O (or L with A/D) a 360 spin of board and rider
+  (on phones FLIP, FLIP with the stick left = heelflip, up = 360 flip, SPIN = shove-it, SPIN with the stick left/right =
+  360 spin). Pressed on the ground a trick pops the ollie for you; pressed in the air it comes next. Press and hold
+  OLLIE again in the air (the button says GRAB) for an Indy grab: the back hand takes the toe edge, points grow while
+  you hold it. Tricks in one jump make a combo (DOUBLE, TRIPLE…); land it straight or you bail and fall. Rough roads slow
+  you, walls and people throw you off.
   The skater's body is not a set of fixed poses: `src/skater.js` works it out every frame from the ride. To push he turns
   to face the nose, the back foot comes down on the road and stays on that spot while the board rolls past it (the board
   only gains speed while the foot is down), then it swings forward for the next push or back onto the tail. Carving, he
   leans as far as the speed and the turn need (tan lean = speed × turn rate / g; the board leans about half as much).
   The ollie is a quick squat, the tail snapping down so the board pivots on its back wheels, the front foot dragging it
   level, the legs tucking at the top and then giving like a spring on the landing. The arms swing like damped pendulums
-  from the body's real pushes, turns, pop and landing. The feet stay on the deck by two-bone IK, so it fits any body.
+  from the body's real pushes, turns, pop and landing. The feet stay on the deck by two-bone IK, so it fits any body; the
+  back foot rides over the back bolts and slides onto the kicked-up tail (its height and slope read from the model) to pop.
 - **Bikes:** Shift (WHEELIE) lifts the front wheel, handbrake while straight is a stoppie, J (HOP) is a bunny hop.
 - **Drifts:** handbrake (Space/BRAKE) while turning at speed slides cars and bikes with tyre smoke; hold it for DRIFT points.
 - Every skill shows its name and points; big ones (300+) pay a little cash. Your best combo is kept.
 - **Vehicle health:** cars take many more knocks before smoke, fire and the blast (a car about 11 hits at 70 km/h,
   bikes fewer, buses and the tanker more; a tanker blast is bigger).
 Models: `assets/models/car_blue.glb`, `car_benz.glb`, `tanker.glb`, `bike_naked.glb`, `bike_sport.glb`, `skateboard.glb`
-(each with a `_lod1` far version), listed in `LATE_FILES` in `src/game.js`.
+(each with a `_lod1` far version), listed in `LATE_FILES` in `src/game.js`. The skateboard is built in Blender by
+`tools/blender_skateboard.py` (an 8.1" × 32" street deck with kicked nose and tail and concave, black grip, a green-white-
+green Naija graphic underneath, trucks with red bushings, 54 mm wheels with green cores; vertex colours, no textures):
+paste it into Blender's Scripting tab and Run, it writes both files to Documents/naija_skateboard. Without Blender:
+`python3 tools/glb_build.py -m blender_skateboard`.
 
 ## Doors and the way to your hotel room
 Every door you can walk into (hotels, clubs, the police station, the car stand) has a pulsing ring on the ground and a
