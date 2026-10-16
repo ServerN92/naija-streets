@@ -161,7 +161,7 @@ export function createGuide(api) {
   }
 
   function render() {
-    const tip = G.cur, S = stepsOf(tip), st = S[G.step], n = S.length, tour = !!tip.tour;
+    const tip = G.cur, S = stepsOf(tip), st = S[G.step], n = S.length, tour = !!tip.tour; G.wasTouch = touch();
     makeGhosts(st);
     const title = typeof st.t === 'function' ? st.t(api.state()) : st.t;
     card.innerHTML = '';
@@ -250,6 +250,7 @@ export function createGuide(api) {
         if (!tip.tour && G.shownT > 3) mark(tip.id); else if (tip.tour) G.resume = { id: tip.id, step: G.step };
         hide(); return; }
       G.shownT += dt; if (!tip.tour && G.shownT > G.dur) { mark(tip.id); hide(); return; }
+      if (touch() !== G.wasTouch) render();   // a tablet that was just touched: switch the words to the screen buttons
       layout(false); return;
     }
     if (G.gap > 0) { G.gap -= dt; return; }
