@@ -195,13 +195,15 @@ export function createOnline(api) {
     scene.add(c.g); R.car = c; R.ck = k; R.seat = false; return c;
   }
   function dropCar(R) {
-    if (!R.car) return; if (R.root && R.root.parent === R.car.hi) { scene.add(R.root); R.root.position.set(0, 0, 0); R.root.rotation.set(0, 0, 0); }
+    if (!R.car) return; if (R.root && R.root.parent === R.car.hi) { scene.add(R.root); R.root.position.set(0, 0, 0); R.root.rotation.set(0, 0, 0); R.mixer.stopAllAction(); R.cur = null; R.cn = ''; }
     scene.remove(R.car.g); R.car = null; R.ck = ''; R.seat = false;
   }
   function seat(R, type) {
-    const c = R.car, st = (api.seats(type) || [])[0];
-    if (!st || !c.hi || !R.hips || !R.X.clips.car) { R.root.visible = false; return; }
-    play(R, 'car', 1, true); const a = R.cur; a.time = a.getClip().duration - .02; a.paused = true; R.mixer.update(0);
+    const c = R.car, st = (api.seats(type) || [])[0], k = R.X.clips.car;
+    if (!st || !c.hi || !R.hips || !k) { R.root.visible = false; return; }
+    R.mixer.stopAllAction(); const a = R.acts.car || (R.acts.car = R.mixer.clipAction(k));   // the end of getting in = sitting
+    a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.setEffectiveWeight(1); a.play(); a.time = k.duration - .02; a.paused = true; R.mixer.update(0);
+    R.cur = a; R.cn = 'car';
     c.hi.add(R.root); R.root.position.set(0, 0, 0); R.root.rotation.set(0, 0, 0); R.inner.position.y = 0; R.oy = 0;
     const RS_ = api.ride(type) || { x: 0, y: 0, z: 0, ry: 0 }; R.root.rotation.y = RS_.ry; R.root.updateMatrixWorld(true);
     const hp = R.hips.getWorldPosition(new THREE.Vector3()); c.hi.worldToLocal(hp);
