@@ -83,6 +83,7 @@ const CSS = `
 .iph-in{width:100%;box-sizing:border-box;padding:2.8cqw 3.4cqw;border-radius:3cqw;border:none;background:rgba(118,118,128,.24);color:inherit;font:inherit;font-size:max(12px,4cqw);outline:none;margin:0 0 2.4cqw}
 .iph-chips{display:flex;flex-wrap:wrap;gap:1.8cqw;margin:1cqw 0 2.4cqw}.iph-chips button{padding:1.8cqw 3cqw;border-radius:4cqw;background:rgba(118,118,128,.24);font-size:3.5cqw;font-weight:600}
 .iph-note{font-size:3.5cqw;opacity:.65;margin:2cqw 1cqw}
+.fm-btn{flex:none;padding:1.6cqw 3cqw;border-radius:4cqw;background:#2e7d1f;color:#fff!important;font-size:3.2cqw;font-weight:700;white-space:nowrap}.fm-btn.off{background:rgba(120,120,128,.18);color:#333!important;font-weight:600}
 /* gist (social) */
 .gx-post{background:rgba(255,255,255,.05);border-radius:4cqw;padding:3.4cqw;margin:0 0 3.4cqw}
 .gx-hd{display:flex;align-items:center;gap:2.6cqw;margin-bottom:2cqw}.gx-hd .iph-av{width:9cqw;height:9cqw;font-size:4.6cqw}
@@ -173,6 +174,7 @@ const ICONS = {
   wallet: ['linear-gradient(180deg,#2b2b30,#0c0c0e)', '#fff', SV('<rect x="3" y="5" width="18" height="5" rx="1.5" fill="#ff9500" stroke="none"/><rect x="3" y="8" width="18" height="5" rx="1.5" fill="#30d158" stroke="none"/><rect x="3" y="11" width="18" height="8" rx="2" fill="#0a84ff" stroke="none"/><path d="M15 15h3" stroke="#fff"/>')],
   weather: ['linear-gradient(180deg,#4facfe,#1e6fd9)', '#fff', SV('<circle cx="9" cy="9" r="3.5" fill="#ffd60a" stroke="none"/><path d="M8 19h9a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6 1.5A2.8 2.8 0 0 0 8 19z" fill="#fff" stroke="none"/>')],
   settings: ['linear-gradient(180deg,#a2a2a8,#6e6e75)', '#fff', SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')],
+  farm: ['linear-gradient(180deg,#8fd14f,#3e8e1f)', '#fff', SV('<path d="M3 20h18" stroke="#fff"/><path d="M12 20V9" stroke="#fff" stroke-width="2.2"/><path d="M12 13c-3.5 0-5.5-2.2-5.5-5.5 3.3 0 5.5 2 5.5 5.5zM12 11c0-3.6 2.2-6 6-6 0 3.8-2.4 6-6 6z" fill="#fff" stroke="none"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
 };
 const icon = k => { const [bg, fg, svg] = ICONS[k]; const d = document.createElement('div'); d.className = 'iph-ico'; d.style.background = bg; d.style.color = fg; d.innerHTML = svg; return d; };
@@ -231,6 +233,9 @@ const EVENTS = {
   arrest: [['mushin_gist', 'Police don carry one guy for {place} 😂 E dey shout say na mistake'], ['mushin_police', 'One suspect don dey our custody. Crime no pay 👮']],
   wanted: [['mushin_police', 'We dey find one suspect for {area}. If you see am, call 112.'], ['mushin_gist', 'Police dey find person for {area} o. Wetin e do? 👀']],
   crash: [['lagos_traffic', 'Accident for {place} 😢 Drive with care'], ['danfo_sege', 'See as somebody jam motor for {place} 🤦🏾']],
+  farm: [['mushin_gist', 'New farmer for Oya Farm Settlement! Maize, cassava, cow and fowl 🚜🌽', '🚜', 'NEW FARMER'], ['mamaput_joy', 'Fresh food from Mushin farm dey come! Support our farmers 🙌🏾']],
+  harvest: [['mushin_gist', 'Farmers for Oya Farm Settlement don harvest {what} today 🌽 Market go full!'], ['aunty_kemi', 'Fresh {what} from the farm. Price go come down small 😄']],
+  market: [['aunty_kemi', 'Farm people bring fresh goods come {place} today 🧺 Correct!'], ['mamaput_joy', 'I don buy fresh tomato from the farm guy for {place} 🍅']],
   carbuy: [['ladipo_parts', 'Congrats to our customer wey buy new whip today 🚗🔥 Come Ladipo for parts!', '🚗', 'NEW WHIP']],
 };
 const CMTS = ['😂😂😂', 'Na wa o', 'E choke!', 'Lagos no dey carry last', 'Omo!', 'True talk 💯', 'Where exactly?', 'God abeg 🙏', 'Make una dey careful o', 'I dey there now!', 'This one na cruise 😂', 'Sharp!', 'Who get am?', 'Wahala be like bicycle 🚲'];
@@ -289,7 +294,7 @@ export function createPhone(api) {
   const bar = h('div', 'iph-bar'), barHit = btn('iph-barhit', [], () => toHome(), 'Home'); scr.append(bar, barHit);
 
   const APPS = [
-    ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
+    ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
     ['wallet', 'Wallet', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
@@ -335,9 +340,17 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ ride: rideApp, work: workApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
+  function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
+    const d = api.farm && api.farm(); const b = frameApp('Oya Farm', { light: true }); R.view.querySelector('h1').style.color = '#2e7d1f';
+    if (!d) { b.append(h('div', 'iph-note', 'The farm is still loading. Try again small time.')); return; }
+    for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
+      for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#d0451b'; row.append(tx);
+        if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.app === 'farm') openApp('farm'); }, 60); }); row.append(bb); }
+        L.append(row); }
+      b.append(L); } }
   function workApp() { const b = frameApp('Oya Work'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#1fcf8a'; api.workUI(); }
 
   // ---------------------------------------------------------------- Gist: the Lagos social feed
@@ -414,7 +427,7 @@ export function createPhone(api) {
   // something happened in the game: people post about it a little later
   const evLast = {};
   function gistEvent(kind, d = {}) { const L = EVENTS[kind]; if (!L || (evLast[kind] && Date.now() - evLast[kind] < 45000)) return; evLast[kind] = Date.now(); seedFeed();
-    setTimeout(() => { const tpl = pick(L), place = d.place || api.where(), area = d.area || place; const p = npcPost([tpl[0], tpl[1].replace('{place}', place).replace('{area}', area), tpl[2], tpl[3]]); p.likes = Math.round(rr(20, 600)); R.feed.unshift(p); notify('gist', '@' + p.h, p.text); }, rr(6000, 18000)); }
+    setTimeout(() => { const tpl = pick(L), place = d.place || api.where(), area = d.area || place; const p = npcPost([tpl[0], tpl[1].replace('{place}', place).replace('{area}', area).replace('{what}', d.what || 'food'), tpl[2], tpl[3]]); p.likes = Math.round(rr(20, 600)); R.feed.unshift(p); notify('gist', '@' + p.h, p.text); }, rr(6000, 18000)); }
 
   // ---------------------------------------------------------------- Messages
   const TH0 = () => [
@@ -536,6 +549,7 @@ export function createPhone(api) {
   function event(kind, d = {}) {
     if (kind === 'cash') { const t = { d: d.d, t: Date.now(), w: d.why || api.where() }; S.tx.unshift(t); if (S.tx.length > 40) S.tx.length = 40; save(); cashQ += d.d; cashW = t.w; clearTimeout(cashT);
       cashT = setTimeout(() => { if (Math.abs(cashQ) >= 100) sms('bank', 'EkoBank', '#0f9b58', '🏦', `${cashQ > 0 ? 'Credit' : 'Debit'} Alert! Acct: ••4521\nAmt: ${api.naira(Math.abs(cashQ))}\nDesc: ${cashW}\nBal: ${api.naira(api.cash())}`); cashQ = 0; }, 2500); if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
+    if (kind === 'sms') { sms(d.id, d.n, d.c, d.e, d.x); return; }
     if (kind === 'ride') { sms('oyaride', 'Oya Ride', '#f2b705', '🚕', `Your ${d.bike ? 'okada' : 'car'} to ${d.name} don book. Driver: ${d.who}. Fare: ${api.naira(d.fare)}, pay cash. Safe journey!`); return; }
     gistEvent(kind, d);
   }
