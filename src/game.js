@@ -3816,7 +3816,7 @@ function playerJump(){ if(mode!=='walk'||!hero||FIGHT.ko||busy||CLIMB.on) return
   if(CR.sp){ CR.sp=0; CR.on=false; }
   else if(CR.on){ crStand(); return; }
   if(J&&!CARRY.p&&climbTry()) return;
-  if(J&&hero.act.jump3){ const sp=player.speed; if(sp>1.1) heroDo('jump_run',{ts:clamp(sp/3.7,1,1.32),lock:false}); else heroDo('jump3',{ts:1.3,lock:false,from:J.j0,to:J.j1}); return; }
+  if(J&&hero.act.jump3){ const sp=player.speed; if(sp>1.1) heroDo('jump_run',{ts:clamp(sp/J.jv,1,1.32),lock:false}); else heroDo('jump3',{ts:1.3,lock:false,from:J.j0,to:J.j1}); return; }
   if(hero.act.jump) heroDo('jump',{ts:1.35,lock:false}); }
 // ---- crouch, slide and prone (like CODM), with real Mixamo moves fitted to your body: still, CROUCH puts you down on one
 // knee; moving you creep low; running, SLIDE drops you into a slide along the ground (aiming and shooting all the way if
@@ -3832,9 +3832,11 @@ function crClips(){ if(CR.for===hero.cObj&&CR.clips) return CR.clips; const M=V3
   for(const k in CR.acts) CR.acts[k].stop(); CR.acts={};
   const D=homeInfo(), raw=n=>{ const c=M.g.animations.find(a=>a.name===n); if(!c) throw new Error('no '+n); return c; };
   const mv=(n,as)=>{ const k=C2.retargetClip(raw(n),M.S,D,{norm:true}); k.name=as; return k; };
-  const C={idle:mv('v3_cr_idle','cr_idle'),walk:mv('v3_cr_walk','cr_walk'),gidle:mv('v3_cr_idle_gun','cr_idle_gun'),gwalk:mv('v3_cr_walk_gun','cr_walk_gun'),slide:mv('v3_slide','cr_slide'),jump:mv('v3_jump','jump3'),jrun:mv('v3_jump_run','jump_run'),
+  const fem=!!(hero.look&&hero.look.f), has=n=>M.g.animations.some(a=>a.name===n), FJ=fem&&has('v3f_jump')&&has('v3f_jump_run');   // women jump like women
+  const C={idle:mv('v3_cr_idle','cr_idle'),walk:mv('v3_cr_walk','cr_walk'),gidle:mv('v3_cr_idle_gun','cr_idle_gun'),gwalk:mv('v3_cr_walk_gun','cr_walk_gun'),slide:mv('v3_slide','cr_slide'),jump:mv(FJ?'v3f_jump':'v3_jump','jump3'),jrun:mv(FJ?'v3f_jump_run':'v3_jump_run','jump_run'),
     pin:mv('v3_prone_in','prone_in'),pidle:mv('v3_prone_idle','prone_idle'),pfwd:mv('v3_prone_fwd','prone_fwd'),pout:mv('v3_prone_out','prone_out'),vault:mv('v3_vault','vault'),wall:mv('v3_wall','wall_climb'),drop:mv('v3_drop','drop_down')};
-  C.j0=8/72; C.j1=58/72;   // the standing jump from the middle of the dip down to when you are standing again
+  C.j0=8/72; C.j1=58/72; C.jv=3.7;   // the standing jump from the middle of the dip down to when you are standing again; the running jump's speed
+  if(FJ){ C.j0=9/74; C.j1=60/74; C.jv=3.75; }
   // the slide's speed along the ground, as made (a share of its speed at the start)
   { const t=raw('v3_slide').tracks.find(t=>/Hips\.position$/.test(t.name)), v=t.values, n=t.times.length, sp=[]; for(let i=1;i<n;i++) sp.push(Math.hypot(v[i*3]-v[i*3-3],v[i*3+2]-v[i*3-1])/(t.times[i]-t.times[i-1]));
     const s0=sp[Math.round(SLD.a*30)]||1; CR.prof=sp.map(x=>x/s0); }
@@ -4710,11 +4712,13 @@ function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); cons
     const nclips={...clips}, noff={...off};   // as a person on the street: the city's own walks
     if(P.f) for(const [a,b] of [['walk','f_walk'],['run','f_run'],['start_walk','f_start_walk'],['lie','f_lie'],['fight_idle','f_fight_idle']]) if(nclips[b]){ nclips[a]=nclips[b]; noff[a]=noff[b]; }
     const mv=n=>{ const c=M.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M.S,D,{norm:true}):null; };
-    add('idle',mv('v2_idle')); add('walk',mv(P.f?'v2_fwalk':'v2_walk')); add('run',mv('v2_run')); add('jump',mv(P.f?'v2_fjump':'v2_jump')); if(!P.f) add('walk2',mv('v2_swagger'));
+    const M3=P.f?await v3Moves():null, mv3=n=>{ const c=M3&&M3.g.animations.find(a=>a.name===n); return c?C2.retargetClip(c,M3.S,D,{norm:true}):null; };   // women: Mixamo's female moves
+    const fi=P.f&&mv3('v3f_idle'), fw=P.f&&mv3('v3f_walk'), fr=P.f&&mv3('v3f_run'), fc=P.f&&mv3('v3f_catwalk');
+    add('idle',fi||mv('v2_idle')); add('walk',fw||mv(P.f?'v2_fwalk':'v2_walk')); add('run',fr||mv('v2_run')); add('jump',mv(P.f?'v2_fjump':'v2_jump')); if(!P.f) add('walk2',mv('v2_swagger')); else if(fc) add('walk2',fc);
     if(P.f) for(const [a,b] of [['start_walk','f_start_walk'],['lie','f_lie'],['fight_idle','f_fight_idle']]) if(clips[b]){ clips[a]=clips[b]; off[a]=off[b]; }   // women stand, fall and fight like women
     if(!clips.idle||!clips.walk) throw new Error('moves missing for '+id);
     tpl.updateMatrixWorld(true); for(const m of ch.mats) if(m.map) renderer.initTexture(m.map);
-    return V2.casts[id]={tpl,clips,off,y0:0,sc:1,f:P.f,idle0:'idle',v2:true,mx:!!P.mx,shape:!!P.shape,info:D,meta:ch.meta,wv:P.f?.93:1.77,rv:P.f?4.2:4.7,w2v:.92,npc:{clips:nclips,off:noff}};
+    return V2.casts[id]={tpl,clips,off,y0:0,sc:1,f:P.f,idle0:'idle',v2:true,mx:!!P.mx,shape:!!P.shape,info:D,meta:ch.meta,wv:P.f?(fw?1.61:.93):1.77,rv:P.f?(fr?4.9:4.2):4.7,w2v:P.f?.97:.92,npc:{clips:nclips,off:noff}};
   })().catch(e=>{ console.warn('person '+id+' could not load',e); delete V2.job[id]; return null; })); }
 const fitOf=id=>{ const i=+V2.fit[id]; return i>=0&&i<4?i:0; };
 // Tunde, Amaka and Ada walk the streets too, each in one of their outfits
@@ -4741,7 +4745,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
     else if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
     const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())}; if(cl.walk2) act.walk2=mixer.clipAction(cl.walk2);
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
-    Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),rest:snapRest(inner),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0,v2:v2?id:null,mx:!!C.mx,wv:C.wv,rv:C.rv,w2v:C.w2v}}); }
+    Object.assign(hero,{cObj:inner,mixer,act,hips,hipsRest:hips.position.clone(),rest:snapRest(inner),look:{clips:cl,off:C.off,idle:C.idle0,y0:C.y0,v2:v2?id:null,mx:!!C.mx,wv:C.wv,rv:C.rv,w2v:C.w2v,f:!!C.f}}); }
   const a=hero.act; for(const k of ['idle','walk','walk2','run']) if(a[k]){ a[k].play(); a[k].setEffectiveWeight(k==='idle'?1:0); } Object.assign(hero.w,{idle:1,walk:0,run:0,text:0,phone:0,fight:0}); hero.k2=0;
   WALK_V=C&&C.v2&&C.f?1.45:1.7;   // her walk is a sway, a little slower
   if(C||!a.punch) heroMoves(); hero.mixer.update(0);

@@ -249,6 +249,9 @@ Real Mixamo moves (Y Bot, FBX without skin, 30 fps), put together by `tools/char
   top (`Jump Over Obstacle`); up to 2.6 m you run up it and pull yourself on (`Sprint To Wall Climb`), and a thin wall you
   drop down the other side (`Jumping Down`). Each climb carries its floor (`mix3.floor`), raised or lowered to the real
   wall's height. You can stand on what you climbed; step off and you fall.
+- **Women** (Amaka, Ada, Lin) move like women: Mixamo's female idle, walk (1.6 m/s), run (4.9 m/s), standing jump and
+  running jump (`F Idle`, `F Walk`, `F Run`, `F Standing Jump`, `F Running Jump`), and at a slow stroll the catwalk
+  (`F Catwalk Walk`). Crouch, slide, prone and climbs are the same moves for everyone.
 To rebuild: put the FBX files in one folder, `python3 tools/character/anim/make_moves3.py <folder> raw.glb`, then
 `gltfpack -i raw.glb -o assets/people/moves3.glb -cc -kn -af 30` and `python3 tools/manifest.py`.
 
