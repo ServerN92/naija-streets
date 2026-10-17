@@ -10,22 +10,23 @@ import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometr
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=cf32d73490';
-import * as C2 from './char2.js?v=cf32d73490';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=cf32d73490';
-import { createPhone } from './phone.js?v=cf32d73490';
-import { createGuide } from './guide.js?v=cf32d73490';
-import { createFarm } from './farm.js?v=cf32d73490';
-import { createBusiness } from './business.js?v=cf32d73490';
-import { createOnline } from './online.js?v=cf32d73490';
-import { createPolice } from './police.js?v=cf32d73490';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=cf32d73490';
-import { MapView } from './mapview.js?v=cf32d73490';
+import * as CLOCK from './clock.js?v=24ec5cf8d2';
+import * as C2 from './char2.js?v=24ec5cf8d2';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=24ec5cf8d2';
+import { createPhone } from './phone.js?v=24ec5cf8d2';
+import { createGuide } from './guide.js?v=24ec5cf8d2';
+import { createFarm } from './farm.js?v=24ec5cf8d2';
+import { createBusiness } from './business.js?v=24ec5cf8d2';
+import { createOnline } from './online.js?v=24ec5cf8d2';
+import { createPolice } from './police.js?v=24ec5cf8d2';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=24ec5cf8d2';
+import { MapView } from './mapview.js?v=24ec5cf8d2';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='cf32d73490';
+const BUILD='24ec5cf8d2';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -375,6 +376,7 @@ function inst(geo,mat,list,{shadow=true,layer=1,colors=null}={}){ if(!list.lengt
 const BASIS_PATH='https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/basis/';
 const KTX2=new KTX2Loader().setTranscoderPath(BASIS_PATH).detectSupport(renderer);
 const GLL=new GLTFLoader().setKTX2Loader(KTX2).setMeshoptDecoder(MeshoptDecoder);
+const DRACO=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/gltf/'); GLL.setDRACOLoader(DRACO);   // the Blender sets (tools/blender_rooms/ng_game_export.py)
 const DL={got:{},exp:{}}; let buildP=0, buildTxt='Starting the engine…';
 const dlFrac=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return e?g/e:0; };
 const dlMB=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return [g/1048576,e/1048576]; };
@@ -400,7 +402,7 @@ const MODEL_FILES={ub_base_yellow:['ub_base_yellow','h',0,1],btruck:['ub_btruck'
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
-  jet:['ns_jet','h',34.4,1],jetw:['ns_jet_wide','h',60.4,1],terminal:['ns_terminal','h',252.4,1],tower:['ns_tower','h',18,1],jetbridge:['ns_jetbridge','h',4,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],stadium:['ns_stadium','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
+  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],stadium:['ns_stadium','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
   tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
@@ -513,6 +515,22 @@ GTEX.ground.then(([c,n])=>{ if(!c) return; const m=MAT.dirt; m.userData.detail=c
     float dl=dot(texture2D(detailMap,vMapUv*vec2(1.,2.)).rgb,vec3(.2126,.7152,.0722))/.138; diffuseColor.rgb*=clamp(mix(1.,dl,.8),.55,1.45);`); };
   m.customProgramCacheKey=()=>'dirt-detail'; m.needsUpdate=true; });
 GTEX.lawn.then(([c,n])=>{ if(!c) return; for(const m of [MAT.lawn,MAT.grass]){ m.map=c; if(n){ m.normalMap=n; m.normalScale.set(.7,.7); } antiTile(m,.23,.05); m.needsUpdate=true; } });
+// the roads of the Blender scene ("Naija Ground"): real asphalt on the tarred roads, red laterite gravel showing through the broken
+// streets (Poly Haven asphalt_02 and gravel_road), laid by world position so the grain never stretches along a street
+const RDTEX=(()=>{ const tl=new THREE.TextureLoader(), u=f=>{ const p=`assets/models/${f}`, k=AV[p]||MANIFEST[p]; return k?p+'?v='+k:p; };
+  const load=f=>tl.loadAsync(u(f)).then(t=>{ t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=maxAniso; return t; }).catch(()=>null);
+  return {asph:load('road_asph.jpg'),gravel:load('road_gravel.jpg'),conc:load('road_conc.jpg')}; })();
+function roadPhoto(m,tex,{sc=.33,avg=.109,k=.85,col=0,lo=.45,hi=1.7}={}){ const prev=m.onBeforeCompile;
+  m.onBeforeCompile=sh=>{ sh.uniforms.rdMap={value:tex};
+    sh.vertexShader='varying vec2 vRdW;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vRdW=(modelMatrix*vec4(transformed,1.)).xz;');
+    sh.fragmentShader='uniform sampler2D rdMap; varying vec2 vRdW;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+    { vec3 dt=texture2D(rdMap,vRdW*${sc.toFixed(3)}).rgb, dt2=texture2D(rdMap,vRdW*${(sc*.23).toFixed(4)}+vec2(.31,.67)).rgb; dt=mix(dt,dt2,.35);
+      float dl=dot(dt,vec3(.2126,.7152,.0722))/${avg.toFixed(4)}; vec3 base=diffuseColor.rgb;
+      diffuseColor.rgb=base*clamp(mix(1.,dl,${k.toFixed(2)}),${lo.toFixed(2)},${hi.toFixed(2)});
+      diffuseColor.rgb=mix(diffuseColor.rgb,dt*dot(base,vec3(.333))/${avg.toFixed(4)}*.9,${col.toFixed(2)}); }`); };
+  m.customProgramCacheKey=()=>'rdphoto'+sc+k+col; m.needsUpdate=true; }
+RDTEX.asph.then(t=>{ if(!t) return; for(const m of [MAT.road2,MAT.road4,MAT.cross,MAT.asph]) roadPhoto(m,t,{sc:.33,avg:.109,k:.9}); });
+RDTEX.gravel.then(t=>{ if(!t) return; for(const m of [MAT.roadBad2,MAT.roadBad4]) roadPhoto(m,t,{sc:.3,avg:.115,k:.75,col:.28}); });
 const FAC_KEYS=['glass','bronze','office','resi','oldmid','shop'];
 const TILE={glass:[12.8,28.8],bronze:[12.8,28.8],office:[12,28.8],resi:[12.8,25.6],oldmid:[12,27.2],shop:[20,4.4]};
 const TINTS={glass:['#ffffff','#e2f2ff','#dcfff2','#eef0ff'],bronze:['#ffffff','#fff0dc'],office:['#ffffff','#f1ece2','#e6e1d8','#fff6e6'],
@@ -584,6 +602,19 @@ function inNpcFarm(x,z,pad=0){ for(const f of NPC_FARMS){ const dx=x-f.x, dz=z-f
 { const nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const r=Math.max(WD.bld[i+2],WD.bld[i+3])/2; if(!inNpcFarm(WD.bld[i],WD.bld[i+1],r)) for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb;
   for(const f of NPC_FARMS){ const L=Math.hypot(f.kx-f.x,f.kz-f.z)||1, fx=(f.kx-f.x)/L, fz=(f.kz-f.z)/L, q=(u,v)=>[f.x+fz*u+fx*v,f.z-fx*u+fz*v];
     WD.areas.push({k:'npcfarm',p:[...q(-15,-13),...q(15,-13),...q(15,13),...q(-15,13)],n:f.n+' Farm'}); } }
+// ---- places made in the user's Blender ("Naija Ground"), set down in Mushin: the city quarter (stadium, club, hotel, restaurant,
+// school, office, CBN, estate, presidential villa), the Lagos market street and the big farm. The houses and streets under them go.
+const BSITES=[{name:'set_city',label:'Naija City Quarter',x:-1440,z:100,ry:-Math.PI/2,hx:400,hz:185},
+  {name:'set_market',label:'Oja Market Street',x:360,z:-1442,ry:0,hx:82,hz:60},
+  {name:'set_farm',label:'Oke-Odo Farms',x:300,z:807,ry:0,hx:226,hz:184}];
+function inBSite(x,z,pad=0){ for(const S of BSITES){ const dx=x-S.x, dz=z-S.z, c=Math.cos(S.ry), s=Math.sin(S.ry), lx=dx*c-dz*s, lz=dx*s+dz*c; if(Math.abs(lx)<S.hx+pad&&Math.abs(lz)<S.hz+pad) return S; } return null; }
+{ const nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const r=Math.max(WD.bld[i+2],WD.bld[i+3])/2; if(!inBSite(WD.bld[i],WD.bld[i+1],r+3)) for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb;
+  const ne=[]; for(let k=0;k<WD.edges.length;k+=7){ const a=WD.edges[k], b=WD.edges[k+1], x0=WD.nodes[a*2], z0=WD.nodes[a*2+1], x1=WD.nodes[b*2], z1=WD.nodes[b*2+1]; let hit=false;
+    for(let t=0;t<=1.0001&&!hit;t+=.125) if(inBSite(x0+(x1-x0)*t,z0+(z1-z0)*t,4)) hit=true; if(!hit) for(let q=0;q<7;q++) ne.push(WD.edges[k+q]); } WD.edges=ne;
+  WD.areas=WD.areas.filter(a=>{ let x=0,z=0; const n=a.p.length/2; for(let i=0;i<a.p.length;i+=2){ x+=a.p[i]; z+=a.p[i+1]; } return !inBSite(x/n,z/n,10); });
+  if(WD.foot) WD.foot=WD.foot.filter(f=>{ const p=f.p||f; if(!p||!p.length) return true; return !inBSite(p[0],p[1],2); });
+  if(WD.water) WD.water=WD.water.filter(w=>!inBSite(w.p[0],w.p[1],4));
+  for(const k in WD.pois){ const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!inBSite(q[0],q[1],6)); } }
 water.visible=false; water.position.y=-40;   // no lagoon in Mushin
 // road classes: 0 expressway 1 trunk 2 primary 3 secondary 4 tertiary 5 unclassified 6 residential 7 living street 8 service lane 9 track
 const nodes=[]; for(let i=0;i<WD.nodes.length;i+=2) nodes.push({i:nodes.length,x:WD.nodes[i],z:WD.nodes[i+1],adj:[],wadj:[],out:[],ed:[],r:0,deg:0,ax:0,tl:false,tlo:0});
@@ -683,6 +714,29 @@ const RAILS=WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([
     for(const [qa,qb] of [[-hw-.3,-hw],[hw,hw+.3]]) ed.quad([x0+rx*qa,.06,z0+rz*qa],[x0+rx*qb,.06,z0+rz*qb],[x1+rx*qb,.06,z1+rz*qb],[x1+rx*qa,.06,z1+rz*qa],[0,1,0],[[0,0],[1,0],[1,1],[0,1]],EC); } }
   const wm=wa.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.15,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),false,true); if(wm) scene.add(wm);
   const em=ed.mesh(new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.9,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(em) scene.add(em); }
+
+// ---- like the Blender scene: open concrete gutters along the town streets (dark, damp channels between two lips) and a concrete
+// median barrier along the expressways (on the inner edge of each carriageway; a centre barrier where one road carries both ways)
+{ const gc=new Acc(), lip=new Acc(), bar=new Acc(), GC=new THREE.Color('#2a2620'), LC=new THREE.Color('#b9b2a5'), BC=new THREE.Color('#d6d2c8'), up=[0,1,0];
+  const strip=(acc,x0,z0,x1,z1,rx,rz,a,b,y,col)=>acc.quad([x0+rx*a,y,z0+rz*a],[x0+rx*b,y,z0+rz*b],[x1+rx*b,y,z1+rz*b],[x1+rx*a,y,z1+rz*a],up,[[0,0],[1,0],[1,Math.hypot(x1-x0,z1-z0)/2],[0,Math.hypot(x1-x0,z1-z0)/2]],col);
+  const wall=(acc,x0,z0,x1,z1,rx,rz,o,y0,y1,col,s)=>acc.quad([x0+rx*o,y0,z0+rz*o],[x1+rx*o,y0,z1+rz*o],[x1+rx*o,y1,z1+rz*o],[x0+rx*o,y1,z0+rz*o],[rx*s,0,rz*s],[[0,0],[Math.hypot(x1-x0,z1-z0)/2,0],[Math.hypot(x1-x0,z1-z0)/2,1],[0,1]],col);
+  const lipBox=(x0,z0,x1,z1,rx,rz,a,b,h)=>{ strip(lip,x0,z0,x1,z1,rx,rz,a,b,h,LC); wall(lip,x0,z0,x1,z1,rx,rz,a,0,h,LC,-1); wall(lip,x1,z1,x0,z0,rx,rz,b,0,h,LC,1); };
+  for(const e of ROADS){ const A0=nodes[e.a], B0=nodes[e.b], ra=(A0.deg>=3?A0.r:0)+1.5, rb=(B0.deg>=3?B0.r:0)+1.5; if(e.len-ra-rb<4||e.br) continue;
+    const rx=-e.fz, rz=e.fx, seg=6;
+    if(e.c>=4&&e.c<=7&&e.cond!=='dirt'){   // gutters, both sides
+      for(let t=ra;t<e.len-rb-.5;t+=seg){ const t1=Math.min(t+seg,e.len-rb), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;
+        for(const sd of [-1,1]){ const o=sd*e.hw, mx=(x0+x1)/2+rx*(o+sd*.5), mz=(z0+z1)/2+rz*(o+sd*.5), hit=roadAt(mx,mz,.2); if(hit&&hit!==e) continue;
+          const a=Math.min(o,o+sd*.9), b=Math.max(o,o+sd*.9); strip(gc,x0,z0,x1,z1,rx,rz,a+.12,b-.12,.012,GC);
+          lipBox(x0,z0,x1,z1,rx,rz,a,a+.12,.09); lipBox(x0,z0,x1,z1,rx,rz,b-.12,b,.09); } } }
+    if(e.c<=1&&e.drive&&(e.ow||e.w>=12)){   // expressway barrier: New Jersey profile (wide foot, narrow top)
+      const o=e.ow?-(e.hw+.35):0;
+      for(let t=ra+4;t<e.len-rb-4;t+=seg){ const t1=Math.min(t+seg,e.len-rb-4), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;
+        const P=[[-.3,0],[-.3,.08],[-.13,.32],[-.08,.82],[.08,.82],[.13,.32],[.3,.08],[.3,0]];
+        for(let i=0;i+1<P.length;i++){ const [a0,y0]=P[i],[a1,y1]=P[i+1], nx=-(y1-y0), ny=a1-a0, nl=Math.hypot(nx,ny)||1;
+          bar.quad([x0+rx*(o+a0),y0,z0+rz*(o+a0)],[x0+rx*(o+a1),y1,z0+rz*(o+a1)],[x1+rx*(o+a1),y1,z1+rz*(o+a1)],[x1+rx*(o+a0),y0,z1+rz*(o+a0)],[rx*nx/nl,ny/nl,rz*nx/nl],[[0,y0],[0,y1],[(t1-t)/2,y1],[(t1-t)/2,y0]],BC); } } } }
+  const gm=gc.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.3,metalness:.1,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(gm) scene.add(gm);
+  const cm=new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.92,side:THREE.DoubleSide}); RDTEX.conc.then(t=>{ if(t){ cm.map=t; cm.needsUpdate=true; } });
+  const lm=lip.mesh(cm,false,true); if(lm){ lm.castShadow=false; scene.add(lm); } const bm=bar.mesh(cm,false,true); if(bm){ bm.castShadow=Q.shadows; scene.add(bm); } }
 
 /* ================= buildings ================= */
 await step('Building face-me-I-face-you houses…', 34);
@@ -1060,10 +1114,75 @@ if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555
     if(M.geo1) lv.push({geo:M.geo1,mat:M.mat1,dist:Math.max(Q.lod0+30,Q.draw*.55),shadow:false});
     lv.push({geo:farBox(M,fc[0],fc[1]),mat:FAR_MAT,dist:Q.draw+40,shadow:false});
     new CullSet(lv,houseInst[key].map(h=>({x:h.x,y:0,z:h.z,ry:h.ry,sx:h.sx,sy:h.sy,sz:h.sz,col:h.col})),{shadowDist:Q.shR,name:key}); } }
+/* ================= Blender sets: whole places made in the user's Blender ("Naija Ground"), exported by
+   tools/blender_rooms/ng_game_export.py with their own materials (Draco + WebP). Each loads when you come near.
+   The meshes are merged per material (few draw calls); small things (seats, plants, bags, signs) form a "detail" layer that is
+   only drawn up close. Walls and furniture block you: a 25 cm grid of everything between knee and head height, turned into boxes. */
+const SET_DETAIL=/^(CT_L_|AP_Bench|AP_Arm|AP_Plant|AP_Bags|AP_Nooks|AP_Fids|AP_Desk|AP_Shop|AP_Gate|AP_Cafe|AP_Pole|AP_Bridge|AP_DoorTxt|AP_LinearLights)/;
+function setMerge(root,{detail=SET_DETAIL,lift=null}={}){ root.updateMatrixWorld(true); const far=new Map(), near=new Map(), all=[];
+  root.traverse(o=>{ if(!o.isMesh) return; let top=o; while(top.parent&&top.parent!==root) top=top.parent; const nm=top.name||o.name, det=detail&&detail.test(nm), up=lift&&lift.test(nm)?lift.dy||0:0;
+    const ms=[].concat(o.material), g=o.geometry; const groups=g.groups.length?g.groups:[{start:0,count:(g.index?g.index.count:g.attributes.position.count),materialIndex:0}];
+    for(const gr of groups){ const m=ms[gr.materialIndex]||ms[0]; let sub=g;
+      if(groups.length>1){ sub=g.clone(); sub.clearGroups(); if(g.index) sub.setIndex(Array.from(g.index.array.slice(gr.start,gr.start+gr.count))); }
+      let w=floatGeo(sub.index?sub.toNonIndexed():sub.clone()); w.applyMatrix4(o.matrixWorld); if(up) w.translate(0,up,0);
+      for(const k of Object.keys(w.attributes)) if(!['position','normal','uv','color'].includes(k)) w.deleteAttribute(k);
+      if(!w.attributes.normal) w.computeVertexNormals(); if(!w.attributes.uv) w.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(w.attributes.position.count*2),2));
+      if(w.attributes.color) w.deleteAttribute('color');
+      const M=det?near:far; if(!M.has(m)) M.set(m,[]); M.get(m).push(w); all.push(w); } });
+  const mk=M=>{ const grp=new THREE.Group(); for(const [m,list] of M){ const geo=mergeGeometries(list,false); if(!geo) continue; geo.computeBoundingSphere();
+      if(m.map){ m.map.anisotropy=Math.min(8,maxAniso); m.map.colorSpace=THREE.SRGBColorSpace; }
+      if(m.transparent||m.opacity<1){ m.transparent=true; m.depthWrite=false; m.side=THREE.DoubleSide; m.roughness=.05; m.metalness=.1; m.envMapIntensity=1.4; } else m.side=THREE.FrontSide;
+      const mesh=new THREE.Mesh(geo,m); mesh.castShadow=!m.transparent; mesh.receiveShadow=true; mesh.layers.set(1); grp.add(mesh); } return grp; };
+  return {far:mk(far),near:mk(near),geos:all}; }
+// walls and furniture -> collision boxes (set-local coordinates, placed at x,z turned ry)
+function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3}={}){ const bb=new THREE.Box3(); for(const g of geos){ g.computeBoundingBox(); bb.union(g.boundingBox); }
+  const X0=bb.min.x, Z0=bb.min.z, gw=Math.ceil((bb.max.x-X0)/cs)+1, gd=Math.ceil((bb.max.z-Z0)/cs)+1, grid=new Uint8Array(gw*gd), P=new THREE.Vector3();
+  for(const g of geos){ const a=g.attributes.position, n=a.count/3; for(let t=0;t<n;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
+      for(let k=0;k<3;k++){ P.fromBufferAttribute(a,t*3+k); if(P.x<ax) ax=P.x; if(P.x>bx) bx=P.x; if(P.y<ay) ay=P.y; if(P.y>by) by=P.y; if(P.z<az) az=P.z; if(P.z>bz) bz=P.z; }
+      if(by<y0||ay>y1) continue; const i0=Math.floor((ax-X0)/cs), i1=Math.floor((bx-X0)/cs), j0=Math.floor((az-Z0)/cs), j1=Math.floor((bz-Z0)/cs); if((i1-i0+1)*(j1-j0+1)>4000) continue;
+      for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++) grid[j*gw+i]=1; } }
+  // runs along x, grown down z while the next row has the same run
+  const used=new Uint8Array(gw*gd), c=Math.cos(ry), s=Math.sin(ry); let nb=0;
+  for(let j=0;j<gd;j++) for(let i=0;i<gw;i++){ if(!grid[j*gw+i]||used[j*gw+i]) continue; let i1=i; while(i1+1<gw&&grid[j*gw+i1+1]&&!used[j*gw+i1+1]) i1++;
+    let j1=j; for(;;){ const jn=j1+1; if(jn>=gd) break; let ok=true; for(let q=i;q<=i1;q++) if(!grid[jn*gw+q]||used[jn*gw+q]){ ok=false; break; } if(!ok) break; j1=jn; }
+    for(let jj=j;jj<=j1;jj++) for(let q=i;q<=i1;q++) used[jj*gw+q]=1;
+    const lx=X0+(i+i1+1)/2*cs, lz=Z0+(j+j1+1)/2*cs; addOB(x+lx*c+lz*s,z-lx*s+lz*c,(i1-i+1)*cs/2,(j1-j+1)*cs/2,-ry,h); nb++; }
+  return nb; }
+const SETS=[];
+// a set at (x,z) turned ry: loads when you come within `near` metres; `onLoad(set)` adds the extras (people, doors, planes)
+function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad}={}){ const S={name,x,z,ry,near,detailDist,lift,onLoad,state:0,root:new THREE.Group(),far:null,near_:null,json:null};
+  S.root.position.set(x,0,z); S.root.rotation.y=ry; scene.add(S.root); SETS.push(S); return S; }
+function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,player.z-S.z);
+    if(S.state===0&&d<S.near){ S.state=1; const u=murl(S.name), ju=`assets/models/${S.name}.json`; DL.exp[u]=MANIFEST[`assets/models/${S.name}.glb`]||4e6;
+      Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),MANIFEST[ju]?fetch(ju+'?v='+(AV[ju]||MANIFEST[ju])).then(r=>r.json()).catch(()=>null):Promise.resolve(null)]).then(([g,j])=>{
+        const R=setMerge(g.scene,{lift:S.lift}); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
+        .catch(e=>{ console.warn('set',S.name,e); S.state=0; S.near=-1; }); }
+    if(S.state===2){ S.near_.visible=d<S.detailDist; if(S.tick) S.tick(dt,d); } } }
+// set-local point -> world
+const setPt=(S,lx,lz)=>{ const c=Math.cos(S.ry), s=Math.sin(S.ry); return {x:S.x+lx*c+lz*s,z:S.z-lx*s+lz*c}; };
+// a Blender model with its own materials (the NAIJA AIR A350): one group, cloned for every copy
+const PLANE={p:null,g:null};
+function planeModel(){ if(PLANE.p) return PLANE.p; const u=murl('ns2_a350'); DL.exp[u]=MANIFEST['assets/models/ns2_a350.glb']||6e5;
+  PLANE.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ const R=setMerge(g.scene,{detail:null}); PLANE.g=R.far; return R.far; }); PLANE.p.catch(()=>{ PLANE.p=null; }); return PLANE.p; }
+const planeCopy=()=>{ const c=PLANE.g.clone(); c.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); return c; };
+// people of the town sitting in a Blender set's seats (a sitting move fitted to each body), standing about where it is busy
+function castSit(id){ const C=PEOPLE.casts[id]; if(!C) return null; if(C._sit!==undefined) return C._sit; let k=null;
+  try{ const D=C2.skeletonInfo(C.tpl), M=V2.movesDone, src=M&&M.g.animations.find(a=>a.name==='v2_sit'); k=src?C2.retargetClip(src,M.S,D,{norm:true}):C2.poseClip(D,'npc_sit',C2.POSES.sit); }catch(e){ console.warn('sit',id,e); }
+  if(!V2.movesDone) v2Moves().catch(()=>{}); return C._sit=k; }
+const townCasts=()=>Object.keys(PEOPLE.casts).filter(k=>CAST[k]&&!CAST[k].cop&&k!=='schoolboy');
+function setPerson(id,at,clip,list){ const C=PEOPLE.casts[id]; if(!C||!clip) return null; const inner=cloneCast(C), root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(inner); inner.position.y=C.y0;
+  root.position.set(at.x,at.y||0,at.z); root.rotation.y=at.yaw||0; scene.add(root); const mixer=new THREE.AnimationMixer(inner), a=mixer.clipAction(clip); a.play(); a.time=Math.random()*clip.duration;
+  root.traverse(o=>{ if(o.isMesh){ o.castShadow=Q.shadows; o.layers.set(1); } }); const f={root,mixer}; list.push(f); return f; }
+function airportFolk(dt,d){ const S=this&&this.seats?this:SETS.find(q=>q.name==='set_airport'); if(!S||!S.seats) return;
+  if(d<S.detailDist&&!S.peopleIn&&PEOPLE.n){ const ids=townCasts(); if(!ids.length) return; S.peopleIn=true; const R=mulberry32(77), seats=S.seats.slice(); const nSit=Q.npc>=24?44:Q.npc>=14?30:18;
+    for(let i=0;i<nSit&&seats.length;i++){ const k=(R()*seats.length)|0, st=seats.splice(k,1)[0], id=ids[(R()*ids.length)|0], clip=castSit(id); if(!clip) continue; setPerson(id,{x:st.x,y:0,z:st.z,yaw:st.yaw},clip,S.folk); }
+    for(let i=0;i<10;i++){ const id=ids[(R()*ids.length)|0], C=PEOPLE.casts[id], nm=C.idle0, gx=[-70,0,70][i%3], w=setPt(S,gx+19+R()*5,-35-R()*3.5); setPerson(id,{x:w.x,y:0,z:w.z,yaw:S.ry+Math.PI},C.clips[nm],S.folk); } }
+  else if(d>S.detailDist+60&&S.peopleIn){ for(const f of S.folk){ scene.remove(f.root); f.mixer.stopAllAction(); } S.folk.length=0; S.peopleIn=false; }
+  if(S.peopleIn) for(const f of S.folk) f.mixer.update(dt); }
 // ---- Murtala Muhammed International Airport, north of Mushin where Agege Motor Road leads (toward Ikeja).
 // Terminal with a floating roof and jet bridges, airliners at the gates, a taxiway, a 2.7 km runway with lights,
 // the control tower, hangars, a car park. One airliner lands and another takes off, over and over.
-const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
+const AIRPORT=(()=>{ if(!MODELS.jet) return null;
   let st=null; for(const e of ROADS){ if(!/Agege Motor Road/i.test(e.name)) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd]; if(!st||n.z<st.z) st={x:n.x,z:n.z}; } }
   // where taxis leave and join the street network: the drivable street end nearest the airport road (the expressway ramps there are not for taxis)
   let hand=null, hd=1e9; for(const e of ROADS){ if(!e.drive) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd], d=Math.hypot(n.x-st.x,n.z-st.z)+Math.max(0,n.z+WB.z)*2; if(d<hd){ hd=d; hand={x:n.x,z:n.z}; } } }
@@ -1090,20 +1209,23 @@ const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
   const apT=mk(512,512,(g,W,H)=>{ g.fillStyle='#96938b'; g.fillRect(0,0,W,H); grain(g,W,H,14); g.strokeStyle='rgba(60,58,54,.5)'; g.lineWidth=2; for(let i=0;i<=W;i+=128){ g.beginPath(); g.moveTo(i,0); g.lineTo(i,H); g.stroke(); g.beginPath(); g.moveTo(0,i); g.lineTo(W,i); g.stroke(); } });
   apT.repeat.set(560/40,170/40); const apM=new THREE.MeshStandardMaterial({map:apT,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
   flat(560,175,TX-40,TZ-110,apM,.02);
-  for(let i=-2;i<=3;i++){ const gx=TX-100+(i+2)*40; const l=flat(.4,60,gx+3,TZ-80,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); }   // lead-in lines to the gates
+  for(const gx of [-70,0,70]){ flat(.35,92,TX+gx,TZ-96,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); flat(6,.4,TX+gx,TZ-52,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); }   // lead-in lines and stop bars at the three gates
   // landside: the forecourt road from Agege Motor Road, the drop-off road and the car park
   const roadM=new THREE.MeshStandardMaterial({map:T.road4,roughness:.88,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
-  { const len=st.z-(TZ+60), m=flat(len,16,TX,(st.z+TZ+60)/2,roadM,.03); m.rotation.y=Math.PI/2; }
+  { const len=st.z-(TZ+64), m=flat(len,16,TX,(st.z+TZ+64)/2,roadM,.03); m.rotation.y=Math.PI/2; }
   const HZ=-WB.z-30; if(hand&&Math.abs(hand.x-TX)>8){ const m1=flat(Math.abs(hand.z-HZ)+8,8,hand.x,(hand.z+HZ)/2,roadM,.028); m1.rotation.y=Math.PI/2; flat(Math.abs(hand.x-TX),8,(hand.x+TX)/2,HZ,roadM,.028); }   // the link road from the street end
-  flat(300,16,TX,TZ+45,roadM,.03);
+  flat(300,16,TX,TZ+56,roadM,.03);
   const cpT=mk(512,256,(g,W,H)=>{ g.fillStyle='#55585c'; g.fillRect(0,0,W,H); grain(g,W,H,20); g.fillStyle='#f2f2ee'; for(let x=0;x<W;x+=32){ g.fillRect(x,10,3,100); g.fillRect(x,146,3,100); } g.fillRect(0,124,W,4); });
   cpT.repeat.set(4,2); flat(260,90,TX,TZ+105,new THREE.MeshStandardMaterial({map:cpT,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),.02);
   // buildings and planes (instanced, with near/far detail)
   const one=(k,x,z,ry=0,sc=1,col)=>{ const M=MODELS[k]; if(!M) return null; new CullSet(modelLevels(M,Q.lod0*2.5,Q.draw*2.4),[{x,y:0,z,ry,sc,...(col?{col}:{})}],{shadowDist:Q.shR,name:'air_'+k}); return M; };
-  const TM=one('terminal',TX,TZ,0,1); addOB(TX,TZ,120,23,0,22);
-  for(let i=0;i<6;i++){ const gx=TX-100+i*40; one('jetbridge',gx,TZ-23-8-11,Math.PI,1);
-    const wide=i===1||i===4, k=wide?'jetw':'jet', M=MODELS[k]; if(!M) continue; const pz=TZ-23-8-24-(wide?33:20), px=gx+(wide?4:3);
-    one(k,px,pz,0,1); addOB(px,pz,3,M.D/2-2,0,6); }
+  // the terminal made in Blender (glass hall under a wave roof, check-in, shops, cafe, departures board, gate lounges, jet bridges)
+  // and three NAIJA AIR A350s at the gates; your people sit in the lounges. Board a plane at a gate door.
+  const AS=addSet('set_airport',TX,TZ,0,{near:1100,detailDist:190,lift:Object.assign(/^(AP_JetBridges|AP_GroundVehicles)/,{dy:.2})}); AS.root.position.y=-.2; planeModel();   // the hall floor stands 20 cm up in Blender: it sits on the ground here
+  AS.onLoad=S=>{ const J=S.json||{};
+    planeModel().then(()=>{ for(const [gx,gz] of (J.gates||[[-70,-86],[0,-86],[70,-86]])){ const p=planeCopy(), w=setPt(S,gx,gz); p.position.set(w.x,0,w.z); p.rotation.y=S.ry; scene.add(p); addOB(w.x,w.z,3,32,-S.ry,9); } }).catch(()=>{});
+    for(const [gx] of (J.gates||[])){ const w=setPt(S,gx+10.5,-38.6); DOORS.push({x:w.x,z:w.z,r:2.2,label:'Board the NAIJA AIR flight',act:()=>boardPlane(w)}); }
+    S.seats=(J.seats||[]).map(([x,z,y,yaw])=>({...setPt(S,x,z),y:y-.2,yaw:yaw+S.ry})); S.folk=[]; S.tick=(dt,d)=>airportFolk.call(S,dt,d); };
   one('tower',TX+300,TZ-40,0,1); addOB(TX+300,TZ-40,9,7,0,62);
   one('hangar',TX-460,TZ-110,0,1); one('hangar',TX-540,TZ-110,0,1); addOB(TX-500,TZ-110,75,30,0,20);
   if(MODELS.sedan){ const items=[], C=['#c0392b','#f2f2f2','#1f3b66','#2b2b2b','#7f8c8d','#d4ac0d','#8e9aa6']; let k=0;
@@ -1116,7 +1238,8 @@ const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
   const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('MURTALA MUHAMMED INTERNATIONAL AIRPORT','#16A06B','#ffffff',2000,170),fog:false})); lab.scale.set(26,2.2,1); lab.position.set(TX,26,TZ+26); lab.layers.set(1); scene.add(lab);
   PLACES.push({name:'Murtala Muhammed International Airport',sub:'Airport · Ikeja',kind:'place',x:TX,z:TZ+40,airport:true});
   // one airliner landing from the east and taxiing in, another taking off to the east
-  const fly=MODELS.jet?new THREE.Mesh(MODELS.jet.geo,MODELS.jet.mat):null; if(fly){ fly.castShadow=true; fly.rotation.order='YXZ'; fly.visible=false; fly.frustumCulled=false; scene.add(fly); }
+  let fly=MODELS.jet?new THREE.Mesh(MODELS.jet.geo,MODELS.jet.mat):null; if(fly){ fly.castShadow=true; fly.rotation.order='YXZ'; fly.visible=false; fly.frustumCulled=false; scene.add(fly); }
+  planeModel().then(()=>{ const a=planeCopy(); a.rotation.order='YXZ'; a.visible=false; a.traverse(o=>{ o.frustumCulled=false; }); scene.add(a); if(fly) scene.remove(fly); fly=a; }).catch(()=>{});   // the NAIJA AIR A350 lands and takes off
   const CYC=150, xs=TX+RL/2-200, xe=TX-RL/2+250;
   function pose(t){ // returns [x,y,pitch] or null
     if(t<40){ const k=t/40, x=xs+3200*(1-k), y=230*(1-k); return [x,y+.02,-.05]; }            // final approach, 3° glide
@@ -1125,8 +1248,30 @@ const AIRPORT=(()=>{ if(!MODELS.terminal||!MODELS.jet) return null;
     if(t<104){ const k=(t-78)/26, x=xe+(xs-xe)*k*k; return [x,0,0]; }                            // take-off roll
     if(t<CYC){ const k=(t-104)/(CYC-104), x=xs+3400*k, y=420*k*k+(k*40); return [x,y,-.15]; }   // climb out
     return null; }
-  let AT=0; return {TX,TZ,RZ,TWZ,RL,st,hand:hand||{x:st.x,z:st.z+6},HZ,drop:{x:TX+20,z:TZ+45},update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
+  let AT=0; return {TX,TZ,RZ,TWZ,RL,st,hand:hand||{x:st.x,z:st.z+6},HZ,drop:{x:TX+20,z:TZ+56},update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
       if(!p){ fly.visible=false; return; } fly.visible=Math.hypot(p[0]-camera.position.x,RZ-camera.position.z)<Q.draw*6; fly.position.set(p[0],p[1],RZ); fly.rotation.set(p[2],(AT%CYC)<64?-Math.PI/2:Math.PI/2,0); }}; })();
+// ---- the Blender town sets on their cleared sites: trees and crops from the scene's own lists, people of the town in the market
+const SET_TREE={palm:'tree_palm',tree:'tree_oak_big',leafy:'tree_oak',island_tree_02_LOD0:'tree_oak_big'};
+const SET_CROP={maize:'maize_3',cassava:'cassava_3',yam:'yam_3',pepper:'pepper_3',tomato:'tomato_3',gnut:'pepper_2',okra:'tomato_2',banana:'plantain',plantain:'plantain'};
+function setPlants(S){ const L=(S.json&&S.json.inst)||[]; if(!L.length) return; const trees={}, crops={}, seen=new Set();
+  for(const [kind,lx,lz,y,yaw,sc] of L){ const key=kind+'|'+Math.round(lx*4)+'|'+Math.round(lz*4); if(seen.has(key)) continue; seen.add(key); const w=setPt(S,lx,lz), k=String(kind).replace(/^CT_Lib_|^FM_Lib_/,'').toLowerCase().replace(/[^a-z_0-9]/g,'');
+    const tk=Object.keys(SET_TREE).find(t=>k.startsWith(t.toLowerCase())), ck=Object.keys(SET_CROP).find(c=>k.startsWith(c));
+    if(ck&&!(ck==='banana'&&!S.name.includes('farm'))){ (crops[SET_CROP[ck]]||(crops[SET_CROP[ck]]=[])).push({x:w.x,y:0,z:w.z,ry:yaw+S.ry,sc:Math.max(.6,Math.min(1.6,sc||1))}); }
+    else if(tk&&TREES[SET_TREE[tk]]){ const t=SET_TREE[tk], s2=Math.max(.6,Math.min(1.5,sc||1)); (trees[t]||(trees[t]=[])).push({x:w.x,y:0,z:w.z,ry:yaw,sx:s2,sy:s2,sz:s2}); addCol({x0:w.x-.3,x1:w.x+.3,z0:w.z-.3,z1:w.z+.3,h:4}); } }
+  for(const [t,items] of Object.entries(trees)) plantTrees(t,items,Q.draw*.85);
+  for(const [c,items] of Object.entries(crops)){ const max=3200, step=Math.max(1,Math.ceil(items.length/max)), pick=items.filter((_,i)=>i%step===0);
+    farmGlb('fm_'+c).then(M=>{ new CullSet([{geo:M.geo,mat:M.mat,dist:Math.min(90,Q.lod0*1.2),shadow:true},...(M.geo1?[{geo:M.geo1,mat:M.mat1,dist:Q.draw*.9}]:[])],pick,{shadowDist:Q.shR,name:'set_'+c}); }).catch(e=>console.warn('crop',c,e)); } }
+for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B.hz)+700,detailDist:Math.max(B.hx,B.hz)+120});
+  if(B.name==='set_city'){ const g=new THREE.PlaneGeometry(B.hx*2,B.hz*2).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*B.hx/4,uv.getY(i)*B.hz/4); const m=new THREE.Mesh(g,MAT.lawn); m.position.set(B.x,.012,B.z); m.rotation.y=B.ry; m.receiveShadow=true; scene.add(m); }   // the city quarter stands on grass, as in Blender
+  PLACES.push({name:B.label,sub:'Mushin',kind:'place',x:B.x,z:B.z});
+  S.onLoad=S2=>{ setPlants(S2); if(B.name==='set_market'){ S2.folk=[]; S2.tick=(dt,d)=>marketFolk(S2,dt,d); } }; }
+// the market street: buyers walking up and down, people standing at the shop fronts and stalls (your own townspeople)
+function marketFolk(S,dt,d){ if(d<S.detailDist&&!S.peopleIn&&PEOPLE.n){ const ids=townCasts(); if(!ids.length) return; S.peopleIn=true; const R=mulberry32(919), n=Q.npc>=24?34:Q.npc>=14?24:14;
+    for(let i=0;i<n;i++){ const id=ids[(R()*ids.length)|0], C=PEOPLE.casts[id], walk=i%5<3&&C.clips.walk;
+      if(walk){ const lane=(R()<.5?-1:1)*(3.6+R()*1.6), lx=-70+R()*130, dir=R()<.5?-1:1, w=setPt(S,lx,lane), f=setPerson(id,{x:w.x,y:0,z:w.z,yaw:S.ry+(dir>0?Math.PI/2:-Math.PI/2)},C.clips.walk,S.folk); if(f){ f.lx=lx; f.lz=lane; f.dir=dir; f.v=1.15+R()*.3; } }
+      else { const side=R()<.5?-1:1, lx=-68+R()*126, w=setPt(S,lx,side*(6+R()*1.2)), nm=(CAST[id]&&CAST[id].idle||[C.idle0]).find(k=>C.clips[k])||C.idle0; setPerson(id,{x:w.x,y:0,z:w.z,yaw:S.ry+(side>0?0:Math.PI)+(R()-.5)*.8},C.clips[nm],S.folk); } } }
+  else if(d>S.detailDist+60&&S.peopleIn){ for(const f of S.folk){ scene.remove(f.root); f.mixer.stopAllAction(); } S.folk.length=0; S.peopleIn=false; }
+  if(!S.peopleIn) return; for(const f of S.folk){ f.mixer.update(dt); if(f.dir){ f.lx+=f.dir*f.v*dt; if(f.lx>62||f.lx<-72){ f.dir*=-1; f.root.rotation.y=S.ry+(f.dir>0?Math.PI/2:-Math.PI/2); } const w=setPt(S,f.lx,f.lz); f.root.position.set(w.x,0,w.z); } } }
 // your house, the hotel and the police station
 const STATION={x:0,z:0,label:null,front:{x:0,z:0,ry:0}};
 function placeModelOn(b,key,label,col){ const M=MODELS[key], f=FACE_DIR(b), ry=Math.atan2(f[0],f[1]), fw=frontLen(b), dd=depthLen(b), s=Math.min(fw/M.W,dd/M.D,1.15), sc=Math.max(.6,s);
@@ -2154,6 +2299,13 @@ const LK={
 const RAINFOG=C3(0x6f7a84), HAZE=C3(0xc8a273), _c1=new THREE.Color(), _c2=new THREE.Color();
 const ENV={hour:12,elev:40,lamp:0,win:0,sign:0,head:.15,tail:.3,spot:0,wet:0,rain:0,cloud:0,haze:0,dim:0,storm:0,night:false,w:null,label:'',icon:'sun',flash:0};
 const envScene=new THREE.Scene(); envScene.add(sky); let envRT=null, envKey='', envT=-99, skyT=-99;
+// the clear-day sky of the Blender scene ("Naija Ground": Poly Haven kloofendal 48d partly cloudy, tone-mapped to sky_clear.jpg),
+// laid over the sky formula on clear and lightly cloudy days; turned so its sun stands where the game's sun is
+const HDRSKY=(()=>{ const m=new THREE.MeshBasicMaterial({side:THREE.BackSide,transparent:true,opacity:0,depthWrite:false,fog:false}); const s=new THREE.Mesh(new THREE.SphereGeometry(7000,48,24),m);
+  s.scale.x=-1; s.visible=false; envScene.add(s); s.userData.k=0;
+  const u='assets/models/sky_clear.jpg', k=AV[u]||MANIFEST[u]; new THREE.TextureLoader().load(k?u+'?v='+k:u,t=>{ t.colorSpace=THREE.SRGBColorSpace; m.map=t; m.needsUpdate=true; s.userData.ok=true; skyT=-99; envKey=''; },undefined,()=>{});
+  return s; })();
+const HDR_SUN=2*Math.PI*(1218/2048);   // where the sun is in that picture (around the horizon)
 const mixK=(f,dw,nw)=>{ const g=LK.golden[f]; const a=g+(LK.day[f]-g)*dw; return a+(LK.night[f]-a)*nw; };
 const mixC=(out,f,dw,nw)=>out.copy(LK.golden[f]).lerp(LK.day[f],dw).lerp(LK.night[f],nw);
 // clouds: one big soft layer of cumulus high above the city (assets/models/clouds.png, tools/ground_tex.py).
@@ -2227,6 +2379,8 @@ function updateEnv(dt,force=false){
   const u=sky.material.uniforms;
   u.turbidity.value=mixK('turb',dw,nw)+w.cloud*7+w.haze*11; u.rayleigh.value=mixK('ray',dw,nw)*(1-w.cloud*.55)*(1-w.haze*.4); u.mieCoefficient.value=mixK('mie',dw,nw)+w.haze*.02+w.cloud*.004; u.mieDirectionalG.value=mixK('mieG',dw,nw);
   sunDir.setFromSphericalCoords(1,THREE.MathUtils.degToRad(90-e),THREE.MathUtils.degToRad(180-sa.azim)); u.sunPosition.value.copy(sunDir);
+  { const hk=HDRSKY.userData.ok?dw*(1-sm((w.cloud-.35)/.4))*(1-Math.min(1,w.rain*1.5))*(1-Math.min(1,w.haze*1.6)):0; HDRSKY.userData.k=hk; HDRSKY.material.opacity=hk; HDRSKY.visible=hk>.01;
+    HDRSKY.rotation.y=HDR_SUN-Math.atan2(sunDir.z,sunDir.x); }
   if(e<-1) lightDir.setFromSphericalCoords(1,THREE.MathUtils.degToRad(48),THREE.MathUtils.degToRad(200)); else lightDir.setFromSphericalCoords(1,THREE.MathUtils.degToRad(90-Math.max(e,14)),THREE.MathUtils.degToRad(180-sa.azim));
   mixC(sun.color,'sun',dw,nw); const fade=e>=-1?sm((e+1)/6):sm((-1-e)/6);
   sun.intensity=(e>=-1?mixK('sunI',dw,nw):LK.night.sunI)*fade*(1-w.dim*.82);
@@ -2248,7 +2402,7 @@ function updateEnv(dt,force=false){
   stars.visible=nw>.4&&w.cloud<.6; stars.material.opacity=.8*Math.min(1,(nw-.4)*3)*(1-w.cloud)*(1-veil.material.opacity);
   if(bloom){ bloom.strength=mixK('b0',dw,nw)+ENV.flash; bloom.radius=mixK('b1',dw,nw); bloom.threshold=mixK('b2',dw,nw); }
   // clouds and rain
-  cloudMat.userData.cover.value=Math.min(1,.42+w.cloud*.62); cloudMat.opacity=cloudMat.map.image&&cloudMat.map.image.width>4?.97:0; cloudMat.color.setRGB(1,1,1).multiplyScalar((1-nw*.9)*(1-w.dim*.55)+.06).lerp(_c1.copy(sun.color),dw<.5&&nw<.5?.35:0);
+  cloudMat.userData.cover.value=Math.min(1,.42+w.cloud*.62); cloudMat.opacity=(cloudMat.map.image&&cloudMat.map.image.width>4?.97:0)*(1-HDRSKY.userData.k*.85);   // the Blender sky brings its own clouds cloudMat.color.setRGB(1,1,1).multiplyScalar((1-nw*.9)*(1-w.dim*.55)+.06).lerp(_c1.copy(sun.color),dw<.5&&nw<.5?.35:0);
   cloudMat.map.offset.x+=dt*.0016; cloudMat.map.offset.y+=dt*.0007; clouds.position.x=camera.position.x; clouds.position.z=camera.position.z;
   rain.visible=w.rain>.02&&mode!=='interior'; if(rain.visible){ const ru=RAINU, R2=rain.userData; ru.time.value=(ru.time.value+dt)%600; ru.cam.value.copy(camera.position); ru.op.value=Math.min(.95,w.rain*.75+w.storm*.3);
     const lit=(1-nw*.6)*(1-w.dim*.25); ru.col.value.setRGB(.74,.77,.82).multiplyScalar(lit).lerp(_c1.copy(hemi.color),.15); ru.wind.value.set(1.2+w.storm*4.5,.5+w.storm*2);
@@ -2258,7 +2412,7 @@ function updateEnv(dt,force=false){
   const wet=ENV.wet; for(const m of ROAD_MATS){ m.roughness=m.userData.r0*(1-wet*m.userData.k); m.color.copy(m.userData.c0).multiplyScalar(1-wet*.34); }
   // re-light reflections when the sky has changed enough
   // re-light reflections only when the sky really changed: every ~12° of sun in the day, ~5° around sunrise/sunset, or a weather change
-  const key=(e>22?'d'+Math.round(e/12):'l'+Math.round(Math.max(-8,e)/5))+'|'+Math.round(w.cloud*4)+'|'+Math.round(w.haze*4);
+  const key=(e>22?'d'+Math.round(e/12):'l'+Math.round(Math.max(-8,e)/5))+'|'+Math.round(w.cloud*4)+'|'+Math.round(w.haze*4)+'|'+Math.round(HDRSKY.userData.k*4);
   if(force||(T0-skyT>2&&mode!=='interior')){ skyT=T0; skyCam.update(renderer,envScene); }   // background sky picture
   if(force||(key!==envKey&&T0-envT>20&&mode!=='interior')){ envKey=key; envT=T0; const old=envRT; envRT=pmrem.fromCubemap(skyCube.texture); scene.environment=envRT.texture; if(old) old.dispose(); }
   scene.environmentIntensity=mixK('env',dw,nw)*(1-w.dim*.35);
@@ -6653,7 +6807,7 @@ let hotelPeek=0; function hotelPrefetch(dt){ if(!MYROOM.loading&&MANIFEST['asset
    desk, beds, lamps, signs), so the game puts people, lights, words and the E spots there. */
 const INTS={}, INT_ENV={t:null};
 function intLoad(name){ const I=INTS[name]||(INTS[name]={}); if(I.p) return I.p; const u=murl(name); DL.exp[u]=MANIFEST[`assets/models/${name}.glb`]||600000;
-  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ let sims=false; g.scene.traverse(o=>{ if(/^(WALL_|ROOM$)/.test(o.name)) sims=true; }); I.room=sims?buildSimsRoom(name,g):buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
+  I.p=fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ let sims=name==='int_cabin'; g.scene.traverse(o=>{ if(/^(WALL_|ROOM$)/.test(o.name)) sims=true; }); I.room=sims?buildSimsRoom(name,g):buildRoom(name,g); return I.room; }); I.p.catch(e=>{ console.warn(name,e); I.p=null; }); return I.p; }
 async function intGet(name,msg){ const I=INTS[name]; if(I&&I.room) return I.room; if(msg) toast(msg,4); busy=true; let R=null; try{ R=await intLoad(name); }catch(e){} busy=false; if(!R) toast('E no open now. Try again small time.'); return R; }
 function buildRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x0d0b0a);
@@ -6869,6 +7023,22 @@ function setupPolice(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=
   R.spot(M.counter,()=>starCount()>0?'Turn yourself in':'Talk to the officer',()=>{ if(starCount()>0){ toast('"Na you we dey find! Enter cell."',3); FIGHT.heat=0; enterJail(); return; }
     toast(mpick(['Officer: "Wetin you wan report? Write your statement."','Officer: "Bail is free. Na our own you go settle."','Officer: "Move from my counter if you no get case."']),3.2); },1.6);
   setSign(R.signs.sign_counter,'CHARGE ROOM','#13306b','#ffffff'); }
+// ---- on board the NAIJA AIR A350 (the cabin made in Blender: first class suites 1-2-1, economy 3-3-3): from a gate door
+let PLANE_GATE=null;
+async function boardPlane(gate){ if(busy) return; const R=await intGet('int_cabin','Boarding… find your seat.'); if(!R) return; PLANE_GATE=gate; setupCabin(R); R.label='NAIJA AIR flight';
+  goRoom(R,'spawn','Welcome on board NAIJA AIR. First class is in front, economy behind the curtain.'); }
+function setupCabin(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
+  // the sky and the clouds outside the windows
+  const [c,g]=cv(512,256), gr=g.createLinearGradient(0,0,0,256); gr.addColorStop(0,'#3d6fb8'); gr.addColorStop(.45,'#9cc4ec'); gr.addColorStop(.52,'#f4f6fa'); gr.addColorStop(1,'#d9dde6'); g.fillStyle=gr; g.fillRect(0,0,512,256);
+  for(let i=0;i<260;i++){ const x=Math.random()*512, y=134+Math.random()*120, r=6+Math.random()*26; g.fillStyle=`rgba(255,255,255,${.25+Math.random()*.5})`; g.beginPath(); g.arc(x,y,r,0,6.283); g.fill(); }
+  const sky=new THREE.CanvasTexture(c); sky.mapping=THREE.EquirectangularReflectionMapping; sky.colorSpace=THREE.SRGBColorSpace; R.scene.background=sky;
+  for(let k=0;k<6;k++){ const L=new THREE.PointLight(0xfff1dc,9,9,1.6); L.position.set(-2-k*4.2,2.2,0); R.scene.add(L); }
+  R.fill=R=>{ const ids=townCasts(), rnd=mulberry32(707); const seats=Object.keys(M).filter(k=>/^seat_/.test(k));
+    for(const k of seats){ const m=M[k]; if(rnd()>(m.cls==='first'?.6:.55)) continue; const id=ids[(rnd()*ids.length)|0], clip=castSit(id); if(clip) setPerson(id,{x:m.x,y:0,z:m.z,yaw:m.yaw},clip,R.folk); }
+    for(const f of R.folk){ R.scene.add(f.root); }
+    if(M.crew) folk(R.scene,'suit_lady',M.crew,['idle_suit','f_talk'],R.folk); };
+  fillRoom(R);
+  R.spot(M.exit,'Leave the plane',()=>leaveRoom(PLANE_GATE?{x:PLANE_GATE.x,z:PLANE_GATE.z+1.5,ry:0}:STATION.front),1.6); }
 // the cell when you are caught: the left cell of the station, with the other cell across the corridor
 function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x1:Math.max(a.x0,a.x1),z0:Math.min(-a.y0,-a.y1),z1:Math.max(-a.y0,-a.y1)};
   // the cell bounds are in Blender numbers (x, y): turn them into game x, z
@@ -7157,7 +7327,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); if(hero&&(UNION||POLICE)) wearUnion(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():''); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); if(hero&&(UNION||POLICE)) wearUnion(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():''); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -7399,6 +7569,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
     phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); }, guide:w=>GD.test(w), farm:w=>FARM?FARM.test(w):-1,
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
