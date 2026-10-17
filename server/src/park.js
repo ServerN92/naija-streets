@@ -206,6 +206,13 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
     if (F.a <= 0 || F.b <= 0) endFight(t); else pushFight();
   }
 
+  // a player knocked out a player of the other side in the yard during the fight: the one down is out of it for a while
+  function pvpKo(A, D) {
+    if (!F || !A.user || !D.user || !inPark(A, 6) || !inPark(D, 6)) return;
+    const sa = sideOf(A.user.id), sd = sideOf(D.user.id); if (!sa || !sd || sa === sd) return;
+    F.down.set(D.user.id, now() + 25e3);
+    const x = member(A.user.id); if (x) { x.rp += 5; touchM(A.user.id); }
+  }
   // ---- what players ask for: {t:'pk', a, ...}
   function handle(C, m) {
     const t = now(), uid = C.user.id, x = M.get(uid), chair = P.chair === uid;
@@ -302,6 +309,6 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
     C.pkNear = false; me(C);
   }
   // the account's name for a player who signs in (a fresh member gets their badge from here)
-  return { handle, tick, flush, hello, badge, pub, get fight() { return F; }, get state() { return P; }, member: uid => M.get(uid), loads: () => [...loads.values()], meetAt,
+  return { handle, tick, flush, hello, badge, pub, pvpKo, get fight() { return F; }, get state() { return P; }, member: uid => M.get(uid), loads: () => [...loads.values()], meetAt,
     _test: { startLoad: t => startLoad(t ?? now()), setRp: (uid, rp) => { const x = M.get(uid); if (x) { x.rp = rp; touchM(uid); } } } };
 }

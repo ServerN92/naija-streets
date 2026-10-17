@@ -7,6 +7,7 @@ import { openDb } from './db.js';
 import { createWorld, PROTO } from './world.js';
 import { createMail } from './mail.js';
 import { tune } from './park.js';
+import { tunePvp } from './pvp.js';
 
 const PORT = +process.env.PORT || 8080;
 const DB_PATH = process.env.DB_PATH || './data/naija.db';
@@ -18,7 +19,7 @@ const MAX_CONNS = +process.env.MAX_CONNS || 2000, MAX_PER_IP = +process.env.MAX_
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 const db = openDb(DB_PATH);
 const mail = createMail({ key: process.env.RESEND_API_KEY, from: process.env.MAIL_FROM, devLog: process.env.MAIL_DEV_LOG === '1' });
-if (process.env.PARK_TEST === '1') { tune(process.env); console.log('park test settings', process.env.PARK_EVERY_MS, process.env.PARK_RANKS); }
+if (process.env.PARK_TEST === '1') { tune(process.env); tunePvp(process.env); console.log('park test settings', process.env.PARK_EVERY_MS, process.env.PARK_RANKS); }
 const world = createWorld({ db, mail, log, regPerHour: +process.env.REG_PER_HOUR || 20 });
 const perIp = new Map();
 

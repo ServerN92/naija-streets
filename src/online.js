@@ -67,6 +67,7 @@ export function createOnline(api) {
       case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
+      case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
@@ -427,6 +428,9 @@ export function createOnline(api) {
 
   return {
     frame, cash, openPanel, openChat, send,
+    // the other players you could hit: on foot, in sight, not lying down (where they are drawn now)
+    targets: () => { const out = []; if (!S.me) return out; for (const R of RS.values()) { const s = R.s; if (!s || s.v || s.a === 'k' || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z }); } return out; },
+    hit: (id, k) => send({ t: 'hit', i: id, k }),
     get signedIn() { return !!S.me; },
     get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },

@@ -3869,6 +3869,7 @@ function playerAttack(kind){ if(mode!=='walk'||!fightReady()||FIGHT.ko||busy||ma
   swing(name,foe); }
 function swing(name,foe){ const mi=MOVE_INFO[name];
   if(foe){ player.yaw=Math.atan2(foe.x-player.x,foe.z-player.z); aiDodge(foe); }
+  else { const rf=remoteFoe(3.3,2.5); if(rf) player.yaw=Math.atan2(rf.x-player.x,rf.z-player.z); }
   heroDo(mi.act,{force:true,from:mi.from,to:mi.to,ts:mi.ts,atk:name,cancel:mi.cancel,heavy:!!mi.knock,lunge:mi.lunge||null,foe:mi.lunge?null:foe,stand:mi.stand,until:mi.hits[0],hits:mi.hits.map(at=>[at,()=>landHit(name,foe)])});
   FIGHT.lastAtk=T0; whoosh(); }
 // you hit harder than anyone on the street; blows in a row hit harder still, and a blow right after a dodge hits hardest
@@ -3876,6 +3877,7 @@ function landHit(name,foe){ const mi=MOVE_INFO[name]; let p=foe&&foe.state!=='of
   const rch=mi.reach+((WEAPONS[ARMS.cur].reach)||0);
   if(p){ const dx=p.x-player.x, dz=p.z-player.z, d=Math.hypot(dx,dz), fwd=(dx*Math.sin(player.yaw)+dz*Math.cos(player.yaw))/(d||1); if(d>rch+.5||fwd<.3) p=null; }
   if(!p) p=pickFoe(rch,.95);
+  { const rf=remoteFoe(rch+.3,.95); if(rf&&(!p||Math.hypot(rf.x-player.x,rf.z-player.z)<Math.hypot(p.x-player.x,p.z-player.z))) return pvpLand(name,rf); }   // another player (online): the server decides
   if(!p) return;
   if(p.dodgeT>0){ if(sayT<=0&&MR()<.5){ sayT=3; toast(mpick(['"You no fit touch me!"','"Too slow!"','"Ehen? Na so?"']),1.3); } return; }   // he slipped it
   FIGHT.combo=T0-FIGHT.lastHit<1.1?Math.min(5,FIGHT.combo+1):1; FIGHT.lastHit=T0;
@@ -3885,6 +3887,24 @@ function landHit(name,foe){ const mi=MOVE_INFO[name]; let p=foe&&foe.state!=='of
   if(W.blade&&mi.how==='punch'&&(p.hp??HP0(p.cast))-dmg<=0){ p.hp=0; killPed(p,ux,uz,1.4,'fight'); camState.shake=Math.min(1,camState.shake+.4); smack(1.3); return; }   // a blade does not just knock you down
   FIGHT.stop=mi.knock?.11:.07; p.stopT=FIGHT.stop;
   hurtPed(p,dmg,mi.how,mi.knock||(counter&&mi.how==='kick'?3:0)); camState.shake=Math.min(1,camState.shake+(mi.knock?.5:.28)); smack(mi.knock?1.3:1); }
+// ---- other players (online): you can fight them too. Your phone says where the blow landed; the server checks it,
+// counts it (100 points knock somebody out) and tells them. A knock-out takes 10% of their pocket (₦2,000 at most).
+// Hitting a player in the open is a crime like hitting anybody: the police come for you.
+function remoteFoe(reach,cone){ if(!ON||!ON.signedIn) return null; let best=null, bs=1e9; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
+  for(const r of ON.targets()){ const dx=r.x-player.x, dz=r.z-player.z, d=Math.hypot(dx,dz); if(d>reach||d<.05||Math.abs(r.y-player.y)>1.4) continue; const ang=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1)); if(ang>cone) continue; const sc=d+ang*1.2; if(sc<bs){ bs=sc; best=r; } }
+  return best; }
+function pvpLand(name,r){ const mi=MOVE_INFO[name]; ON.hit(r.id,name); const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw);
+  bleed(r.x,mi.how==='punch'?1.55:1.25,r.z,ux,uz,mi.knock?8:mi.how==='kick'?5:3,1.6); FIGHT.stop=mi.knock?.11:.07; camState.shake=Math.min(1,camState.shake+(mi.knock?.5:.28)); smack(mi.knock?1.3:1);
+  if(!lawless()){ addHeat(.08); FIGHT.crimeT=0; } }
+const PVPS={warned:{}};
+function pvpMsg(m){
+  if(m.t==='hurt'){ if(mode!=='walk'||FIGHT.dead) return; hitPlayer(m.d*1.1,{x:m.x,z:m.z},m.k==='kick'||m.k==='heavy'||m.k==='drop_kick'?'kick':'punch');
+    if(!PVPS.warned[m.i]||T0-PVPS.warned[m.i]>40){ PVPS.warned[m.i]=T0; toast(`${m.n} dey fight you! Fight back (punch, kick) or run.`,2.6); } }
+  else if(m.t==='hitok'){ if(m.p>=60&&!(PVPS[m.i]>=60)) toast(mpick(['"E don dey weak!"','"Finish am!"','"Ehen! E don tire!"']),1.6); PVPS[m.i]=m.p; }
+  else if(m.t==='pko'){ if(!FIGHT.dead&&!FIGHT.ko&&hero&&mode==='walk'){ FIGHT.ko=true; FIGHT.koT=0; player.speed=0; carryDrop(true); heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})}); thud(); camState.shake=Math.min(1.2,camState.shake+.6); }
+    toast(`${m.n} knocked you out${m.took?` and took ${naira(m.took)} from your pocket`:''}! Nobody can touch you for two minutes.`,3.6); }
+  else if(m.t==='pkowin'){ PVPS[m.i]=0; toast(`You knocked out ${m.n}!${m.took?` +${naira(m.took)} from the pocket.`:''}`,3.2); if(!lawless()){ addHeat(.2); FIGHT.crimeT=0; } }
+  else if(m.t==='pvno') toast(m.m,2.2); }
 // somebody lying on the floor near you
 function groundFoe(){ let best=null, bd=2.3; for(const p of peds){ if(p.state!=='down'||p.carried||p.y>.5) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
 function groundPound(p,kind){ FIGHT.chain=T0-FIGHT.swingT<1.1?FIGHT.chain+1:0; FIGHT.swingT=T0;
@@ -7172,6 +7192,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   seats:t=>SEATS[t], ride:t=>HERO_RIDE[t], maxBodies:()=>Q===QUAL.low?6:Q===QUAL.medium?10:16,
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
+  pvp:m=>pvpMsg(m),
   biz:m=>{ if(BIZ) BIZ.on(m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>wearUnion(R.wst||(R.wst={}),R.inner,R.b||''),
   toast });
