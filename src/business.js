@@ -40,7 +40,7 @@ const KINDS = {
     sign: { y: 3.12, z: .105, w: 4.86, h: .6 }, serve: { x: 1.9, z: .95 }, staff: { x: -.95, z: -.75 },
     wait: [[-2.2, .75, 0], [-1.3, .75, 0], [-2.9, .6, .4]],
     walls: [[0, -1.22, 3.08, 1.24, 2.8], [3.68, -.4, .34, .26, .6], [-1.65, .75, .85, .16, .47], [.85, 1.8, .33, .2, .9], [-2.93, 1.3, .06, .06, 2.4], [2.93, 1.3, .06, .06, 2.4]],
-    board: ['#fbf7ee', '#c0281e', '#16224a'], tagline: 'UNISEX BARBING SALON · LOW CUT · FADE · BEARD', map: 'Barbing salon · a business you can buy (online)' },
+    board: ['#fbf7ee', '#c0281e', '#16224a'], tagline: 'UNISEX BARBING SALON · LOW CUT · FADE', map: 'Barbing salon · a business you can buy (online)' },
 };
 
 export function createBusiness(api) {
@@ -86,12 +86,12 @@ export function createBusiness(api) {
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = 'rgba(0,0,0,.18)'; g.fillText(name, Wc / 2 + 4, top + 4);
     g.fillStyle = sale ? '#c0281e' : KD.board[2]; g.fillText(name, Wc / 2, top);
-    g.font = `600 ${Math.round(Hc * .18)}px "Barlow Semi Condensed", Arial, sans-serif`; g.fillStyle = '#2a2622';
-    const sub = sale ? `${naira(R ? R.price : 100000)} · sign in online and buy it` : KD.tagline;
-    g.fillText(sub, Wc / 2, low);
+    const sub = sale ? `${naira(R ? R.price : 100000)} · sign in online and buy it` : KD.tagline, room = sale ? Wc - 80 : Wc - 2 * 235;
+    let f2 = Math.round(Hc * .18); g.font = `600 ${f2}px "Barlow Semi Condensed", Arial, sans-serif`; while (g.measureText(sub).width > room && f2 > 16) { f2 -= 1; g.font = `600 ${f2}px "Barlow Semi Condensed", Arial, sans-serif`; }
+    g.fillStyle = '#2a2622'; g.fillText(sub, Wc / 2, low);
     if (!sale) {
       const open = !!P.open; g.fillStyle = open ? '#1d8a4e' : '#8a8a86'; rr(g, Wc - 210, Hc - 66, 170, 50, 12); g.fill(); g.fillStyle = '#fff'; g.font = `30px ${F}`; g.fillText(open ? 'OPEN' : 'CLOSED', Wc - 125, Hc - 39);
-      if (b.kind === 'barber') { g.fillStyle = P.light ? '#e9b414' : '#5a5a58'; g.beginPath(); g.arc(70, Hc - 41, 18, 0, 6.3); g.fill(); }   // light (NEPA) or not
+      if (b.kind === 'barber') { g.fillStyle = P.light ? '#e9b414' : '#5a5a58'; g.beginPath(); g.arc(80, Hc - 41, 18, 0, 6.3); g.fill(); g.fillStyle = '#2a2622'; g.font = `600 22px Arial, sans-serif`; g.textAlign = 'left'; g.fillText(P.light ? 'LIGHT' : 'GEN', 106, Hc - 40); g.textAlign = 'center'; }   // light (NEPA) or not
     }
     b.tex.needsUpdate = true;
   }
