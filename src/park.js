@@ -277,5 +277,5 @@ export function createPark(api) {
   function koed() { if (ST.fight) send('ko'); }
   function downed() { if (ST.fight) send('down'); }
   return { on, prompt, action, near: () => atDesk() || !!loadNear(), update, signedOut, badge, side, fightHere, koed, downed,
-    office: () => O, debug: () => ({ p: ST.p, me: ST.me, loads: [...ST.loads.values()], fight: ST.fight, end: ST.end, office: O, yard: YARD, ready: ST.ready }) };
+    office: () => O, debug: () => ({ p: ST.p, me: ST.me, loads: [...ST.loads.values()].map(l => ({ ...l, left: Math.round(l.until - performance.now()) })), near: (loadNear() || {}).id || null, mode: api.mode(), pl: api.player(), fight: ST.fight, end: ST.end, office: O, yard: YARD, ready: ST.ready }) };
 }
