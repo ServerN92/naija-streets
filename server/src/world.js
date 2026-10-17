@@ -39,7 +39,14 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     C.cash += n; const t = now(); db.setCash(C.user.id, C.cash, t); db.log(C.user.id, t, n, 0, C.cash, why);
     send(C, { t: '$', n: C.cash, s: C.cseq });
   }
-  const biz = createBiz({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give } });
+  // money that arrives for a player (sent through a POS): straight to them if they are online, else into their account
+  function credit(uid, n, why, note) {
+    const C = online.get(uid);
+    if (C && C.user) { give(C, n, why); if (note) send(C, { t: 'note', m: note }); return; }
+    const u = db.userById(uid); if (!u) return; const t = now(); db.setCash(uid, (u.cash | 0) + n, t); db.log(uid, t, n, 0, (u.cash | 0) + n, why);
+  }
+  const findUser = name => { const u = db.user(String(name || '')); return u && !u.banned ? { id: u.id, name: u.name } : null; };
+  const biz = createBiz({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give, credit, findUser } });
 
   const send = (C, o) => { if (C.ws.open) C.ws.send(JSON.stringify(o)); };
   const err = (C, w, m) => send(C, { t: 'err', w, m });

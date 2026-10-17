@@ -206,7 +206,7 @@ def export_one(ob):
 if not globals().get('NO_RUN'):
     try:
         open(LOGF, 'w').write('barber start %s\n' % (bpy.app.version_string,))
-        win = bpy.context.window
+        win = bpy.context.window; was = win.scene if win else None; own_file = bool(bpy.data.filepath) and not globals().get('KEEP')
         sc = bpy.data.scenes.get('NS Barber') or bpy.data.scenes.new('NS Barber')
         if win: win.scene = sc
         for o in list(sc.collection.objects): bpy.data.objects.remove(o, do_unlink=True)
@@ -223,3 +223,17 @@ if not globals().get('NO_RUN'):
         log('ALL DONE', out); print('BARBER OK', out)
     except Exception:
         log('FAILED', traceback.format_exc()); print(traceback.format_exc())
+
+    finally:
+        if globals().get('NO_RUN') is None and 'own_file' in dir() and own_file:   # your own project was open: leave it as it was
+            try:
+                if win and was: win.scene = was
+                sc2 = bpy.data.scenes.get('NS Barber')
+                if sc2:
+                    for o in list(sc2.collection.all_objects):
+                        me = o.data if o.type == 'MESH' else None; bpy.data.objects.remove(o, do_unlink=True)
+                        if me and me.users == 0: bpy.data.meshes.remove(me)
+                    bpy.data.scenes.remove(sc2)
+                m = bpy.data.materials.get('FM_VCOL')
+                if m and m.users == 0: bpy.data.materials.remove(m)
+            except Exception: pass
