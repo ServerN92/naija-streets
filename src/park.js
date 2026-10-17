@@ -168,7 +168,7 @@ export function createPark(api) {
     }
     else if (m.t === 'pkt') api.toast(`Driver: "${['Take your ticket, abeg make I go.', 'Oya take. Na ' + m.route + ' I dey go.', 'Agbero, no vex, take am.'][m.id % 3]}" +${naira(m.got)} for you · ${naira(m.ret)} to ${m.chair}.`, 3);
     else if (m.t === 'pkf') { ST.fight = m.f; if (m.end) { ST.end = m.end; ST.fight = null; api.crewEnd(m.end.win); } }
-    else if ((m.t === 'err' || m.t === 'ok') && m.w === 'pk') { api.toast(m.m, 3.2); if (api.menuOpen() && MENU) setTimeout(refresh, 60); }
+    else if ((m.t === 'err' || m.t === 'ok') && m.w === 'pk') { ST.said = m.m; api.toast(m.m, 3.2); if (api.menuOpen() && MENU) setTimeout(refresh, 60); }
   }
   function signedOut() { ST.me = null; }
   const member = () => !!(ST.me && ST.me.on), chair = () => !!(ST.me && ST.me.chair);
@@ -279,5 +279,5 @@ export function createPark(api) {
   function koed() { if (ST.fight) send('ko'); }
   function downed() { if (ST.fight) send('down'); }
   return { on, prompt, action, near: () => atDesk() || !!loadNear(), update, signedOut, badge, side, fightHere, koed, downed,
-    office: () => O, debug: () => ({ p: ST.p, me: ST.me, loads: [...ST.loads.values()].map(l => ({ ...l, left: Math.round(l.until - performance.now()) })), near: (loadNear() || {}).id || null, mode: api.mode(), pl: api.player(), fight: ST.fight, end: ST.end, office: O, yard: YARD, ready: ST.ready }) };
+    office: () => O, debug: () => ({ said: ST.said || '', p: ST.p, me: ST.me, loads: [...ST.loads.values()].map(l => ({ ...l, left: Math.round(l.until - performance.now()) })), near: (loadNear() || {}).id || null, mode: api.mode(), pl: api.player(), fight: ST.fight, end: ST.end, office: O, yard: YARD, ready: ST.ready }) };
 }
