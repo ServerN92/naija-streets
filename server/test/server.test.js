@@ -216,3 +216,20 @@ test('players fight over the line: a blow in reach lands and the other is told; 
   const ko = await b.next('pko'); assert.equal(ko.took, 1000); assert.equal((await a.next('pkowin')).took, 1000);
   a.close(); b.close();
 });
+
+test('the police over the line: join, go on duty, the wanted list comes with the stars a player carries', async () => {
+  const [c, cme] = await account('Officer_Ojo'), [r, rme] = await account('Robber_Tee');
+  assert.equal((await c.next('lawme')).m.cop, false);
+  c.send({ t: 'law', a: 'join' }); await c.next(m => m.t === 'lawme' && m.m.cop);
+  c.send({ t: 'law', a: 'duty', on: true }); await c.next(m => m.t === 'lawme' && m.m.duty);
+  r.send({ t: 'p', x: 100, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 }); c.send({ t: 'p', x: 105, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  r.send({ t: 'law', a: 'stars', n: 2 });
+  const w = await c.next(m => m.t === 'wanted' && m.l.some(x => x[1] === 'Robber_Tee'), 5000); assert.equal(w.l.find(x => x[1] === 'Robber_Tee')[2], 2);
+  const j = await c.next(m => m.t === 'w' && m.j && m.j.some(x => x.n === 'Robber_Tee' && x.w === 2), 5000); assert.ok(j);
+  c.send({ t: 'law', a: 'arrest', i: rme.id }); assert.match((await c.next(m => m.t === 'err' && m.w === 'law')).m, /Knock/);
+  r.send({ t: 'law', a: 'surrender' }); await r.next('lawhands');
+  c.send({ t: 'p', x: 101.5, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 }); await new Promise(res => setTimeout(res, 250));
+  c.send({ t: 'law', a: 'arrest', i: rme.id }); assert.equal((await r.next('arrested')).by, 'Officer_Ojo');
+  assert.equal((await c.next('arrestok')).reward, 3000);
+  void cme; c.close(); r.close();
+});

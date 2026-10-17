@@ -29,6 +29,8 @@ const SCHEMA = [
   // v4: the motor park union: the park (its chairman, ticket, crew) and its members (respect, tickets)
   `CREATE TABLE park(id TEXT PRIMARY KEY, data TEXT NOT NULL);
    CREATE TABLE park_m(uid INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, park TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(uid, park));`,
+  // v5: the police: who is in the force, their arrests and rank, suspensions
+  `CREATE TABLE law(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL);`,
 ];
 
 export function openDb(file) {
@@ -70,6 +72,8 @@ export function openDb(file) {
     backAdd: q('INSERT INTO mkback(uid,crop,qty) VALUES(?,?,?)'),
     backOf: q('SELECT * FROM mkback WHERE uid=?'),
     backDel: q('DELETE FROM mkback WHERE uid=?'),
+    lawGet: q('SELECT * FROM law WHERE uid=?'),
+    lawPut: q('INSERT INTO law(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data'),
     parkGet: q('SELECT * FROM park WHERE id=?'),
     parkPut: q('INSERT INTO park(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data'),
     pmAll: q('SELECT m.uid, m.data, u.name FROM park_m m JOIN users u ON u.id=m.uid WHERE m.park=?'),
@@ -113,6 +117,8 @@ export function openDb(file) {
     mkDel: id => S.mkDel.run(id),
     backAdd: (uid, crop, qty) => S.backAdd.run(uid, crop, qty),
     backTake: uid => { const r = S.backOf.all(uid); if (r.length) S.backDel.run(uid); return r; },
+    lawGet: uid => S.lawGet.get(uid) || null,
+    lawPut: (uid, data) => S.lawPut.run(uid, data),
     parkGet: id => S.parkGet.get(id) || null,
     parkPut: (id, data) => S.parkPut.run(id, data),
     pmAll: park => S.pmAll.all(park),

@@ -4,6 +4,7 @@
 import { createBiz } from './biz.js';
 import { createPark } from './park.js';
 import { createPvp } from './pvp.js';
+import { createLaw } from './law.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
 export const PROTO = 1;
@@ -51,10 +52,14 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   const note = (uid, m) => { const C = online.get(uid); if (C && C.user) send(C, { t: 'note', m }); };
   const biz = createBiz({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give, credit, findUser } });
   // the park union: a badge on your name (agbero, chairman) that the people near you see
-  const badge = (uid, b) => { const C = online.get(uid); if (C && C.p && C.p.bd !== b) { C.p.bd = b; C.p.lv++; C.p.ver++; } };
+  // (on duty, the police uniform: 'p'; else the union's vest: 'a', or the chairman's: 'c')
+  const badgeOf = uid => { const C = online.get(uid); return C && law.onDuty(C) ? 'p' : park.badge(uid); };
+  const badge = uid => { const C = online.get(uid); if (!C || !C.p) return; const b = badgeOf(uid); if (C.p.bd !== b) { C.p.bd = b; C.p.lv++; C.p.ver++; } };
   const park = createPark({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give, credit, note, badge } });
   // players fighting players: the server decides the blows and the knock-outs
-  const pvp = createPvp({ now, log, ctx: { online, send: (C, o) => send(C, o), spend, give, onKo: (A, D) => park.pvpKo(A, D) } });
+  // the police: stars, the force, arrests
+  const law = createLaw({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, badge } });
+  const pvp = createPvp({ now, log, ctx: { online, send: (C, o) => send(C, o), spend, give, onKo: (A, D) => { park.pvpKo(A, D); law.ko(A, D); }, onHit: (A, D) => law.hit(A, D), noRob: A => law.noRob(A) } });
 
   const send = (C, o) => { if (C.ws.open) C.ws.send(JSON.stringify(o)); };
   const err = (C, w, m) => send(C, { t: 'err', w, m });
@@ -86,7 +91,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     C.seen = new Map();
     db.seen(u.id, t);
     send(C, { t: 'me', tok, id: C.p.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, n: online.size });
-    biz.hello(C); park.hello(C); pvp.hello(C);
+    biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C);
     log('in', u.name, online.size);
   }
   function leaveWorld(C) {
@@ -233,7 +238,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function mk(C, m) { C.bzLim = C.bzLim || new Bucket(12, 3); if (!C.bzLim.take()) return; if (typeof m.a === 'string') biz.market(C, m); }
   function pk(C, m) { C.pkLim = C.pkLim || new Bucket(10, 2); if (!C.pkLim.take()) return; if (typeof m.a === 'string') park.handle(C, m); }
   function hit(C, m) { C.hitLim = C.hitLim || new Bucket(8, 4); if (!C.hitLim.take()) return; pvp.hit(C, m); }
-  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit };
+  function lawMsg(C, m) { C.lawLim = C.lawLim || new Bucket(10, 2); if (!C.lawLim.take()) return; if (typeof m.a === 'string') law.handle(C, m); }
+  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit, law: lawMsg };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };
@@ -274,7 +280,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       const S = C.seen, ids = new Set(), j = [], p = [], l = [];
       for (const [, Q] of near) {
         ids.add(Q.id); let s = S.get(Q.id);
-        if (!s || s.lv !== Q.lv) { j.push({ i: Q.id, n: Q.name, c: Q.look && Q.look.c, f: Q.look ? Q.look.f : 0, g: Q.look ? Q.look.g : 'm', b: Q.bd || '' }); if (!s) S.set(Q.id, s = { v: -1, lv: Q.lv }); s.lv = Q.lv; }
+        if (!s || s.lv !== Q.lv) { j.push({ i: Q.id, n: Q.name, c: Q.look && Q.look.c, f: Q.look ? Q.look.f : 0, g: Q.look ? Q.look.g : 'm', b: Q.bd || '', w: Q.ws || 0 }); if (!s) S.set(Q.id, s = { v: -1, lv: Q.lv }); s.lv = Q.lv; }
         if (s.v !== Q.ver) { p.push([Q.id, Q.x, Q.y, Q.z, Q.r, Q.a, Q.s, Q.v, Q.vc, Q.q]); s.v = Q.ver; }
       }
       for (const id of S.keys()) if (!ids.has(id)) { l.push(id); S.delete(id); }
@@ -297,10 +303,10 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       let bt = now();
       timers = [setInterval(tick, TICK), setInterval(slow, 5000), setInterval(pings, 25000), setInterval(prune, 10 * 60e3),
         setInterval(() => { const t = now(); biz.tick((t - bt) / 1000); bt = t; }, 5000), setInterval(() => biz.flush(), 15000), setInterval(() => biz.pushAll(), 2000),
-        setInterval(() => park.tick(), 1000), setInterval(() => park.flush(), 15000)];
+        setInterval(() => park.tick(), 1000), setInterval(() => park.flush(), 15000), setInterval(() => law.tick(), 2000)];
     },
     stop() { timers.forEach(clearInterval); timers = []; biz.flush(); park.flush(); for (const C of conns) { flushCash(C); C.ws.close(1012, 'server restarting'); } },
-    biz, park, pvp,
+    biz, park, pvp, law,
     tick, slow,
     get online() { return online.size; },
     get conns() { return conns.size; },
