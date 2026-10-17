@@ -20,7 +20,7 @@ import { createGuide } from './guide.js?v=9990bba336';
 import { createFarm } from './farm.js?v=9990bba336';
 import { createBusiness } from './business.js?v=9990bba336';
 import { createOnline } from './online.js?v=9990bba336';
-import { createPark as createUnion, wearVest } from './park.js?v=9990bba336';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=9990bba336';
 import { MapView } from './mapview.js?v=9990bba336';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
@@ -3531,9 +3531,10 @@ function parkExtLoad(i,left){ const pk=SITES.park; if(!pk||!pk.bays[i]) return; 
 // ---- the park union's fight (online): at the park meeting the chairman's crew (union vests) and the challenger's boys
 // (red caps) brawl in the yard. The server counts who is still standing; the game shows it, and the boys you knock down
 // yourself count on the server.
-const CREW={on:false,t:-99,list:[],mine:null,gone:[]};
+const CREW={on:false,t:-99,list:[],mine:null,gone:[],made:0};
 const crewCap=()=>Q===QUAL.low?4:Q===QUAL.medium?5:6;
-function crewWake(side,x,z){ const q=gangPed(); if(!q) return null; wakePed(q,'areaboy'); const c={x,z}; resolveCircle(c,.34);
+function crewWake(side,x,z){ let q=gangPed(); if(!q&&CREW.made<crewCap()*2+2){ q=newPed('areaboy','off'); peds.push(q); CREW.made++; } if(!q) return null;   // (the park has no spare people of its own: a few more for the crews)
+  wakePed(q,'areaboy'); const c={x,z}; resolveCircle(c,.34);
   Object.assign(q,{x:c.x,z:c.z,y:groundY(c.x,c.z),state:'brawl',brawl:{side,foe:null,pick:-9,t:0,atkT:mrr(.5,1.4),out:false,react:0,hitT:0,cheer:0},hat:side==='b'?'red':null,uvest:side==='a'?'o':null,
     hp:42,atk:null,speed:0,yaw:Math.atan2(CREW.at.x-c.x,CREW.at.z-c.z),beaten:false,kos:0,cop:0,crook:null,spot:null});
   CREW.list.push(q); return q; }

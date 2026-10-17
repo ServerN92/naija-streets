@@ -24,7 +24,7 @@ const DESK_R = 2.3, TICKET_R = 6, RANKS = ['Agbero', 'Senior agbero', 'Head agbe
 
 // ---- the union vest: a shell over the body's own torso, so it moves with every body exactly (orange for agberos,
 // green for the chairman), with two silver bands. Made once per body shape and shared.
-const VEST_COL = { o: [[1, .38, .02], [.82, .84, .86]], g: [[.07, .42, .2], [.93, .74, .2]] };
+const VEST_COL = { o: [[1, .16, .004], [.62, .65, .68]], g: [[.014, .2, .062], [.75, .43, .03]] };   // (linear: hi-vis orange #ff6c0d, union green #1d7a46; silver and gold bands)
 const vestCache = new Map();
 function vestGeo(THREE, sm, kind) {
   const key = sm.geometry.uuid + kind; if (vestCache.has(key)) return vestCache.get(key);
@@ -39,7 +39,7 @@ function vestGeo(THREE, sm, kind) {
         const M = new THREE.Matrix4(), hip = new THREE.Vector3().setFromMatrixPosition(M.copy(inv[iH]).invert()), neck = new THREE.Vector3().setFromMatrixPosition(M.copy(inv[iN]).invert());
         const up = neck.clone().sub(hip), L = up.length(); up.normalize();
         const kindOf = bones.map(b => /Arm|Hand|Neck|Head|Leg|Foot|Toe/.test(b.name) ? 0 : /Spine|Chest/.test(b.name) ? 1 : /Shoulder|Clavicle/.test(b.name) ? 2 : /Hips|Pelvis/.test(b.name) ? 3 : 0);
-        const BM = sm.bindMatrix, IB = sm.bindMatrixInverse, NM = new THREE.Matrix3().getNormalMatrix(BM);
+        const BM = sm.bindMatrix, IB = new THREE.Matrix4().copy(BM).invert(), NM = new THREE.Matrix3().getNormalMatrix(BM);
         const n = P.count, okV = new Uint8Array(n), tV = new Float32Array(n), W = new THREE.Vector3(), Nn = new THREE.Vector3();
         for (let i = 0; i < n; i++) {
           let best = -1, bw = 0, arm = 0;
@@ -52,7 +52,7 @@ function vestGeo(THREE, sm, kind) {
         for (let f = 0; f < tris; f++) { const a = idx ? idx[f * 3] : f * 3, b = idx ? idx[f * 3 + 1] : f * 3 + 1, c = idx ? idx[f * 3 + 2] : f * 3 + 2; if (okV[a] && okV[b] && okV[c]) pick.push(a, b, c); }
         if (pick.length > 300) {
           const m = pick.length, pos = new Float32Array(m * 3), nor = new Float32Array(m * 3), col = new Float32Array(m * 3), si = new Uint16Array(m * 4), sw = new Float32Array(m * 4);
-          const [base, band] = VEST_COL[kind] || VEST_COL.o, off = .016;
+          const [base, band] = VEST_COL[kind] || VEST_COL.o, off = .024 * L / .5;   // (in the body's own units: hips to neck is about half a metre)
           for (let j = 0; j < m; j++) {
             const i = pick[j]; W.fromBufferAttribute(P, i).applyMatrix4(BM); Nn.fromBufferAttribute(N, i).applyMatrix3(NM).normalize();
             W.addScaledVector(Nn, off).applyMatrix4(IB); pos.set([W.x, W.y, W.z], j * 3);
@@ -73,13 +73,14 @@ function vestGeo(THREE, sm, kind) {
   vestCache.set(key, out); return out;
 }
 const vestMat = {};
+export function vestInfo(THREE, obj, kind = 'o') { const out = []; obj.traverse(o => { if (o.isSkinnedMesh) { const g = vestGeo(THREE, o, kind); out.push([o.name, o.visible, o.geometry.attributes.position.count, !!o.geometry.index, g ? g.attributes.position.count : 0, g ? +g.userData.r.toFixed(3) : 0, o.material && o.material.name]); } }); return out; }
 // put the vest on a body (any object with skinned meshes): returns the meshes added (remove them to take it off)
 export function wearVest(THREE, obj, kind) {
   if (!obj || !kind) return [];
   const cand = [];
   obj.traverse(o => { if (o.isSkinnedMesh && o.visible) { let v = true; for (let p = o.parent; p && p !== obj; p = p.parent) if (!p.visible) v = false; if (v) { const g = vestGeo(THREE, o, kind); if (g) cand.push([o, g]); } } });
   if (!cand.length) return [];
-  const most = Math.max(...cand.map(([, g]) => g.attributes.position.count)), outer = cand.filter(([, g]) => g.attributes.position.count > most * .45).sort((a, b) => b[1].userData.r - a[1].userData.r)[0];
+  const most = Math.max(...cand.map(([, g]) => g.attributes.position.count)), outer = cand.filter(([, g]) => g.attributes.position.count > most * .12).sort((a, b) => b[1].userData.r - a[1].userData.r)[0];
   const [sm, g] = outer;
   const mat = vestMat[kind] || (vestMat[kind] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .62, metalness: 0, side: THREE.DoubleSide }));
   const m = new THREE.SkinnedMesh(g, mat); m.name = 'union_vest'; m.bindMode = sm.bindMode; m.bind(sm.skeleton, sm.bindMatrix);
@@ -194,7 +195,7 @@ export function createPark(api) {
     return `Collect the ticket · ${naira(Math.round(Lo.price * share / 10) * 10)} for you`;
   }
   function action() {
-    if (atDesk()) { if (!api.signedIn()) { api.openSignIn(); return true; } MENU = true; VIEW = 'main'; api.send({ t: 'pk', a: 'info' }); refresh(); return true; }
+    if (atDesk()) { if (!api.signedIn()) { api.openSignIn(); return true; } MENU = true; VIEW = 'main'; api.send({ t: 'pk', a: 'info' }); refresh(true); return true; }
     const Lo = loadNear(); if (!Lo) return false;
     if (!api.signedIn()) { api.openSignIn(); return true; }
     if (!member()) { api.toast('Only union agberos collect tickets. Join at the office in the yard.', 3); return true; }
@@ -205,7 +206,8 @@ export function createPark(api) {
   let MENU = false, VIEW = 'main';
   const send = (a, o = {}) => api.send({ t: 'pk', a, ...o });
   const mins = ms => Math.max(1, Math.ceil(ms / 60e3));
-  function refresh() {
+  function refresh(force) {
+    if (!force && !(MENU && api.menuOpen())) return;   // (closed meanwhile: leave it closed)
     const P = ST.p, nx = P ? Math.max(0, (P.nextLocal || 0) - performance.now()) : 0;
     const note = !P ? 'Connecting…' : `Chairman ${P.npc ? P.ch.replace(/^Chairman /, '') : P.ch} · ticket ${naira(P.price)} · ${P.members} in the union · next meeting ${api.clockAt(P.nextAt)} (${mins(nx)} min)${P.decl ? ` · ${P.decl.n} declared with ${P.decl.b} boys` : ''}${ST.fight ? ' · THE FIGHT IS ON' : ''}`;
     api.openMenu('MUSHIN PARK UNION', note, rows);
