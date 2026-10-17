@@ -23,6 +23,7 @@ export const PARK = {
   fightMax: 180e3, declBefore: 60e3,
   load: [20e3, 34e3], window: 22e3,    // a danfo starts loading every 20 to 34 s; its ticket can be collected for 22 s
   reach: 8, sackDay: 5, idleDays: 3, kosPerFight: 6,
+  rate: .02,                           // in the fight: each second a side loses a boy with this chance for every boy (or player) on the other side
 };
 // for testing on a developer's machine only: a quick meeting and low ranks (never set on the real server)
 export function tune(env) {
@@ -30,6 +31,7 @@ export function tune(env) {
   if (+env.PARK_FIGHT_MS > 0) PARK.fightMax = +env.PARK_FIGHT_MS;
   if (env.PARK_RANKS) { const r = String(env.PARK_RANKS).split(',').map(Number); if (r.length === 3 && r.every(Number.isFinite)) r.forEach((v, i) => { PARK.ranks[i][0] = v; }); }
   if (+env.PARK_WINDOW_MS > 0) PARK.window = +env.PARK_WINDOW_MS;
+  if (+env.PARK_RATE > 0) PARK.rate = +env.PARK_RATE;
   if (+env.PARK_DECL_BEFORE_MS >= 0 && env.PARK_DECL_BEFORE_MS !== undefined) PARK.declBefore = +env.PARK_DECL_BEFORE_MS;
 }
 // where things are: the yard, the bays (the same order as in the game, src/game.js)
@@ -158,7 +160,7 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
       if (s === 'a') pa++; else pb++;
     }
     F.here = { a: pa, b: pb };
-    const powA = F.a * 1.15 + 2 * pa, powB = F.b + 2 * pb, K = .02;
+    const powA = F.a * 1.15 + 2 * pa, powB = F.b + 2 * pb, K = PARK.rate;
     if (F.a > 0 && rand() < Math.min(.6, K * powB)) { F.a--; F.ka++; }
     if (F.b > 0 && rand() < Math.min(.6, K * powA)) { F.b--; F.kb++; }
     if (F.a <= 0 || F.b <= 0 || t >= F.end) endFight(t); else pushFight();
