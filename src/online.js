@@ -68,7 +68,7 @@ export function createOnline(api) {
       case 'bz': case 'bzd': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
-      case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': api.law && api.law(m); break;
+      case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;

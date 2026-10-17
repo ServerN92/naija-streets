@@ -12,20 +12,20 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=16e2b486d2';
-import * as C2 from './char2.js?v=16e2b486d2';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=16e2b486d2';
-import { createPhone } from './phone.js?v=16e2b486d2';
-import { createGuide } from './guide.js?v=16e2b486d2';
-import { createFarm } from './farm.js?v=16e2b486d2';
-import { createBusiness } from './business.js?v=16e2b486d2';
-import { createOnline } from './online.js?v=16e2b486d2';
-import { createPolice } from './police.js?v=16e2b486d2';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=16e2b486d2';
-import { MapView } from './mapview.js?v=16e2b486d2';
+import * as CLOCK from './clock.js?v=5684f8075a';
+import * as C2 from './char2.js?v=5684f8075a';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=5684f8075a';
+import { createPhone } from './phone.js?v=5684f8075a';
+import { createGuide } from './guide.js?v=5684f8075a';
+import { createFarm } from './farm.js?v=5684f8075a';
+import { createBusiness } from './business.js?v=5684f8075a';
+import { createOnline } from './online.js?v=5684f8075a';
+import { createPolice } from './police.js?v=5684f8075a';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=5684f8075a';
+import { MapView } from './mapview.js?v=5684f8075a';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='16e2b486d2';
+const BUILD='5684f8075a';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -7223,7 +7223,7 @@ POLICE=createPolice({ naira, player:()=>({x:player.x,z:player.z}), mode:()=>mode
   spot:(cast,x,z,ry,acts)=>{ const sp={type:'police_desk',x,z,m:[{cast,acts,dx:0,dz:0,ry}],on:false,peds:[],boarding:0,hailV:null}; SPOTS.push(sp); return sp; },
   nearby:()=>ON?ON.nearby():[], camYaw:()=>camState.yaw, stars:()=>starCount(),
   handsUp:()=>{ if(hero&&hero.act.hands_up&&mode==='walk'&&!FIGHT.ko) heroDo('hands_up',{force:true,pause:true}); setTimeout(()=>{ if(hero&&hero.ov&&hero.ov.name==='hands_up'&&!COPS.bust) heroEnd(); },12000); },
-  arrested:()=>{ FIGHT.heat=0; CASE.on=false; releaseCop(); busted(); } }); }catch(e){ console.warn('online could not start',e); ON=null; }   // the game always plays, online or not
+  arrested:()=>{ FIGHT.heat=0; CASE.on=false; releaseCop(); busted(); }, clearHeat:()=>{ FIGHT.heat=0; CASE.on=false; releaseCop(); }, cash:()=>CASH.n, closeMenu }); }catch(e){ console.warn('online could not start',e); ON=null; }   // the game always plays, online or not
 if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
   if(!/[?&]perf=show/.test(location.search)) el.hidden=true;   // numbers stay available to tests; shown only with ?perf=show
   document.body.appendChild(el); let fr=[], tLast=performance.now();
