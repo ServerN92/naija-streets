@@ -42,20 +42,34 @@ export function createPolice(api) {
   function prompt() {
     if (atDesk()) return !api.signedIn() ? 'Police front desk · sign in online to join the police' : ST.me && ST.me.cop ? `Police front desk · ${ST.me.rank} ${api.myName()} · ${duty() ? 'on duty' : 'off duty'}` : 'Police front desk · join the police';
     const a = arrestable(); if (a) return a.a === 'k' ? `Arrest ${a.n} ${stars(a.w)}` : `${a.n} ${stars(a.w)} is wanted · knock am down, then arrest`;
-    const o = officer(); if (o) return `Surrender to ${o.n} (police)`;
+    const o = officer(); if (o) return `Police: ${o.n} · surrender or settle`;
     return null;
   }
   function action() {
     if (atDesk()) { if (!api.signedIn()) { api.openSignIn(); return true; } MENU = true; api.send({ t: 'law', a: 'info' }); refresh(true); return true; }
     const a = arrestable(); if (a) { api.send({ t: 'law', a: 'arrest', i: a.id }); return true; }
-    const o = officer(); if (o) { api.send({ t: 'law', a: 'surrender' }); return true; }
+    const o = officer(); if (o) { OFF = o; MENU = 'cop'; refresh(true); return true; }
     return false;
   }
 
   // ---- the desk menu
   let MENU = false, VIEW = 'main';
+  let OFF = null, ASK = null;
   function refresh(force) {
     if (!force && !(MENU && api.menuOpen())) return;
+    if (MENU === 'cop' && OFF) {   // a wanted player in front of an officer: give up, or settle him
+      const n = Math.max(1, myStars()), opts = [...new Set([Math.max(2000, n * 2000), Math.max(4000, n * 4000), Math.max(7000, n * 7000)].map(v => Math.min(50000, v)))];
+      return api.openMenu(`OFFICER ${OFF.n.toUpperCase()}`, `You are wanted ${stars(myStars())}. Surrender, or try to settle am (he fit refuse, and X-Squad dey around)`, () => [
+        { name: 'Surrender', sub: 'Hands up: he can cuff you at once', btn: 'HANDS UP', act() { api.send({ t: 'law', a: 'surrender' }); api.closeMenu(); } },
+        ...opts.map(v => ({ name: `Settle am with ${naira(v)}`, sub: '"Oga, make we settle this thing"', btn: naira(v), off: api.cash() < v, act() { api.send({ t: 'law', a: 'settle', i: OFF.id, n: v }); api.closeMenu(); } })),
+        { name: 'Run!', sub: 'Maybe he no go catch you', btn: 'RUN', act() { api.closeMenu(); } }]);
+    }
+    if (MENU === 'ask' && ASK) {   // an officer: somebody wants to settle you
+      const A = ASK, answer = yes => { if (ASK === A) api.send({ t: 'law', a: yes ? 'settleok' : 'settleno', i: A.i }); else api.toast('That offer is gone.', 2); ASK = null; api.closeMenu(); };
+      return api.openMenu('SETTLE?', `${A.n} ${stars(A.s)} wants to settle you with ${naira(A.amt)}. Take it and he walks free. X-Squad catches some officers.`, () => [
+        { name: `Collect the ${naira(A.amt)}`, sub: 'His stars are gone', btn: 'COLLECT', act() { answer(true); } },
+        { name: 'Refuse', sub: '"I no dey collect bribe. You dey under arrest."', btn: 'REFUSE', act() { answer(false); } }]);
+    }
     const M = ST.me; api.openMenu('NIGERIA POLICE · MUSHIN', !M ? 'Connecting…' : M.cop ? `${M.rank} ${api.myName()} · ${M.arrests} arrests · today ${naira(M.today)} · all time ${naira(M.earned)}${M.ban ? ` · suspended ${Math.ceil(M.ban / 36e5)} h more` : ''}` : 'Catch the wanted players of Lagos', rows);
   }
   function rows() {
@@ -91,6 +105,8 @@ export function createPolice(api) {
     else if (m.t === 'lawcuff') { ST.cuff = { i: m.i, n: m.n, t: performance.now() }; api.toast(`${m.n} is down! Arrest am now: stand by am and press E.`, 3); }
     else if (m.t === 'lawhands') { api.handsUp(); api.toast('You put your hands up. The officer can cuff you now.', 2.6); }
     else if (m.t === 'arrested') { api.toast(`${m.by} arrested you. You are going to the cell.`, 3.4); api.arrested(); }
+    else if (m.t === 'settleask') { ASK = { ...m, t0: performance.now() }; if (!api.menuOpen() || MENU === 'ask') { MENU = 'ask'; refresh(true); } else api.toast(`${m.n} wants to settle you with ${naira(m.amt)}. Close your menu to answer.`, 3); }
+    else if (m.t === 'settled') { if (m.no) api.toast(m.broke ? 'You no get the money again.' : `${m.by} refused your money!`, 3); else { api.clearHeat(); api.toast(`You settled ${m.by} with ${naira(m.amt)}. "Oya go. I never see you."${m.caught ? ' X-Squad just caught the officer!' : ''}`, 3.6); } }
     else if (m.t === 'arrestok') api.toast(`You arrested ${m.n} ${stars(m.s)}!${m.reward ? ` The force pays you ${naira(m.reward)}.` : ' (No pay: you arrested them just now.)'}${m.up ? ` You are a ${m.rank} now!` : ''}`, 3.6);
     else if ((m.t === 'err' || m.t === 'ok') && m.w === 'law') { api.toast(m.m, 3); if (MENU) setTimeout(() => refresh(), 60); }
   }
@@ -105,6 +121,8 @@ export function createPolice(api) {
     else ST.sent = -1;
     drawBox();
     if (MENU && !api.menuOpen()) { MENU = false; VIEW = 'main'; }
+    if (ASK && performance.now() - ASK.t0 > 25e3) { ASK = null; if (MENU === 'ask' && api.menuOpen()) api.closeMenu(); }
+    if (ASK && !api.menuOpen()) { MENU = 'ask'; refresh(true); }
   }
   // the minimap: the wanted players, for the police on duty
   const marks = () => duty() ? ST.wanted.filter(w => !w[6]).map(w => ({ x: w[3], z: w[4] })) : [];

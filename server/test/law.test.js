@@ -58,3 +58,26 @@ test('stars wear off, street stars count, a bad cop is suspended and wanted, wan
   T.adv(LAW.ban + 1000); T.law.handle(a, { a: 'duty', on: true }); assert.equal(T.badges.get(a.user.id), 'p');
   T.adv(PVP.guard); T.pvp.hit(b, { i: a.p.id, k: 'jab' }); assert.equal(T.law.stars(b), 1);
 });
+
+test('a wanted player settles an officer: the money goes, the stars go; a refused offer changes nothing', () => {
+  const T = setup(), w = T.mk('Wale', 30000, 0, 0, 0), k = T.mk('Officer_B', 0, 0, 3, Math.PI);
+  for (const C of [w, k]) { T.law.hello(C); T.pvp.hello(C); }
+  T.law.handle(k, { a: 'join' }); T.law.handle(k, { a: 'duty', on: true });
+  T.law.handle(w, { a: 'settle', i: k.p.id, n: 5000 }); assert.match(T.last('Wale', 'err').m, /not wanted/);
+  T.law.handle(w, { a: 'stars', n: 2 });
+  T.law.handle(w, { a: 'settle', i: k.p.id, n: 500 }); assert.match(T.last('Wale', 'err').m, /Settle with/);
+  T.law.handle(w, { a: 'settle', i: k.p.id, n: 6000 }); assert.equal(T.last('Officer_B', 'settleask').amt, 6000);
+  T.law.handle(k, { a: 'settleno', i: w.p.id }); assert.equal(T.last('Wale', 'settled').no, 1); assert.equal(T.law.stars(w), 2); assert.equal(w.cash, 30000);
+  T.law.handle(w, { a: 'settle', i: k.p.id, n: 6000 });
+  const rnd = Math.random; Math.random = () => .5;   // the X-Squad was not watching
+  T.law.handle(k, { a: 'settleok', i: w.p.id }); Math.random = rnd;
+  assert.equal(w.cash, 24000); assert.equal(k.cash, 6000); assert.equal(T.law.stars(w), 0); assert.equal(T.last('Wale', 'settled').amt, 6000);
+  // caught by the X-Squad: the officer loses the money and his duty
+  T.law.handle(w, { a: 'stars', n: 1 }); T.law.handle(w, { a: 'settle', i: k.p.id, n: 3000 });
+  Math.random = () => .01; T.law.handle(k, { a: 'settleok', i: w.p.id }); Math.random = rnd;
+  assert.equal(k.cash, 6000); assert.equal(w.cash, 21000); assert.match(T.last('Officer_B', 'note').m, /X-Squad/); assert.equal(T.badges.get(k.user.id), '');
+  // an old offer is gone
+  T.law.handle(k, { a: 'join' }); T.adv(LAW.settle.ban + 1); T.law.handle(k, { a: 'duty', on: true });
+  T.law.handle(w, { a: 'stars', n: 1 }); T.law.handle(w, { a: 'settle', i: k.p.id, n: 3000 }); T.adv(LAW.settle.wait + 1);
+  T.law.handle(k, { a: 'settleok', i: w.p.id }); assert.match(T.last('Officer_B', 'err').m, /gone/);
+});

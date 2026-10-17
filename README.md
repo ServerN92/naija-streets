@@ -366,6 +366,15 @@ On some side streets two area boys hold a rope across the road with a ₦200 TO 
 rope. Walk past without paying and they fight you (their friends join); drive through and the rope breaks: they chase
 you throwing stones, then give up and tie it again. Traffic pays and passes.
 
+## Police checkpoints
+Three police roadblocks stand on the busy roads of Mushin by day (drums, a striped plank, a plank of nails, the officers'
+umbrella and bench; built in Blender, `tools/blender_checkpoint.py`). Drive up and they wave you down: stop next to them
+and press E. "Roger" them (₦100 okada or keke, ₦200 a car, ₦300 a danfo or bus, ₦500 a tanker or Benz), or show your
+papers: in your own motor they may let you go, or say your papers "don expire" (settle ₦1,000 or argue). In a motor that
+is not yours they know you stole it. Carry guns and they search you: settle ₦5,000 or lose the guns. Wanted, and they
+come for you. Drive past without stopping: a star, and over the nails at speed you damage the motor. On foot they
+sometimes stop and search you (settle ₦200). The Chairman's card from Under Bridge gets you waved through.
+
 ## On the street
 People gisting in a group get a speech bubble over their heads, a quarrel a red one, a phone call a ringing phone.
 The dead are taken away as soon as you look away.

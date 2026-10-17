@@ -13,6 +13,7 @@ export const LAW = {
   koStars: 1, copKoStars: 2, copHitStars: 1, badCopStars: 2, max: 5, decay: 150e3,
   reward: { srv: 5000, local: 1500 }, rewardCap: 25000, dayCap: 80000, pairCool: 30 * 60e3,
   arrestR: 3.2, cuffWin: 12e3, surrender: 12e3, dutyMaxStars: 1, ban: 24 * 3600e3,
+  settle: { min: 2000, max: 50000, wait: 25e3, near: 7, caught: .1, ban: 12 * 3600e3 },   // a wanted player settles an officer: X-Squad catches 1 in 10
   ranks: [[0, 'Constable'], [3, 'Corporal'], [10, 'Sergeant'], [25, 'Inspector'], [60, 'ASP'], [120, 'CSP']],
 };
 const dayKey = t => new Date(t + 3600e3).toISOString().slice(0, 10);
@@ -84,6 +85,9 @@ export function createLaw({ db, now = () => Date.now(), log = () => {}, ctx }) {
         ok(C, on ? `On duty, ${rankName(d.arrests)} ${C.user.name}. The wanted list is on your screen.` : 'Off duty.'); pushWanted(); return me(C);
       }
       case 'arrest': return arrest(C, m);
+      case 'settle': return settleAsk(C, m);
+      case 'settleok': return settleAnswer(C, m, true);
+      case 'settleno': return settleAnswer(C, m, false);
     }
   }
   function byId(id) { for (const C of ctx.online.values()) if (C.p && C.p.id === id) return C; return null; }
@@ -110,6 +114,37 @@ export function createLaw({ db, now = () => Date.now(), log = () => {}, ctx }) {
     ctx.send(A, { t: 'arrestok', i: Q.id, n: D.user.name, s: n, reward, rank: rankName(d.arrests), up: rankName(d.arrests) !== r0 });
     log('arrest', A.user.name, '->', D.user.name, n, reward);
     me(A); pushWanted();
+  }
+
+  // ---- "settle": a wanted player offers an officer on duty money to forget them
+  function settleAsk(W, m) {
+    const t = now(), K = Number.isInteger(m.i) ? byId(m.i) : null, n = Number.isInteger(m.n) ? m.n : 0, S2 = LAW.settle;
+    if (!K || K === W || !onDuty(K)) return err(W, 'That is not a police officer on duty.');
+    if (stars(W, t) < 1) return err(W, 'You are not wanted. Nobody to settle.');
+    if (n < S2.min || n > S2.max) return err(W, `Settle with ₦${S2.min.toLocaleString('en-NG')} to ₦${S2.max.toLocaleString('en-NG')}.`);
+    if (W.cash < n) return err(W, 'You do not have that much on you.');
+    const P = W.p, Q = K.p; if (!P || !Q || !P.has || !Q.has || Math.hypot(P.x - Q.x, P.z - Q.z) > S2.near) return err(W, 'Go closer to the officer.');
+    const s = st(W); if (s.offer && s.offer.until > t) return err(W, 'Wait for the officer to answer.');
+    s.offer = { to: K.p.id, n, until: t + S2.wait };
+    ctx.send(K, { t: 'settleask', i: W.p.id, n: W.user.name, amt: n, s: stars(W, t) });
+    ok(W, `You offered ${K.user.name} ₦${n.toLocaleString('en-NG')}. Wait small.`);
+  }
+  function settleAnswer(K, m, yes) {
+    const t = now(), W = Number.isInteger(m.i) ? byId(m.i) : null; if (!W || !onDuty(K)) return;
+    const s = st(W), o = s.offer; if (!o || o.to !== K.p.id || o.until < t) return err(K, 'That offer is gone.');
+    s.offer = null;
+    if (!yes) { ctx.send(W, { t: 'settled', no: 1, by: K.user.name }); return ok(K, `You refused ${W.user.name}'s money.`); }
+    if (!ctx.spend(W, o.n, 'settled police ' + K.user.name)) { ctx.send(W, { t: 'settled', no: 1, by: K.user.name, broke: 1 }); return err(K, `${W.user.name} does not have the money any more.`); }
+    Object.assign(s, { srv: 0, local: 0, last: 0, cuffT: 0, hands: 0 }); remember(W); refresh(W);
+    const caught = Math.random() < LAW.settle.caught;
+    if (caught) {   // the X-Squad was watching: the money is gone, the officer is suspended
+      const d = K.lawRec || (K.lawRec = recOf(K.user.id)); d.ban = t + LAW.settle.ban; save(K.user.id, d); st(K).duty = false; ctx.badge(K.user.id);
+      ctx.send(K, { t: 'note', m: `X-Squad caught you collecting ₦${o.n.toLocaleString('en-NG')} from ${W.user.name}! They took the money, and you are suspended from duty for 12 hours.` }); me(K);
+    } else ctx.give(K, o.n, 'settle from ' + W.user.name);
+    ctx.send(W, { t: 'settled', by: K.user.name, amt: o.n, caught: caught ? 1 : 0 });
+    if (!caught) ok(K, `${W.user.name} settled you with ₦${o.n.toLocaleString('en-NG')}. You never see am.`);
+    log('settle', W.user.name, '->', K.user.name, o.n, caught ? 'caught' : '');
+    pushWanted();
   }
 
   // ---- every 2 s: stars wear off, and the officers on duty get the wanted list
