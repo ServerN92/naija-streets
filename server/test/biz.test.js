@@ -148,3 +148,28 @@ test('the POS stand: cash in the box, customers withdraw and transfer, the netwo
   const c0 = o.cash, back = POS.price / 2 + b.d.float + b.d.wallet + b.till;
   T.biz.handle(o, { a: 'sell', id: 'pos_3' }); assert.equal(o.cash, c0 + back);
 });
+
+test('the produce market: a farmer sells tomatoes to a buka; the buka cooks cheaper with them; unsold produce goes back', async () => {
+  const { PRODUCE } = await import('../src/biz.js');
+  const T = setup(9), f = T.mk('Farmer_F', 0), o = T.mk('Buka_O', 300000);
+  const paid = []; T.ctx.credit = (uid, n, why, note) => { paid.push([uid, n, note]); const C = [...T.ctx.online.values()].find(c => c.user.id === uid); if (C) C.cash += n; };
+  T.biz.market(f, { a: 'list', crop: 'tomato', n: 10, p: 777 }); assert.equal(T.last('Farmer_F', 'mkerr').m, 'That sale is not right.');
+  T.biz.market(f, { a: 'list', crop: 'tomato', n: 10, p: 1000 }); T.biz.market(f, { a: 'list', crop: 'yam', n: 6, p: 1500 });
+  assert.equal(T.biz.listings().length, 2); assert.equal(T.last('Farmer_F', 'mkmine').l.length, 2);
+  T.biz.pushAll(); const mk = T.last('Buka_O', 'mk'); assert.equal(mk.l.length, 2);
+  const tom = mk.l.find(l => l.c === 'tomato');
+  T.biz.handle(o, { a: 'buy', id: 'buka_2' });
+  T.biz.handle(o, { a: 'produce', id: 'buka_2', lid: tom.id, n: 4 });
+  const b = T.biz.get('buka_2'); assert.equal(b.d.pantry.tomato, 4); assert.equal(f.cash, 4000); assert.match(paid[0][2], /Buka_O bought 4 tomatoes/);
+  assert.equal(T.biz.listings().find(l => l.id === tom.id).qty, 6);
+  const c0 = o.cash; T.biz.handle(o, { a: 'cook', id: 'buka_2', k: 'jollof', n: 10, farm: 1 });
+  assert.equal(o.cash, c0 - 10 * 1500 * .15); assert.equal(b.d.pantry.tomato, 2); assert.equal(b.d.st.jollof, 10);
+  T.biz.handle(o, { a: 'cook', id: 'buka_2', k: 'amala', n: 10, farm: 1 }); assert.match(T.last('Buka_O', 'err').m, /need 2 yams/);
+  // the farmer takes the yams down: they go back to the farm store
+  const yam = T.biz.listings().find(l => l.crop === 'yam'); T.biz.market(f, { a: 'cancel', lid: yam.id }); assert.deepEqual(T.last('Farmer_F', 'mkback').items, [['yam', 6]]);
+  // two days later the rest of the tomatoes go back by themselves
+  T.adv(49 * 3600); T.biz.pushAll(); assert.deepEqual(T.last('Farmer_F', 'mkback').items, [['tomato', 6]]); assert.equal(T.biz.listings().length, 0);
+  // five sales at most at once
+  for (let i = 0; i < 6; i++) T.biz.market(f, { a: 'list', crop: 'cassava', n: 1, p: PRODUCE.cassava.prices[0] });
+  assert.match(T.last('Farmer_F', 'mkerr').m, /5 sales up/);
+});

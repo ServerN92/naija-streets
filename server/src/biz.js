@@ -39,6 +39,14 @@ export const BUKA = {
   rate: .5,                       // customers a real minute at an ordinary spot (before time of day, prices and benches)
   maxOwn: MAX_OWN, priceMin: PRICE_MIN, priceMax: PRICE_MAX,
 };
+// the produce market: farmers sell crops to bukas; a buka cooks cheaper with them (2 for 10 plates, 15% instead of 40%)
+export const PRODUCE = {
+  tomato: { n: 'Tomatoes', unit: 'basket', prices: [600, 1000, 1500] },
+  cassava: { n: 'Cassava', unit: 'bag', prices: [600, 800, 1100] },
+  yam: { n: 'Yams', unit: 'tuber', prices: [1100, 1500, 2000] },
+};
+export const DISH_CROP = { jollof: 'tomato', amala: 'yam', eba: 'cassava', iyan: 'yam' };
+const FARM_COST = .15, PER_TEN = 2, MK_MAX = 5, MK_DAY = 200, MK_AGE = 48 * 3600e3;
 export const BARBER = {
   price: 80000,
   cuts: {
@@ -97,25 +105,28 @@ export function nepa(id, t) {
 const KIND = {
   buka: {
     R: BUKA, items: BUKA.dishes, helper: BUKA.cook,
-    fresh() { const pr = {}, st = {}; for (const k in BUKA.dishes) { pr[k] = BUKA.dishes[k].p; st[k] = 0; } return { pr, st, cook: 0, up: { cap: 0, seat: 0 } }; },
-    fix(d) { for (const k in BUKA.dishes) { if (!(k in d.pr)) d.pr[k] = BUKA.dishes[k].p; if (!(k in d.st)) d.st[k] = 0; } d.up = { cap: 0, seat: 0, ...(d.up || {}) }; },
+    fresh() { const pr = {}, st = {}; for (const k in BUKA.dishes) { pr[k] = BUKA.dishes[k].p; st[k] = 0; } return { pr, st, cook: 0, up: { cap: 0, seat: 0 }, pantry: { tomato: 0, cassava: 0, yam: 0 } }; },
+    fix(d) { for (const k in BUKA.dishes) { if (!(k in d.pr)) d.pr[k] = BUKA.dishes[k].p; if (!(k in d.st)) d.st[k] = 0; } d.up = { cap: 0, seat: 0, ...(d.up || {}) }; d.pantry = { tomato: 0, cassava: 0, yam: 0, ...(d.pantry || {}) }; },
     ready: b => sum(Object.values(b.d.st)) > 0,
     has: (b, k) => (b.d.st[k] | 0) > 0,
     tod(h) { if (h >= 21 || h < 5.5) return .2; if (h < 9) return .9; if (h < 11) return .7; if (h < 15) return 1.5; if (h < 17) return .8; return 1.25; },
     boost: b => BUKA.seat[b.d.up.seat],
     served(b, k) { b.d.st[k]--; },
     spent: d => sum(BUKA.capUp.slice(0, d.up.cap + 1)) + sum(BUKA.seatUp.slice(0, d.up.seat + 1)),
-    mine: b => ({ st: b.d.st, cap: BUKA.cap[b.d.up.cap] }),
+    mine: b => ({ st: b.d.st, cap: BUKA.cap[b.d.up.cap], pantry: b.d.pantry }),
     pubExtra: () => ({}),
-    rules: () => ({ price: BUKA.price, dishes: BUKA.dishes, items: BUKA.dishes, cost: BUKA.cost, phoneFee: PHONE_FEE, takeFee: TAKE_FEE, cap: BUKA.cap, capUp: BUKA.capUp, seat: BUKA.seat, seatUp: BUKA.seatUp, cook: BUKA.cook, helper: BUKA.cook, priceMin: PRICE_MIN, priceMax: PRICE_MAX }),
+    rules: () => ({ price: BUKA.price, dishes: BUKA.dishes, items: BUKA.dishes, cost: BUKA.cost, farmCost: FARM_COST, perTen: PER_TEN, dishCrop: DISH_CROP, produce: PRODUCE, phoneFee: PHONE_FEE, takeFee: TAKE_FEE, cap: BUKA.cap, capUp: BUKA.capUp, seat: BUKA.seat, seatUp: BUKA.seatUp, cook: BUKA.cook, helper: BUKA.cook, priceMin: PRICE_MIN, priceMax: PRICE_MAX }),
     act: {
       cook(C, b, m, X) {
         if (!(m.k in BUKA.dishes) || !Number.isInteger(m.n) || m.n < 1) return;
         const room = BUKA.cap[b.d.up.cap] - sum(Object.values(b.d.st)); const n = Math.min(m.n, room);
         if (n <= 0) return X.err(C, 'Your pots are full. Sell some food first (or get bigger pots).');
-        const cost = Math.round(n * BUKA.dishes[m.k].p * BUKA.cost * (m.far ? 1 + PHONE_FEE : 1));
+        const crop = DISH_CROP[m.k], need = Math.ceil(n * PER_TEN / 10);
+        if (m.farm && (b.d.pantry[crop] | 0) < need) return X.err(C, `You need ${need} ${PRODUCE[crop].n.toLowerCase()} from a farmer for that.`);
+        const cost = Math.round(n * BUKA.dishes[m.k].p * (m.farm ? FARM_COST : BUKA.cost) * (m.far ? 1 + PHONE_FEE : 1));
         if (!X.spend(C, cost, 'cook ' + b.id)) return X.err(C, 'Not enough money for the ingredients.');
-        b.d.st[m.k] += n; X.touch(b); X.ok(C, `${n} plates of ${BUKA.dishes[m.k].n} ready.`);
+        if (m.farm) b.d.pantry[crop] -= need;
+        b.d.st[m.k] += n; X.touch(b); X.ok(C, `${n} plates of ${BUKA.dishes[m.k].n} ready${m.farm ? ', with fresh farm ' + PRODUCE[crop].n.toLowerCase() : ''}.`);
       },
       up(C, b, m, X) {
         const w = m.w === 'seat' ? 'seat' : 'cap', L = b.d.up[w], prices = w === 'seat' ? BUKA.seatUp : BUKA.capUp;
@@ -287,6 +298,54 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     if (changed.length) { const o = JSON.stringify({ t: 'bz', s: changed }); for (const C of ctx.online.values()) if (C.ws.open) C.ws.send(o); }
   }
 
+  // ---- the produce market: farmers put crops up for sale, buka owners buy them for their pantry
+  const MK = new Map(); for (const r of db.mkAll()) MK.set(r.id, { ...r });
+  const mkDay = new Map();   // seller -> {k: the day, n: units put up today}
+  let mkDirty = true, mkPub = '';
+  const mkOf = uid => [...MK.values()].filter(l => l.seller === uid);
+  function mkList() {   // the cheapest dozen of each crop
+    const out = [];
+    for (const c in PRODUCE) out.push(...[...MK.values()].filter(l => l.crop === c).sort((a, b) => a.price - b.price || a.t - b.t).slice(0, 12));
+    return out.map(l => ({ id: l.id, s: l.sname, c: l.crop, q: l.qty, p: l.price }));
+  }
+  const mkMine = C => ctx.send(C, { t: 'mkmine', l: mkOf(C.user.id).map(l => ({ id: l.id, c: l.crop, q: l.qty, p: l.price, t: l.t })) });
+  function giveBack(uid, crop, qty) {   // produce going back to a farmer's store (now if they are online, else when they come)
+    const C = ctx.online.get(uid);
+    if (C && C.user) ctx.send(C, { t: 'mkback', items: [[crop, qty]] }); else db.backAdd(uid, crop, qty);
+  }
+  function market(C, m) {
+    const uid = C.user.id;
+    if (m.a === 'list') {
+      const P = PRODUCE[m.crop]; if (!P || !Number.isInteger(m.n) || m.n < 1 || m.n > 40 || !P.prices.includes(m.p)) return ctx.send(C, { t: 'mkerr', crop: m.crop, n: m.n | 0, m: 'That sale is not right.' });
+      if (mkOf(uid).length >= MK_MAX) return ctx.send(C, { t: 'mkerr', crop: m.crop, n: m.n, m: `You have ${MK_MAX} sales up already. Wait for them to sell, or take one down.` });
+      const t = now(), k = dayKey(t), d = mkDay.get(uid) || { k, n: 0 }; if (d.k !== k) { d.k = k; d.n = 0; }
+      if (d.n + m.n > MK_DAY) return ctx.send(C, { t: 'mkerr', crop: m.crop, n: m.n, m: `You can sell ${MK_DAY} units a day on the market.` });
+      d.n += m.n; mkDay.set(uid, d);
+      const id = db.mkAdd(uid, C.user.name, m.crop, m.n, m.p, t); MK.set(id, { id, seller: uid, sname: C.user.name, crop: m.crop, qty: m.n, price: m.p, t });
+      mkDirty = true; ctx.ok(C, 'bz', `${m.n} ${P.n.toLowerCase()} on the market at ₦${m.p.toLocaleString('en-NG')} each. Buka owners can buy them now.`); mkMine(C);
+    } else if (m.a === 'cancel') {
+      const L = MK.get(m.lid); if (!L || L.seller !== uid) return;
+      MK.delete(L.id); db.mkDel(L.id); mkDirty = true; ctx.send(C, { t: 'mkback', items: [[L.crop, L.qty]] }); mkMine(C);
+    } else if (m.a === 'mine') mkMine(C);
+  }
+  function buyProduce(C, b, m) {   // a buka owner buys from a farmer's sale, into the buka's pantry
+    const L = MK.get(m.lid); if (!L) return ctx.err(C, 'bz', 'That sale is gone. Somebody bought it, or the farmer took it down.');
+    const n = Math.min(Number.isInteger(m.n) && m.n > 0 ? m.n : L.qty, L.qty), P = PRODUCE[L.crop];
+    if ((b.d.pantry[L.crop] | 0) + n > 100) return ctx.err(C, 'bz', 'Your pantry is full of that already.');
+    const cost = n * L.price, own = L.seller === C.user.id;
+    if (!own && !ctx.spend(C, cost, 'produce ' + L.crop + ' from ' + L.sname)) return ctx.err(C, 'bz', 'Not enough money for that.');
+    if (!own) ctx.credit(L.seller, cost, `produce to ${C.user.name}`, `${C.user.name} bought ${n} ${P.n.toLowerCase()} from your farm for ₦${cost.toLocaleString('en-NG')}.`);
+    L.qty -= n; if (L.qty <= 0) { MK.delete(L.id); db.mkDel(L.id); } else db.mkQty(L.id, L.qty);
+    b.d.pantry[L.crop] = (b.d.pantry[L.crop] | 0) + n; touch(b); mkDirty = true; flush();
+    const S2 = ctx.online.get(L.seller); if (S2 && S2.user) mkMine(S2);
+    ctx.ok(C, 'bz', `${n} ${P.n.toLowerCase()} from ${L.sname}'s farm are in your pantry. Cook with them: it costs much less.`);
+  }
+  function mkTick() {
+    const t = now();
+    for (const L of [...MK.values()]) if (t - L.t > MK_AGE) { MK.delete(L.id); db.mkDel(L.id); giveBack(L.seller, L.crop, L.qty); mkDirty = true; }
+    if (mkDirty) { mkDirty = false; const l = mkList(), s2 = JSON.stringify(l); if (s2 !== mkPub) { mkPub = s2; const o = JSON.stringify({ t: 'mk', l }); for (const C of ctx.online.values()) if (C.ws.open) C.ws.send(o); } }
+  }
+
   // ---- what players ask for: {t:'bz', a, id, ...}
   const X = { spend: (...a) => ctx.spend(...a), give: (...a) => ctx.give(...a), touch, err: null, ok: null };
   const A = {
@@ -363,6 +422,7 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     const b = B.get(m.id); if (!b) return;
     if (m.a === 'use' || m.a === 'eat') return use(C, b, m);
     if (m.a === 'send') return sendMoney(C, b, m);
+    if (m.a === 'produce') { if (b.kind !== 'buka') return; if (b.owner !== C.user.id) return ctx.err(C, 'bz', 'This is not your buka.'); return buyProduce(C, b, m); }
     if (m.a === 'buy') return A.buy(C, b);
     const own = A[m.a] || K(b).act[m.a]; if (!own) return;
     if (b.owner !== C.user.id) return ctx.err(C, 'bz', `This is not your ${WORD[b.kind]}.`);
@@ -374,6 +434,9 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     const kinds = {}; for (const k in KIND) kinds[k] = KIND[k].rules();
     ctx.send(C, { t: 'bz', s: [...B.values()].map(pub), all: 1, rules: kinds.buka, kinds });
     for (const b of owned(C.user.id)) ctx.send(C, { t: 'bzd', b: mine(b) });
+    ctx.send(C, { t: 'mk', l: mkList() });
+    const back = db.backTake(C.user.id); if (back.length) ctx.send(C, { t: 'mkback', items: back.map(r => [r.crop, r.qty]) });
+    if (mkOf(C.user.id).length) mkMine(C);
   }
-  return { handle, hello, tick, flush, pushAll, get: id => B.get(id), isOpen };
+  return { handle, hello, tick, flush, pushAll: () => { pushAll(); mkTick(); }, market, get: id => B.get(id), isOpen, listings: () => [...MK.values()] };
 }

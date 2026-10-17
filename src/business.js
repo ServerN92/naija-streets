@@ -59,6 +59,9 @@ export function createBusiness(api) {
   const naira = api.naira;
   const B = {};   // id -> {id, kind, x, z, ry, pub, mine, sign, cv, tex, spots, staffSp}
   let RK = {}, ready = false;
+  const MKT = { l: [], mine: [], lvl: 1 };   // the produce market: the cheapest sales, your own sales, your price level
+  try { MKT.lvl = Math.max(0, Math.min(2, +(localStorage.getItem('naija-mkprice') ?? 1))); } catch (e) { /* ignore */ }
+  const EM = { tomato: '🍅', cassava: '🥔', yam: '🍠' };
   const W = (s, lx, lz) => { const c = Math.cos(s.ry), sn = Math.sin(s.ry); return { x: s.x + lx * c + lz * sn, z: s.z - lx * sn + lz * c }; };
 
   // ---- the places, their boards and their walls
@@ -127,6 +130,10 @@ export function createBusiness(api) {
       if (api.menuOpen() && CUR) refresh();
     } else if (m.t === 'bzd') { const b = B[m.b.id]; if (b) { b.mine = m.b; if (api.menuOpen() && CUR === b) refresh(); } }
     else if (m.t === 'bzate') { const D = RK.buka && RK.buka.items[m.k]; api.heal(40); api.toast(`You chop ${D ? D.n.toLowerCase() : 'food'}. Body don set! +40 health`, 3); }
+    else if (m.t === 'mk') { MKT.l = m.l || []; if (api.menuOpen() && CUR) refresh(); }
+    else if (m.t === 'mkmine') MKT.mine = m.l || [];
+    else if (m.t === 'mkback') { const got = []; for (const [k, n] of m.items || []) { api.farmPut(k, n); got.push(`${n} ${k}`); } if (got.length) api.toast(`Back in your farm store from the market: ${got.join(', ')}.`, 3.5); }
+    else if (m.t === 'mkerr') { if (m.n > 0 && m.crop) api.farmPut(m.crop, m.n); api.toast(m.m, 3); }
     else if (m.t === 'bzsent') api.toast(`Sent ${naira(m.n)} to ${m.to}${m.fee ? ` (fee ${naira(m.fee)})` : ''}.`, 3.5);
     else if (m.t === 'bzcut') { const D = RK.barber && RK.barber.items[m.k]; api.heal(10); api.toast(`Fresh ${D ? D.n.toLowerCase() : 'cut'}! You look clean. +10 health`, 3); }
     else if ((m.t === 'err' || m.t === 'ok') && m.w === 'bz') { api.toast(m.m, 3); if (api.menuOpen() && CUR) setTimeout(refresh, 50); }
@@ -175,8 +182,19 @@ export function createBusiness(api) {
     if (!mineB(b)) return keys.map(k => { const [p, has] = (P.m && P.m[k]) || [items[k].p, 0];
       return { name: items[k].n, sub: b.kind === 'barber' ? (P.open ? 'Fresh cut · +10 health' : 'Closed now') : (has ? 'Hot · +40 health' : 'Finished for now'), btn: naira(p), off: !P.open || !has || cash < p, act() { send('use', { k }); } }; });
     const M = b.mine; if (!M) return [{ name: `Loading your ${KD.word}…`, btn: '…', off: true, act() {} }];
-    if (VIEW === 'cook') return [back(), ...keys.map(k => { const room = M.cap - Object.values(M.st).reduce((s, q) => s + (q | 0), 0), n = Math.min(10, room), cost = Math.round(n * items[k].p * R.cost);
-      return { name: `Cook ${n || 10} plates of ${items[k].n}`, sub: `${M.st[k] | 0} in the pot now`, btn: n ? naira(cost) : 'Full', off: !n || cash < cost, act() { send('cook', { k, n }); } }; })];
+    if (VIEW === 'cook') {
+      const room = M.cap - Object.values(M.st).reduce((s, q) => s + (q | 0), 0), n = Math.min(10, room), pan = M.pantry || {};
+      const farmRows = R.dishCrop ? keys.filter(k => (pan[R.dishCrop[k]] | 0) >= Math.ceil(n * R.perTen / 10) && n > 0).map(k => { const c = R.dishCrop[k], cost = Math.round(n * items[k].p * R.farmCost);
+        return { name: `${EM[c] || ''} Cook ${n} plates of ${items[k].n} with farm ${c === 'cassava' ? 'cassava' : c + 's'}`, sub: `Uses ${Math.ceil(n * R.perTen / 10)} of your ${pan[c]} · much cheaper`, btn: naira(cost), off: cash < cost, act() { send('cook', { k, n, farm: 1 }); } }; }) : [];
+      return [back(), ...farmRows, ...keys.map(k => { const cost = Math.round(n * items[k].p * R.cost);
+        return { name: `Cook ${n || 10} plates of ${items[k].n}`, sub: `${M.st[k] | 0} in the pot now · market ingredients`, btn: n ? naira(cost) : 'Full', off: !n || cash < cost, act() { send('cook', { k, n }); } }; }),
+        { name: 'Buy produce from farmers', sub: `Pantry: ${Object.entries(pan).map(([c, q]) => `${c} ${q}`).join(' · ') || 'empty'}`, btn: 'FARMERS ▸', act() { VIEW = 'farm'; refresh(); } }];
+    }
+    if (VIEW === 'farm') {
+      const L = MKT.l.filter(l => R.produce && R.produce[l.c]);
+      if (!L.length) return [back(), { name: 'No farmer is selling right now', sub: 'Farmers sell from the Oya Farm app on their phone. Check again later.', btn: '…', off: true, act() {} }];
+      return [back(), ...L.slice(0, 9).map(l => ({ name: `${EM[l.c] || ''} ${l.q} ${R.produce[l.c].n.toLowerCase()} · ${l.s}'s farm`, sub: `${naira(l.p)} each · for ${Object.keys(R.dishCrop).filter(k => R.dishCrop[k] === l.c).map(k => items[k].n.split(' ')[0]).join(', ')}`, btn: naira(l.p * l.q), off: cash < l.p * l.q, act() { send('produce', { lid: l.id, n: l.q }); } }))];
+    }
     if (VIEW === 'price') return [back(), ...keys.map(k => { const base = items[k].p, cur = M.pr[k]; const i = STEPS.findIndex(s => Math.round(base * s / 50) * 50 >= cur); const nx = STEPS[(i + 1) % STEPS.length];
       return { name: items[k].n, sub: `usual ${naira(base)} · cheaper sells faster`, btn: `${naira(cur)} ▸`, act() { send('price', { k, p: Math.round(base * nx / 50) * 50 }); } }; })];
     if (VIEW === 'box') return [back(), ...[20000, 50000, 100000].map(n => ({ name: `Put ${naira(n)} in the cash box`, sub: `From your pocket · ${naira(M.float)} in the box now (holds ${naira(M.boxCap)})`, btn: naira(n), off: cash < n || M.float + n > M.boxCap, act() { send('float', { n }); } })),
@@ -227,6 +245,22 @@ export function createBusiness(api) {
   }
   const back = () => ({ name: '‹ Back', sub: '', btn: 'BACK', act() { VIEW = 'main'; refresh(); } });
 
+  // ---- the Oya Farm phone app: sell your crops to buka owners (online)
+  function farmApp(d) {
+    if (!d || !d.sections || !api.farmHas()) return;
+    const R = RK.buka, rows = [];
+    if (!api.signedIn() || !R || !R.produce) { rows.push({ name: '🌐 Sell to buka owners (online)', sub: 'Sign in online: buka owners pay much more than the market for tomatoes, cassava and yams.' }); d.sections.push({ h: 'Online market', rows }); return; }
+    const st = api.farmStore(), P = R.produce, lvlName = ['Cheap', 'Fair', 'Dear'][MKT.lvl];
+    rows.push({ name: `Your price: ${lvlName}`, sub: Object.keys(P).map(c => `${c} ${naira(P[c].prices[MKT.lvl])}`).join(' · '), btn: 'CHANGE', act() { MKT.lvl = (MKT.lvl + 1) % 3; try { localStorage.setItem('naija-mkprice', String(MKT.lvl)); } catch (e) { /* ignore */ } } });
+    for (const c of Object.keys(P)) {
+      const have = st[c] | 0, n = Math.min(10, have), p = P[c].prices[MKT.lvl];
+      rows.push({ name: `${EM[c]} ${P[c].n} · ${have} in your store`, sub: n ? `Sell ${n} to buka owners at ${naira(p)} each` : 'Harvest some first', btn: n ? `SELL ${n}` : 'SELL', off: !n || MKT.mine.length >= 5,
+        act() { if (!api.farmTake(c, n)) return; if (!api.send({ t: 'mk', a: 'list', crop: c, n, p })) { api.farmPut(c, n); api.toast('Not connected right now. Try again small time.', 2.5); } } });
+    }
+    for (const l of MKT.mine) rows.push({ name: `On the market: ${l.q} ${P[l.c] ? P[l.c].n.toLowerCase() : l.c}`, sub: `${naira(l.p)} each · waiting for a buka owner`, btn: 'TAKE DOWN', act() { api.send({ t: 'mk', a: 'cancel', lid: l.id }); } });
+    d.sections.push({ h: 'Online market (buka owners buy)', rows });
+  }
+
   // ---- every frame: your presence at your own place keeps it open, people come and go, the boards light up at night
   let hereT = 0, pplT = 0, glowT = 0;
   function update(dt) {
@@ -261,5 +295,5 @@ export function createBusiness(api) {
   }
 
   build('buka'); build('barber'); build('pos');
-  return { on, prompt, action, near: () => !!at(), update, signedOut, sites: () => B, debug: () => Object.values(B).map(b => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, pub: b.pub, mine: !!b.mine })) };
+  return { on, prompt, action, near: () => !!at(), update, signedOut, farmApp, sites: () => B, debug: () => Object.values(B).map(b => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, pub: b.pub, mine: !!b.mine })) };
 }

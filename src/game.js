@@ -4908,7 +4908,7 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  guide:id=>{ if(GD) GD.hit(id); }, farm:()=>FARM&&FARM.app(), beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
@@ -7109,6 +7109,7 @@ BIZ=createBusiness({ THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGl
   spot:(cast,x,z,ry,acts)=>{ const sp={type:'buka',x,z,m:[{cast,acts,dx:0,dz:0,ry}],on:false,peds:[],boarding:0,hailV:null}; SPOTS.push(sp); return sp; },
   unspot:sp=>{ if(sp.on) spotOff(sp); const i=SPOTS.indexOf(sp); if(i>=0) SPOTS.splice(i,1); },
   send:o=>ON&&ON.send(o), signedIn:()=>!!(ON&&ON.signedIn), myName:()=>ON?ON.myName:'', openSignIn:()=>ON&&ON.openPanel(),
+  farmHas:()=>!!(FARM&&FARM.has&&FARM.has()), farmStore:()=>FARM&&FARM.store?FARM.store():{}, farmTake:(k,n)=>!!(FARM&&FARM.take&&FARM.take(k,n)), farmPut:(k,n)=>{ if(FARM&&FARM.put) FARM.put(k,n); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } } }); }catch(e){ console.warn('online could not start',e); ON=null; }   // the game always plays, online or not
 if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
   if(!/[?&]perf=show/.test(location.search)) el.hidden=true;   // numbers stay available to tests; shown only with ?perf=show

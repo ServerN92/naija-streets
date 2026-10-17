@@ -22,6 +22,10 @@ const SCHEMA = [
   `CREATE TABLE biz(id TEXT PRIMARY KEY, kind TEXT NOT NULL, owner INTEGER REFERENCES users(id) ON DELETE SET NULL,
      name TEXT, data TEXT NOT NULL, till INTEGER NOT NULL DEFAULT 0, bought INTEGER, saved INTEGER);
    CREATE INDEX biz_owner ON biz(owner);`,
+  // v3: the produce market (farmers sell to bukas) and produce waiting to go back to a farmer's store
+  `CREATE TABLE market(id INTEGER PRIMARY KEY, seller INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, sname TEXT NOT NULL,
+     crop TEXT NOT NULL, qty INTEGER NOT NULL, price INTEGER NOT NULL, t INTEGER NOT NULL);
+   CREATE TABLE mkback(id INTEGER PRIMARY KEY, uid INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, crop TEXT NOT NULL, qty INTEGER NOT NULL);`,
 ];
 
 export function openDb(file) {
@@ -56,6 +60,13 @@ export function openDb(file) {
     dropReset: q('DELETE FROM resets WHERE uid=?'),
     log: q('INSERT INTO ledger(uid,t,d,held,bal,k) VALUES(?,?,?,?,?,?)'),
     bizAll: q('SELECT b.*, u.name AS oname FROM biz b LEFT JOIN users u ON u.id=b.owner'),
+    mkAll: q('SELECT * FROM market ORDER BY id'),
+    mkAdd: q('INSERT INTO market(seller,sname,crop,qty,price,t) VALUES(?,?,?,?,?,?)'),
+    mkQty: q('UPDATE market SET qty=? WHERE id=?'),
+    mkDel: q('DELETE FROM market WHERE id=?'),
+    backAdd: q('INSERT INTO mkback(uid,crop,qty) VALUES(?,?,?)'),
+    backOf: q('SELECT * FROM mkback WHERE uid=?'),
+    backDel: q('DELETE FROM mkback WHERE uid=?'),
     bizPut: q('INSERT INTO biz(id,kind,owner,name,data,till,bought,saved) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, owner=excluded.owner, name=excluded.name, data=excluded.data, till=excluded.till, bought=excluded.bought, saved=excluded.saved'),
   };
   return {
@@ -89,6 +100,12 @@ export function openDb(file) {
     log: (uid, t, d, held, bal, k) => S.log.run(uid, t, d, held, bal, k || null),
     bizAll: () => S.bizAll.all(),
     bizPut: b => S.bizPut.run(b.id, b.kind, b.owner || null, b.name || null, JSON.stringify(b.d), b.till | 0, b.bought || null, Date.now()),
+    mkAll: () => S.mkAll.all(),
+    mkAdd: (seller, sname, crop, qty, price, t) => Number(S.mkAdd.run(seller, sname, crop, qty, price, t).lastInsertRowid),
+    mkQty: (id, qty) => S.mkQty.run(qty, id),
+    mkDel: id => S.mkDel.run(id),
+    backAdd: (uid, crop, qty) => S.backAdd.run(uid, crop, qty),
+    backTake: uid => { const r = S.backOf.all(uid); if (r.length) S.backDel.run(uid); return r; },
     tx(fn) { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } },
     close: () => db.close(),
   };
