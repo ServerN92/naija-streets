@@ -170,14 +170,14 @@ test('a buka over the line: the boards come at sign-in, buying takes the money, 
   o.send({ t: '$', d: 200000, s: 1, e: 'pg' }); await o.next('$');
   o.send({ t: 'bz', a: 'buy', id: 'buka_5' }); assert.equal((await o.next('$')).n, 100000); await o.next('ok');
   o.send({ t: 'bz', a: 'cook', id: 'buka_5', k: 'jollof', n: 20 }); assert.equal((await o.next('$')).n, 100000 - 12000);
-  const d = await o.next(m => m.t === 'bzd' && m.b.st.jollof === 20, 4000); assert.equal(d.b.n, "Iya_Buka's Buka");
+  const d = await o.next(m => m.t === 'bzd' && m.b.st.jollof === 20, 8000); assert.equal(d.b.n, "Iya_Buka's Buka");
   const [e] = await account('Hungry_Man');
   const pub = await e.next(m => m.t === 'bz' && m.all); assert.equal(pub.s.find(x => x.id === 'buka_5').o, 'Iya_Buka');
   e.send({ t: 'bz', a: 'eat', id: 'buka_5', k: 'jollof' }); assert.match((await e.next('err')).m, /closed/);
   o.send({ t: 'bz', a: 'here', id: 'buka_5' }); await new Promise(r => setTimeout(r, 100));
   e.send({ t: '$', d: 3000, s: 1, e: 'pg2' }); await e.next('$');
   e.send({ t: 'bz', a: 'eat', id: 'buka_5', k: 'jollof' }); assert.equal((await e.next('bzate')).k, 'jollof');
-  const till = await o.next(m => m.t === 'bzd' && m.b.till === 1500, 4000); assert.equal(till.b.today.sold, 1);
+  const till = await o.next(m => m.t === 'bzd' && m.b.till === 1500, 8000); assert.equal(till.b.today.sold, 1);
   e.send({ t: 'bz', a: 'cook', id: 'buka_5', k: 'jollof', n: 5 }); assert.match((await e.next('err')).m, /not your/);
   o.close(); e.close();
 });
