@@ -12,19 +12,19 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=f37910d704';
-import * as C2 from './char2.js?v=f37910d704';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=f37910d704';
-import { createPhone } from './phone.js?v=f37910d704';
-import { createGuide } from './guide.js?v=f37910d704';
-import { createFarm } from './farm.js?v=f37910d704';
-import { createBusiness } from './business.js?v=f37910d704';
-import { createOnline } from './online.js?v=f37910d704';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=f37910d704';
-import { MapView } from './mapview.js?v=f37910d704';
+import * as CLOCK from './clock.js?v=6ec4c15b57';
+import * as C2 from './char2.js?v=6ec4c15b57';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=6ec4c15b57';
+import { createPhone } from './phone.js?v=6ec4c15b57';
+import { createGuide } from './guide.js?v=6ec4c15b57';
+import { createFarm } from './farm.js?v=6ec4c15b57';
+import { createBusiness } from './business.js?v=6ec4c15b57';
+import { createOnline } from './online.js?v=6ec4c15b57';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=6ec4c15b57';
+import { MapView } from './mapview.js?v=6ec4c15b57';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='f37910d704';
+const BUILD='6ec4c15b57';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -3889,13 +3889,13 @@ function landHit(name,foe){ const mi=MOVE_INFO[name]; let p=foe&&foe.state!=='of
   hurtPed(p,dmg,mi.how,mi.knock||(counter&&mi.how==='kick'?3:0)); camState.shake=Math.min(1,camState.shake+(mi.knock?.5:.28)); smack(mi.knock?1.3:1); }
 // ---- other players (online): you can fight them too. Your phone says where the blow landed; the server checks it,
 // counts it (100 points knock somebody out) and tells them. A knock-out takes 10% of their pocket (₦2,000 at most).
-// Hitting a player in the open is a crime like hitting anybody: the police come for you.
+// (The police leave fights between players alone for now: each phone has its own police, the other player would not see them.)
 function remoteFoe(reach,cone){ if(!ON||!ON.signedIn) return null; let best=null, bs=1e9; const fx=Math.sin(player.yaw), fz=Math.cos(player.yaw);
   for(const r of ON.targets()){ const dx=r.x-player.x, dz=r.z-player.z, d=Math.hypot(dx,dz); if(d>reach||d<.05||Math.abs(r.y-player.y)>1.4) continue; const ang=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1)); if(ang>cone) continue; const sc=d+ang*1.2; if(sc<bs){ bs=sc; best=r; } }
   return best; }
 function pvpLand(name,r){ const mi=MOVE_INFO[name]; ON.hit(r.id,name); const ux=Math.sin(player.yaw), uz=Math.cos(player.yaw);
   bleed(r.x,mi.how==='punch'?1.55:1.25,r.z,ux,uz,mi.knock?8:mi.how==='kick'?5:3,1.6); FIGHT.stop=mi.knock?.11:.07; camState.shake=Math.min(1,camState.shake+(mi.knock?.5:.28)); smack(mi.knock?1.3:1);
-  if(!lawless()){ addHeat(.08); FIGHT.crimeT=0; } }
+}
 const PVPS={warned:{}};
 function pvpMsg(m){
   if(m.t==='hurt'){ if(mode!=='walk'||FIGHT.dead) return; hitPlayer(m.d*1.1,{x:m.x,z:m.z},m.k==='kick'||m.k==='heavy'||m.k==='drop_kick'?'kick':'punch');
@@ -3903,7 +3903,7 @@ function pvpMsg(m){
   else if(m.t==='hitok'){ if(m.p>=60&&!(PVPS[m.i]>=60)) toast(mpick(['"E don dey weak!"','"Finish am!"','"Ehen! E don tire!"']),1.6); PVPS[m.i]=m.p; }
   else if(m.t==='pko'){ if(!FIGHT.dead&&!FIGHT.ko&&hero&&mode==='walk'){ FIGHT.ko=true; FIGHT.koT=0; player.speed=0; carryDrop(true); heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})}); thud(); camState.shake=Math.min(1.2,camState.shake+.6); }
     toast(`${m.n} knocked you out${m.took?` and took ${naira(m.took)} from your pocket`:''}! Nobody can touch you for two minutes.`,3.6); }
-  else if(m.t==='pkowin'){ PVPS[m.i]=0; toast(`You knocked out ${m.n}!${m.took?` +${naira(m.took)} from the pocket.`:''}`,3.2); if(!lawless()){ addHeat(.2); FIGHT.crimeT=0; } }
+  else if(m.t==='pkowin'){ PVPS[m.i]=0; toast(`You knocked out ${m.n}!${m.took?` +${naira(m.took)} from the pocket.`:''}`,3.2); }
   else if(m.t==='pvno') toast(m.m,2.2); }
 // somebody lying on the floor near you
 function groundFoe(){ let best=null, bd=2.3; for(const p of peds){ if(p.state!=='down'||p.carried||p.y>.5) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
