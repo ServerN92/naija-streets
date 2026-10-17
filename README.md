@@ -275,6 +275,23 @@ money goes straight to the farmer (even offline, with a message). Cooking with f
 plates (tomatoes for jollof, yams for amala and pounded yam, cassava for eba), 15% of the plate price instead of 40%.
 The market is on the server (`server/src/biz.js`, saved in SQLite); the farm store is on your phone (`src/farm.js`).
 
+## Online: the motor park union (agbero to chairman)
+Mushin Motor Park has a union office in the yard (built in Blender: `tools/blender_park.py`, the office, its boards
+and the chairman's aso-oke fila). Signed in online, join the union at the secretary's table (₦5,000) and you wear the
+orange union vest: you are an agbero. Every danfo that loads in a bay pays a ticket (₦300 at first); a yellow TICKET
+marker floats over it, and the first agbero standing by it collects it (E). You keep 50% (60% as a senior agbero at 40
+respect, 70% as a head agbero at 120; every ticket is 1 respect); the rest is the chairman's return. Danfos nobody
+collects from are done by the street touts, and the chairman still gets a quarter.
+The chairman (green vest and fila, name on the office board) sets the ticket (₦200 to ₦600: dearer tickets, fewer
+danfos), pays his boys by the day (₦6,000 a boy), sacks agberos for a day, or steps down. When no player holds the seat,
+Chairman Kasali does, with six boys.
+Every 30 real minutes the park holds its meeting (the time is on the fare board). A head agbero who declared before it
+(paying ₦3,000 for each boy, 2 to 12) fights the chairman's crew in the yard: the chairman's boys in union vests, the
+challenger's in red caps, brawling; players fight too (agberos pick a side at the office), and every enemy boy a player
+knocks down counts. The side with boys left standing wins (after 3 minutes, the most boys; a tie keeps the chairman). A
+challenger who wins is the new chairman, with the boys that stood; everyone in Lagos hears about it. No police come
+into the park for the fight. Everything is on the server (`server/src/park.js`, saved in SQLite); `src/park.js` draws it.
+
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
 big map, where the Guns chip shows only him). His boys smoke at the gap in the fence and stop you: ₦100 to pass (E).

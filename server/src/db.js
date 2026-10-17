@@ -26,6 +26,9 @@ const SCHEMA = [
   `CREATE TABLE market(id INTEGER PRIMARY KEY, seller INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, sname TEXT NOT NULL,
      crop TEXT NOT NULL, qty INTEGER NOT NULL, price INTEGER NOT NULL, t INTEGER NOT NULL);
    CREATE TABLE mkback(id INTEGER PRIMARY KEY, uid INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, crop TEXT NOT NULL, qty INTEGER NOT NULL);`,
+  // v4: the motor park union: the park (its chairman, ticket, crew) and its members (respect, tickets)
+  `CREATE TABLE park(id TEXT PRIMARY KEY, data TEXT NOT NULL);
+   CREATE TABLE park_m(uid INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, park TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(uid, park));`,
 ];
 
 export function openDb(file) {
@@ -67,6 +70,10 @@ export function openDb(file) {
     backAdd: q('INSERT INTO mkback(uid,crop,qty) VALUES(?,?,?)'),
     backOf: q('SELECT * FROM mkback WHERE uid=?'),
     backDel: q('DELETE FROM mkback WHERE uid=?'),
+    parkGet: q('SELECT * FROM park WHERE id=?'),
+    parkPut: q('INSERT INTO park(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data'),
+    pmAll: q('SELECT m.uid, m.data, u.name FROM park_m m JOIN users u ON u.id=m.uid WHERE m.park=?'),
+    pmPut: q('INSERT INTO park_m(uid,park,data) VALUES(?,?,?) ON CONFLICT(uid,park) DO UPDATE SET data=excluded.data'),
     bizPut: q('INSERT INTO biz(id,kind,owner,name,data,till,bought,saved) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, owner=excluded.owner, name=excluded.name, data=excluded.data, till=excluded.till, bought=excluded.bought, saved=excluded.saved'),
   };
   return {
@@ -106,6 +113,10 @@ export function openDb(file) {
     mkDel: id => S.mkDel.run(id),
     backAdd: (uid, crop, qty) => S.backAdd.run(uid, crop, qty),
     backTake: uid => { const r = S.backOf.all(uid); if (r.length) S.backDel.run(uid); return r; },
+    parkGet: id => S.parkGet.get(id) || null,
+    parkPut: (id, data) => S.parkPut.run(id, data),
+    pmAll: park => S.pmAll.all(park),
+    pmPut: (uid, park, data) => S.pmPut.run(uid, park, data),
     tx(fn) { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } },
     close: () => db.close(),
   };
