@@ -56,10 +56,35 @@ export const BARBER = {
   rate: .32,
   phoneFee: PHONE_FEE, takeFee: TAKE_FEE, maxOwn: MAX_OWN, priceMin: PRICE_MIN, priceMax: PRICE_MAX,
 };
+export const POS = {
+  price: 60000,
+  svc: {
+    withdraw: { n: 'Cash withdrawal', p: 200 },
+    transfer: { n: 'Bank transfer', p: 100 },
+    airtime: { n: 'Airtime & data', p: 50 },
+    bills: { n: 'Pay bills (light, TV)', p: 150 },
+  },
+  amt: { withdraw: [2000, 20000], transfer: [2000, 30000], airtime: [200, 2000], bills: [2000, 15000] },   // money each customer moves
+  boxCap: 500000,                  // most cash the box holds
+  worker: { 6: 7000, 24: 25000 },  // Mama Nkechi, the attendant
+  pos2: [1, 1.6], pos2Up: [0, 50000],   // a second POS machine
+  sim: [0, 1], simUp: [0, 25000],       // a second network: the network hardly jams
+  send: { pct: .01, min: 100, max: 2000, most: 200000 },   // players sending money to each other here: the agent's fee
+  bankFee: 100, walletFee: 50,
+  rate: .45,
+  phoneFee: PHONE_FEE, takeFee: TAKE_FEE, maxOwn: MAX_OWN, priceMin: PRICE_MIN, priceMax: PRICE_MAX,
+};
+// the network: is it working at this POS right now? (it can jam for a while; a second SIM nearly always finds one that works)
+export function network(id, t, dual) {
+  const slot = Math.floor(t / (12 * 60e3)), area = id.charCodeAt(id.length - 1) * 7;
+  const r = k => { const n = Math.sin(slot * 91.7 + area * 17.3 + k * 53.1) * 43758.5453; return n - Math.floor(n); };
+  return r(1) > .2 || (dual && r(2) > .2);
+}
 // where they stand is in the game (src/business.js); busier streets bring more people
 export const SITES = {
   buka_1: ['buka', 1], buka_2: ['buka', 1.05], buka_3: ['buka', 1.1], buka_4: ['buka', 1], buka_5: ['buka', 1.2], buka_6: ['buka', 1.25], buka_7: ['buka', 1.15], buka_8: ['buka', 1.3],
   barber_1: ['barber', 1], barber_2: ['barber', 1.05], barber_3: ['barber', 1.1], barber_4: ['barber', 1.15], barber_5: ['barber', 1.2], barber_6: ['barber', 1.25],
+  pos_1: ['pos', 1], pos_2: ['pos', 1.05], pos_3: ['pos', 1.1], pos_4: ['pos', 1.15], pos_5: ['pos', 1.2], pos_6: ['pos', 1.3],
 };
 
 // NEPA: does this part of town have light right now? (every 20 real minutes it may change; about half the time on)
@@ -137,6 +162,57 @@ const KIND = {
     },
     useMsg: 'bzcut', useWord: 'cut',
   },
+  pos: {
+    R: POS, items: POS.svc, helper: POS.worker,
+    fresh() { const pr = {}; for (const k in POS.svc) pr[k] = POS.svc[k].p; return { pr, float: 0, wallet: 0, cook: 0, up: { pos2: 0, sim: 0 }, lost: 0 }; },
+    fix(d) { for (const k in POS.svc) if (!(k in d.pr)) d.pr[k] = POS.svc[k].p; d.float = d.float | 0; d.wallet = d.wallet | 0; d.lost = d.lost | 0; d.up = { pos2: 0, sim: 0, ...(d.up || {}) }; },
+    ready: (b, t) => network(b.id, t, !!b.d.up.sim) && (b.d.float >= POS.amt.withdraw[0] || b.d.wallet >= POS.amt.airtime[0]),
+    has: (b, k) => k === 'withdraw' ? b.d.float >= POS.amt.withdraw[0] : b.d.wallet >= POS.amt[k][0],
+    tod(h) { if (h >= 21 || h < 6.5) return .15; if (h < 9) return .9; if (h < 18) return 1.3; return .9; },
+    boost: b => POS.pos2[b.d.up.pos2],
+    served(b, k) {   // the customer's money: cash goes into the box and the agent sends e-money, or the other way
+      const [lo, hi] = POS.amt[k], want = Math.round((lo + Math.random() * (hi - lo)) / 100) * 100;
+      if (k === 'withdraw') { const n = Math.min(want, b.d.float); b.d.float -= n; b.d.wallet += n; }
+      else { const n = Math.min(want, b.d.wallet, POS.boxCap - b.d.float); b.d.wallet -= n; b.d.float += n; }
+    },
+    spent: d => sum(POS.pos2Up.slice(0, d.up.pos2 + 1)) + sum(POS.simUp.slice(0, d.up.sim + 1)) + (d.float | 0) * 2 + (d.wallet | 0) * 2,   // (the cash and the e-money come back in full)
+    mine: (b, t) => ({ float: b.d.float, wallet: b.d.wallet, boxCap: POS.boxCap, net: network(b.id, t, !!b.d.up.sim) }),
+    pubExtra: (b, t) => ({ net: network(b.id, t, !!b.d.up.sim) ? 1 : 0, room: b.d.wallet }),
+    rules: () => ({ price: POS.price, items: POS.svc, amt: POS.amt, boxCap: POS.boxCap, helper: POS.worker, pos2: POS.pos2, pos2Up: POS.pos2Up, simUp: POS.simUp, send: POS.send, bankFee: POS.bankFee, walletFee: POS.walletFee, phoneFee: PHONE_FEE, takeFee: TAKE_FEE, priceMin: PRICE_MIN, priceMax: PRICE_MAX }),
+    act: {
+      float(C, b, m, X) {   // put cash from your pocket into the box
+        const n = [20000, 50000, 100000].includes(m.n) ? m.n : 0; if (!n) return;
+        if (b.d.float + n > POS.boxCap) return X.err(C, 'The box cannot hold more cash than that.');
+        if (!X.spend(C, n, 'pos float ' + b.id)) return X.err(C, 'You don’t have that much cash on you.');
+        b.d.float += n; X.touch(b); X.ok(C, `₦${n.toLocaleString('en-NG')} in the cash box.`);
+      },
+      unfloat(C, b, m, X) {   // take the cash from the box
+        if (b.d.float <= 0) return X.err(C, 'The cash box is empty.');
+        const n = b.d.float; b.d.float = 0; X.touch(b); X.give(C, n, 'pos unfloat ' + b.id); X.ok(C, `You take ₦${n.toLocaleString('en-NG')} from the box.`);
+      },
+      fund(C, b, m, X) {   // send money from your own account into the POS wallet (for transfers and sends)
+        const n = [20000, 50000, 100000].includes(m.n) ? m.n : 0; if (!n) return;
+        if (!X.spend(C, n + POS.walletFee, 'pos fund ' + b.id)) return X.err(C, 'You don\u2019t have that much money.');
+        b.d.wallet += n; X.touch(b); X.ok(C, `₦${n.toLocaleString('en-NG')} in the POS wallet (₦${POS.walletFee} charge).`);
+      },
+      bank(C, b, m, X) {   // go to the bank: the e-money comes out as cash for the box
+        const n = Math.min(b.d.wallet, POS.boxCap - b.d.float) - POS.bankFee;
+        if (n <= 0) return X.err(C, b.d.wallet <= POS.bankFee ? 'No money in the POS wallet to bring as cash.' : 'The cash box is full.');
+        b.d.wallet -= n + POS.bankFee; b.d.float += n; X.touch(b); X.ok(C, `The bank gave you ₦${n.toLocaleString('en-NG')} cash for the box (₦${POS.bankFee} charge).`);
+      },
+      wallet(C, b, m, X) {   // send the POS wallet's money to yourself
+        const n = b.d.wallet - POS.walletFee; if (n <= 0) return X.err(C, 'No money in the POS wallet.');
+        b.d.wallet = 0; X.touch(b); X.give(C, n, 'pos wallet ' + b.id); X.ok(C, `₦${n.toLocaleString('en-NG')} from the POS wallet is in your pocket (₦${POS.walletFee} charge).`);
+      },
+      up(C, b, m, X) {
+        const w = m.w === 'sim' ? 'sim' : 'pos2', L = b.d.up[w], prices = w === 'sim' ? POS.simUp : POS.pos2Up;
+        if (L + 1 >= prices.length) return X.err(C, w === 'sim' ? 'You have two networks already.' : 'You have two POS machines already.');
+        if (!X.spend(C, prices[L + 1], 'upgrade ' + w + ' ' + b.id)) return X.err(C, 'Not enough money for that.');
+        b.d.up[w] = L + 1; X.touch(b); X.ok(C, w === 'sim' ? 'A second network: when one jams, the other works.' : 'A second POS machine: two customers at once.');
+      },
+    },
+    useMsg: 'bzpos', useWord: 'pos',
+  },
 };
 
 function fresh(id) {
@@ -144,7 +220,8 @@ function fresh(id) {
   return { id, kind, owner: null, oname: '', name: '', till: 0, bought: null, here: 0, dirty: false, pub: '',
     d: { ...KIND[kind].fresh(), day: { k: '', sold: 0, earned: 0 }, tot: { sold: 0, earned: 0 }, last: [] } };
 }
-const defName = (kind, who) => kind === 'barber' ? `${who} Cuts` : `${who}'s Buka`;
+const defName = (kind, who) => kind === 'barber' ? `${who} Cuts` : kind === 'pos' ? `${who} POS` : `${who}'s Buka`;
+const WORD = { buka: 'buka', barber: 'salon', pos: 'POS stand' };
 
 export function createBiz({ db, now = () => Date.now(), rand = Math.random, log = () => {}, ctx }) {
   const B = new Map();
@@ -211,15 +288,15 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
   }
 
   // ---- what players ask for: {t:'bz', a, id, ...}
-  const X = { spend: (...a) => ctx.spend(...a), touch, err: null, ok: null };
+  const X = { spend: (...a) => ctx.spend(...a), give: (...a) => ctx.give(...a), touch, err: null, ok: null };
   const A = {
     buy(C, b) {
-      if (b.owner) return ctx.err(C, 'bz', b.kind === 'barber' ? 'Somebody owns this salon already.' : 'Somebody owns this buka already.');
+      if (b.owner) return ctx.err(C, 'bz', `Somebody owns this ${WORD[b.kind]} already.`);
       if (owned(C.user.id).length >= MAX_OWN) return ctx.err(C, 'bz', `You can own ${MAX_OWN} businesses for now.`);
-      if (!ctx.spend(C, K(b).R.price, 'buy ' + b.id)) return ctx.err(C, 'bz', `You don’t have enough money for this ${b.kind === 'barber' ? 'salon' : 'buka'}.`);
+      if (!ctx.spend(C, K(b).R.price, 'buy ' + b.id)) return ctx.err(C, 'bz', `You don’t have enough money for this ${WORD[b.kind]}.`);
       Object.assign(b, fresh(b.id), { owner: C.user.id, oname: C.user.name, name: defName(b.kind, C.user.name), bought: now() }); b.pub = '';
       touch(b); flush(); log('biz', b.id, 'bought by', C.user.name);
-      ctx.ok(C, 'bz', b.kind === 'barber' ? 'The salon is yours! Buy supplies and fuel, and open for customers.' : 'The buka is yours! Cook some food and open for customers.');
+      ctx.ok(C, 'bz', b.kind === 'barber' ? 'The salon is yours! Buy supplies and fuel, and open for customers.' : b.kind === 'pos' ? 'The POS stand is yours! Put cash in the box and open for customers.' : 'The buka is yours! Cook some food and open for customers.');
     },
     name(C, b, m) {
       const n = cleanChat(m.n).replace(/[^A-Za-z0-9 '&.\-]/g, '').replace(/\s+/g, ' ').trim();
@@ -231,7 +308,7 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
       const base = it[m.k].p; b.d.pr[m.k] = round50(clamp(m.p, base * PRICE_MIN, base * PRICE_MAX)); touch(b);
     },
     hire(C, b, m) {
-      const h = m.h === 24 ? 24 : 6, cost = K(b).helper[h], t = now(), who = b.kind === 'barber' ? 'Barber Sunday' : 'Iya Basira';
+      const h = m.h === 24 ? 24 : 6, cost = K(b).helper[h], t = now(), who = b.kind === 'barber' ? 'Barber Sunday' : b.kind === 'pos' ? 'Mama Nkechi' : 'Iya Basira';
       if (b.d.cook - t > 42 * 3600e3) return ctx.err(C, 'bz', `${who} is booked for long enough already.`);
       if (!ctx.spend(C, cost, 'helper ' + b.id)) return ctx.err(C, 'bz', `Not enough money to pay ${who}.`);
       b.d.cook = Math.max(b.d.cook, t) + h * 3600e3; touch(b); ctx.ok(C, 'bz', `${who} will work for you for ${h} hours, even when you are away.`);
@@ -252,7 +329,7 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
   };
   function use(C, b, m) {   // a player eats at the buka, or gets a cut at the salon
     const k = K(b); if (!(m.k in k.items)) return;
-    const what = b.kind === 'barber' ? 'salon' : 'buka';
+    const what = WORD[b.kind]; if (b.kind === 'pos') return;
     if (!b.owner) return ctx.err(C, 'bz', `This ${what} is closed. It is for sale.`);
     if (!isOpen(b)) return ctx.err(C, 'bz', `The ${what} is closed right now.`);
     if (!k.has(b, m.k)) return ctx.err(C, 'bz', 'That food don finish. Try another one.');
@@ -261,12 +338,34 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     else { if (!ctx.spend(C, p, k.useWord + ' ' + b.id)) return ctx.err(C, 'bz', 'You don’t have enough money.'); sell(b, m.k, p, C.user.name, t); }
     ctx.send(C, { t: k.useMsg, id: b.id, k: m.k });
   }
+  // a player sends money to another player through a POS: the agent sends it from the POS wallet and keeps a fee
+  const sends = new Map();   // account -> [times] (10 sends an hour at most)
+  function sendMoney(C, b, m) {
+    if (b.kind !== 'pos') return;
+    const S = POS.send, n = Number.isInteger(m.n) ? m.n : 0, to = String(m.to || '').slice(0, 32);
+    if (n < 100 || n > S.most) return ctx.err(C, 'bz', `Send between ₦100 and ₦${S.most.toLocaleString('en-NG')}.`);
+    if (!b.owner || !isOpen(b)) return ctx.err(C, 'bz', b.owner && !network(b.id, now(), !!b.d.up.sim) ? 'Network don jam. Try again small time, or another POS.' : 'This POS is closed right now.');
+    const R = ctx.findUser(to); if (!R) return ctx.err(C, 'bz', 'No player with that username.');
+    if (R.id === C.user.id) return ctx.err(C, 'bz', 'You cannot send money to yourself.');
+    const fee = b.owner === C.user.id ? 0 : clamp(Math.round(n * S.pct), S.min, S.max);
+    if (b.d.wallet < n) return ctx.err(C, 'bz', 'This POS don run out of money in the machine. Try another one.');
+    const t = now(), h = (sends.get(C.user.id) || []).filter(x => x > t - 3600e3); if (h.length >= 10) return ctx.err(C, 'bz', 'You have sent a lot this hour. Try again later.');
+    if (!ctx.spend(C, n + fee, 'send to ' + R.name + ' at ' + b.id)) return ctx.err(C, 'bz', 'You don\u2019t have that much money.');
+    h.push(t); sends.set(C.user.id, h);
+    b.d.wallet -= n; b.d.float = Math.min(POS.boxCap, b.d.float + n);
+    if (fee) { b.till += fee; rollDay(b, t); b.d.day.sold++; b.d.day.earned += fee; b.d.tot.sold++; b.d.tot.earned += fee; b.d.last.push([t, 'send', fee, C.user.name]); }
+    touch(b);
+    ctx.credit(R.id, n, `from ${C.user.name} at ${b.id}`, `${C.user.name} sent you ₦${n.toLocaleString('en-NG')} through ${b.name}.`);
+    flush(); log('send', C.user.name, '->', R.name, n, 'fee', fee, b.id);
+    ctx.send(C, { t: 'bzsent', id: b.id, to: R.name, n, fee });
+  }
   function handle(C, m) {
     const b = B.get(m.id); if (!b) return;
     if (m.a === 'use' || m.a === 'eat') return use(C, b, m);
+    if (m.a === 'send') return sendMoney(C, b, m);
     if (m.a === 'buy') return A.buy(C, b);
     const own = A[m.a] || K(b).act[m.a]; if (!own) return;
-    if (b.owner !== C.user.id) return ctx.err(C, 'bz', b.kind === 'barber' ? 'This is not your salon.' : 'This is not your buka.');
+    if (b.owner !== C.user.id) return ctx.err(C, 'bz', `This is not your ${WORD[b.kind]}.`);
     if (A[m.a]) return A[m.a](C, b, m);
     X.err = (C2, msg) => ctx.err(C2, 'bz', msg); X.ok = (C2, msg) => ctx.ok(C2, 'bz', msg);
     K(b).act[m.a](C, b, m, X);

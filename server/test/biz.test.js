@@ -114,3 +114,37 @@ test('the barbing salon: supplies, fuel when NEPA takes light, cuts sell in the 
   T.biz.pushAll(); const bz = [...T.sent].reverse().find(([n, x]) => n === 'Client' && x.t === 'bz')[1];
   const pb = bz.s.find(x => x.id === 'barber_2') || {}; assert.equal(pb.n, 'Barber_O Cuts'); assert.ok('light' in pb);
 });
+
+test('the POS stand: cash in the box, customers withdraw and transfer, the network jams, players send money', async () => {
+  const { POS, network } = await import('../src/biz.js');
+  const T = setup(5), o = T.mk('Agent_O', 400000), a = T.mk('Sender', 60000), r = T.mk('Getter', 0);
+  const credited = []; T.ctx.findUser = n => { const u = T.db.user(n); return u ? { id: u.id, name: u.name } : null; };
+  T.ctx.credit = (uid, n, why, note) => { credited.push([uid, n, note]); const C = [...T.ctx.online.values()].find(c => c.user.id === uid); if (C) C.cash += n; };
+  T.biz.handle(o, { a: 'buy', id: 'pos_3' }); assert.equal(o.cash, 400000 - POS.price);
+  const b = T.biz.get('pos_3'); assert.equal(b.name, 'Agent_O POS');
+  T.biz.handle(o, { a: 'hire', id: 'pos_3', h: 24 });
+  assert.equal(T.biz.isOpen(b), false, 'no cash: closed');
+  T.biz.handle(o, { a: 'float', id: 'pos_3', n: 100000 }); assert.equal(b.d.float, 100000);
+  T.biz.handle(o, { a: 'float', id: 'pos_3', n: 12345 }); assert.equal(b.d.float, 100000, 'only the set amounts');
+  while (!network('pos_3', T.now(), false)) T.adv(12 * 60);
+  const total0 = b.d.float + b.d.wallet;
+  for (let i = 0; i < 90; i++) { T.adv(10); T.biz.tick(10); }
+  assert.ok(b.d.day.sold > 0, 'customers came'); assert.equal(b.d.float + b.d.wallet, total0, 'cash and e-money only move between box and wallet');
+  assert.ok(b.till > 0); assert.equal(b.till, b.d.day.earned);
+  // the bank run: e-money comes back as cash for the box
+  const w0 = b.d.wallet, f0 = b.d.float; T.biz.handle(o, { a: 'bank', id: 'pos_3' });
+  if (w0 > POS.bankFee) { assert.equal(b.d.wallet, 0); assert.equal(b.d.float, f0 + w0 - POS.bankFee); }
+  // sending: needs e-money in the machine
+  T.biz.handle(a, { a: 'send', id: 'pos_3', to: 'getter', n: 5000 }); assert.match(T.last('Sender', 'err').m, /run out of money/);
+  T.biz.handle(o, { a: 'unfloat', id: 'pos_3' }); assert.equal(b.d.float, 0);
+  T.biz.handle(o, { a: 'fund', id: 'pos_3', n: 50000 }); assert.equal(b.d.wallet, 50000);
+  T.biz.handle(a, { a: 'send', id: 'pos_3', to: 'nobody_here', n: 5000 }); assert.match(T.last('Sender', 'err').m, /No player/);
+  T.biz.handle(a, { a: 'send', id: 'pos_3', to: 'sender', n: 5000 }); assert.match(T.last('Sender', 'err').m, /yourself/);
+  const till0 = b.till; T.biz.handle(a, { a: 'send', id: 'pos_3', to: 'GETTER', n: 20000 });
+  assert.equal(T.last('Sender', 'bzsent').n, 20000); assert.equal(a.cash, 60000 - 20000 - 200); assert.equal(r.cash, 20000);
+  assert.equal(b.till, till0 + 200); assert.equal(b.d.wallet, 30000); assert.equal(b.d.float, 20000);
+  assert.match(credited[0][2], /Sender sent you ₦20,000/);
+  // selling back: the cash and the e-money come back in full
+  const c0 = o.cash, back = POS.price / 2 + b.d.float + b.d.wallet + b.till;
+  T.biz.handle(o, { a: 'sell', id: 'pos_3' }); assert.equal(o.cash, c0 + back);
+});

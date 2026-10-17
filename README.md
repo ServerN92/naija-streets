@@ -247,7 +247,23 @@ light every cut burns fuel (₦5,500 a 5-litre jerrycan, 20 litres in the tank).
 closed. Set your prices (low cut ₦1,500, botako ₦1,000, fade with a design ₦2,500, beard trim ₦800, wash, cut and
 style ₦3,000); people come most in the evening, after work. Barber Sunday cuts for you while you are away (₦9,000 for
 6 hours, ₦32,000 for 24). A second chair (₦45,000) and an AC (₦60,000; twice the fuel without light) bring more
-people. Any signed-in player can get a cut (+10 health) and pays the owner. Next: the POS stand and the farmer.
+people. Any signed-in player can get a cut (+10 health) and pays the owner.
+
+## Online business: the POS stand
+Six POS stands (POS on the big map): three near your house, Idi-Oro Market, Mushin Market and Computer Village. A big
+green and white umbrella over a little kiosk with the POS machine, the cash box and a banner by the road
+(`tools/blender_pos.py`, `ps_pos.glb`). Buy one for ₦60,000. The money you work with is your own: cash in the box
+(you put in ₦20k, ₦50k or ₦100k from your pocket; it holds ₦500k) pays out withdrawals, and the POS wallet (e-money)
+fills up from them; transfers, airtime and bills go the other way. Fund the wallet from your pocket, do a bank run
+(the wallet comes back as cash for the box, ₦100), or send the wallet to yourself (₦50). Each customer pays your fee
+(withdrawal ₦200, transfer ₦100, airtime ₦50, bills ₦150; set your own) into the till; customers come in the day,
+few at night. The network jams sometimes (the board says NETWORK JAM); a second SIM (₦25,000) nearly always finds
+one that works; a second machine (₦50,000) serves two at once; Mama Nkechi minds it while you are away (₦7,000 for
+6 hours, ₦25,000 for 24). Selling it back gives you the cash and the e-money in full, plus half the price and upgrades.
+
+Players send money to each other at any open POS: the username and the amount (₦100 to ₦200,000); it arrives at once
+(even when they are offline), the agent keeps 1% (₦100 to ₦2,000), and it comes out of the POS wallet, so a POS with
+an empty wallet cannot send. Next: the farmer.
 
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the

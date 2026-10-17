@@ -65,7 +65,8 @@ export function createOnline(api) {
       case 'me': signedIn(m); break;
       case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } S.busy = false; showErr(m.w, m.m); break;
       case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } S.busy = false; showOk(m.w, m.m); break;
-      case 'bz': case 'bzd': case 'bzate': api.biz && api.biz(m); break;
+      case 'bz': case 'bzd': case 'bzate': case 'bzcut': case 'bzsent': api.biz && api.biz(m); break;
+      case 'note': api.toast(m.m, 4); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
       case 'n': S.n = m.n; ui(); break;

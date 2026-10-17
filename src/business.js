@@ -25,6 +25,12 @@ export const SITES = {
   barber_4: { x: 796.67, z: 122.87, ry: -0.1059, near: 'Idi-Oro Market' },
   barber_5: { x: 1141, z: 433.78, ry: -2.3168, near: 'Mushin Market' },
   barber_6: { x: -3963.78, z: 899.85, ry: 1.7712, near: 'Computer Village' },
+  pos_1: { x: -95.83, z: 116.51, ry: -2.0246, near: 'Mushin' },
+  pos_2: { x: 354.07, z: -61.82, ry: -1.2273, near: 'Mushin' },
+  pos_3: { x: -45.52, z: -517.66, ry: -0.5829, near: 'Mushin' },
+  pos_4: { x: 860.8, z: 22.13, ry: -0.5133, near: 'Idi-Oro Market' },
+  pos_5: { x: 1209.72, z: 580.06, ry: 0.6289, near: 'Mushin Market' },
+  pos_6: { x: -4143.5, z: 998.67, ry: -1.1392, near: 'Computer Village' },
 };
 const kindOf = id => id.split('_')[0];
 const STEPS = [.7, .85, 1, 1.2, 1.5, 2];   // price choices, as shares of the usual price
@@ -41,6 +47,11 @@ const KINDS = {
     wait: [[-2.2, .75, 0], [-1.3, .75, 0], [-2.9, .6, .4]],
     walls: [[0, -1.22, 3.08, 1.24, 2.8], [3.68, -.4, .34, .26, .6], [-1.65, .75, .85, .16, .47], [.85, 1.8, .33, .2, .9], [-2.93, 1.3, .06, .06, 2.4], [2.93, 1.3, .06, .06, 2.4]],
     board: ['#fbf7ee', '#c0281e', '#16224a'], tagline: 'UNISEX BARBING SALON · LOW CUT · FADE', map: 'Barbing salon · a business you can buy (online)' },
+  pos: { glb: 'ps_pos', word: 'POS stand', Word: 'POS', worker: 'Mama Nkechi', workerCast: 'lady_black',
+    sign: { y: 1.49, z: 1.5, w: 2.2, h: .78 }, serve: { x: 0, z: .35 }, staff: { x: -.15, z: -1.15 },
+    wait: [[1.3, .55, 0], [1.85, .55, 0], [-1.5, .45, .5]],
+    walls: [[0, -.5, .72, .34, .95], [1.55, .55, .65, .16, .47], [-1.15, 1.45, .04, .04, 2], [1.15, 1.45, .04, .04, 2], [1.35, -1.25, .05, .05, 2]],
+    board: ['#f6f2e8', '#13a05a', '#0c5a34'], tagline: 'WITHDRAWAL · TRANSFER · AIRTIME · BILLS', map: 'POS · send money to players · a business you can buy (online)' },
 };
 
 export function createBusiness(api) {
@@ -63,13 +74,13 @@ export function createBusiness(api) {
       for (const [lx, lz, hx, hz, h] of KD.walls) { const w = W(s, lx, lz); api.addOB(w.x, w.z, hx, hz, -s.ry, h, y); }
       // the board: the owner's name, painted in the game
       const cv = document.createElement('canvas'); cv.width = 1024; cv.height = Math.round(1024 * KD.sign.h / KD.sign.w * (kind === 'barber' ? 1.4 : 1));
-      if (kind === 'buka') cv.height = 184;
+      if (kind === 'buka') cv.height = 184; if (kind === 'pos') cv.height = 362;
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(KD.sign.w, KD.sign.h), new THREE.MeshStandardMaterial({ map: tex, roughness: .8, metalness: 0, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0 }));
       const sp = W(s, 0, KD.sign.z); sign.position.set(sp.x, y + KD.sign.y, sp.z); sign.rotation.y = s.ry; sign.layers.set(1); scene.add(sign);
       Object.assign(b, { cv, tex, sign });
       paint(b);
-      api.mapPlace({ name: KD.Word === 'Salon' ? 'Barbing salon' : 'Buka', sub: KD.map, kind: 'place', x: s.x, z: s.z, id });
+      api.mapPlace({ name: kind === 'barber' ? 'Barbing salon' : kind === 'pos' ? 'POS' : 'Buka', sub: KD.map, kind: 'place', x: s.x, z: s.z, id });
     }
     if (items.length) new api.CullSet(levels, items, { shadowDist: api.Q.shR, name: kind });
     ready = true;
@@ -91,6 +102,7 @@ export function createBusiness(api) {
     g.fillStyle = '#2a2622'; g.fillText(sub, Wc / 2, low);
     if (!sale) {
       const open = !!P.open; g.fillStyle = open ? '#1d8a4e' : '#8a8a86'; rr(g, Wc - 210, Hc - 66, 170, 50, 12); g.fill(); g.fillStyle = '#fff'; g.font = `30px ${F}`; g.fillText(open ? 'OPEN' : 'CLOSED', Wc - 125, Hc - 39);
+      if (b.kind === 'pos') { g.fillStyle = P.net ? '#13a05a' : '#c0281e'; g.beginPath(); g.arc(80, Hc - 41, 18, 0, 6.3); g.fill(); g.fillStyle = '#2a2622'; g.font = `600 24px Arial, sans-serif`; g.textAlign = 'left'; g.fillText(P.net ? 'NETWORK OK' : 'NETWORK JAM', 106, Hc - 40); g.textAlign = 'center'; }
       if (b.kind === 'barber') { g.fillStyle = P.light ? '#e9b414' : '#5a5a58'; g.beginPath(); g.arc(80, Hc - 41, 18, 0, 6.3); g.fill(); g.fillStyle = '#2a2622'; g.font = `600 22px Arial, sans-serif`; g.textAlign = 'left'; g.fillText(P.light ? 'LIGHT' : 'GEN', 106, Hc - 40); g.textAlign = 'center'; }   // light (NEPA) or not
     }
     b.tex.needsUpdate = true;
@@ -115,6 +127,7 @@ export function createBusiness(api) {
       if (api.menuOpen() && CUR) refresh();
     } else if (m.t === 'bzd') { const b = B[m.b.id]; if (b) { b.mine = m.b; if (api.menuOpen() && CUR === b) refresh(); } }
     else if (m.t === 'bzate') { const D = RK.buka && RK.buka.items[m.k]; api.heal(40); api.toast(`You chop ${D ? D.n.toLowerCase() : 'food'}. Body don set! +40 health`, 3); }
+    else if (m.t === 'bzsent') api.toast(`Sent ${naira(m.n)} to ${m.to}${m.fee ? ` (fee ${naira(m.fee)})` : ''}.`, 3.5);
     else if (m.t === 'bzcut') { const D = RK.barber && RK.barber.items[m.k]; api.heal(10); api.toast(`Fresh ${D ? D.n.toLowerCase() : 'cut'}! You look clean. +10 health`, 3); }
     else if ((m.t === 'err' || m.t === 'ok') && m.w === 'bz') { api.toast(m.m, 3); if (api.menuOpen() && CUR) setTimeout(refresh, 50); }
   }
@@ -130,10 +143,10 @@ export function createBusiness(api) {
   const mineB = b => !!(b && b.pub && b.pub.o && api.myName() && b.pub.o.toLowerCase() === api.myName().toLowerCase());
   function prompt() {
     const b = at(); if (!b) return null; const P = b.pub, KD = KINDS[b.kind], R = RK[b.kind];
-    if (!api.signedIn()) return P && P.o ? `${P.n || KD.Word} · sign in online to ${b.kind === 'barber' ? 'get a cut' : 'eat here'}` : `${KD.Word} for sale · sign in online to buy it`;
+    if (!api.signedIn()) return P && P.o ? `${P.n || KD.Word} · sign in online to ${b.kind === 'barber' ? 'get a cut' : b.kind === 'pos' ? 'send money' : 'eat here'}` : `${KD.Word} for sale · sign in online to buy it`;
     if (!P || !P.o) return `Buy this ${KD.word} · ${naira(R ? R.price : 0)}`;
     if (mineB(b)) return `Your ${KD.word} · ${P.n}`;
-    return P.open ? (b.kind === 'barber' ? `Get a cut at ${P.n}` : `Eat at ${P.n}`) : `${P.n} · closed now`;
+    return P.open ? (b.kind === 'barber' ? `Get a cut at ${P.n}` : b.kind === 'pos' ? `Send money at ${P.n}` : `Eat at ${P.n}`) : `${P.n} · ${b.kind === 'pos' && P.o && !P.net ? 'network don jam' : 'closed now'}`;
   }
   function action() {
     const b = at(); if (!b) return false;
@@ -144,17 +157,21 @@ export function createBusiness(api) {
   function refresh() { if (!CUR) return; const t = title(); api.openMenu(t[0], t[1], rows); }
   function title() {
     const b = CUR, P = b.pub || {}, KD = KINDS[b.kind];
+    if (!P.o && b.kind === 'pos') return ['POS STAND FOR SALE', 'Own it: keep cash in the box, people withdraw and transfer, and every one pays you a fee (players too)'];
     if (!P.o) return [`${KD.word.toUpperCase()} FOR SALE`, b.kind === 'barber' ? 'Own it: set your prices, keep the clippers running, and customers pay you, even players' : 'Own it: cook, set your prices, and customers pay you, even players'];
-    if (!mineB(b)) return [(P.n || KD.Word).toUpperCase(), `${P.o}'s ${KD.word} · ${P.open ? 'open' : 'closed now'}${b.kind === 'barber' ? (P.light ? ' · NEPA light dey' : ' · no light: generator') : ''}`];
+    if (!mineB(b)) return [(P.n || KD.Word).toUpperCase(), `${P.o}'s ${KD.word} · ${P.open ? 'open' : 'closed now'}${b.kind === 'barber' ? (P.light ? ' · NEPA light dey' : ' · no light: generator') : ''}${b.kind === 'pos' ? (P.net ? ' · network OK' : ' · network don jam') : ''}`];
     const M = b.mine; if (!M) return [(P.n || `YOUR ${KD.word}`).toUpperCase(), 'Loading…'];
-    const hrs = M.cook > 0 ? Math.ceil(M.cook / 36e5) : 0, who = hrs ? `${KD.worker} here ${hrs} h more` : `no ${b.kind === 'barber' ? 'barber' : 'cook'}: open while you stand here`;
-    const stock = b.kind === 'barber' ? `supplies ${M.sup}/${M.supCap} cuts · fuel ${(+M.fuel).toFixed(1)}/${M.tank} L · ${M.light ? 'NEPA light dey' : 'no light'}` : `${Object.values(M.st).reduce((s, x) => s + (x | 0), 0)}/${M.cap} plates in the pots`;
+    const hrs = M.cook > 0 ? Math.ceil(M.cook / 36e5) : 0, who = hrs ? `${KD.worker} here ${hrs} h more` : `no ${b.kind === 'barber' ? 'barber' : b.kind === 'pos' ? 'attendant' : 'cook'}: open while you stand here`;
+    const stock = b.kind === 'pos' ? `cash in the box ${naira(M.float)} · POS wallet ${naira(M.wallet)} · ${M.net ? 'network OK' : 'network don jam'}` : b.kind === 'barber' ? `supplies ${M.sup}/${M.supCap} cuts · fuel ${(+M.fuel).toFixed(1)}/${M.tank} L · ${M.light ? 'NEPA light dey' : 'no light'}` : `${Object.values(M.st).reduce((s, x) => s + (x | 0), 0)}/${M.cap} plates in the pots`;
     return [(M.n || `YOUR ${KD.word}`).toUpperCase(), `${M.open ? 'Open' : 'Closed'} · ${stock} · ${who} · today ${M.today.sold} sold, ${naira(M.today.earned)}`];
   }
   function rows() {
     const b = CUR, P = b.pub || {}, R = RK[b.kind], KD = KINDS[b.kind]; if (!R) return [{ name: 'Connecting…', btn: '…', off: true, act() {} }];
     const cash = api.cash(), items = R.items, keys = Object.keys(items);
     if (!P.o) return [{ name: `Buy this ${KD.word}`, sub: 'You can own 2 businesses. Sell it back any time for half.', btn: naira(R.price), off: cash < R.price, act() { send('buy'); } }];
+    if (!mineB(b) && b.kind === 'pos') return [
+      { name: 'Send money to a player', sub: `By username · fee ${R.send.pct * 100}% (${naira(R.send.min)} to ${naira(R.send.max)}) · arrives at once`, btn: 'SEND ▸', off: !P.open, act() { askSend(); } },
+      ...keys.map(k => ({ name: items[k].n, sub: 'For the people of the area', btn: `fee ${naira((P.m && P.m[k] && P.m[k][0]) || items[k].p)}`, off: true, act() {} }))];
     if (!mineB(b)) return keys.map(k => { const [p, has] = (P.m && P.m[k]) || [items[k].p, 0];
       return { name: items[k].n, sub: b.kind === 'barber' ? (P.open ? 'Fresh cut · +10 health' : 'Closed now') : (has ? 'Hot · +40 health' : 'Finished for now'), btn: naira(p), off: !P.open || !has || cash < p, act() { send('use', { k }); } }; });
     const M = b.mine; if (!M) return [{ name: `Loading your ${KD.word}…`, btn: '…', off: true, act() {} }];
@@ -162,6 +179,11 @@ export function createBusiness(api) {
       return { name: `Cook ${n || 10} plates of ${items[k].n}`, sub: `${M.st[k] | 0} in the pot now`, btn: n ? naira(cost) : 'Full', off: !n || cash < cost, act() { send('cook', { k, n }); } }; })];
     if (VIEW === 'price') return [back(), ...keys.map(k => { const base = items[k].p, cur = M.pr[k]; const i = STEPS.findIndex(s => Math.round(base * s / 50) * 50 >= cur); const nx = STEPS[(i + 1) % STEPS.length];
       return { name: items[k].n, sub: `usual ${naira(base)} · cheaper sells faster`, btn: `${naira(cur)} ▸`, act() { send('price', { k, p: Math.round(base * nx / 50) * 50 }); } }; })];
+    if (VIEW === 'box') return [back(), ...[20000, 50000, 100000].map(n => ({ name: `Put ${naira(n)} in the cash box`, sub: `From your pocket · ${naira(M.float)} in the box now (holds ${naira(M.boxCap)})`, btn: naira(n), off: cash < n || M.float + n > M.boxCap, act() { send('float', { n }); } })),
+      { name: 'Take all the cash out', sub: 'Back into your pocket (the POS cannot pay withdrawals without it)', btn: 'TAKE', off: M.float <= 0, act() { send('unfloat'); } }];
+    if (VIEW === 'wallet') return [back(), ...[20000, 50000].map(n => ({ name: `Fund the wallet with ${naira(n)}`, sub: `From your pocket · for transfers and sends · ${naira(R.walletFee)} charge`, btn: naira(n + R.walletFee), off: cash < n + R.walletFee, act() { send('fund', { n }); } })),
+      { name: 'Bank run: bring it as cash', sub: `The POS wallet's ${naira(M.wallet)} comes back as cash for the box · ${naira(R.bankFee)} charge`, btn: 'BANK', off: M.wallet <= R.bankFee, act() { send('bank'); } },
+      { name: 'Send it to yourself', sub: `The POS wallet's money into your pocket · ${naira(R.walletFee)} charge`, btn: 'SEND', off: M.wallet <= R.walletFee, act() { send('wallet'); } }];
     if (VIEW === 'sell') return [back(), { name: `Yes, sell my ${KD.word}`, sub: 'Somebody else can buy it after', btn: 'SELL NOW', act() { VIEW = 'main'; send('sell'); } }];
     const common = [
       { name: `${KD.worker} · 6 hours`, sub: b.kind === 'barber' ? 'He cuts for you while you are away' : 'She sells for you while you are away', btn: naira(R.helper[6]), off: cash < R.helper[6], act() { send('hire', { h: 6 }); } },
@@ -171,6 +193,9 @@ export function createBusiness(api) {
       { name: 'New name on the board', sub: M.n, btn: 'RENAME', act() { askText(`Your ${KD.word}’s name`, M.n, 22, n => { if (n) send('name', { n }); }); } },
       { name: `Sell the ${KD.word} back`, sub: 'Half of what you paid, and the till', btn: 'SELL', act() { VIEW = 'sell'; refresh(); } }];
     if (VIEW === 'grow') {
+      if (b.kind === 'pos') return [back(), ...common,
+        ...(M.up.pos2 + 1 < R.pos2Up.length ? [{ name: 'A second POS machine', sub: 'Two customers at once', btn: naira(R.pos2Up[1]), off: cash < R.pos2Up[1], act() { send('up', { w: 'pos2' }); } }] : []),
+        ...(M.up.sim + 1 < R.simUp.length ? [{ name: 'A second network SIM', sub: 'When one network jams, the other works', btn: naira(R.simUp[1]), off: cash < R.simUp[1], act() { send('up', { w: 'sim' }); } }] : []), ...tail];
       if (b.kind === 'barber') return [back(), ...common,
         ...(M.up.chair + 1 < R.chairUp.length ? [{ name: 'A second barber chair', sub: 'Two customers at once', btn: naira(R.chairUp[1]), off: cash < R.chairUp[1], act() { send('up', { w: 'chair' }); } }] : []),
         ...(M.up.ac + 1 < R.acUp.length ? [{ name: 'An AC', sub: 'People like it cool (twice the fuel without light)', btn: naira(R.acUp[1]), off: cash < R.acUp[1], act() { send('up', { w: 'ac' }); } }] : []), ...tail];
@@ -180,6 +205,12 @@ export function createBusiness(api) {
     }
     const till = { name: `Collect the till · ${naira(M.till)}`, sub: 'The money your customers paid', btn: 'COLLECT', off: M.till <= 0, act() { send('take'); } };
     const prices = { name: 'Set your prices', sub: keys.map(k => naira(M.pr[k])).join(' · '), btn: 'PRICES ▸', act() { VIEW = 'price'; refresh(); } };
+    if (b.kind === 'pos') return [till,
+      { name: `Cash in the box · ${naira(M.float)}`, sub: 'Withdrawals are paid from it', btn: 'BOX ▸', act() { VIEW = 'box'; refresh(); } },
+      { name: `POS wallet · ${naira(M.wallet)}`, sub: 'The e-money from withdrawals (transfers and sends use it)', btn: 'WALLET ▸', act() { VIEW = 'wallet'; refresh(); } },
+      { ...prices, name: 'Set your fees' },
+      { name: 'Mama Nkechi, machines, network, name', sub: `${M.up.pos2 ? 'Two machines' : 'One machine'}${M.up.sim ? ' · two networks' : ''}`, btn: 'MORE ▸', act() { VIEW = 'grow'; refresh(); } },
+      { name: 'Send money to a player', sub: 'No fee at your own POS', btn: 'SEND ▸', act() { askSend(); } }];
     if (b.kind === 'barber') {
       const fuelL = Math.min(R.fuel.litres, R.fuel.tank - M.fuel), fuelCost = Math.round(R.fuel.cost * fuelL / R.fuel.litres);
       return [till,
@@ -206,12 +237,18 @@ export function createBusiness(api) {
     if (CUR && !api.menuOpen()) CUR = null;
   }
 
+  // sending money: who and how much
+  function askSend() {
+    const b = CUR; if (!b) return;
+    askText('Send to which player? (username)', '', 16, to => { if (!to) return;
+      askText(`How much for ${to}? (₦)`, '5000', 7, v => { const n = Math.round(+String(v || '').replace(/[^0-9]/g, '')); if (!n) return; CUR = b; send('send', { to, n }); }, 'numeric'); });
+  }
   // a little box to type a name in (no browser pop-ups)
-  function askText(label, val, max, cb) {
+  function askText(label, val, max, cb, mode) {
     const wrap = document.createElement('div'); wrap.className = 'opanel'; wrap.style.zIndex = 60;
     const box = document.createElement('form'); box.className = 'obox'; box.style.display = 'flex'; box.style.flexDirection = 'column'; box.style.gap = '10px';
     const h = document.createElement('h2'); h.textContent = label.toUpperCase();
-    const inp = document.createElement('input'); inp.maxLength = max; inp.value = val || ''; inp.autocomplete = 'off'; inp.spellcheck = false;
+    const inp = document.createElement('input'); inp.maxLength = max; inp.value = val || ''; inp.autocomplete = 'off'; inp.spellcheck = false; if (mode) inp.inputMode = mode;
     const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '8px';
     const ok = document.createElement('button'); ok.type = 'submit'; ok.className = 'ogo'; ok.textContent = 'SAVE'; ok.style.flex = '1';
     const no = document.createElement('button'); no.type = 'button'; no.className = 'ogo ghost'; no.textContent = 'CANCEL'; no.style.flex = '1'; no.style.marginTop = '0';
@@ -223,6 +260,6 @@ export function createBusiness(api) {
     api.typing(true); setTimeout(() => { inp.focus(); inp.select(); }, 30);
   }
 
-  build('buka'); build('barber');
+  build('buka'); build('barber'); build('pos');
   return { on, prompt, action, near: () => !!at(), update, signedOut, sites: () => B, debug: () => Object.values(B).map(b => ({ id: b.id, kind: b.kind, x: b.x, z: b.z, pub: b.pub, mine: !!b.mine })) };
 }
