@@ -299,9 +299,8 @@ facing them, not too fast) and counts it: 100 points knock somebody out, and the
 you for a while. The one hit staggers and loses health on their own phone. A knock-out puts them down for a few
 seconds; the winner takes 10% of their pocket money (₦2,000 at most, only from ₦1,000 up), and they cannot be hit
 again for two minutes. A player who just came online is safe for 45 seconds, until they throw a blow themselves.
-Hitting a player in the open brings the police like hitting anybody else (not in Under Bridge, and not during the
-fight for the chair at the motor park, where knocking out a player of the other side puts them out of that fight for
-a while). The fights are on the server (`server/src/pvp.js`).
+The police leave fights between players alone for now. During the fight for the chair at the motor park, knocking
+out a player of the other side puts them out of that fight for a while. The fights are on the server (`server/src/pvp.js`).
 
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
