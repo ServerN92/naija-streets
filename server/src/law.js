@@ -37,7 +37,7 @@ export function createLaw({ db, now = () => Date.now(), log = () => {}, ctx }) {
     log('crime', C.user && C.user.name, why, stars(C, t));
   }
   function refresh(C) {   // the stars on your name, for everybody near you
-    const w = stars(C); if (C.p && C.p.ws !== w) { C.p.ws = w; C.p.lv++; C.p.ver++; }
+    const w = stars(C); if (C.p && C.p.ws !== w) { C.p.ws = w; C.p.lv++; C.p.ver++; if (C.user && C.ws && C.ws.open !== false) me(C); }   // (and your own phone hears it)
   }
   function me(C) {
     const d = C.lawRec || (C.lawRec = recOf(C.user.id)), t = now();
