@@ -430,6 +430,6 @@ export function createOnline(api) {
     get signedIn() { return !!S.me; },
     get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },
-    debug: () => ({ st: S.st, me: S.me, n: S.n, others: [...RS.values()].map(R => ({ id: R.id, n: R.n, c: R.c, body: !!R.root, vis: !!(R.root && R.root.visible), car: R.ck, clip: R.cn, d: Math.round(R.d), s: R.s && { x: R.s.x, z: R.s.z, a: R.s.a } })), cash: { srv: S.srv, pend: S.cpend.length }, chat: CH.lines.length }),
+    debug: () => ({ st: S.st, me: S.me, n: S.n, last: S.last, ws: S.ws ? S.ws.readyState : -1, others: [...RS.values()].map(R => ({ id: R.id, n: R.n, c: R.c, body: !!R.root, vis: !!(R.root && R.root.visible), car: R.ck, clip: R.cn, d: Math.round(R.d), s: R.s && { x: R.s.x, z: R.s.z, a: R.s.a } })), cash: { srv: S.srv, pend: S.cpend.length }, chat: CH.lines.length }),
   };
 }
