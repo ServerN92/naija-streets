@@ -222,7 +222,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (typeof m.id !== 'string' || typeof m.a !== 'string') return;
     biz.handle(C, m);
   }
-  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout, bz };
+  function mk(C, m) { C.bzLim = C.bzLim || new Bucket(12, 3); if (!C.bzLim.take()) return; if (typeof m.a === 'string') biz.market(C, m); }
+  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };

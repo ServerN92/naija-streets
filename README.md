@@ -263,7 +263,17 @@ one that works; a second machine (₦50,000) serves two at once; Mama Nkechi min
 
 Players send money to each other at any open POS: the username and the amount (₦100 to ₦200,000); it arrives at once
 (even when they are offline), the agent keeps 1% (₦100 to ₦2,000), and it comes out of the POS wallet, so a POS with
-an empty wallet cannot send. Next: the farmer.
+an empty wallet cannot send.
+
+## Online business: the farmer sells to the bukas
+Your farm's tomatoes, cassava and yams can go to real players' bukas. In the Oya Farm phone app (signed in online), the
+"Online market" part: pick your price (cheap, fair or dear: tomatoes ₦600 / ₦1,000 / ₦1,500 each, cassava ₦600 /
+₦800 / ₦1,100, yams ₦1,100 / ₦1,500 / ₦2,000; the produce buyer in the market pays far less) and put 10 up for sale at
+a time (5 sales at once, 200 a day). They leave your store; if nobody buys in 2 days, or you take a sale down, they come
+back. A buka owner buys them at the counter (Cook food → Buy produce from farmers) into the buka's pantry, and the
+money goes straight to the farmer (even offline, with a message). Cooking with farm produce costs much less: 2 for 10
+plates (tomatoes for jollof, yams for amala and pounded yam, cassava for eba), 15% of the plate price instead of 40%.
+The market is on the server (`server/src/biz.js`, saved in SQLite); the farm store is on your phone (`src/farm.js`).
 
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the

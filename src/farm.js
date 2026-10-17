@@ -678,5 +678,9 @@ export function createFarm(api) {
     near: () => !!here, claimed: () => S.got, inYard: () => { const p = api.player(), l = L(p.x, p.z); return S.got && Math.abs(l.u) < YARD.u && Math.abs(l.v) < YARD.v; },
     nearSettlement: () => { const p = api.player(); return Math.hypot(p.x - SG.x, p.z - SG.z) < 40; },
     pos: () => ({ x: SG.x, z: SG.z }), truck: () => truck,
+    // for the online produce market (src/business.js): what is in your store, take some out, put some back
+    store: () => ({ ...S.store }), has: () => !!S.got,
+    take: (k, n) => { if ((S.store[k] || 0) < n || n <= 0) return false; S.store[k] -= n; if (!S.store[k]) delete S.store[k]; save(); return true; },
+    put: (k, n) => { if (n > 0) put(k, n); },
   };
 }
