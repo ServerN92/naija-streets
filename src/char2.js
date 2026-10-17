@@ -82,25 +82,48 @@ export function footOffset(root, D, clip) {
   lows.sort((x, y) => x - y); return Math.max(-.25, Math.min(.25, -(lows[2] + lows[3]) / 2));
 }
 
-// one of the four outfits on: its clothes and shoes show, the skin under them is not drawn
+// one of the outfits on: its clothes and shoes show, the skin under them is not drawn. The women (tools/character/women)
+// have one body mesh that keeps a cut of itself per outfit (bodyFits); hair~<outfits> is hidden under those outfits (a gele).
 export function setOutfit(root, i) {
   const s = String(i);
   root.traverse(o => { const n = o.name; let m;
     if ((m = /^o(\d)~/.exec(n))) o.visible = m[1] === s;
     else if ((m = /^shoe(\d*)~/.exec(n))) o.visible = m[1].includes(s);
-    else if ((m = /^body~(\d*)$/.exec(n))) o.visible = !m[1].includes(s); });
+    else if ((m = /^body~(\d*)$/.exec(n))) o.visible = !m[1].includes(s);
+    else if ((m = /^hair~(\d*)~/.exec(n))) o.visible = !m[1].includes(s);
+    if (o.isMesh && o.geometry && o.geometry.userData.fits) { const F = o.geometry.userData.fits; o.geometry = F[s] || F.all; } });
+}
+// how many outfits a person's file has
+export const outfitCount = meta => (meta && meta.outfits && meta.outfits.length) || 4;
+
+// the women's body: per vertex, the outfits that cover it (bits in the second colour set, red = 0-7, green = 8-15). One
+// geometry per outfit shares the body's points and keeps only the triangles that outfit leaves showing.
+function bodyFits(mesh, n) {
+  const g = mesh.geometry, A = g.attributes.color_1, I = g.index; if (!A || !I) return false;
+  const v = k => { const x = A.getX(k), y = A.getY(k); return A.normalized || x <= 1 ? Math.round(x * 255) | (Math.round(y * 255) << 8) : x | (y << 8); };
+  const h = new Uint16Array(A.count); for (let k = 0; k < A.count; k++) h[k] = v(k);
+  g.deleteAttribute('color_1');
+  if (!g.boundingSphere) g.computeBoundingSphere();
+  const fits = { all: g }, ix = I.array;
+  for (let o = 0; o < n; o++) { const bit = 1 << o, keep = [];
+    for (let t = 0; t < ix.length; t += 3) { const a = ix[t], b = ix[t + 1], c = ix[t + 2]; if (!(h[a] & h[b] & h[c] & bit)) keep.push(a, b, c); }
+    const f = new THREE.BufferGeometry(); for (const k in g.attributes) f.setAttribute(k, g.attributes[k]);
+    f.setIndex(g.attributes.position.count < 65536 ? keep : new THREE.BufferAttribute(Uint32Array.from(keep), 1)); f.boundingSphere = g.boundingSphere; f.boundingBox = g.boundingBox; fits[o] = f; }
+  for (const k in fits) fits[k].userData.fits = fits;
+  return true;
 }
 
 // the character as it comes out of the file, ready for the street
 export function prepChar(gltf, { maxAniso = 4, layer = 1, shadows = true } = {}) {
   const root = gltf.scene, meta = root.userData || {}, mats = [];
   root.traverse(o => { if (/mixamorig\d+:?/.test(o.name)) o.name = o.name.replace(/mixamorig\d+:?/, 'mixamorig'); });   // some Mixamo files say mixamorig9Hips: one name for every move
+  root.traverse(o => { if (o.isMesh && o.geometry && o.geometry.attributes.color_1) bodyFits(o, outfitCount(meta)); });
   root.traverse(o => { if (!o.isMesh) return; o.frustumCulled = false; o.castShadow = shadows; o.receiveShadow = true; if (layer != null) o.layers.set(layer);
     const ms = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of ms) { if (mats.includes(m)) continue; mats.push(m);
       for (const k of ['map', 'normalMap']) if (m[k]) m[k].anisotropy = maxAniso;
       if (m.alphaTest > 0) { m.transparent = false; m.depthWrite = true; }
-      m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map || null; m.emissiveIntensity = 0; } });   // the game lifts dark bodies at night with a little emissive
+      m.emissive = m.map ? new THREE.Color(0xffffff) : m.color.clone(); m.emissiveMap = m.map || null; m.emissiveIntensity = 0; } });   // the game lifts dark bodies at night with a little emissive (plain cloth in its own colour)
   return { root, meta, mats, info: skeletonInfo(root) };
 }
 

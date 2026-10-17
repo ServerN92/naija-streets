@@ -1762,11 +1762,27 @@ const CAST={
   // the police (only come with the vans): a plain-clothes officer in a POLICE cap, and a heavy policewoman in black tactical kit
   police_m:  {f:0,h:1.80,w:0,  idle:['idle_1','phone'],                  tw:0,  look:['#3a2416','#f2f2f0','#1b2433','#3a2a20','#141414'],cop:1},
   police_f:  {f:1,h:1.68,w:0,  idle:['idle_2','idle_1'],                 tw:0,  look:['#c99a7a','#1c1d22','#1c1d22','#0e0e10','#3a2a1a'],cop:1,fight:1}};
-Object.assign(CAST,{   // our own people (Tunde, Amaka, Ada): each copy wears one of their four outfits
-  p_tunde:{f:0,h:1.80,w:.45,idle:['idle_1','idle_2','phone','text'],tw:.2,look:['#3a2416','#0e8a44','#16161a','#eeeeee','#141110'],v2:1},
-  p_amaka:{f:1,h:1.70,w:.45,idle:['f_idle','f_talk','text','f_think'],tw:.3,look:['#7b5032','#f5f1ea','#4a6492','#eeeeee','#141110'],v2:1},
-  p_ada:  {f:1,h:1.66,w:.45,idle:['f_idle','f_talk','text','f_bashful'],tw:.3,look:['#3f2616','#561869','#e9b004','#111111','#141110'],v2:1}});
-if(isF()) CAST.girl.w=0;   // she is you: no copies of you walking the streets
+Object.assign(CAST,{   // our own people (Tunde): each copy wears one of his four outfits
+  p_tunde:{f:0,h:1.80,w:.45,idle:['idle_1','idle_2','phone','text'],tw:.2,look:['#3a2416','#0e8a44','#16161a','#eeeeee','#141110'],v2:1}});
+/* the city's women, made in Blender (tools/character/women): nine of them, each with nine outfits. Every session a few of them
+   are in town (fewer on small screens, so phones load less), and they play the parts the city's Mixamo women used to play:
+   the mama at the market, the lady in red, the lady in black, the lady in a suit, the girl (ROLE_W: who, and in what). */
+const WOMEN={p_amaka:'Amaka',p_ada:'Ada',p_chioma:'Chioma',p_bisi:'Bisi',p_kemi:'Kemi',p_funmi:'Funmi',p_nkechi:'Mama Nkechi',p_basira:'Iya Basira',p_halima:'Sgt Halima'};
+const W_SKIN={p_amaka:'#6c4e3b',p_ada:'#473224',p_chioma:'#7b5d48',p_bisi:'#6c4e3b',p_kemi:'#39271c',p_funmi:'#5b402f',p_nkechi:'#473224',p_basira:'#5b402f',p_halima:'#7b5d48'};
+const W_STREET=['gown','iro_buba','bodycon','jeans','joggers','office','fitness','club'];   // (night wear stays at home)
+const ROLE_W={mama:[['p_nkechi',['iro_buba','gown']],['p_basira',['iro_buba','gown','joggers']]],
+  lady_red:[['p_amaka',['bodycon','club','gown']],['p_bisi',['gown','bodycon','club']]],
+  lady_black:[['p_ada',['jeans','club','bodycon']],['p_kemi',['jeans','fitness','joggers']]],
+  suit_lady:[['p_funmi',['office']],['p_halima',['office']]],
+  girl:[['p_chioma',['jeans','joggers','fitness','bodycon']],['p_kemi',['fitness','joggers','jeans']],['p_ada',['jeans','joggers']]]};
+const W_IN=(()=>{ let me=null; try{ me=localStorage.getItem('naija-look2'); }catch(e){} if(!(me in WOMEN)) me=PROFILE&&PROFILE.c in WOMEN?PROFILE.c:null; if(!isF()) me=null;
+  const want=qKey==='low'?4:qKey==='high'?6:5, S=new Set(), pick={}, rnd=L=>L[(Math.random()*L.length)|0];
+  for(const r in ROLE_W){ const L=ROLE_W[r].filter(([w])=>w!==me), fresh=L.filter(([w])=>!S.has(w)), here=L.filter(([w])=>S.has(w));
+    const c=rnd(fresh.length&&S.size<want?fresh:here.length?here:L); if(c){ S.add(c[0]); pick[r]=c; } }   // a new face for each part while there is room
+  const rest=Object.keys(WOMEN).filter(w=>w!==me&&!S.has(w)); while(S.size<want&&rest.length) S.add(rest.splice((Math.random()*rest.length)|0,1)[0]);
+  return {set:S,pick}; })();
+for(const id in WOMEN){ const on=W_IN.set.has(id); CAST[id]={f:1,h:1.7,w:on?.3:0,idle:['f_idle','f_talk','text','f_think'],tw:.3,look:[W_SKIN[id],'#c0102c','#1d2a6b','#111111','#141110'],v2:1,lazy:!on,fits:W_STREET}; }
+for(const r in W_IN.pick) CAST[r].as=W_IN.pick[r];
 // school runs (07:00–08:30, 13:30–15:30 game time) bring out the schoolboys; late night has fewer hawkers and babas
 function pickCast(hour){ const school=hour!=null&&((hour>=7&&hour<8.5)||(hour>=13.5&&hour<15.5)), night=hour!=null&&(hour>=21||hour<5.5); let tot=0; const w={};
   for(const k in CAST){ let x=CAST[k].w; if(k==='schoolboy') x*=school?5:night?0:.5; if(night&&(k==='baba'||k==='hawker')) x*=.3; if(night&&k==='areaboy') x*=1.6; w[k]=x; tot+=x; }
@@ -3301,7 +3317,7 @@ const SPOTS=[];
 const PEOPLE={n:0,clips:{},casts:{}};
 const purl=f=>{ const u=`assets/people/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 const _fv=new THREE.Vector3();
-const cloneCast=C=>{ const o=SkeletonUtils.clone(C.tpl); if(C.v2) C2.setOutfit(o,(MR()*4)|0); return o; };   // one of our people: a random outfit
+const cloneCast=C=>{ const o=SkeletonUtils.clone(C.tpl); if(C.v2) C2.setOutfit(o,C.fits&&C.fits.length?C.fits[(MR()*C.fits.length)|0]:(MR()*4)|0); return o; };   // one of our people: a random outfit (of the ones the part allows)
 // a move made on one skeleton, fitted to another: drop bones it lacks, put the hips at this rig's own height
 const ROOTMOVE=new Set(['takedown_a','takedown_v','enter_car']);   // moves where the body travels (stored as a fraction of hip height)
 function fitClip(src,names,hp){ const k=src.clone(); k.tracks=k.tracks.filter(t=>names.has(t.name.split('.')[0])); const travel=ROOTMOVE.has(src.name);
@@ -3349,7 +3365,9 @@ async function loadPeople(){
     PEOPLE.clipsIn=true; applySavedLook();
     let mine=null; try{ mine=localStorage.getItem('naija-look2'); }catch(e){} if(isF()&&!(mine&&LOOK_LIST.some(l=>l.id===mine&&l.f===1&&!l.file))) mine='girl';
     for(const id of Object.keys(CAST).sort((a,b)=>(b===mine)-(a===mine)||(isV2(a)-isV2(b))||CAST[b].w-CAST[a].w)){   // our big people files come last
-      try{ if(isV2(id)){ if(await loadV2(id)){ npcV2(id); crowdQueue(id); } } else { setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),'')); crowdQueue(id); } }catch(e){ console.warn('person '+id+' could not load',e); }
+      const c=CAST[id]; if(c.lazy) continue;
+      try{ if(c.as&&await loadV2(c.as[0])&&womanPart(id)){ crowdQueue(id); continue; }   // (if she can't come, the old person plays it)
+        if(isV2(id)){ if(await loadV2(id)){ npcV2(id); crowdQueue(id); } } else { setupCast(id,await GLL.parseAsync(await fetchBuf(purl(id)),'')); crowdQueue(id); } }catch(e){ console.warn('person '+id+' could not load',e); }
       if(id===mine) applySavedLook();   // you get your own body as soon as it is in
       await new Promise(r=>setTimeout(r,30)); }
   }catch(e){ console.warn('people files could not load; the city keeps its simple walkers',e); }
@@ -3435,7 +3453,8 @@ function crowdTexPix(map){ const W=Math.min(512,(map.image&&map.image.width)||51
   rt.dispose(); m.dispose(); q.geometry.dispose(); return {W,H,buf}; }
 // colours per point: each little triangle of the cast's atlas is sampled a bit inside, and points at the same place share the mean
 function crowdColors(B,MS,map){ const T=crowdTexPix(map); map.updateMatrix(); const e=map.matrix.elements, n=B.n, remap=MS.generatePositionRemap(B.P,3), acc=new Float32Array(n*4), idx=B.idx, UV=B.UV;
-  const look=(u,v,g)=>{ const tu=e[0]*u+e[3]*v+e[6], tv=e[1]*u+e[4]*v+e[7], x=clamp(Math.floor(tu*T.W),0,T.W-1), y=clamp(Math.floor(tv*T.H),0,T.H-1), o=(y*T.W+x)*4, a=remap[g]*4;
+  const wrap=map.wrapS===THREE.RepeatWrapping, px=(t,N)=>wrap?((Math.floor(t*N)%N)+N)%N:clamp(Math.floor(t*N),0,N-1);   // printed cloth repeats
+  const look=(u,v,g)=>{ const tu=e[0]*u+e[3]*v+e[6], tv=e[1]*u+e[4]*v+e[7], x=px(tu,T.W), y=px(tv,T.H), o=(y*T.W+x)*4, a=remap[g]*4;
     acc[a]+=T.buf[o]; acc[a+1]+=T.buf[o+1]; acc[a+2]+=T.buf[o+2]; acc[a+3]++; };
   for(let t=0;t<idx.length;t+=3){ const a=idx[t],b=idx[t+1],c=idx[t+2], cu=(UV[a*2]+UV[b*2]+UV[c*2])/3, cv=(UV[a*2+1]+UV[b*2+1]+UV[c*2+1])/3;
     for(const k of [a,b,c]) look(UV[k*2]*.55+cu*.45,UV[k*2+1]*.55+cv*.45,k); }
@@ -3479,9 +3498,9 @@ function crowdJoin(list,mixer,hips){ let n=0,ni=0; for(const R of list){ n+=R.n;
   if(list.every(R=>R.color)){ const c=new Float32Array(n*3); let k=0; for(const R of list){ c.set(R.color.array,k); k+=R.color.array.length; } J.color=new THREE.BufferAttribute(c,3); } else J.uv=list[0].uv; return J; }
 function crowdInst(g,mat){ const m=new THREE.InstancedMesh(g,mat,CROWD.cap||(CROWD.cap=peds.length+8)); m.count=0; m.visible=false; m.frustumCulled=false; m.castShadow=false; m.receiveShadow=true; m.layers.set(1); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); return m; }
 // the parts a cast wears in its first outfit (our own people have several outfits in one file)
-function crowdParts(tpl){ const out=[]; tpl.traverse(o=>{ if(!o.isSkinnedMesh||!o.geometry.attributes.uv) return; let on=true;
+function crowdParts(tpl,fit='0'){ const out=[]; tpl.traverse(o=>{ if(!o.isSkinnedMesh||!o.geometry.attributes.uv) return; let on=true;
     for(let q=o;q&&q!==tpl;q=q.parent){ const n=q.name; let m;   // the same rules as C2.setOutfit, on the part or any group above it
-      if((m=/^o(\d)~/.exec(n))){ on=m[1]==='0'; break; } if((m=/^shoe(\d*)~/.exec(n))){ on=m[1].includes('0'); break; } if((m=/^body~(\d*)$/.exec(n))){ on=!m[1].includes('0'); break; } if(!q.visible){ on=false; break; } }
+      if((m=/^o(\d)~/.exec(n))){ on=m[1]===fit; break; } if((m=/^shoe(\d*)~/.exec(n))){ on=m[1].includes(fit); break; } if((m=/^(body|hair)~(\d*)(~|$)/.exec(n))){ on=!m[2].includes(fit); break; } if(!q.visible){ on=false; break; } }
     if(on) out.push(o); }); return out; }
 function crowdBase(sm){ const G=sm.geometry, PA=G.attributes.position, NA=G.attributes.normal, IA=G.attributes.skinIndex, WA=G.attributes.skinWeight, UA=G.attributes.uv, n=PA.count;
   const B={sm,n,F:new Float32Array(sm.skeleton.bones.length*16),P:new Float32Array(n*3),N:new Float32Array(n*3),SI:new Uint16Array(n*4),SW:new Float32Array(n*4),UV:new Float32Array(n*2),
@@ -3489,7 +3508,8 @@ function crowdBase(sm){ const G=sm.geometry, PA=G.attributes.position, NA=G.attr
   for(let i=0;i<n;i++){ B.P[i*3]=PA.getX(i); B.P[i*3+1]=PA.getY(i); B.P[i*3+2]=PA.getZ(i); if(NA){ B.N[i*3]=NA.getX(i); B.N[i*3+1]=NA.getY(i); B.N[i*3+2]=NA.getZ(i); } B.UV[i*2]=UA.getX(i); B.UV[i*2+1]=UA.getY(i);
     let ws=0; for(let k=0;k<4;k++){ B.SI[i*4+k]=IA.getComponent(i,k); ws+=(B.SW[i*4+k]=WA.getComponent(i,k)); } if(ws>0) for(let k=0;k<4;k++) B.SW[i*4+k]/=ws; }
   return B; }
-async function crowdBake(id){ const C=PEOPLE.casts[id], c=CAST[id]; if(!C||CROWD.c[id]) return; const MS=await simplifier(), parts=crowdParts(C.tpl); if(!parts.length||(parts.length>1&&!MS)) return;
+async function crowdBake(id){ const C=PEOPLE.casts[id], c=CAST[id]; if(!C||CROWD.c[id]) return; const fit=C.fit0||0; if(C.v2) C2.setOutfit(C.tpl,fit);   // (the women's body is cut for the outfit)
+  const MS=await simplifier(), parts=crowdParts(C.tpl,String(fit)); if(!parts.length||(parts.length>1&&!MS)) return;
   let hips=null; C.tpl.traverse(o=>{ if(o.isBone&&!hips&&/Hips$/.test(o.name)) hips=o; });
   const mixer=new THREE.AnimationMixer(C.tpl), yieldNow=()=>new Promise(r=>setTimeout(r,0)), Bs=parts.map(crowdBase), total=Bs.reduce((a,B)=>a+B.idx.length/3,0), want=Q.npc<=8?1500:2200;
   const list=[]; for(const B of Bs){ const mat=B.sm.material; let col=null;
@@ -4522,11 +4542,6 @@ const LOOK_LIST=[
   {id:'outfit_suit',name:'Gold print suit',f:0,h:1.84,idle:['idle_1'],sw:['#8a6a3a','#2a2218'],file:1},
   {id:'outfit_thobe',name:'White thobe',f:0,robe:1,h:1.82,idle:['idle_1'],sw:['#f2f0ea','#f2f0ea'],file:1},
   {id:'outfit_tracksuit',name:'Black tracksuit',f:0,h:1.8,idle:['idle_1'],sw:['#2a2a2e','#141416'],file:1},
-  {id:'girl',name:'Classic you',f:1},
-  {id:'suit_lady',name:'Grey trouser suit',f:1},
-  {id:'mama',name:'Ankara mama',f:1,robe:1,hair:'Neck'},
-  {id:'lady_red',name:'Red dress',f:1,robe:1},
-  {id:'lady_black',name:'All black',f:1},
   {id:'outfit_dress_pink',name:'Pink dress',f:1,robe:1,h:1.72,idle:['idle_3'],sw:['#ead3d8','#ead3d8'],file:1},
   {id:'outfit_casual',name:'Mustard and jeans',f:1,h:1.72,idle:['idle_4'],sw:['#cc9438','#2b3b5e'],file:1}];
 /* ================= home life: sit, watch TV, cook and eat, bath, sleep, music and dance, sweep =================
@@ -4709,7 +4724,7 @@ function homeAction(){ if(HL.act){ if(HL.act.stop!==false) homeStop(); return tr
 // ---- the bath: clothes come off. Our own people (Amaka, Ada) just take their outfit off. A Mixamo person is hollow under
 // the clothes, so for the bath they get a body made from ours (Tunde for men, Amaka for women) in their own skin colour, with
 // their own head on it. A soft mosaic covers the private parts, and a woman's chest, like in The Sims.
-const SKIN_OF={p_tunde:'#6a3825',p_amaka:'#be7355',p_ada:'#6b3527',p_dayo:'#a96244',p_emeka:'#a36949',p_tobi:'#a66d3f',p_femi:'#8a5535',p_mike:'#dab6aa',p_chris:'#ddb797',p_lin:'#deb197'};
+const SKIN_OF={...W_SKIN,p_tunde:'#6a3825',p_dayo:'#a96244',p_emeka:'#a36949',p_tobi:'#a66d3f',p_femi:'#8a5535',p_mike:'#dab6aa',p_chris:'#ddb797',p_lin:'#deb197'};
 const HEADW=n=>/(Head|HeadTop_End|LeftEye|RightEye)(_\d+)?$/.test(n), nmOf=o=>{ for(let q=o;q;q=q.parent) if(q.name&&!/^mesh_\d+(_\d+)?$/.test(q.name)) return q.name; return ''; };
 function headCut(m,keep,thr){ const g=m.geometry, I=g.index; if(!I) return g; const w=skinW(m,HEADW), out=[], groups=[];
   const ranges=g.groups.length?g.groups:[{start:0,count:I.count,materialIndex:0}];
@@ -4725,7 +4740,7 @@ async function bathBody(){ const id=WARD.cur, P=v2Of(id), f=isF(), info=homeClip
   if(P&&!P.mx){ B.own=true; B.body=hero.cObj; B.scale=1; B.skin=SKIN_OF[id]||'#7b5032'; return B; }
   const src=f?'p_amaka':'p_tunde', C=V2.casts[src]||await loadV2(src); if(!C||!hero) return null;
   const dbl=SkeletonUtils.clone(C.tpl); C2.setOutfit(dbl,-1); dbl.name='bathBody';
-  dbl.traverse(o=>{ if(!o.isMesh) return; const n=nmOf(o); if(/^(eyes|brows|lashes|hair|braid)/.test(n)) o.visible=false; else if(o.isSkinnedMesh&&/^body/.test(n)) o.geometry=headCut(o,false,.9); o.castShadow=true; o.frustumCulled=false; o.layers.set(1); });
+  dbl.traverse(o=>{ if(!o.isMesh) return; const n=nmOf(o); if(/^(eyes|brows|lashes|hair|braid|head|liner|scalp)/.test(n)) o.visible=false; else if(o.isSkinnedMesh&&/^body/.test(n)) o.geometry=headCut(o,false,.9); o.castShadow=true; o.frustumCulled=false; o.layers.set(1); });
   // their skin colour: our skin picture tinted when close, a plain colour when far apart
   const want=new THREE.Color(SKIN_OF[id]||'#8a5535'), have=new THREE.Color(SKIN_OF[src]), k=[want.r/have.r,want.g/have.g,want.b/have.b], far=Math.max(...k)>2.4||Math.min(...k)<.42, mats=new Map();
   dbl.traverse(o=>{ if(!o.isMesh||!o.material||!/_skin$/.test(o.material.name||'')) return; let m=mats.get(o.material); if(!m){ m=o.material.clone(); if(far){ m.map=null; m.emissiveMap=null; m.color.copy(want).multiplyScalar(.82); } else m.color.setRGB(k[0],k[1],k[2]); mats.set(o.material,m); HERO_MATS.push(m); } o.material=m; });
@@ -4959,7 +4974,7 @@ function applyColours(){ if(!hero||(hero.look&&hero.look.v2&&!hero.look.mx)) ret
 const lookFile=L=>!!(L.file&&(MANIFEST[`assets/people/${L.id}.glb`]||AV[`assets/people/${L.id}.glb`]));
 // men see the men's looks, women the women's (the moves always follow who you are)
 const lookShown=L=>L.f===(isF()?1:0)&&(L.id==='me'||(L.file?lookFile(L):!!CAST[L.id]));
-const baseLook=()=>isF()?'girl':'me';
+const baseLook=()=>isF()?myPerson():'me';
 const lookOk=L=>L.id==='me'||!!PEOPLE.casts[L.id]||(lookFile(L)&&PEOPLE.done);
 const nearWard=()=>!!hero&&mode==='interior'&&ROOM===INT&&Math.hypot(player.x-INT.ward.x,player.z-INT.ward.z)<1.4;
 /* ================= the new people: Tunde, Amaka and Ada =================
@@ -4967,12 +4982,11 @@ const nearWard=()=>!!hero&&mode==='interior'&&ROOM===INT&&Math.hypot(player.x-IN
    Mixamo skeleton whose bones are turned like Mixamo's, so the game's moves (fighting, phone, getting up…) play on it as they are.
    Their own idle, walk, swagger, run and jump come from moves2.glb, fitted bone by bone (src/char2.js). */
 const V2={list:[{id:'p_dayo',name:'Dayo',f:0,mx:1},{id:'p_tobi',name:'Tobi',f:0,mx:1},{id:'p_emeka',name:'Emeka',f:0,mx:1},{id:'p_femi',name:'Femi',f:0,mx:1},{id:'p_mike',name:'Mike',f:0,mx:1},{id:'p_chris',name:'Chris',f:0,mx:1},
-    {id:'p_amaka',name:'Amaka',f:1},{id:'p_ada',name:'Ada',f:1},{id:'p_lin',name:'Lin',f:1,mx:1,shape:1},
+    ...Object.entries(WOMEN).map(([id,name])=>({id,name,f:1})),{id:'p_lin',name:'Lin',f:1,mx:1,shape:1,npc:1},
     {id:'p_tunde',name:'Tunde',f:0,npc:1}],   // mx: Mixamo people (their own clothes; colours change); npc: only walks the streets
   moves:null,job:{},casts:{},fit:{},shape:{},
   sw:{p_tunde:[['#0e8a44','#16161a'],['#1b2b55','#1b2b55'],['#eae1ce','#a8741c'],['#eeeeea','#8a7a52']],
-      p_amaka:[['#f5f1ea','#4a6492'],['#c0102c','#c0102c'],['#1b2766','#ea871c'],['#126c4f','#d54e38']],
-      p_ada:[['#e8457a','#4a6492'],['#0f7a5a','#0f7a5a'],['#561869','#e9b004'],['#cec9c2','#861a29']]}};
+}};
 try{ const s=JSON.parse(localStorage.getItem('naija-fit')||'null'); if(s&&typeof s==='object') V2.fit=s; }catch(e){}
 try{ const s=JSON.parse(localStorage.getItem('naija-shape')||'null'); if(s&&typeof s==='object') V2.shape=s; }catch(e){}
 // a woman's body shape (Mixamo women): slim as she comes, curvy or thick
@@ -5009,10 +5023,15 @@ function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); cons
     tpl.updateMatrixWorld(true); for(const m of ch.mats) if(m.map) renderer.initTexture(m.map);
     return V2.casts[id]={tpl,clips,off,y0:0,sc:1,f:P.f,idle0:'idle',v2:true,mx:!!P.mx,shape:!!P.shape,info:D,meta:ch.meta,wv:P.f?(fw?1.61:.93):1.77,rv:P.f?(fr?4.9:4.2):4.7,w2v:P.f?.97:.92,npc:{clips:nclips,off:noff}};
   })().catch(e=>{ console.warn('person '+id+' could not load',e); delete V2.job[id]; return null; })); }
-const fitOf=id=>{ const i=+V2.fit[id]; return i>=0&&i<4?i:0; };
+const fitOf=id=>{ const i=+V2.fit[id], C=V2.casts[id], n=C?C2.outfitCount(C.meta):id in WOMEN?9:4; return i>=0&&i<n?i:0; };
 // Tunde, Amaka and Ada walk the streets too, each in one of their outfits
-function npcV2(id){ const C=V2.casts[id], c=CAST[id]; if(!C||!c||PEOPLE.casts[id]) return; const cl=C.npc.clips;
-  PEOPLE.casts[id]={tpl:C.tpl,clips:cl,off:C.npc.off,y0:0,sc:1,f:!!c.f,v2:true,idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>cl[n]&&c.idle.includes(n))||'idle_1'}; PEOPLE.n++; }
+const fitsOf=(C,ids)=>{ const outs=(C.meta&&C.meta.outfits)||[]; return (ids||[]).map(k=>outs.findIndex(o=>o.id===k)).filter(i=>i>=0); };
+// one of the women playing one of the city's parts (the mama, the lady in red ...), in that part's outfits
+function womanPart(id){ const c=CAST[id], C=V2.casts[c.as[0]]; if(!C) return false; if(PEOPLE.casts[id]) return true; const cl=C.npc.clips, fits=fitsOf(C,c.as[1]);
+  PEOPLE.casts[id]={tpl:C.tpl,clips:cl,off:C.npc.off,y0:0,sc:1,f:1,v2:true,fits:fits.length?fits:[0],fit0:fits[0]||0,who:c.as[0],
+    idle0:['f_idle','idle_suit','idle_1','idle_2','idle_3','idle_4'].find(n=>cl[n]&&c.idle.includes(n))||(cl.f_idle?'f_idle':'idle_1')}; PEOPLE.n++; return true; }
+function npcV2(id){ const C=V2.casts[id], c=CAST[id]; if(!C||!c||PEOPLE.casts[id]) return; const cl=C.npc.clips, fits=fitsOf(C,c.fits);
+  PEOPLE.casts[id]={tpl:C.tpl,clips:cl,off:C.npc.off,y0:0,sc:1,f:!!c.f,v2:true,fits:fits.length?fits:null,fit0:fits.length?fits[0]:0,idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>cl[n]&&c.idle.includes(n))||'idle_1'}; PEOPLE.n++; }
 function wearFit(i){ const id=WARD.cur; if(!isV2(id)||!hero) return; C2.setOutfit(hero.cObj,i); V2.fit[id]=i; try{ localStorage.setItem('naija-fit',JSON.stringify(V2.fit)); }catch(e){} }
 // put on a look: the body is swapped inside the same character, so walking, driving and fighting carry on as before
 async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const v2=isV2(id), L=v2?v2Of(id):LOOK_LIST.find(l=>l.id===id); if(!L) return false; if(id===WARD.cur) return true;
@@ -5068,7 +5087,7 @@ function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0,
     for(const [k,name] of SHAPES){ const b=document.createElement('button'); b.type='button'; b.className='lookb'; b.style.width='auto'; b.style.flex='1'; b.textContent=name; b.setAttribute('aria-pressed',(V2.shape[cur]||'curvy')===k?'true':'false');
       b.addEventListener('click',()=>{ setShape(cur,k); wardUI(); }); r.appendChild(b); } box.appendChild(r); }
   if(mine&&!mx){ const C=V2.casts[cur], outs=(C&&C.meta&&C.meta.outfits)||[], fi=fitOf(cur); h('Clothes');
-    outs.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='lookb'; const sw=(V2.sw[cur]||[])[i]||['#888','#666'];
+    outs.forEach((o,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='lookb'; const sw=o.sw||(V2.sw[cur]||[])[i]||['#888','#666'];
       const ic=document.createElement('i'); ic.style.background=`linear-gradient(${sw[0]} 0 55%,${sw[1]} 55% 100%)`; const sp=document.createElement('span'); sp.textContent=o.name; b.append(ic,sp);
       b.setAttribute('aria-pressed',i===fi?'true':'false');
       b.addEventListener('click',()=>{ if(i===fitOf(cur)) return; wearFit(i); toast(mpick(['Looking sharp!','Fresh! Lagos go notice.','You don change. Correct!'])); wardUI(); });
@@ -7608,7 +7627,8 @@ const eb=$('#enterBtn');
     for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ if(pickG===b.dataset.g) return; pickG=b.dataset.g; pickC=null; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); people(); ok(); });
     PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!eb.disabled) eb.click(); }); }
   eb.makeProfile=()=>{ if(PROFILE) return; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
-    if(isF()){ CAST.girl.w=0; for(const p of peds) if(p.cast==='girl'&&p.state!=='off'&&!p.spot) recast(p); } }; }
+    if(CAST[pickC]) CAST[pickC].w=0;   // no copies of you on the street
+  }; }
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
 eb.addEventListener('click',()=>{ if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment

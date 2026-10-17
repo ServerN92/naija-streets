@@ -127,8 +127,8 @@ bus stops; they answer when you walk into them or horn at them. The nearest ones
 (Low 8, Medium 14, High 24). Farther away the same person is drawn by the crowd: when a character loads, its body is cut
 down to about 2,200 triangles (1,500 on Low; meshoptimizer's simplifier, `src/libs/meshopt_simplifier.js`), takes its
 colours from its own texture and is posed once in 8 walking frames, 6 running, standing, texting and lying; far walkers
-pick the frame for where they are in their step, one instanced draw per character and frame. Tunde, Amaka and Ada are in
-the crowd too (first outfit). People in danfos, buses, kekes, cars and on okadas are the same characters posed once for
+pick the frame for where they are in their step, one instanced draw per character and frame. Tunde and the city's women
+are in the crowd too (in the first outfit of their part). People in danfos, buses, kekes, cars and on okadas are the same characters posed once for
 the seat (drivers, passengers, okada riders and the pillion, the danfo conductor at the door, police in the pickup).
 The old box people are gone.
 
@@ -140,10 +140,33 @@ cp /tmp/npc/out/*.glb assets/people/
 ```
 and add the character to `CAST` in `src/game.js` (height, how common, what it does); the crowd and seat poses are made from it when it loads.
 
+## The city's women
+Nine women made in Blender (`tools/character/women`): Amaka, Ada, Chioma, Bisi, Kemi, Funmi, Mama Nkechi, Iya Basira and
+Sgt Halima. Four body types (curvy, slim-thick, slim, big), a sculpted head with real eyes, lipstick and her own skin tone,
+fitted hair (cornrows, afro, bun, ponytail, long, bob, short) or a gele / scarf, and nine outfits each, cut from her own
+body: Ankara gown, iro & buba with gele, bodycon mini, crop top & jeans, tee & joggers, office suit, fitness, sequin club
+dress and satin night wear (that one stays at home). One file each, `assets/people/p_<id>.glb` (about 2 MB).
+
+Each session a few of them are in town (4 on Low, 5 on Medium, 6 on High, so phones load less) and they play the parts the
+city's Mixamo women used to play, in that part's outfits (`ROLE_W` in `src/game.js`): the mama (Mama Nkechi or Iya Basira
+in iro & buba or a gown), the lady in red, the lady in black, the lady in a suit and the girl. The hawker and the
+policewoman are still the Mixamo ones.
+
+Making them again: build the women in `naija_women.blend` (`build_women.py`, then `dress()` in `women_cloth.py`), export from
+Blender with `women_export.py` (`export(name)`: rest-pose parts, weights, the skin, face and gele colours baked to pictures),
+then outside Blender:
+```
+python3 tools/character/women/women_glb.py <export dir> <tex_cloth dir> out/
+gltfpack -i out/p_amaka.glb -o assets/people/p_amaka.glb -tc -tl 1024 -cc -kn -km -ke -kv
+python3 tools/manifest.py
+```
+The body is one mesh: its second colour set says which outfits cover each point, and the game draws only the skin the
+outfit leaves showing (`setOutfit` in `src/char2.js`). Fabrics come from `cloth_tex.py`.
+
 ## Your profile
-The first time, you type a name and choose man or woman. It is kept on the device and cannot be changed afterwards.
-A woman plays as the girl in the white crop top and walks, runs and fights with women's moves; the wardrobe shows
-the looks of your own side only.
+The first time, you type a name and choose man or woman (and who you are). It is kept on the device and cannot be changed
+afterwards. A woman picks one of the city's nine women and walks, runs and fights with women's moves; the wardrobe shows her
+nine outfits, and the looks of your own side only.
 
 ## Life, fighting and the police
 People are solid: they step around each other, and you can't walk through them. Bump into someone hard and he may
@@ -528,6 +551,13 @@ Phones draw the game smaller than the screen; the browser stretches it and it lo
 for very little cost. Hook them in after the scene is drawn whenever the pixel ratio is below the screen's.
 
 Map data © OpenStreetMap contributors, ODbL.
+
+## Credits: the women
+Bodies, shoes and some hair from MakeHuman (MPFB, CC0). From Sketchfab, used under CC BY 4.0:
+- The head: "Female Head Base Mesh" by snailpot_maysachan — https://sketchfab.com/3d-models/dcb462e129924a7ca0232f4b11830208
+- Cornrows (Amaka): "Cornrow Braids Hairstyle" by OCBacon — https://sketchfab.com/3d-models/c8052613e7894027a272e5af04ca8da4
+- Afro (Ada): "Hair, Afro Style (Rose) - Character Items (Free)" by continuumreed — https://sketchfab.com/3d-models/4b2ab828306a4369a0665d9860b13541
+- Bun (Sgt Halima): "Messy Low Bun Female Hairstyle" by CliffUnderside — https://sketchfab.com/3d-models/db7a61ea9f2c45ddb0b7571972f9738f
 
 ## Credits: farm animals
 The farm's cows and hen are scanned models from Sketchfab, used under CC BY 4.0, rigged and animated for the game
