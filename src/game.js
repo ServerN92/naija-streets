@@ -2400,8 +2400,8 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+    else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
@@ -2576,8 +2576,8 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
-  else if(mode==='drive'){ if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  else if(mode==='drive'){ if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(rbNear()) return void rbTalk(); if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1,bike2:1,sbike:1,skate:1};
@@ -3441,7 +3441,7 @@ function updateSpots(){ const h=ENV.hour, school=(h>=7&&h<8.5)||(h>=13.5&&h<15.5
 }
 let spotT=0, bodyT=0;
 function updatePeople(dt){ if(sayT>0) sayT-=dt; if((spotT-=dt)<=0){ spotT=.5; updateSpots(); } if((bodyT-=dt)<=0){ bodyT=.2; assignBodies(); }
-  updateCrossers(dt); updateTraders(dt); updatePark(dt); updateShoppers(dt); }
+  updateCrossers(dt); updateTraders(dt); updatePark(dt); updateShoppers(dt); updateRoadblocks(dt); }
 const freePed=()=>peds.find(q=>q.state==='off');
 function wakePed(p,c){ p.cast=c; p.lod=-1; p.spot=null; p.home=null; Object.assign(p,{fall:0,vx:0,vz:0,cool:0,act:null,hv:null,wants:false,speed:0,phone:false,stare:0,bumps:0,bumpT:-99});
   p.hot=undefined; }
@@ -6984,6 +6984,94 @@ function guideTick(dt){ const G=GUIDE, T=guideTarget(), R=ROOM;
 const doorNear=()=>{ if(mode!=='walk') return null; let best=null, bd=1e9; for(const d of DOORS){ const e=Math.hypot(player.x-d.x,player.z-d.z); if(e<d.r&&e<bd){ bd=e; best=d; } } return best; };
 // the police station opens at once when you are caught
 setTimeout(()=>{ if(STATION.r&&STATION.r.M.marks) intLoad('int_police'); },25000);
+
+/* ================= police roadblocks ("checkpoints") on the busy roads of Mushin =================
+   Three roadblocks (built in Blender: tools/blender_checkpoint.py): drums and a striped plank half across the outer
+   lane, a plank of nails, the officers' umbrella and bench by the kerb. Drive up and they wave you down: stop and talk
+   to them. "Roger" them (₦100 for an okada or keke, ₦200 a car, ₦300 a danfo or bus) and pass; show your papers (your
+   own motor: maybe they let you go, maybe your papers "don expire"); in a motor that is not yours they want to know who
+   owns it. Carry guns and they search you: settle well-well or lose them. Wanted, and they come for you. Drive through
+   without stopping: a star, and over the nails at speed your tyres feel it. On foot they may stop and search you.
+   The Chairman's card from Under Bridge gets you waved through. */
+const CPB={list:[],made:0,ready:false,said:-99,foot:-99};
+const RB_SPOTS={sign:{x:-3.5,y:1.35,z:.128,w:1,h:.82},cops:[[-.8,.7,0],[1.9,1.5,0],[.4,-1.2,0]],
+  walls:[[-2.4,1.5,.3,.3,.9],[.9,2.3,.3,.3,.9],[-.95,1.25,1.2,.08,.7],[.2,-1.95,.85,.2,.5],[3.4,-1.1,.55,.55,.62],[-3.5,-.18,.55,.05,1.8],[-1.8,-1.7,.3,.2,.45]]};
+const RB_FEE={okada:100,keke:100,bike2:100,sbike:100,danfo:300,bus:300,benz:500,tanker:500};
+(()=>{ const home=APT.front, cand=[];
+  for(const e of ROADS){ if(!e.drive||!bigRoad(e)||e.br||FLYE.has(e.i)||e.len<70) continue; const A=nodes[e.a], mx=A.x+e.fx*e.len/2, mz=A.z+e.fz*e.len/2, d=Math.hypot(mx-home.x,mz-home.z);
+    if(d<150||d>1700||inUB(mx,mz)||(SITES.park&&Math.hypot(mx-SITES.park.cx,mz-SITES.park.cz)<80)||Math.hypot(mx-STATION.front.x,mz-STATION.front.z)<60||TOLLS.some(g=>Math.hypot(g.x-mx,g.z-mz)<80)) continue; cand.push([d,e]); }
+  cand.sort((a,b)=>a[0]-b[0]);
+  for(const [,e] of cand){ if(CPB.list.length>=3) break; const A=nodes[e.a];
+    for(const sd of [1,-1]){ const t=e.len*.5, nx=-e.fz*sd, nz=e.fx*sd, kx=A.x+e.fx*t+nx*(e.hw+.7), kz=A.z+e.fz*t+nz*(e.hw+.7);   // the kerb on this side (a little back, so the cars in that lane just get past)
+      const side={x:kx+nx*1.6,z:kz+nz*1.6}; if(!onLand(side.x,side.z,2)||resolveCircle({x:side.x,z:side.z},2.2)||roadsNear(side.x,side.z).some(o=>o!==e&&!FLYE.has(o.i)&&segD(o,side.x,side.z)<o.hw+3)) continue;
+      if(CPB.list.some(r=>Math.hypot(r.x-kx,r.z-kz)<350)) continue;
+      const ry=Math.atan2(-nx,-nz); CPB.list.push({x:kx,z:kz,ry,e,fx:e.fx,fz:e.fz,nx,nz,guards:[],passT:-99,talked:-99,alarmT:-99,side:0,said:-99,name:e.name||'the road'}); break; } }
+  for(const r of CPB.list){ r.at=(lx,lz)=>{ const c=Math.cos(r.ry), s=Math.sin(r.ry); return {x:r.x+lx*c+lz*s,z:r.z-lx*s+lz*c}; }; for(const [lx,lz,hx,hz,h] of RB_SPOTS.walls){ const p=r.at(lx,lz); addOB(p.x,p.z,hx,hz,-r.ry,h); }
+    PLACES.push({name:'Police checkpoint',sub:`${r.name} · they stop motors: roger them or show your papers`,kind:'place',x:r.x,z:r.z}); }
+  farmGlb('cp_roadblock').then(M=>{ const items=CPB.list.map(r=>({x:r.x,y:groundY(r.x,r.z),z:r.z,ry:r.ry,sc:1}));
+    const levels=M.geo1?[{geo:M.geo,mat:M.mat,dist:Q.lod0*1.1,shadow:true},{geo:M.geo1,mat:M.mat1,dist:Q.draw*.8,shadow:false}]:[{geo:M.geo,mat:M.mat,dist:Q.draw*.8,shadow:true}];
+    if(items.length) new CullSet(levels,items,{shadowDist:Q.shR,name:'cp_roadblock'});
+    const tex=texLabel('POLICE · STOP','#c8241e','#ffffff',512,420);
+    for(const r of CPB.list){ const S=RB_SPOTS.sign, p=r.at(S.x,S.z), m=new THREE.Mesh(new THREE.PlaneGeometry(S.w,S.h),new THREE.MeshStandardMaterial({map:tex,roughness:.8})); m.position.set(p.x,groundY(r.x,r.z)+S.y,p.z); m.rotation.y=r.ry; m.layers.set(1); scene.add(m); }
+    CPB.ready=true; }).catch(e=>console.warn('roadblock model',e)); })();
+function rbPed(){ let q=freePed(); if(!q&&CPB.made<9){ q=newPed('police_m','off'); peds.push(q); CPB.made++; } return q; }   // (the street has few spare people: a few more for the police)
+function rbAlarm(r){ addHeat(.7); for(const q of r.guards) if(q.state==='gateguard'){ q.state='cop'; q.mad=1; q.van=null; q.wid=q.wid||'pistol'; q.atk=null; q.atkT=mrr(.2,.6); } r.guards=[]; r.alarmT=T0; }
+function rbAt(){ const f=mode==='drive'&&drive.v?drive.v:player; let best=null, bd=1e9;
+  for(const r of CPB.list){ const dx=f.x-r.x, dz=f.z-r.z, u=dx*r.fx+dz*r.fz, w=-(dx*r.nx+dz*r.nz), d=Math.hypot(dx,dz); if(d<bd){ bd=d; best={r,u,w,d}; } } return best; }
+const rbOpen=r=>T0<r.passT||T0-r.alarmT<90||cardOn();
+function rbNear(){ if(!CPB.ready||busy) return null; const a=rbAt(); if(!a||rbOpen(a.r)||!a.r.guards.length) return null;
+  if(mode==='drive'&&drive.v&&!drive.ride&&drive.v.type!=='skate'&&Math.abs(a.u)<11&&a.w>-1&&a.w<2*a.r.e.hw+1.6&&Math.abs(drive.speed)<1.6) return a.r;
+  if(mode==='walk'&&a.r.stop&&a.d<6) return a.r; return null; }
+function rbPrompt(){ const r=rbNear(); if(!r) return ''; return mode==='drive'?'Police checkpoint · talk to the officers':'Police: "You! Come here" · stop and search'; }
+function rbTalk(){ const r=rbNear(); if(!r) return false; r.talked=T0;
+  if(starCount()>0){ rbAlarm(r); toast(mpick(['Police: "Na you we dey find! Come down! Hands up!"','Police: "Stop there! You be wanted person!"']),2.6); return true; }
+  const v=mode==='drive'?drive.v:null, fee=v?(RB_FEE[v.type]||200):200, guns=gateGun();
+  const pass=(msg,t=600)=>{ r.passT=T0+t; r.stop=false; closeMenu(); toast(msg,2.6); };
+  const search=()=>{ if(!guns.length) return pass(mpick(['Officer: "You dey clean. Oya go."','Officer: "Nothing dey. Go well."']));
+    openMenu('THEY FOUND YOUR GUNS','Officer: "Ehen! Wetin be this? You wan go cell?"',()=>[
+      {name:'Settle well-well',sub:'"Make we settle this thing quietly, oga"',price:5000,act(){ pass('Officer: "Hmm. Go. We never see anything."'); }},
+      {name:'Let them take the guns',sub:'You lose them, but you go free',btn:'GIVE',price:0,act(){ for(const k of guns) delete ARMS.own[k]; if(guns.includes('ak')){ ARMS.mag=0; ARMS.ammo=0; } if(!ARMS.own[ARMS.cur]) ARMS.cur='fists'; saveArms(); weapHUD(true); pass('They took your guns. "Next time, na cell."'); }},
+      {name:'Run!',sub:'They will come for you',btn:'RUN',price:0,act(){ closeMenu(); rbAlarm(r); toast('Police: "Catch am! Shoot the tyre!"',2.2); }}]); };
+  if(!v){ openMenu('STOP AND SEARCH','Officer: "Wetin dey your bag? Open am."',()=>[
+      {name:'Let them search you',sub:guns.length?'They will find your guns':'You have nothing to hide',btn:'OK',price:0,act(){ search(); }},
+      {name:'Settle them',sub:'"Officer, make I find something for una"',price:200,act(){ pass('Officer: "Thank you, my brother. Go."',300); }},
+      {name:'Walk away',sub:'They no go like am',btn:'WALK',price:0,act(){ closeMenu(); r.stop=false; r.passT=T0+120; addHeat(.25); toast('Police: "You dey craze? Come back here!"',2.2); }}]); return true; }
+  const mine=v===myCar||v.mine;
+  openMenu('POLICE CHECKPOINT',`${r.name} · Officer: "Where you dey go? Show your particulars."`,()=>[
+    {name:'Roger them',sub:'"Oga, here, for una pure water"',price:fee,act(){ pass(mpick(['Officer: "Thank you o. Go well, happy weekend!"','Officer: "Ehen, correct person. Pass."'])); }},
+    {name:'Show your papers',sub:mine?'It is your own motor':'This motor is not yours…',btn:'PAPERS',price:0,act(){
+      if(!mine){ closeMenu(); rbAlarm(r); toast('Officer: "Who get this motor?! Come down! You don steal am!"',2.8); return; }
+      if(guns.length){ toast('Officer: "Open your boot."',1.6); return search(); }
+      if(MR()<.6) return pass('Officer: "Your papers complete. Go."');
+      openMenu('YOUR PAPERS','Officer: "Your papers don expire o. And where your fire extinguisher?"',()=>[
+        {name:'Settle the matter',sub:'"Officer, how we go do am?"',price:1000,act(){ pass('Officer: "Next time, renew am. Go."'); }},
+        {name:'Argue with them',sub:'Maybe they let you go…',btn:'ARGUE',price:0,act(){ if(MR()<.5) pass('Officer: "Hmm. Oya go, before I change my mind."'); else { closeMenu(); r.passT=T0+20; addHeat(.35); toast('Officer: "You dey argue with police? Oya, come down!"',2.6); } }}]); }},
+    {name:'Drive off',sub:'They will chase you',btn:'GO',price:0,act(){ closeMenu(); r.passT=T0+5; addHeat(.6); r.alarmT=T0; toast('Police: "Hey! Stop that motor!"',2.2); }}]);
+  return true; }
+function updateRoadblocks(dt){ if(!CPB.ready) return; const f=mode==='drive'&&drive.v?drive.v:player;
+  for(const r of CPB.list){ const d=Math.hypot(f.x-r.x,f.z-r.z);
+    // the officers when you are near (not for a while after a fight with them)
+    if(d<120&&T0-r.alarmT>90&&!(ENV.hour>=22||ENV.hour<5.5)){ r.guards=r.guards.filter(q=>q.state==='gateguard');
+      while(r.guards.length<RB_SPOTS.cops.length){ const i=r.guards.length, [lx,lz,a]=RB_SPOTS.cops[i], p=r.at(lx,lz), q=rbPed(); if(!q) break; const cast=i===1?'police_f':'police_m'; wakePed(q,cast);
+        Object.assign(q,{x:p.x,z:p.z,y:groundY(p.x,p.z),yaw:r.ry+a,state:'gateguard',cop:1,van:null,post:{x:p.x,z:p.z,ry:r.ry+a+(i===1?Math.PI/2:0)},hp:HP0(cast),wid:i===2?'ak':null,fireT:1,burst:0,atk:null,atkT:.5,speed:0,losT:0,los:false,mad:0,near:false,aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0}); q.seq=(q.seq||0)+1; r.guards.push(q); } }
+    else if(d>170&&r.guards.length){ for(const q of r.guards) if(q.state==='gateguard') offPed(q); r.guards=[]; }
+    for(const q of r.guards){ if(q.state!=='gateguard') continue; const P=q.post; q.speed=0; if(q.actT>0) q.actT-=dt; else q.act=null; const look=Math.hypot(player.x-q.x,player.z-q.z)<14?Math.atan2(player.x-q.x,player.z-q.z):P.ry; q.yaw=lerpA(q.yaw,look,Math.min(1,dt*3)); q.x=P.x; q.z=P.z; }
+    if(!r.guards.length||busy) { r.side=0; continue; }
+    const dx=f.x-r.x, dz=f.z-r.z, u=dx*r.fx+dz*r.fz, w=-(dx*r.nx+dz*r.nz), inRoad=w>-1&&w<2*r.e.hw+1.6;
+    if(mode==='drive'&&drive.v&&!drive.ride&&drive.v.type!=='skate'&&inRoad&&!rbOpen(r)){
+      if(Math.abs(u)<32&&Math.abs(u)>12&&T0-r.said>12){ r.said=T0; for(const q of r.guards){ q.act='hail'; q.actT=2.5; } toast(mpick(['Police: "Stop! Park for side!"','Police: "Oga, stop there! Checkpoint!"']),2.2); }
+      const sideNow=Math.sign(u)||1;
+      if(r.side&&sideNow!==r.side&&Math.abs(drive.speed)>3&&T0-r.talked>3){   // through without stopping
+        r.passT=T0+8; addHeat(.6); for(const q of r.guards){ q.act='argue'; q.actT=3; }
+        if(w<4.2&&Math.abs(drive.speed)>9){ crashDamage(drive.v,18); drive.speed*=.55; drive.v.speed=drive.speed; thud(); toast('Bang! The nails don burst your tyre! Police: "Stop that motor!"',2.8); }
+        else toast(mpick(['Police: "Hey! You no stop! Catch am!"','Police: "Na wa o! Stop that motor!"']),2.4); }
+      r.side=Math.abs(u)<40?sideNow:0;
+    } else r.side=Math.abs(u)<40&&inRoad?Math.sign(u)||1:0;
+    // on foot: sometimes they stop you as you pass
+    if(mode==='walk'&&d<5&&!rbOpen(r)&&!r.stop&&T0-CPB.foot>120){ CPB.foot=T0; if(MR()<.4){ r.stop=true; r.stopT=T0; toast('Police: "You! Come here. Wetin dey your bag?"',2.4); } }
+    if(r.stop&&(d>9||T0-r.stopT>25)){ if(d>9&&T0-r.stopT<25&&mode==='walk'){ addHeat(.2); toast('Police: "You dey run? Come back here!"',2); } r.stop=false; } }
+  // the cars on the road slow down for the roadblock
+  for(const v of vehicles){ const ai=v.ai; if(!ai) continue; for(const r of CPB.list){ if(!r.guards.length) continue; const dx=v.x-r.x, dz=v.z-r.z; if(Math.abs(dx)>14||Math.abs(dz)>14) continue; if(Math.hypot(dx,dz)<12) v.speed=Math.min(v.speed,4.5); } } }
 
 /* ================= the cell at Mushin police station: three minutes, with whoever else was picked up ================= */
 const JAIL={room:null,left:0,taken:[],people:[],talkT:0};
