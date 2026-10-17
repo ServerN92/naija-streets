@@ -13,7 +13,7 @@ const PROTO = 1;
 function freePort() { return new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); }); }
 before(async () => {
   port = await freePort(); dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
-  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0' }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((res, rej) => { proc.stdout.on('data', d => { const t = String(d); for (const m of t.matchAll(/MAILCODE (\S+) (\d{6})/g)) codes[m[1]] = m[2]; if (/listening/.test(t)) res(); }); proc.on('exit', c => rej(new Error('server exited ' + c))); });
 });
 after(() => { proc.kill('SIGTERM'); });
@@ -200,4 +200,19 @@ test('the motor park over the line: the board at sign-in, join in the yard, a da
   assert.equal((await o.next('$')).n, 15150);
   const seen = await w.next(m => m.t === 'pkd' && m.l.some(x => x[0] === L[0] && x[4] === 'Agbero_One'), 4000); assert.ok(seen);
   o.close(); w.close();
+});
+
+test('players fight over the line: a blow in reach lands and the other is told; far ones do not; a knock-out takes from the pocket', async () => {
+  const [a] = await account('Fighter_A'), [b, bme] = await account('Fighter_B');
+  b.send({ t: '$', d: 10000, s: 1, e: 'pv1' }); await b.next('$');
+  a.send({ t: 'p', x: 50, y: 0, z: 50, r: 0, a: 'i', s: 0, v: '', q: 0 }); b.send({ t: 'p', x: 50, y: 0, z: 51.2, r: Math.PI, a: 'i', s: 0, v: '', q: 0 });
+  await new Promise(r => setTimeout(r, 250));
+  a.send({ t: 'hit', i: bme.id, k: 'jab' }); const h = await b.next('hurt'); assert.equal(h.n, 'Fighter_A'); assert.ok(h.d >= 8 && h.d <= 10);
+  assert.equal((await a.next('hitok')).i, bme.id);
+  b.send({ t: 'p', x: 50, y: 0, z: 60, r: Math.PI, a: 'i', s: 0, v: '', q: 0 }); await new Promise(r => setTimeout(r, 250));
+  a.send({ t: 'hit', i: bme.id, k: 'kick' }); await new Promise(r => setTimeout(r, 300)); assert.ok(!b.got.some(m => m.t === 'hurt'), 'too far');
+  b.send({ t: 'p', x: 50, y: 0, z: 51.2, r: Math.PI, a: 'i', s: 0, v: '', q: 0 }); await new Promise(r => setTimeout(r, 250));
+  for (let i = 0; i < 12 && !b.got.some(m => m.t === 'pko'); i++) { a.send({ t: 'hit', i: bme.id, k: 'heavy' }); await new Promise(r => setTimeout(r, 300)); }
+  const ko = await b.next('pko'); assert.equal(ko.took, 1000); assert.equal((await a.next('pkowin')).took, 1000);
+  a.close(); b.close();
 });

@@ -292,6 +292,17 @@ knocks down counts. The side with boys left standing wins (after 3 minutes, the 
 challenger who wins is the new chairman, with the boys that stood; everyone in Lagos hears about it. No police come
 into the park for the fight. Everything is on the server (`server/src/park.js`, saved in SQLite); `src/park.js` draws it.
 
+## Online: fighting other players
+Signed in online, you can fight other players with the same moves as on the street (punch, kick, the heavy kick, the
+drop kick). Your phone says where a blow landed; the server checks it (both on foot, close enough for that blow, you
+facing them, not too fast) and counts it: 100 points knock somebody out, and they come back slowly when nobody hits
+you for a while. The one hit staggers and loses health on their own phone. A knock-out puts them down for a few
+seconds; the winner takes 10% of their pocket money (₦2,000 at most, only from ₦1,000 up), and they cannot be hit
+again for two minutes. A player who just came online is safe for 45 seconds, until they throw a blow themselves.
+Hitting a player in the open brings the police like hitting anybody else (not in Under Bridge, and not during the
+fight for the chair at the motor park, where knocking out a player of the other side puts them out of that fight for
+a while). The fights are on the server (`server/src/pvp.js`).
+
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
 big map, where the Guns chip shows only him). His boys smoke at the gap in the fence and stop you: ₦100 to pass (E).
