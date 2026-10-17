@@ -12,19 +12,20 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=6ec4c15b57';
-import * as C2 from './char2.js?v=6ec4c15b57';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=6ec4c15b57';
-import { createPhone } from './phone.js?v=6ec4c15b57';
-import { createGuide } from './guide.js?v=6ec4c15b57';
-import { createFarm } from './farm.js?v=6ec4c15b57';
-import { createBusiness } from './business.js?v=6ec4c15b57';
-import { createOnline } from './online.js?v=6ec4c15b57';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=6ec4c15b57';
-import { MapView } from './mapview.js?v=6ec4c15b57';
+import * as CLOCK from './clock.js?v=16e2b486d2';
+import * as C2 from './char2.js?v=16e2b486d2';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=16e2b486d2';
+import { createPhone } from './phone.js?v=16e2b486d2';
+import { createGuide } from './guide.js?v=16e2b486d2';
+import { createFarm } from './farm.js?v=16e2b486d2';
+import { createBusiness } from './business.js?v=16e2b486d2';
+import { createOnline } from './online.js?v=16e2b486d2';
+import { createPolice } from './police.js?v=16e2b486d2';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=16e2b486d2';
+import { MapView } from './mapview.js?v=16e2b486d2';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='6ec4c15b57';
+const BUILD='16e2b486d2';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -48,6 +49,7 @@ let FARM=null; // the Farm Settlement and your farm (src/farm.js)
 let ON=null;   // Lagos online: other players, chat, your money on the server (src/online.js)
 let BIZ=null;  // businesses players own online: the buka (src/business.js)
 let UNION=null;  // the motor park union online (src/park.js)
+let POLICE=null;  // the police online: the force, wanted players, arrests (src/police.js)
 const MENU={open:false};   // the little menu panel (hotel reception, the club bar)
 const MR = Math.random, mrr = (a,b) => a + MR()*(b-a), mpick = a => a[Math.floor(MR()*a.length)];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
@@ -2386,7 +2388,7 @@ function drawMinimap(){ if(!mmCW) mmCW=mm.clientWidth||190; const S=mm.width, R0
   const c=Math.cos(th), s=Math.sin(th);
   const mark=(wx,wz,col,label)=>{ let dx=(wx-px)*sc, dz=(wz-pz)*sc, sx=dx*c-dz*s, sy=dx*s+dz*c; const d=Math.max(Math.abs(sx),Math.abs(sy)), lim=R0-18*k; if(d>lim){ sx*=lim/d; sy*=lim/d; }   // off the map: it sits on the edge, pointing the way
     mg.fillStyle=col; mg.beginPath(); mg.arc(R0+sx,R0+sy,15*k,0,7); mg.fill(); mg.fillStyle='#0E1014'; mg.font=Math.round(20*k)+'px Bungee, Impact, sans-serif'; mg.textAlign='center'; mg.textBaseline='middle'; mg.fillText(label,R0+sx,R0+sy+1); };
-  if(DEALER.stall) mark(DEALER.x,DEALER.z,'#e0453a','G'); mark(APT.front.x,APT.front.z,'#F2B705','H'); mark(STATION.x,STATION.z,'#4c7dff','P'); if(RIDE.v&&RIDE.state!=='riding') mark(RIDE.v.x,RIDE.v.z,'#F2B705','T'); if(mapView.dest) mark(mapView.dest.x,mapView.dest.z,'#ffffff','•');
+  if(DEALER.stall) mark(DEALER.x,DEALER.z,'#e0453a','G'); mark(APT.front.x,APT.front.z,'#F2B705','H'); mark(STATION.x,STATION.z,'#4c7dff','P'); if(RIDE.v&&RIDE.state!=='riding') mark(RIDE.v.x,RIDE.v.z,'#F2B705','T'); if(mapView.dest) mark(mapView.dest.x,mapView.dest.z,'#ffffff','•'); if(POLICE) for(const w of POLICE.marks()) mark(w.x,w.z,'#ff3a2a','★');
   { const nk=(R0-22*k)/Math.max(Math.abs(s),Math.abs(c)); mg.fillStyle='#F7EFDF'; mg.font=Math.round(22*k)+'px Bungee, Impact, sans-serif'; mg.textAlign='center'; mg.textBaseline='middle'; mg.fillText('N',R0+s*nk,R0-c*nk); }
   const hd=mode==='drive'?Math.atan2(-Math.sin(drive.v.h),Math.cos(drive.v.h)):Math.atan2(Math.cos(player.yaw),Math.sin(player.yaw));
   mg.save(); mg.translate(R0,R0); mg.rotate(hd+th); mg.scale(k,k); mg.fillStyle='#F7EFDF'; mg.strokeStyle='#0E1014'; mg.lineWidth=4; mg.beginPath(); mg.moveTo(20,0); mg.lineTo(-13,-13); mg.lineTo(-6,0); mg.lineTo(-13,13); mg.closePath(); mg.stroke(); mg.fill(); mg.restore(); }
@@ -2398,7 +2400,7 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt='Enter your house'; else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
@@ -2574,7 +2576,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
+  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } if(nearDoor()) return enterApt(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
@@ -3579,12 +3581,12 @@ function brawlTick(p,dt){ const B=p.brawl; if(!B){ p.state='flee'; p.timer=3; re
 
 // ---- the union vest (src/park.js) and the chairman's fila: on the street's people, on you, on the other players
 function pedUVest(p){ const b=p.body; if(!b) return; const k=p.uvest||''; if(b.uvK===k) return; for(const m of b.uvM||[]) if(m.parent) m.parent.remove(m); b.uvM=k?wearVest(THREE,b.inner,k):[]; b.uvK=k; }
-function wearOff(st){ for(const m of st.ms||[]) if(m.parent) m.parent.remove(m); st.ms=[]; st.vk=''; if(st.hat){ if(st.hat.parent) st.hat.parent.remove(st.hat); HATS.pool.fila.push(st.hat); st.hat=null; } st.hk=''; st.obj=null; }
-function wearUnion(st,obj,kind){ const vk=kind==='c'?'g':kind==='a'?'o':'', hk=kind==='c'?'fila':'';
+function wearOff(st){ for(const m of st.ms||[]) if(m.parent) m.parent.remove(m); st.ms=[]; st.vk=''; if(st.hat){ if(st.hat.parent) st.hat.parent.remove(st.hat); (HATS.pool[st.hat.kind]||HATS.pool.fila).push(st.hat); st.hat=null; } st.hk=''; st.obj=null; }
+function wearUnion(st,obj,kind){ const vk=kind==='p'?'k':kind==='c'?'g':kind==='a'?'o':'', hk=kind==='p'?'police':kind==='c'?'fila':'';
   if(st.obj!==obj){ wearOff(st); st.obj=obj; } if(!obj) return;
   if(st.vk!==vk){ for(const m of st.ms||[]) if(m.parent) m.parent.remove(m); st.ms=vk?wearVest(THREE,obj,vk):[]; st.vk=vk; }
-  if(st.hk!==hk){ if(st.hat){ if(st.hat.parent) st.hat.parent.remove(st.hat); HATS.pool.fila.push(st.hat); st.hat=null; } st.hk=hk;
-    if(hk){ const m=hatMesh('fila'); if(!m){ loadHats(); st.hk=null; } else { const head=boneOf(obj,/Head$/); if(head){ attachTo(m,head,HAT_HOLD.beret); m.scale.multiplyScalar(HAT_HOLD.beret.k); st.hat=m; } else HATS.pool.fila.push(m); } } } }
+  if(st.hk!==hk){ if(st.hat){ if(st.hat.parent) st.hat.parent.remove(st.hat); (HATS.pool[st.hat.kind]||HATS.pool.fila).push(st.hat); st.hat=null; } st.hk=hk;
+    if(hk){ const m=hatMesh(hk); if(!m){ loadHats(); st.hk=null; } else { const head=boneOf(obj,/Head$/); if(head){ attachTo(m,head,HAT_HOLD.beret); m.scale.multiplyScalar(HAT_HOLD.beret.k); st.hat=m; } else (HATS.pool[hk]||HATS.pool.fila).push(m); } } } }
 const MYWEAR={};
 
 /* ================= fighting =================
@@ -6041,7 +6043,7 @@ function updateOneChance(dt){ const R=RIDE, v=R.v;
    Under Bridge at night; the vigilante pays ₦10,000 for every one you put down. Props built in Blender
    (tools/blender_underbridge2.py). */
 // ---- hats: a cult beret (tinted) or a black mask, on the head bone
-const HATS={lib:{},pool:{red:[],blue:[],yellow:[],mask:[],fila:[]},loading:false}, HAT_COL={red:0xc0241d,blue:0x2456b8,yellow:0xe0b018,fila:0xffffff}, HAT_MAT={};
+const HATS={lib:{},pool:{red:[],blue:[],yellow:[],mask:[],fila:[],police:[]},loading:false}, HAT_COL={red:0xc0241d,blue:0x2456b8,yellow:0xe0b018,fila:0xffffff,police:0x1e2128}, HAT_MAT={};
 function loadHats(){ if(HATS.loading) return; HATS.loading=true;
   for(const k of ['hat_beret','hat_mask','pk_fila']) fetchBuf(murl(k)).then(b=>GLL.parseAsync(b,'')).then(g=>{ let m=null; g.scene.traverse(o=>{ if(o.isMesh&&!m) m=o; }); if(m) HATS.lib[k]=m.geometry; }).catch(e=>console.warn('hat',e)); }
 function hatMesh(kind){ const pool=HATS.pool[kind]; if(pool.length) return pool.pop(); const g=HATS.lib[kind==='mask'?'hat_mask':kind==='fila'?'pk_fila':'hat_beret']; if(!g) return null;
@@ -7067,7 +7069,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION){ UNION.update(dt); if(hero) wearUnion(MYWEAR,hero.cObj,UNION.badge()); } crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); if(hero&&(UNION||POLICE)) wearUnion(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():''); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -7192,8 +7194,8 @@ try{ ON=createOnline({ THREE, scene, camera,
   seats:t=>SEATS[t], ride:t=>HERO_RIDE[t], maxBodies:()=>Q===QUAL.low?6:Q===QUAL.medium?10:16,
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
-  pvp:m=>pvpMsg(m),
-  biz:m=>{ if(BIZ) BIZ.on(m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
+  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); },
+  biz:m=>{ if(BIZ) BIZ.on(m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>wearUnion(R.wst||(R.wst={}),R.inner,R.b||''),
   toast });
 // the bukas players own (src/business.js): the model from Blender (tools/blender_buka.py) with the farm's photo detail
@@ -7213,7 +7215,15 @@ UNION=createUnion({ THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGlb
   spot:(cast,x,z,ry,acts,o={})=>{ const sp={type:'park_office',x,z,m:[{cast,acts,dx:0,dz:0,ry,hat:o.hat||null,uvest:o.uvest||null}],on:false,peds:[],boarding:0,hailV:null}; SPOTS.push(sp); return sp; },
   unspot:sp=>{ if(sp.on) spotOff(sp); const i=SPOTS.indexOf(sp); if(i>=0) SPOTS.splice(i,1); },
   send:o=>ON&&ON.send(o), signedIn:()=>!!(ON&&ON.signedIn), myName:()=>ON?ON.myName:'', openSignIn:()=>ON&&ON.openPanel(),
-  clockAt:t=>CLOCK.fmtHour(CLOCK.gameHour(t)), load:(bay,left)=>parkExtLoad(bay,left), crewSync, crewEnd }); }catch(e){ console.warn('online could not start',e); ON=null; }   // the game always plays, online or not
+  clockAt:t=>CLOCK.fmtHour(CLOCK.gameHour(t)), load:(bay,left)=>parkExtLoad(bay,left), crewSync, crewEnd });
+// the police online (src/police.js): the front desk at Mushin station, the uniform, the wanted list, arrests
+POLICE=createPolice({ naira, player:()=>({x:player.x,z:player.z}), mode:()=>mode, toast, openMenu, menuOpen:()=>MENU.open,
+  send:o=>ON&&ON.send(o), signedIn:()=>!!(ON&&ON.signedIn), myName:()=>ON?ON.myName:'', openSignIn:()=>ON&&ON.openPanel(),
+  station:()=>STATION.front, mapPlace:p=>{ if(!PLACES.some(q=>q.id&&q.id===p.id)) PLACES.push(p); },
+  spot:(cast,x,z,ry,acts)=>{ const sp={type:'police_desk',x,z,m:[{cast,acts,dx:0,dz:0,ry}],on:false,peds:[],boarding:0,hailV:null}; SPOTS.push(sp); return sp; },
+  nearby:()=>ON?ON.nearby():[], camYaw:()=>camState.yaw, stars:()=>starCount(),
+  handsUp:()=>{ if(hero&&hero.act.hands_up&&mode==='walk'&&!FIGHT.ko) heroDo('hands_up',{force:true,pause:true}); setTimeout(()=>{ if(hero&&hero.ov&&hero.ov.name==='hands_up'&&!COPS.bust) heroEnd(); },12000); },
+  arrested:()=>{ FIGHT.heat=0; CASE.on=false; releaseCop(); busted(); } }); }catch(e){ console.warn('online could not start',e); ON=null; }   // the game always plays, online or not
 if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div'); el.id='perfPanel'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:70;background:rgba(0,0,0,.72);color:#9f9;font:12px/1.35 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre';
   if(!/[?&]perf=show/.test(location.search)) el.hidden=true;   // numbers stay available to tests; shown only with ?perf=show
   document.body.appendChild(el); let fr=[], tLast=performance.now();

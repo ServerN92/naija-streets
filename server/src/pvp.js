@@ -43,11 +43,12 @@ export function createPvp({ now = () => Date.now(), rand = Math.random, log = ()
     T.dmg = points(D, t) + dmg; T.last = t;
     ctx.send(D, { t: 'hurt', i: A.id, n: A.name, k, d: dmg, x: A.x, z: A.z, p: Math.min(100, Math.round(T.dmg)) });
     ctx.send(C, { t: 'hitok', i: B.id, k, d: dmg, p: Math.min(100, Math.round(T.dmg)) });
+    if (ctx.onHit) ctx.onHit(C, D);
     if (T.dmg < PVP.full) return;
     // knocked out
     T.dmg = 0; T.ko = t + PVP.ko; T.guard = t + PVP.guard; T.fresh = false;
     let took = 0;
-    if (D.cash >= PVP.robMin) { took = Math.min(PVP.robMax, Math.round(D.cash * PVP.rob / 50) * 50); if (took > 0 && ctx.spend(D, took, 'knocked out by ' + C.user.name)) ctx.give(C, took, 'knocked out ' + D.user.name); else took = 0; }
+    if (D.cash >= PVP.robMin && !(ctx.noRob && ctx.noRob(C))) { took = Math.min(PVP.robMax, Math.round(D.cash * PVP.rob / 50) * 50); if (took > 0 && ctx.spend(D, took, 'knocked out by ' + C.user.name)) ctx.give(C, took, 'knocked out ' + D.user.name); else took = 0; }
     ctx.send(D, { t: 'pko', i: A.id, n: A.name, took });
     ctx.send(C, { t: 'pkowin', i: B.id, n: B.name, took });
     log('ko', C.user.name, '->', D.user.name, took);

@@ -63,11 +63,12 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } S.busy = false; showErr(m.w, m.m); break;
-      case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } S.busy = false; showOk(m.w, m.m); break;
+      case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
+      case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': api.law && api.law(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
@@ -130,8 +131,9 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, g: j.g, b: j.b || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n); scene.add(R.tag); }
-    else { const changed = R.c !== j.c || R.f !== (j.f | 0); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.g = j.g; R.b = j.b || ''; if (changed) dropBody(R); }
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, g: j.g, b: j.b || '', w: j.w | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b); scene.add(R.tag); }
+    else { const changed = R.c !== j.c || R.f !== (j.f | 0), retag = R.w !== (j.w | 0) || R.b !== (j.b || ''); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
   function heardPos(R, p, now) {
@@ -222,12 +224,14 @@ export function createOnline(api) {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, fog: false, toneMapped: false }));
     sp.renderOrder = 999; sp.userData.w = cv.width / cv.height * h; sp.userData.h = h; sp.scale.set(sp.userData.w, h, 1); sp.visible = false; return sp;
   }
-  function tagSprite(name) {
-    const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40;
-    g.font = `700 ${fs}px ${FONT}`; const w = Math.ceil(g.measureText(name).width) + 36; cv.width = w; cv.height = 60;
-    g.font = `700 ${fs}px ${FONT}`; g.fillStyle = 'rgba(12,14,18,.72)'; rr(g, 2, 4, w - 4, 52, 16); g.fill();
-    g.fillStyle = '#F2B705'; g.beginPath(); g.arc(17, 30, 6, 0, 6.3); g.fill();
+  // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman) and their stars when wanted
+  function tagSprite(name, stars = 0, badge = '') {
+    const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '';
+    g.font = `700 ${fs}px ${FONT}`; const tw = Math.ceil(g.measureText(name).width), sw = st ? Math.ceil(g.measureText(st).width) : 0, w = tw + sw + 36; cv.width = w; cv.height = 60;
+    g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, 4, w - 4, 52, 16); g.fill();
+    g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, 30, 6, 0, 6.3); g.fill();
     g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, 32);
+    if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, 32); }
     return spriteOf(cv, .4 * TS);
   }
   function bubbleSprite(text) {
@@ -431,6 +435,8 @@ export function createOnline(api) {
     // the other players you could hit: on foot, in sight, not lying down (where they are drawn now)
     targets: () => { const out = []; if (!S.me) return out; for (const R of RS.values()) { const s = R.s; if (!s || s.v || s.a === 'k' || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z }); } return out; },
     hit: (id, k) => send({ t: 'hit', i: id, k }),
+    // everybody near you: where they are, what they are doing ('k': lying down), their stars and badge
+    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '' }); } return out; },
     get signedIn() { return !!S.me; },
     get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },
