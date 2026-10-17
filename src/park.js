@@ -24,7 +24,7 @@ const DESK_R = 2.3, TICKET_R = 6, RANKS = ['Agbero', 'Senior agbero', 'Head agbe
 
 // ---- the union vest: a shell over the body's own torso, so it moves with every body exactly (orange for agberos,
 // green for the chairman), with two silver bands. Made once per body shape and shared.
-const VEST_COL = { o: [[1, .16, .004], [.62, .65, .68]], g: [[.014, .2, .062], [.75, .43, .03]] };   // (linear: hi-vis orange #ff6c0d, union green #1d7a46; silver and gold bands)
+const VEST_COL = { o: [[1, .16, .004], [.62, .65, .68]], g: [[.014, .2, .062], [.75, .43, .03]], k: [[.012, .013, .018], [.7, .72, .76]] };   // (k: the police's black, with a white band)   // (linear: hi-vis orange #ff6c0d, union green #1d7a46; silver and gold bands)
 const vestCache = new Map();
 function vestGeo(THREE, sm, kind) {
   const key = sm.geometry.uuid + kind; if (vestCache.has(key)) return vestCache.get(key);
