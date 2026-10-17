@@ -29,6 +29,7 @@ export function tune(env) {
   if (+env.PARK_EVERY_MS > 0) PARK.every = +env.PARK_EVERY_MS;
   if (+env.PARK_FIGHT_MS > 0) PARK.fightMax = +env.PARK_FIGHT_MS;
   if (env.PARK_RANKS) { const r = String(env.PARK_RANKS).split(',').map(Number); if (r.length === 3 && r.every(Number.isFinite)) r.forEach((v, i) => { PARK.ranks[i][0] = v; }); }
+  if (+env.PARK_WINDOW_MS > 0) PARK.window = +env.PARK_WINDOW_MS;
   if (+env.PARK_DECL_BEFORE_MS >= 0 && env.PARK_DECL_BEFORE_MS !== undefined) PARK.declBefore = +env.PARK_DECL_BEFORE_MS;
 }
 // where things are: the yard, the bays (the same order as in the game, src/game.js)
