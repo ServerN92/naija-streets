@@ -48,52 +48,101 @@ def swap(name, seam_up=.035, blend=.03, size=1.0):
     # lofted between the two (each ring found by rays out from the neck's axis), smooth into both surfaces
     neck = rig.matrix_world @ rig.pose.bones['mixamorig:Neck'].head; hb = rig.matrix_world @ rig.pose.bones['mixamorig:Head'].head
     dbot = min(v.co.z for v in me.vertices)
-    z1 = dbot + .022; z2 = neck.z + .018; seam = z2
+    z1 = dbot + .024; z2 = neck.z + .018; seam = z2
     bvh_b = BVHTree.FromPolygons(V, [tuple(p.vertices) for p in body.data.polygons])
     bvh_d = BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
     c0 = Vector(((hb.x + neck.x) / 2, (hb.y + neck.y) / 2))
-    U, NZ = 40, 12
     def rad(bvh, z, th):
         o = Vector((c0.x, c0.y, z)); d = Vector((math.cos(th), math.sin(th), 0.))
         hit = bvh.ray_cast(o, d, .2)
         return (hit[0] - o).length if hit[0] is not None else None
-    rows = []
-    for j in range(NZ + 1):
-        t = j / NZ; z = (z2 - .011) + (z1 - z2 + .022) * t; tt = max(0., min(1., (z - z2) / (z1 - z2))); sm = tt * tt * (3 - 2 * tt); row = []
-        for i in range(U):
-            th = 2 * math.pi * i / U
-            rb, rb2 = rad(bvh_b, z2, th), rad(bvh_b, z2 + .006, th)
-            rd, rd2 = rad(bvh_d, z1, th), rad(bvh_d, z1 - .006, th)
-            if None in (rb, rb2, rd, rd2): row.append(None); continue
-            eb = rb + (rb2 - rb) / .006 * (z - z2); ed = rd + (rd - rd2) / .006 * (z - z1)   # each surface carried on
-            r = (eb * (1 - sm) + ed * sm) + .0006   # a hair outside both, where they overlap
-            row.append(Vector((c0.x + math.cos(th) * r, c0.y + math.sin(th) * r, z)))
-        rows.append(row)
-    tv, tf = [], []
-    idx = {}
-    for j, row in enumerate(rows):
-        for i, p in enumerate(row):
-            if p is not None: idx[(j, i)] = len(tv); tv.append(p)
-    for j in range(NZ):
-        for i in range(U):
-            q = [(j, i), (j, (i + 1) % U), (j + 1, (i + 1) % U), (j + 1, i)]
-            if all(k in idx for k in q): tf.append(tuple(idx[k] for k in q))
-    # the sculpt below the top ring and her body above the bottom ring go
+    # cut the sculpt across its neck on a slanted plane (low under the chin, higher at the nape, because its neck is short
+    # in front), then grow its own open edge down her neck as one piece (welded, no seam): each new ring eases from the
+    # sculpt's neck to her body's neck, and the last ring tucks just under her body's skin line
+    zf, zbk = dbot + .012, dbot + .03
+    ys = [v.co.y for v in me.vertices if v.co.z < dbot + .04]; yf, yb = min(ys), max(ys)
+    kz = (zbk - zf) / max(.02, yb - yf)
+    pn = Vector((0., -kz, 1.)).normalized(); pc = Vector((c0.x, yf, zf))
     bm = bmesh.new(); bm.from_mesh(me)
-    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, 0, z1 - .002), plane_no=(0, 0, 1), clear_inner=True)
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=pc, plane_no=pn, clear_inner=True)
+    bm.verts.ensure_lookup_table(); bm.edges.ensure_lookup_table()
+    onp = lambda v: abs((v.co - pc).dot(pn)) < .002
+    bedges = [e for e in bm.edges if e.is_boundary and onp(e.verts[0]) and onp(e.verts[1])]
+    nbr = {}
+    for e in bedges:
+        a_, b_ = e.verts; nbr.setdefault(a_, []).append(b_); nbr.setdefault(b_, []).append(a_)
+    loops, seen = [], set()
+    for v0 in nbr:
+        if v0 in seen: continue
+        loop = [v0]; seen.add(v0); prev = None; cur = v0
+        while True:
+            nx = [w for w in nbr[cur] if w is not prev and w not in seen]
+            if not nx: break
+            prev, cur = cur, nx[0]; loop.append(cur); seen.add(cur)
+        loops.append(loop)
+    ring = max(loops, key=len)
+    if len(loops) > 1: log('neck cut: extra small openings', [len(l) for l in loops if l is not ring])
+    zbot = z2 - .015; NZ = 10
+    z1k = [v.co.z for v in ring]
+    def surf_r(th, z, za):
+        tt = max(0., min(1., (za - z) / max(.01, za - z2))); sm = tt * tt * (3 - 2 * tt)
+        rd, rd2 = rad(bvh_d, za, th), rad(bvh_d, za + .006, th)
+        ed = (rd + (rd - rd2) / .006 * (za - z)) if (rd and rd2) else None
+        rb, rb2 = rad(bvh_b, z2, th), rad(bvh_b, z2 + .006, th)
+        eb = (rb + (rb2 - rb) / .006 * (z - z2)) if (rb and rb2) else ed
+        if ed is None: ed = eb
+        off = -.001 if z < z2 + .008 else -.001 * max(0., 1 - (z - z2 - .008) / .02)
+        return None if ed is None else ed * (1 - sm) + eb * sm + off
+    prev_ring = ring; rows = [ring]
+    for j in range(1, NZ + 1):
+        new_ring = []
+        for k, v in enumerate(ring):
+            za = z1k[k]; z = za + (zbot - za) * j / NZ
+            th = math.atan2(v.co.y - c0.y, v.co.x - c0.x)
+            r = surf_r(th, z, za) or (Vector((v.co.x, v.co.y)) - c0).length
+            new_ring.append(bm.verts.new((c0.x + math.cos(th) * r, c0.y + math.sin(th) * r, z)))
+        for k in range(len(ring)):
+            a0, a1 = prev_ring[k], prev_ring[(k + 1) % len(ring)]; b0, b1 = new_ring[k], new_ring[(k + 1) % len(ring)]
+            try: bm.faces.new((a0, a1, b1, b0))
+            except ValueError: pass
+        prev_ring = new_ring; rows.append(new_ring)
+    # even out the new rings (the cut leaves its points unevenly spaced, which shows as streaks)
+    for it in range(6):
+        for j in range(1, len(rows)):
+            R_ = rows[j]; n_ = len(R_)
+            th = [math.atan2(v.co.y - c0.y, v.co.x - c0.x) for v in R_]
+            new_th = []
+            for k in range(n_):
+                a0, a1, a2 = th[k - 1], th[k], th[(k + 1) % n_]
+                d0 = math.atan2(math.sin(a0 - a1), math.cos(a0 - a1)); d2 = math.atan2(math.sin(a2 - a1), math.cos(a2 - a1))
+                new_th.append(a1 + (d0 + d2) * .25 * min(1., j / 3))
+            for k, v in enumerate(R_):
+                r = surf_r(new_th[k], v.co.z, z1k[k])
+                if r: v.co.x = c0.x + math.cos(new_th[k]) * r; v.co.y = c0.y + math.sin(new_th[k]) * r
+    for j in range(1, len(rows)):
+        R_ = rows[j]; n_ = len(R_)
+        th = [math.atan2(v.co.y - c0.y, v.co.x - c0.x) for v in R_]; rr = [(Vector((v.co.x, v.co.y)) - c0).length for v in R_]
+        for _ in range(2 + j):
+            rr = [(rr[k - 1] + 2 * rr[k] + rr[(k + 1) % n_]) / 4 for k in range(n_)]
+        w = min(1., j / 3)
+        for k, v in enumerate(R_):
+            r0 = (Vector((v.co.x, v.co.y)) - c0).length; r = r0 + (rr[k] - r0) * w
+            v.co.x = c0.x + math.cos(th[k]) * r; v.co.y = c0.y + math.sin(th[k]) * r
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     bm.to_mesh(me); bm.free()
+    # hide her old head and the top of her neck (her neck below the base stays, under the new neck's last ring)
     g = body.vertex_groups.get('NW_OldHead') or body.vertex_groups.new(name='NW_OldHead')
     g.remove(list(range(len(body.data.vertices))))
     axis = Vector((hb.x, hb.y))
-    up = [i for i, v in enumerate(V) if (v.z > z2 + .002 and (Vector((v.x, v.y)) - axis).length < .085) or (v.z > z2 + .045 and (Vector((v.x, v.y)) - axis).length < .16)]
+    hg = body.vertex_groups.get('mixamorig:Head'); hw = {}
+    if hg:
+        for vv in body.data.vertices:
+            for gg_ in vv.groups:
+                if gg_.group == hg.index: hw[vv.index] = gg_.weight
+    up = [i for i, v in enumerate(V) if (hw.get(i, 0.) > .35 and v.z > z2 + .006) or (v.z > z2 + .007 and (Vector((v.x, v.y)) - axis).length < .085)]   # (her whole old head: chin and jaw too)
     g.add(up, 1., 'REPLACE')
     mk = body.modifiers.get('NW_HideOldHead') or body.modifiers.new('NW_HideOldHead', 'MASK')
     mk.vertex_group = 'NW_OldHead'; mk.invert_vertex_group = True
-    nmesh = bpy.data.meshes.new(name + '.neck'); nmesh.from_pydata([tuple(p) for p in tv], [], tf); nmesh.update()
-    for p in nmesh.polygons: p.use_smooth = True
-    nk = bpy.data.objects.new(name + '.neck', nmesh); body.users_collection[0].objects.link(nk); nk['nw'] = name; nk['nw_head'] = name
-    # (the tube's faces must face out)
-    bm = bmesh.new(); bm.from_mesh(nmesh); bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:]); bm.to_mesh(nmesh); bm.free()
     # make-up masks (lipstick, blush) from the sculpt's own face, in its own measurements (mm from between the eyes)
     inv = lambda q: Vector(((q.x - ocx) / s + dcx - dm.x, (q.y - ocy) / s + dcy - dm.y, (q.z - om.z) / s)) * 1000.
     lips, blush = [], []
@@ -123,18 +172,11 @@ def swap(name, seam_up=.035, blend=.03, size=1.0):
         if t < 1:
             _, j, _ = kd.find(v.co); w = wts(j); tot = sum(w.values()) or 1.
             for nm, x in w.items(): grp(nm).add([v.index], (1 - t) * x / tot, 'ADD')
-    for v in nk.data.vertices:
-        _, j, _ = kd.find(v.co); w = wts(j); tot = sum(w.values()) or 1.
-        for nm, x in w.items():
-            gg = nk.vertex_groups.get(nm) or nk.vertex_groups.new(name=nm); gg.add([v.index], x / tot, 'REPLACE')
-    nk.parent = rig; nk.matrix_parent_inverse = rig.matrix_world.inverted(); an = nk.modifiers.new('Armature', 'ARMATURE'); an.object = rig
-    sn = nk.modifiers.new('Smooth', 'SUBSURF'); sn.levels = 1; sn.render_levels = 1
     h.parent = rig; h.matrix_parent_inverse = rig.matrix_world.inverted()
     am = h.modifiers.new('Armature', 'ARMATURE'); am.object = rig
     sub = h.modifiers.new('Smooth', 'SUBSURF'); sub.levels = 1; sub.render_levels = 1
     for p in me.polygons: p.use_smooth = True
     h.data.materials.clear(); h.data.materials.append(head_skin(name, body, WOMEN.get(name, {}).get('lips', (.14, .025, .03))))
-    nk.data.materials.clear(); nk.data.materials.append(h.data.materials[0])
     bpy.ops.object.select_all(action='DESELECT'); bpy.context.view_layer.objects.active = h; h.select_set(True)
     try:
         bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=.004)
