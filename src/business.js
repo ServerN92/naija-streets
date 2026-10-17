@@ -185,7 +185,7 @@ export function createBusiness(api) {
     if (VIEW === 'cook') {
       const room = M.cap - Object.values(M.st).reduce((s, q) => s + (q | 0), 0), n = Math.min(10, room), pan = M.pantry || {};
       const farmRows = R.dishCrop ? keys.filter(k => (pan[R.dishCrop[k]] | 0) >= Math.ceil(n * R.perTen / 10) && n > 0).map(k => { const c = R.dishCrop[k], cost = Math.round(n * items[k].p * R.farmCost);
-        return { name: `${EM[c] || ''} Cook ${n} plates of ${items[k].n} with farm ${c === 'cassava' ? 'cassava' : c + 's'}`, sub: `Uses ${Math.ceil(n * R.perTen / 10)} of your ${pan[c]} · much cheaper`, btn: naira(cost), off: cash < cost, act() { send('cook', { k, n, farm: 1 }); } }; }) : [];
+        return { name: `${EM[c] || ''} Cook ${n} plates of ${items[k].n} with farm ${R.produce[c].n.toLowerCase()}`, sub: `Uses ${Math.ceil(n * R.perTen / 10)} of your ${pan[c]} · much cheaper`, btn: naira(cost), off: cash < cost, act() { send('cook', { k, n, farm: 1 }); } }; }) : [];
       return [back(), ...farmRows, ...keys.map(k => { const cost = Math.round(n * items[k].p * R.cost);
         return { name: `Cook ${n || 10} plates of ${items[k].n}`, sub: `${M.st[k] | 0} in the pot now · market ingredients`, btn: n ? naira(cost) : 'Full', off: !n || cash < cost, act() { send('cook', { k, n }); } }; }),
         { name: 'Buy produce from farmers', sub: `Pantry: ${Object.entries(pan).map(([c, q]) => `${c} ${q}`).join(' · ') || 'empty'}`, btn: 'FARMERS ▸', act() { VIEW = 'farm'; refresh(); } }];

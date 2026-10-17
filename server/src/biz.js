@@ -418,7 +418,10 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     flush(); log('send', C.user.name, '->', R.name, n, 'fee', fee, b.id);
     ctx.send(C, { t: 'bzsent', id: b.id, to: R.name, n, fee });
   }
-  function handle(C, m) {
+  function handle(C, m) {   // (and everybody sees the result at once)
+    handle1(C, m); pushAll(); mkTick();
+  }
+  function handle1(C, m) {
     const b = B.get(m.id); if (!b) return;
     if (m.a === 'use' || m.a === 'eat') return use(C, b, m);
     if (m.a === 'send') return sendMoney(C, b, m);
@@ -438,5 +441,5 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     const back = db.backTake(C.user.id); if (back.length) ctx.send(C, { t: 'mkback', items: back.map(r => [r.crop, r.qty]) });
     if (mkOf(C.user.id).length) mkMine(C);
   }
-  return { handle, hello, tick, flush, pushAll: () => { pushAll(); mkTick(); }, market, get: id => B.get(id), isOpen, listings: () => [...MK.values()] };
+  return { handle, hello, tick, flush, pushAll: () => { pushAll(); mkTick(); }, market: (C, m) => { market(C, m); mkTick(); }, get: id => B.get(id), isOpen, listings: () => [...MK.values()] };
 }

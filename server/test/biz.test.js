@@ -111,7 +111,7 @@ test('the barbing salon: supplies, fuel when NEPA takes light, cuts sell in the 
   T.biz.handle(o, { a: 'buy', id: 'buka_8' }); assert.equal(T.biz.get('buka_8').owner, o.user.id);
   T.biz.handle(o, { a: 'buy', id: 'barber_3' }); assert.match(T.last('Barber_O', 'err').m, /own 2/);
   // everyone sees the salon's board and whether it has light
-  T.biz.pushAll(); const bz = [...T.sent].reverse().find(([n, x]) => n === 'Client' && x.t === 'bz')[1];
+  T.biz.pushAll(); const bz = [...T.sent].reverse().find(([n, x]) => n === 'Client' && x.t === 'bz' && x.s.some(y => y.id === 'barber_2'))[1];
   const pb = bz.s.find(x => x.id === 'barber_2') || {}; assert.equal(pb.n, 'Barber_O Cuts'); assert.ok('light' in pb);
 });
 
