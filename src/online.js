@@ -63,9 +63,10 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } S.busy = false; showErr(m.w, m.m); break;
-      case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } S.busy = false; showOk(m.w, m.m); break;
+      case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
+      case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
@@ -128,8 +129,8 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, g: j.g, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n); scene.add(R.tag); }
-    else { const changed = R.c !== j.c || R.f !== (j.f | 0); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.g = j.g; if (changed) dropBody(R); }
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, g: j.g, b: j.b || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n); scene.add(R.tag); }
+    else { const changed = R.c !== j.c || R.f !== (j.f | 0); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.g = j.g; R.b = j.b || ''; if (changed) dropBody(R); }
     if (!R.root) makeBody(R);
   }
   function heardPos(R, p, now) {
@@ -287,6 +288,7 @@ export function createOnline(api) {
           if (s.a === 'p' || s.a === 'pc' || s.a === 'k') topY = s.y + .8; else if (s.a === 'c' || s.a === 'cw' || s.a === 'sl') topY = s.y + 1.55;
         }
       }
+      if (R.inner && api.wear && R.d < 80 && (R.wk !== R.b || R.wo !== R.inner || (R.wst && R.wst.hk === null))) { R.wk = R.b; R.wo = R.inner; api.wear(R); }   // the park union's vest and the chairman's cap
       if (R.mixer) { R.acc += dt; const k = R.d < 25 ? 1 : R.d < 60 ? 2 : 3; if ((frameN + R.slot) % k === 0) { R.mixer.update(R.acc); R.acc = 0; } }
       // the name, the same size on screen near or far
       const tagOn = R.d < TAG_FAR, sc = clamp(R.d / 11, 1, 5);

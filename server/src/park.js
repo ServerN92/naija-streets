@@ -24,6 +24,13 @@ export const PARK = {
   load: [20e3, 34e3], window: 22e3,    // a danfo starts loading every 20 to 34 s; its ticket can be collected for 22 s
   reach: 8, sackDay: 5, idleDays: 3, kosPerFight: 6,
 };
+// for testing on a developer's machine only: a quick meeting and low ranks (never set on the real server)
+export function tune(env) {
+  if (+env.PARK_EVERY_MS > 0) PARK.every = +env.PARK_EVERY_MS;
+  if (+env.PARK_FIGHT_MS > 0) PARK.fightMax = +env.PARK_FIGHT_MS;
+  if (env.PARK_RANKS) { const r = String(env.PARK_RANKS).split(',').map(Number); if (r.length === 3 && r.every(Number.isFinite)) r.forEach((v, i) => { PARK.ranks[i][0] = v; }); }
+  if (+env.PARK_DECL_BEFORE_MS >= 0 && env.PARK_DECL_BEFORE_MS !== undefined) PARK.declBefore = +env.PARK_DECL_BEFORE_MS;
+}
 // where things are: the yard, the bays (the same order as in the game, src/game.js)
 export const SITE = {
   id: 'mushin', name: 'Mushin Motor Park', npc: 'Chairman Kasali', x: 1010.47, z: -513.03, r: 38,
