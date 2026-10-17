@@ -181,3 +181,23 @@ test('a buka over the line: the boards come at sign-in, buying takes the money, 
   e.send({ t: 'bz', a: 'cook', id: 'buka_5', k: 'jollof', n: 5 }); assert.match((await e.next('err')).m, /not your/);
   o.close(); e.close();
 });
+
+test('the motor park over the line: the board at sign-in, join in the yard, a danfo loads, collect the ticket, the badge shows', async () => {
+  const [o] = await account('Agbero_One');
+  const pk = await o.next('pk'); assert.equal(pk.p.ch, 'Chairman Kasali'); assert.equal(pk.rules.join, 5000); assert.ok(pk.p.next > 0);
+  assert.equal((await o.next('pkme')).m.on, false);
+  o.send({ t: 'pk', a: 'join' }); assert.match((await o.next(m => m.t === 'err' && m.w === 'pk')).m, /union office/);
+  o.send({ t: '$', d: 20000, s: 1, e: 'pk1' }); await o.next('$');
+  o.send({ t: 'p', x: 1010, y: 0, z: -513, r: 0, a: 'i', s: 0, v: '', q: 0 }); await new Promise(r => setTimeout(r, 200));
+  o.send({ t: 'pk', a: 'join' }); assert.equal((await o.next('$')).n, 15000); assert.equal((await o.next('pkme')).m.on, true);
+  const [w] = await account('Watcher');
+  w.send({ t: 'p', x: 1012, y: 0, z: -512, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  const j = await w.next(m => m.t === 'w' && m.j && m.j.some(x => x.n === 'Agbero_One')); assert.equal(j.j.find(x => x.n === 'Agbero_One').b, 'a');
+  const d = await o.next(m => m.t === 'pkd' && m.l.some(x => !x[4]), 9000), L = d.l.find(x => !x[4]);
+  const bays = [[986.51, -511.04], [993.64, -513.87], [1000.76, -516.7], [1007.89, -519.53], [1015.02, -522.36], [1022.14, -525.19], [1029.27, -528.02]];
+  o.send({ t: 'p', x: bays[L[1]][0] + 1, y: 0, z: bays[L[1]][1], r: 0, a: 'i', s: 0, v: '', q: 0 }); await new Promise(r => setTimeout(r, 200));
+  o.send({ t: 'pk', a: 'ticket', id: L[0] }); const tk = await o.next('pkt'); assert.equal(tk.got, 150);
+  assert.equal((await o.next('$')).n, 15150);
+  const seen = await w.next(m => m.t === 'pkd' && m.l.some(x => x[0] === L[0] && x[4] === 'Agbero_One'), 4000); assert.ok(seen);
+  o.close(); w.close();
+});
