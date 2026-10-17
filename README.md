@@ -220,6 +220,23 @@ test it with `npm test`. It runs on Fly.io as `naija-streets-lagos` (London, one
 `FLY_API_TOKEN`. Reset emails switch on when the Fly secrets `RESEND_API_KEY` and `MAIL_FROM` are set (resend.com).
 Players' code is `src/online.js` (the game passes in what it needs, like the farm).
 
+## Online business: the buka
+Eight bukas stand by big roads: five near your house in Mushin, then Idi-Oro Market, Mushin Market, Ladipo Market and
+Computer Village (Buka on the big map). One nobody owns says BUKA FOR SALE on its board. Signed in online, stand at the
+counter and press E: buy it for ₦100,000 (two businesses each at most) and your buka's name goes up on the board for
+everyone. At the counter: collect the till; cook food (10 plates at a time; ingredients cost 40% of the usual plate
+price; the pots hold 60 plates, bigger pots 120 and 200); set your prices (cheaper sells faster); hire Iya Basira the
+cook (₦8,000 for 6 real hours, ₦28,000 for 24) so it sells while you are away (otherwise it is open only while you
+stand there); more benches (more customers); rename the board; sell it back for half (with the till). Customers come by
+themselves: more at breakfast, lunch and evening, few at night, more with a longer menu. Any signed-in player can eat at
+an open buka (+40 health) and pays the owner. The cook stands behind the counter and customers wait at the table while
+it is open.
+
+The server runs it all (`server/src/biz.js`: stock, prices, customers, the till, saved in SQLite) and sends the boards
+to everyone; `src/business.js` draws the bukas, the boards and the people and runs the menus. The model is made in
+Blender by `tools/blender_buka.py` (the farm's kit: colours per corner, light baked in, photo detail on wood, zinc and
+concrete) as `assets/models/bk_buka.glb` + `bk_buka_lod1.glb`. Next businesses: the barber, the POS stand, the farmer.
+
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
 big map, where the Guns chip shows only him). His boys smoke at the gap in the fence and stop you: ₦100 to pass (E).

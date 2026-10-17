@@ -26,7 +26,9 @@ K = {k: lin(v) for k, v in dict(
     alu='#c9ccd0', alu_d='#8e9296', lid='#a9adb1', soot='#2b2724', glass='#2a3a40', glass_l='#7fa0aa', frame='#d8d4c8',
     cool_r='#c3201e', cool_b='#1e5fb4', cool_w='#ecebe6', drum='#1f5fb8', gas='#2e8a4e', gas_d='#1e5a32', fire='#6a4a2c',
     chair_r='#c42a22', chair_b='#2860b4', chair_g='#2a8a4a', board='#151a1a', chalk='#e6e2d6', poster1='#e9b414', poster2='#2a9a5a', poster3='#d8402a',
-    bowl='#e8e2d4', bowl2='#2f7fc4', plate='#f1efe8', stew='#a8321c', rice='#e9c27a', mat='#d8c08a', bulb='#fff4c8', wire='#1b1b1b').items()}
+    bowl='#e8e2d4', bowl2='#2f7fc4', plate='#f1efe8', stew='#a8321c', rice='#e9c27a', mat='#d8c08a', bulb='#fff4c8', wire='#1b1b1b',
+    tarp='#2a6fb8', tarp2='#e8e4dc', sachet='#eef2f4', sachet_b='#3a7fd0', crate_r='#b81e1e', crate_y='#e8b41a', bottle='#3a2a1a', fan='#e8e6e0', fan_b='#3a8ad0',
+    ank1='#d8401e', ank2='#1e6a9a', ank3='#e8b41a', ank4='#2a7a3a', old_g='#4f7a52', old_b='#4a6a8a', bag='#f2f0ea', bag_r='#c8281e', soap='#e8d23a').items()}
 W, D, H0, H1 = 4.4, 3.0, 2.62, 2.42   # shed width, depth, back and front height of the roof
 CY = -3.3                             # the canopy reaches out to here (the eating space)
 
@@ -104,15 +106,27 @@ def buka(detail=True, seed=61):
     B.box(T(0, (CY - .15 + D + .2) / 2, 0), W + .4, D + .2 - CY + .15, .12, C['conc'], .1, f=1.5)
     if detail: B.box(T(0, CY - .3, 0), 2.2, .3, .06, C['conc_d'], .1)
     # the shed: planks at the back and the left, zinc on the right
-    planks(B, -hw, hw, D, .12, H0, C['plank'], 'x', True, w=.22)
-    planks(B, .02, D, -hw, .12, H0 - .1, C['plank'], 'y', True, w=.24)
+    planks(B, -hw, hw, D, .12, H0, C['wood_l'], 'x', True, w=.22, rnd=.2)
+    planks(B, .02, D, -hw, .12, H0 - .1, C['wood_l'], 'y', True, w=.24, rnd=.2)
+    if detail:   # a few planks with old paint, and a cloth over the back door
+        for i, c in ((2, 'old_g'), (3, 'old_g'), (7, 'old_b'), (12, 'old_g')):
+            x = -hw + .11 + i * .22
+            if x < hw - .1: B.box(T(x, D - .025, .14), .2, .01, H0 - .5, K[c], .2, f=6)
+        for i in range(7):
+            c = ('ank1', 'ank2', 'ank3', 'ank4')[i % 4]; x = 1.0 + i * .12
+            B.face([Vector((x, D - .04, .25)), Vector((x + .12, D - .04, .25)), Vector((x + .12, D - .04 - (.03 if i % 2 else 0), 2.0)), Vector((x, D - .04, 2.0))], K[c], .1)
     zinc_wall(B, hw, .02, D, .12, H0 - .05, seed + 1)
     for x in (-hw, hw):
         for y in (.02, D): post(B, x, y, H0 if y > 1 else H1, .06)
     # the roof: zinc, from the back of the shed out over the eating space
     corrugated(B, -hw - .25, hw + .25, D + .25, CY - .25, H0 + .06, H1 - .22, seed + 3, .5)
-    for x in (-hw + .05, 0, hw - .05):
-        B.box(T(x, (D + CY) / 2, H1 - .02 + (H0 - H1) * .5, rx=math.atan2(H0 - H1, D - CY)), .07, D - CY + .3, .07, C['wood_d'], .12)
+    y0r, y1r, z0r, z1r = D + .25, CY - .25, H0 + .06, H1 - .22
+    roofz = lambda y: z0r + (z1r - z0r) * (y - y0r) / (y1r - y0r)
+    ang = math.atan2(z0r - z1r, y0r - y1r)
+    for x in (-hw + .05, -hw / 2, 0, hw / 2, hw - .05):
+        B.box(T(x, (D + CY) / 2, roofz((D + CY) / 2) - .1, rx=ang), .07, D - CY + .3, .08, C['wood_d'], .12)
+    for y in (D, 1.0, -1.2):   # purlins across
+        B.box(T(0, y, roofz(y) - .045), W + .3, .06, .04, C['wood'], .12)
     for x in (-hw + .1, hw - .1): post(B, x, CY, H1 - .2, .065)
     B.box(T(0, CY, H1 - .32), W, .09, .1, C['wood_d'], .1)                       # the front beam
     # the board over the front (plain: the game paints the name), with a yellow frame
@@ -161,6 +175,33 @@ def buka(detail=True, seed=61):
         # a hanging bulb under the roof
         B.box(T(0, .9, 1.95), .01, .01, .5, K['wire']); B.sphere(T(0, .9, 1.9), .06, K['bulb'], seg=8, rings=5)
         B.box(T(0, -1.7, 1.75), .01, .01, .55, K['wire']); B.sphere(T(0, -1.7, 1.7), .06, K['bulb'], seg=8, rings=5)
+    if detail:
+        # a striped tarpaulin hanging on the left side of the eating space (sun and rain)
+        for i in range(8):
+            y = CY + .1 + i * (abs(CY) - .2) / 8; y2 = y + (abs(CY) - .2) / 8; c = K['tarp'] if i % 2 == 0 else K['tarp2']
+            sag = .06 * math.sin(i * 1.7)
+            B.cls = 0; B.face([Vector((-hw - .02, y, .9 + sag)), Vector((-hw - .02, y2, .9 - sag)), Vector((-hw - .02, y2, H1 - .3)), Vector((-hw - .02, y, H1 - .3))], c, .1)
+            B.face([Vector((-hw - .02, y, H1 - .3)), Vector((-hw - .02, y2, H1 - .3)), Vector((-hw - .02, y2, .9 - sag)), Vector((-hw - .02, y, .9 + sag))], tuple(v * .6 for v in c), .1)
+        # pure water sachets in their bags and snacks hanging from the front beam
+        for i, x in enumerate((-1.5, -1.1, 1.2, 1.6)):
+            B.box(T(x, CY + .02, H1 - .7), .01, .01, .38, K['wire'])
+            B.sphere(T(x, CY + .02, H1 - .82, s=(1, .8, 1.3)), .17, K['sachet'] if i % 2 == 0 else K['bag'], seg=8, rings=5, var=.08)
+            if i % 2 == 0: B.box(T(x, CY - .13, H1 - .86), .2, .01, .06, K['sachet_b'])
+        # crates of drinks stacked by the right post
+        for j in range(3):
+            c = K['crate_r'] if j % 2 == 0 else K['crate_y']; z = .12 + j * .3
+            B.box(T(hw - .45, CY + .55, z), .42, .3, .28, c, .08)
+            for a in range(4):
+                for b in range(3): B.cyl(T(hw - .6 + a * .1, CY + .45 + b * .1, z + .28), .025, .02, .05, K['bottle'], n=5)
+        # a standing fan in the shed, a small radio and a tin of soap on the shelf
+        B.cyl(T(1.95, 1.2, .12), .18, .18, .03, K['fan'], n=10); B.cyl(T(1.95, 1.2, .15), .02, .02, 1.05, K['fan'], n=6)
+        B.cyl(T(1.95, 1.12, 1.2, rx=math.pi / 2), .2, .2, .12, K['fan_b'], n=12, top=True, bottom=True, var=.05)
+        B.box(T(1.55, D - .2, 1.19), .32, .12, .18, K['soot'], .05); B.box(T(1.55, D - .27, 1.25), .1, .01, .1, K['alu'], .05)
+        B.cyl(T(-1.95, .2, 1.05), .07, .07, .1, K['soap'], n=8)
+        # a basin for washing hands at the front, on a stand, with a kettle (buta) beside it
+        B.box(T(-hw + .35, CY + .55, .12), .3, .3, .55, C['wood_d'], .12)
+        B.cyl(T(-hw + .35, CY + .55, .67), .14, .2, .1, K['bowl2'], n=10, top=False, bottom=True, inner=K['bowl'])
+        B.cyl(T(-hw + .55, CY + .85, .12), .1, .07, .22, K['paint_g'], n=8)
     # the eating space: one long table, two benches, plastic chairs
     table(B, 0, -1.75, 2.8, .78)
     bench(B, 0, -1.08, 2.6); bench(B, 0, -2.42, 2.6)
@@ -183,6 +224,13 @@ SPOTS = {
 }
 
 
+def export_one(ob):
+    bpy.ops.object.select_all(action='DESELECT'); ob.select_set(True); bpy.context.view_layer.objects.active = ob
+    path = os.path.join(OUT, ob.name + '.glb')
+    bpy.ops.export_scene.gltf(filepath=path, use_selection=True, use_active_scene=True, export_format='GLB', export_yup=True, export_apply=True, export_texcoords=True, export_normals=True, export_extras=True)
+    return os.path.getsize(path) // 1024
+
+
 if not globals().get('NO_RUN'):
     try:
         open(LOGF, 'w').write('buka start %s\n' % (bpy.app.version_string,))
@@ -195,7 +243,7 @@ if not globals().get('NO_RUN'):
         for detail in (True, False):
             t0 = time.time(); ob = buka(detail)
             if detail: bake_ao(ob)
-            kb = G['export']([ob], ob.name)
+            kb = export_one(ob)
             out[ob.name] = (len(ob.data.polygons), kb); log(ob.name, len(ob.data.polygons), 'faces', kb, 'KB', round(time.time() - t0, 1), 's')
             if not detail: ob.location.x = 6
         import json; json.dump(SPOTS, open(os.path.join(OUT, 'bk_buka_spots.json'), 'w'), indent=1)
