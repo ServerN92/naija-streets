@@ -18,6 +18,10 @@ const SCHEMA = [
    CREATE TABLE ledger(id INTEGER PRIMARY KEY, uid INTEGER NOT NULL, t INTEGER NOT NULL,
      d INTEGER NOT NULL, held INTEGER NOT NULL DEFAULT 0, bal INTEGER NOT NULL, k TEXT);
    CREATE INDEX ledger_uid ON ledger(uid, t);`,
+  // v2: businesses players own (a buka, later the barber, the POS stand, the farm)
+  `CREATE TABLE biz(id TEXT PRIMARY KEY, kind TEXT NOT NULL, owner INTEGER REFERENCES users(id) ON DELETE SET NULL,
+     name TEXT, data TEXT NOT NULL, till INTEGER NOT NULL DEFAULT 0, bought INTEGER, saved INTEGER);
+   CREATE INDEX biz_owner ON biz(owner);`,
 ];
 
 export function openDb(file) {
@@ -51,6 +55,8 @@ export function openDb(file) {
     tryReset: q('UPDATE resets SET tries=tries+1 WHERE uid=?'),
     dropReset: q('DELETE FROM resets WHERE uid=?'),
     log: q('INSERT INTO ledger(uid,t,d,held,bal,k) VALUES(?,?,?,?,?,?)'),
+    bizAll: q('SELECT b.*, u.name AS oname FROM biz b LEFT JOIN users u ON u.id=b.owner'),
+    bizPut: q('INSERT INTO biz(id,kind,owner,name,data,till,bought,saved) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, owner=excluded.owner, name=excluded.name, data=excluded.data, till=excluded.till, bought=excluded.bought, saved=excluded.saved'),
   };
   return {
     raw: db,
@@ -81,6 +87,9 @@ export function openDb(file) {
     tryReset: uid => S.tryReset.run(uid),
     dropReset: uid => S.dropReset.run(uid),
     log: (uid, t, d, held, bal, k) => S.log.run(uid, t, d, held, bal, k || null),
+    bizAll: () => S.bizAll.all(),
+    bizPut: b => S.bizPut.run(b.id, b.kind, b.owner || null, b.name || null, JSON.stringify(b.d), b.till | 0, b.bought || null, Date.now()),
+    tx(fn) { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } },
     close: () => db.close(),
   };
 }

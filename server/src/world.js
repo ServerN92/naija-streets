@@ -1,6 +1,7 @@
 // Lagos online: who is signed in, where everyone is, what they say, and their money.
 // The server decides the money and the accounts. Positions come from each phone (checked for sense) and go out
 // ten times a second, only to the people near enough to see them, and only when something changed.
+import { createBiz } from './biz.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
 export const PROTO = 1;
@@ -27,6 +28,19 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   };
   let nextId = 1, lastCount = -1;
 
+  // money the server itself moves (a business bought, the till collected): saved at once, the phone told at once
+  function spend(C, n, why) {
+    if (!C.user || !(n > 0) || C.cash < n) return false;
+    C.cash -= n; const t = now(); db.setCash(C.user.id, C.cash, t); db.log(C.user.id, t, -n, 0, C.cash, why);
+    send(C, { t: '$', n: C.cash, s: C.cseq }); return true;
+  }
+  function give(C, n, why) {
+    if (!C.user || !(n > 0)) return;
+    C.cash += n; const t = now(); db.setCash(C.user.id, C.cash, t); db.log(C.user.id, t, n, 0, C.cash, why);
+    send(C, { t: '$', n: C.cash, s: C.cseq });
+  }
+  const biz = createBiz({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give } });
+
   const send = (C, o) => { if (C.ws.open) C.ws.send(JSON.stringify(o)); };
   const err = (C, w, m) => send(C, { t: 'err', w, m });
   const ok = (C, w, m) => send(C, { t: 'ok', w, m });
@@ -48,7 +62,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (old && old !== C) { send(old, { t: 'kick', m: 'You signed in on another phone or tab.' }); leaveWorld(old); old.ws.close(4001, 'signed in elsewhere'); }
     if (C.user && C.user.id !== u.id) leaveWorld(C);
     C.user = { id: u.id, name: u.name, email: u.email || '' };
-    C.cash = u.cash | 0; C.dsum = 0; C.held = 0; C.dirty = false; C.earn = new Bucket(EARN_CAP, EARN_RATE); C.cseq = 0;
+    const fresh = db.userById(u.id) || u;   // read again: the phone that was just signed out has saved its money by now
+    C.cash = fresh.cash | 0; C.dsum = 0; C.held = 0; C.dirty = false; C.earn = new Bucket(EARN_CAP, EARN_RATE); C.cseq = 0;
     C.tok = tok; C.th = tokenHash(tok);
     online.set(u.id, C);
     const look = parseLook(u.look);
@@ -56,6 +71,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     C.seen = new Map();
     db.seen(u.id, t);
     send(C, { t: 'me', tok, id: C.p.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, n: online.size });
+    biz.hello(C);
     log('in', u.name, online.size);
   }
   function leaveWorld(C) {
@@ -194,7 +210,12 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
 
   // ---- the line from each phone
   const PRE = { hi: hello, reg: register, login, forgot, reset };
-  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout };
+  function bz(C, m) {
+    C.bzLim = C.bzLim || new Bucket(12, 3); if (!C.bzLim.take()) return;
+    if (typeof m.id !== 'string' || typeof m.a !== 'string') return;
+    biz.handle(C, m);
+  }
+  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout, bz };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };
@@ -254,8 +275,13 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   let timers = [];
   return {
     join,
-    start() { timers = [setInterval(tick, TICK), setInterval(slow, 5000), setInterval(pings, 25000), setInterval(prune, 10 * 60e3)]; },
-    stop() { timers.forEach(clearInterval); timers = []; for (const C of conns) { flushCash(C); C.ws.close(1012, 'server restarting'); } },
+    start() {
+      let bt = now();
+      timers = [setInterval(tick, TICK), setInterval(slow, 5000), setInterval(pings, 25000), setInterval(prune, 10 * 60e3),
+        setInterval(() => { const t = now(); biz.tick((t - bt) / 1000); bt = t; }, 5000), setInterval(() => biz.flush(), 15000), setInterval(() => biz.pushAll(), 2000)];
+    },
+    stop() { timers.forEach(clearInterval); timers = []; biz.flush(); for (const C of conns) { flushCash(C); C.ws.close(1012, 'server restarting'); } },
+    biz,
     tick, slow,
     get online() { return online.size; },
     get conns() { return conns.size; },

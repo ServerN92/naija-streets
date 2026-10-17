@@ -15,7 +15,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 FILES = {'index.html': ROOT / 'index.html', 'game': ROOT / 'src' / 'game.js'}
 PATTERNS = {
     'index.html': [r'(<meta name="ns-build" content=")([^"]*)(")', r'(src/game\.js\?v=)([^"]*)(")'],
-    'game': [r"(const BUILD=')([^']*)(')", r"(\./clock\.js\?v=)([^']*)(')", r"(\./mapview\.js\?v=)([^']*)(')", r"(\./char2\.js\?v=)([^']*)(')", r"(\./skater\.js\?v=)([^']*)(')", r"(\./phone\.js\?v=)([^']*)(')", r"(\./guide\.js\?v=)([^']*)(')", r"(\./farm\.js\?v=)([^']*)(')", r"(\./online\.js\?v=)([^']*)(')"],
+    'game': [r"(const BUILD=')([^']*)(')", r"(\./clock\.js\?v=)([^']*)(')", r"(\./mapview\.js\?v=)([^']*)(')", r"(\./char2\.js\?v=)([^']*)(')", r"(\./skater\.js\?v=)([^']*)(')", r"(\./phone\.js\?v=)([^']*)(')", r"(\./guide\.js\?v=)([^']*)(')", r"(\./farm\.js\?v=)([^']*)(')", r"(\./online\.js\?v=)([^']*)(')", r"(\./business\.js\?v=)([^']*)(')"],
 }
 
 def neutral(text, key):
@@ -26,7 +26,7 @@ def neutral(text, key):
 h = hashlib.sha1()
 for key, f in FILES.items():
     h.update(neutral(f.read_text(), key).encode())
-for extra in ['src/clock.js', 'src/mapview.js', 'src/char2.js', 'src/skater.js', 'src/phone.js', 'src/guide.js', 'src/farm.js', 'src/online.js']:
+for extra in ['src/clock.js', 'src/mapview.js', 'src/char2.js', 'src/skater.js', 'src/phone.js', 'src/guide.js', 'src/farm.js', 'src/online.js', 'src/business.js']:
     h.update((ROOT / extra).read_bytes())
 build = h.hexdigest()[:10]
 
