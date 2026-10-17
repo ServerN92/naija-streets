@@ -231,5 +231,11 @@ test('the police over the line: join, go on duty, the wanted list comes with the
   c.send({ t: 'p', x: 101.5, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 }); await new Promise(res => setTimeout(res, 250));
   c.send({ t: 'law', a: 'arrest', i: rme.id }); assert.equal((await r.next('arrested')).by, 'Officer_Ojo');
   assert.equal((await c.next('arrestok')).reward, 3000);
+  // wanted again: this time he settles the officer (the money moves on the server)
+  r.send({ t: '$', d: 5000, s: 1 }); const r0 = (await r.next('$')).n;
+  r.send({ t: 'law', a: 'stars', n: 1 }); await c.next(m => m.t === 'wanted' && m.l.some(x => x[1] === 'Robber_Tee'), 5000);
+  r.send({ t: 'law', a: 'settle', i: cme.id, n: 2000 }); const rr = await r.next(m => (m.t === 'err' || m.t === 'ok') && m.w === 'law'); assert.match(rr.m, /You offered/, rr.m); const ask = await c.next('settleask'); assert.equal(ask.amt, 2000);
+  c.send({ t: 'law', a: 'settleok', i: ask.i }); const st = await r.next('settled'); assert.equal(st.amt, 2000);
+  await r.next(m => m.t === '$' && m.n === r0 - 2000, 5000);   // he paid
   void cme; c.close(); r.close();
 });

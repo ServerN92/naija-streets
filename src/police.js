@@ -65,9 +65,10 @@ export function createPolice(api) {
         { name: 'Run!', sub: 'Maybe he no go catch you', btn: 'RUN', act() { api.closeMenu(); } }]);
     }
     if (MENU === 'ask' && ASK) {   // an officer: somebody wants to settle you
-      return api.openMenu('SETTLE?', `${ASK.n} ${stars(ASK.s)} wants to settle you with ${naira(ASK.amt)}. Take it and he walks free. X-Squad catches some officers.`, () => [
-        { name: `Collect the ${naira(ASK.amt)}`, sub: 'His stars are gone', btn: 'COLLECT', act() { api.send({ t: 'law', a: 'settleok', i: ASK.i }); ASK = null; api.closeMenu(); } },
-        { name: 'Refuse', sub: '"I no dey collect bribe. You dey under arrest."', btn: 'REFUSE', act() { api.send({ t: 'law', a: 'settleno', i: ASK.i }); ASK = null; api.closeMenu(); } }]);
+      const A = ASK, answer = yes => { if (ASK === A) api.send({ t: 'law', a: yes ? 'settleok' : 'settleno', i: A.i }); else api.toast('That offer is gone.', 2); ASK = null; api.closeMenu(); };
+      return api.openMenu('SETTLE?', `${A.n} ${stars(A.s)} wants to settle you with ${naira(A.amt)}. Take it and he walks free. X-Squad catches some officers.`, () => [
+        { name: `Collect the ${naira(A.amt)}`, sub: 'His stars are gone', btn: 'COLLECT', act() { answer(true); } },
+        { name: 'Refuse', sub: '"I no dey collect bribe. You dey under arrest."', btn: 'REFUSE', act() { answer(false); } }]);
     }
     const M = ST.me; api.openMenu('NIGERIA POLICE · MUSHIN', !M ? 'Connecting…' : M.cop ? `${M.rank} ${api.myName()} · ${M.arrests} arrests · today ${naira(M.today)} · all time ${naira(M.earned)}${M.ban ? ` · suspended ${Math.ceil(M.ban / 36e5)} h more` : ''}` : 'Catch the wanted players of Lagos', rows);
   }

@@ -58,7 +58,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   const park = createPark({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give, credit, note, badge } });
   // players fighting players: the server decides the blows and the knock-outs
   // the police: stars, the force, arrests
-  const law = createLaw({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, badge } });
+  const law = createLaw({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, spend, badge } });
   const pvp = createPvp({ now, log, ctx: { online, send: (C, o) => send(C, o), spend, give, onKo: (A, D) => { park.pvpKo(A, D); law.ko(A, D); }, onHit: (A, D) => law.hit(A, D), noRob: A => law.noRob(A) } });
 
   const send = (C, o) => { if (C.ws.open) C.ws.send(JSON.stringify(o)); };
