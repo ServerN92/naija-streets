@@ -20,8 +20,9 @@ def as_mesh(objs, name):
     return h
 
 def head_of(woman):
-    b = bpy.data.objects[woman + '.body']; vs = ev_verts(b)
-    eyes = bpy.data.objects[woman + '.high-poly']; ez = sum((eyes.matrix_world @ v.co).z for v in eyes.data.vertices) / len(eyes.data.vertices)
+    b = bpy.data.objects.get(woman + '.head') or bpy.data.objects[woman + '.body']; vs = ev_verts(b)
+    eyes = bpy.data.objects.get(woman + '.eyes') or bpy.data.objects[woman + '.high-poly']
+    ez = sum((eyes.matrix_world @ v.co).z for v in eyes.data.vertices) / len(eyes.data.vertices)
     hd = [v for v in vs if v.z > ez - .01]
     x0, x1 = min(v.x for v in hd), max(v.x for v in hd); y0, y1 = min(v.y for v in hd), max(v.y for v in hd)
     return dict(cx=(x0 + x1) / 2, cy=(y0 + y1) / 2, top=max(v.z for v in hd), w=x1 - x0, d=y1 - y0, eyez=ez)

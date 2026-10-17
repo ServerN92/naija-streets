@@ -37,11 +37,18 @@ BODY = {
                  T('measure-bust-circ-incr', .8), T('measure-waist-circ-incr', .35), T('stomach-pregnant-incr', .35), T('torso-scale-horiz-incr', .25),
                  T('measure-thigh-circ-incr', .6), T('neck-scale-horiz-incr', .3)] + both('upperleg-fat-incr', .7) + both('upperarm-fat-incr', .7) + both('lowerarm-fat-incr', .3)),
 }
-PRETTY = ([T('head-oval', .5), T('head-fat-decr', .35), T('head-scale-horiz-decr', .14), T('chin-width-decr', .5), T('chin-prominent-incr', .1), T('neck-scale-horiz-decr', .15), T('chin-bones-decr', .3), T('chin-height-decr', .15), T('forehead-scale-vert-decr', .15),
-           T('nose-scale-horiz-decr', .25), T('nose-width1-decr', .25), T('nose-width2-decr', .2), T('nose-point-width-decr', .35), T('nose-volume-decr', .25), T('nose-flaring-decr', .2),
-           T('mouth-upperlip-volume-incr', .2), T('mouth-lowerlip-volume-incr', .3), T('mouth-angles-up', .1), T('mouth-cupidsbow-incr', .3), T('mouth-scale-horiz-incr', .06),
-           T('eyebrows-trans-up', .25), T('eyebrows-angle-up', .15)]
-          + both('eye-scale-incr', .42) + both('eye-height2-incr', .25) + both('eye-bag-decr', .5) + both('eye-corner2-up', .2) + both('cheek-bones-incr', .2) + both('cheek-volume-decr', .4))
+PRETTY = ([T('head-oval', .85), T('head-invertedtriangular', .35), T('head-fat-decr', .55), T('head-scale-horiz-decr', .18), T('head-scale-vert-incr', .05),
+           T('forehead-scale-vert-decr', .2), T('forehead-temple-decr', .2),
+           T('chin-width-decr', .75), T('chin-height-decr', .15), T('chin-prominent-incr', .2), T('chin-bones-decr', .6), T('chin-jaw-drop-decr', .3),
+           T('nose-scale-horiz-decr', .6), T('nose-width1-decr', .5), T('nose-width2-decr', .5), T('nose-width3-decr', .4), T('nose-point-width-decr', .7),
+           T('nose-flaring-decr', .6), T('nose-nostrils-width-decr', .6), T('nose-volume-decr', .5), T('nose-scale-vert-decr', .25), T('nose-point-up', .3),
+           T('nose-hump-decr', .3), T('nose-base-up', .15),
+           T('mouth-scale-horiz-decr', .3), T('mouth-upperlip-volume-decr', .08), T('mouth-lowerlip-volume-incr', .08), T('mouth-upperlip-width-decr', .25),
+           T('mouth-lowerlip-width-decr', .25), T('mouth-cupidsbow-incr', .5), T('mouth-angles-up', .12), T('mouth-trans-up', .08),
+           T('eyebrows-trans-up', .3), T('eyebrows-angle-up', .25), T('neck-scale-horiz-decr', .25), T('measure-neck-height-incr', .2)]
+          + both('eye-scale-incr', .38) + both('eye-height2-decr', .14) + both('eye-eyefold-down', .2)
+          + both('eye-corner2-up', .38) + both('eye-corner1-down', .12) + both('eye-trans-out', .08) + both('eye-bag-decr', .8) + both('eye-eyefold-angle-up', .3)
+          + both('cheek-bones-incr', .3) + both('cheek-volume-decr', .3) + both('cheek-inner-decr', .25) + both('ear-scale-decr', .2))
 
 MPFB_DATA = r'C:\Users\user\Documents\naija_rooms\mpfb\data'   # a copy of MPFB's data at a short path (this Blender's own folder is past Windows' 260-letter limit)
 def svc():
@@ -114,30 +121,66 @@ def tex_node(nt, img, loc, non_color=False):
         try: img.colorspace_settings.name = 'Non-Color'
         except Exception: pass
     return t
-def skin_material(name, mhmat, tone=(.5, .35, .26), value=1.0):
+SKIN = {'fair': (.2, .11, .066), 'caramel': (.15, .077, .044), 'medium': (.105, .052, .029), 'dark': (.064, .032, .018), 'deep': (.042, .021, .012)}   # linear
+def lin(c): return tuple(((x / 255 + .055) / 1.055) ** 2.4 for x in c) if max(c) > 1 else tuple(c)
+def img_mean(img):
+    try:
+        import numpy as np
+        px = np.array(img.pixels[:], dtype=np.float32).reshape(-1, 4)[::53][:, :3]
+        if img.colorspace_settings.name.lower().startswith('srgb'): px = np.where(px <= .04045, px / 12.92, ((px + .055) / 1.055) ** 2.4)
+        return float((px[:, 0] * .2126 + px[:, 1] * .7152 + px[:, 2] * .0722).mean())
+    except Exception: return .3
+def skin_material(name, mhmat, tone=(.5, .35, .26), value=1.0, skin=None, lips=(.4, .08, .1), detail=0.):
     tx = mhmat_textures(mhmat); log('skin textures', name, {k: os.path.basename(v) for k, v in tx.items()})
     m, nt, b = new_mat(f'NC_Skin_{name}')
+    L = nt.links; col = tuple(skin or SKIN['caramel'])
+    def mth(op, x, y=None, clamp=False):
+        n = nt.nodes.new('ShaderNodeMath'); n.operation = op; n.use_clamp = clamp
+        for k, v in enumerate((x, y)):
+            if v is None: continue
+            if isinstance(v, (int, float)): n.inputs[k].default_value = v
+            else: L.new(v, n.inputs[k])
+        return n.outputs[0]
+    def mix(fac, a, bcol, mode='MIX'):
+        n = nt.nodes.new('ShaderNodeMix'); n.data_type = 'RGBA'; n.blend_type = mode
+        f = next(i for i in n.inputs if i.name == 'Factor' and i.type == 'VALUE'); A = next(i for i in n.inputs if i.name == 'A' and i.type == 'RGBA'); B = next(i for i in n.inputs if i.name == 'B' and i.type == 'RGBA')
+        for sock, v in ((f, fac), (A, a), (B, bcol)):
+            if isinstance(v, tuple): sock.default_value = v
+            elif isinstance(v, (int, float)): sock.default_value = v
+            else: L.new(v, sock)
+        return next(o for o in n.outputs if o.type == 'RGBA')
     d = keep_tex(tx.get('diffuseTexture'))
-    if d:
-        t = tex_node(nt, d, (-700, 120))
-        hsv = nt.nodes.new('ShaderNodeHueSaturation'); hsv.location = (-420, 120); hsv.inputs['Saturation'].default_value = .85; hsv.inputs['Value'].default_value = value
-        nt.links.new(t.outputs['Color'], hsv.inputs['Color'])
-        mix = nt.nodes.new('ShaderNodeMix'); mix.data_type = 'RGBA'; mix.blend_type = 'MULTIPLY'; mix.location = (-200, 120)
-        next(i for i in mix.inputs if i.name == 'Factor' and i.type == 'VALUE').default_value = 1.0
-        nt.links.new(hsv.outputs['Color'], next(i for i in mix.inputs if i.name == 'A' and i.type == 'RGBA'))
-        next(i for i in mix.inputs if i.name == 'B' and i.type == 'RGBA').default_value = (tone[0], tone[1], tone[2], 1)
-        mixo = next(o for o in mix.outputs if o.type == 'RGBA')
-        nt.links.new(mixo, b.inputs['Base Color'])
-        sc = inp(b, 'Subsurface Color')
-        if sc: nt.links.new(mixo, sc)
-    else:
-        b.inputs['Base Color'].default_value = (.18, .1, .06, 1)
+    base = (*col, 1)
+    if d and detail > 0:
+        t = tex_node(nt, d, (-900, 120)); bw = nt.nodes.new('ShaderNodeRGBToBW'); L.new(t.outputs['Color'], bw.inputs[0])
+        mean = img_mean(d)
+        k = mth('ADD', mth('MULTIPLY', mth('SUBTRACT', bw.outputs[0], mean), detail / max(.05, mean)), 1.)   # 1 +- a little detail
+        kc = nt.nodes.new('ShaderNodeCombineColor'); [L.new(k, kc.inputs[i]) for i in range(3)]
+        cur = mix(1., base, kc.outputs[0], 'MULTIPLY')
+    else:   # an even tone with a soft noise, the same as the new heads
+        nz = nt.nodes.new('ShaderNodeTexNoise'); nz.inputs['Scale'].default_value = 90.; nz.inputs['Detail'].default_value = 8.
+        mr = nt.nodes.new('ShaderNodeMapRange'); mr.inputs['To Min'].default_value = .93; mr.inputs['To Max'].default_value = 1.07; L.new(nz.outputs['Fac'], mr.inputs['Value'])
+        kc = nt.nodes.new('ShaderNodeCombineColor'); [L.new(mr.outputs['Result'], kc.inputs[i]) for i in range(3)]
+        cur = mix(1., base, kc.outputs[0], 'MULTIPLY')
+    def attr(nm):
+        a = nt.nodes.new('ShaderNodeAttribute'); a.attribute_name = nm; a.attribute_type = 'GEOMETRY'; return a.outputs['Fac']
+    # blush, brows filled in, eyeliner, lipstick
+    cur = mix(mth('MULTIPLY', attr('mk_blush'), .22), cur, (.75, .18, .16, 1), 'MULTIPLY')
+    cur = mix(mth('MULTIPLY', attr('mk_brow'), .35), cur, (.02, .012, .01, 1))
+    cur = mix(mth('MULTIPLY', attr('mk_liner'), .7), cur, (.006, .004, .004, 1))
+    lipf = attr('mk_lips')
+    cur = mix(mth('MULTIPLY', lipf, .8), cur, (*lips, 1))
+    L.new(cur, b.inputs['Base Color'])
+    sc = inp(b, 'Subsurface Color')
+    if sc: L.new(cur, sc)
     nm = keep_tex(tx.get('normalmapTexture'))
     if nm:
-        t = tex_node(nt, nm, (-700, -250), True); n = nt.nodes.new('ShaderNodeNormalMap'); n.location = (-250, -250); n.inputs['Strength'].default_value = .6
-        nt.links.new(t.outputs['Color'], n.inputs['Color']); nt.links.new(n.outputs['Normal'], b.inputs['Normal'])
-    for k, v in (('Roughness', .58), ('Subsurface Weight', .12), ('Subsurface Scale', .004), ('Specular IOR Level', .34), ('Coat Weight', 0.), ('Coat Roughness', .35)):
-        i = inp(b, k)
+        t = tex_node(nt, nm, (-700, -250), True); n = nt.nodes.new('ShaderNodeNormalMap'); n.inputs['Strength'].default_value = .35
+        L.new(t.outputs['Color'], n.inputs['Color']); L.new(n.outputs['Normal'], b.inputs['Normal'])
+    rough = mth('SUBTRACT', .55, mth('MULTIPLY', lipf, .3))   # glossy lips
+    L.new(rough, b.inputs['Roughness'])
+    for k_, v in (('Subsurface Weight', .15), ('Subsurface Scale', .005), ('Specular IOR Level', .38), ('Coat Weight', 0.), ('Sheen Weight', .05)):
+        i = inp(b, k_)
         if i: i.default_value = v
     i = inp(b, 'Subsurface Radius')
     if i: i.default_value = (1.0, .35, .18)
@@ -171,6 +214,20 @@ def eye_material(name, src_mat):
     m, nt, b = new_mat(f'NC_Eye_{name}')
     if imgs:
         t = tex_node(nt, imgs[0][1], (-700, 100))
+        # a bigger iris: pull the picture in toward the nearer of the two irises (MakeHuman's are small, so the eyes stare)
+        uvn = nt.nodes.new('ShaderNodeUVMap'); VM = lambda op: (lambda n: (setattr(n, 'operation', op), n)[1])(nt.nodes.new('ShaderNodeVectorMath'))
+        c1, c2 = (.705, .702, 0.), (.289, .29, 0.)
+        d1 = VM('DISTANCE'); nt.links.new(uvn.outputs['UV'], d1.inputs[0]); d1.inputs[1].default_value = c1
+        d2 = VM('DISTANCE'); nt.links.new(uvn.outputs['UV'], d2.inputs[0]); d2.inputs[1].default_value = c2
+        lt = nt.nodes.new('ShaderNodeMath'); lt.operation = 'LESS_THAN'; nt.links.new(d1.outputs['Value'], lt.inputs[0]); nt.links.new(d2.outputs['Value'], lt.inputs[1])
+        mc = nt.nodes.new('ShaderNodeMix'); mc.data_type = 'VECTOR'
+        nt.links.new(lt.outputs[0], next(i for i in mc.inputs if i.name == 'Factor' and i.type == 'VALUE'))
+        next(i for i in mc.inputs if i.name == 'A' and i.type == 'VECTOR').default_value = c2; next(i for i in mc.inputs if i.name == 'B' and i.type == 'VECTOR').default_value = c1
+        cv = next(o for o in mc.outputs if o.type == 'VECTOR')
+        sub = VM('SUBTRACT'); nt.links.new(uvn.outputs['UV'], sub.inputs[0]); nt.links.new(cv, sub.inputs[1])
+        scl = VM('SCALE'); nt.links.new(sub.outputs['Vector'], scl.inputs[0]); scl.inputs['Scale'].default_value = 1 / 1.38
+        add = VM('ADD'); nt.links.new(scl.outputs['Vector'], add.inputs[0]); nt.links.new(cv, add.inputs[1])
+        nt.links.new(add.outputs['Vector'], t.inputs['Vector'])
         # the iris (the dark part of the picture) becomes a deep brown; the white of the eye stays
         bw = nt.nodes.new('ShaderNodeRGBToBW'); bw.location = (-480, -60); nt.links.new(t.outputs['Color'], bw.inputs[0])
         mr = nt.nodes.new('ShaderNodeMapRange'); mr.location = (-300, -60); mr.inputs['From Min'].default_value = .22; mr.inputs['From Max'].default_value = .5
@@ -185,7 +242,11 @@ def eye_material(name, src_mat):
         nt.links.new(mr.outputs['Result'], next(i for i in mix.inputs if i.name == 'Factor' and i.type == 'VALUE'))
         nt.links.new(t.outputs['Color'], next(i for i in mix.inputs if i.name == 'A' and i.type == 'RGBA'))
         nt.links.new(next(o for o in dk.outputs if o.type == 'RGBA'), next(i for i in mix.inputs if i.name == 'B' and i.type == 'RGBA'))
-        nt.links.new(next(o for o in mix.outputs if o.type == 'RGBA'), b.inputs['Base Color'])
+        sw = nt.nodes.new('ShaderNodeMix'); sw.data_type = 'RGBA'; sw.blend_type = 'MULTIPLY'   # the white of the eye a little softer
+        next(i for i in sw.inputs if i.name == 'Factor' and i.type == 'VALUE').default_value = 1.
+        nt.links.new(next(o for o in mix.outputs if o.type == 'RGBA'), next(i for i in sw.inputs if i.name == 'A' and i.type == 'RGBA'))
+        next(i for i in sw.inputs if i.name == 'B' and i.type == 'RGBA').default_value = (.8, .76, .72, 1)
+        nt.links.new(next(o for o in sw.outputs if o.type == 'RGBA'), b.inputs['Base Color'])
     b.inputs['Roughness'].default_value = .35; i = inp(b, 'Coat Weight')
     if i: i.default_value = .12
     i = inp(b, 'Coat Roughness')
@@ -216,7 +277,7 @@ def tune(name, rig, body, skin, p):
         n = o.name.lower(); src = o.material_slots[0].material
         if 'high-poly' in n or 'low-poly' in n:
             eyes_split(o, eye_material(o.name, src)); continue
-        if o == body: mat = skin_material(name, skin, p.get('tone', (.5, .35, .26)), p.get('value', 1.0))
+        if o == body: mat = skin_material(name, skin, skin=p.get('skin'), lips=p.get('lips', (.4, .08, .1)))
         elif 'brow' in n or 'lash' in n: mat = strand_material(o.name, src, (.025, .02, .018))
         elif any(h in n for h in ('short', 'afro', 'braid', 'bob', 'long', 'ponytail', 'hair')): mat = strand_material(o.name, src, (.018, .014, .012))
         else: continue
@@ -247,8 +308,10 @@ def studio(cx=0., width=4., h=1.7, front=True, tag='nw_studio'):
     if bg: bg.inputs[0].default_value = (.42, .44, .48, 1); bg.inputs[1].default_value = .6
     sc.render.engine = 'BLENDER_EEVEE' if 'BLENDER_EEVEE' in [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items] else sc.render.engine
     sc.render.resolution_x, sc.render.resolution_y = 1600, 900; sc.render.film_transparent = False
-    try: sc.view_settings.view_transform = 'AgX'
-    except Exception: pass
+    try: sc.view_settings.view_transform = 'AgX'; sc.view_settings.look = 'AgX - Base Contrast'; sc.view_settings.exposure = -.45
+    except Exception:
+        try: sc.view_settings.view_transform = 'Standard'; sc.view_settings.exposure = -.3
+        except Exception: pass
     return cam
 
 def shot(fn, cam=None):
@@ -277,23 +340,15 @@ BROWS, LASHES = 'eyebrow003/eyebrow003.mhclo', 'eyelashes04/eyelashes04.mhclo'
 TONES = {'fair': ((1., .8, .6), 1.5), 'caramel': ((.95, .72, .52), 1.32), 'medium': ((.82, .6, .44), 1.14), 'dark': ((.62, .43, .3), 1.0), 'deep': ((.48, .33, .24), .92)}
 YOUNG, MIDDLE = 'young_african_female/young_african_female.mhmat', 'middleage_african_female/middleage_african_female.mhmat'
 WOMEN = {
-    'Amaka': dict(body='Figure 8', tone='caramel', age=.47, skin=YOUNG, hair='', face=[T('head-oval', .6), T('mouth-upperlip-volume-incr', .3), T('mouth-lowerlip-volume-incr', .35),
-              T('mouth-cupidsbow-incr', .3)] + both('cheek-bones-incr', .5) + both('eye-scale-incr', .32)),
-    'Ada': dict(body='Lepa', tone='dark', age=.45, skin=YOUNG, hair='', face=[T('head-invertedtriangular', .45), T('chin-width-decr', .35), T('mouth-upperlip-volume-incr', .4),
-              T('mouth-lowerlip-volume-incr', .4)] + both('cheek-bones-incr', .6) + both('eye-scale-incr', .22)),
-    'Chioma': dict(body='Slim-thick', tone='fair', age=.43, skin=YOUNG, hair='ponytail01/ponytail01.mhclo', face=[T('head-round', .4), T('mouth-dimples-in', .5), T('nose-point-up', .25),
-              T('chin-height-decr', .2)] + both('eye-scale-incr', .4) + both('cheek-volume-incr', .3)),
-    'Bisi': dict(body='Figure 8', tone='caramel', age=.46, skin=YOUNG, hair='long01/long01.mhclo', face=[T('head-diamond', .45), T('mouth-cupidsbow-incr', .5), T('mouth-upperlip-volume-incr', .4),
-              T('chin-prominent-incr', .15)] + both('eye-corner1-up', .3) + both('cheek-bones-incr', .5)),
-    'Kemi': dict(body='Lepa', tone='deep', age=.45, skin=YOUNG, hair='short02/short02.mhclo', face=[T('head-oval', .5), T('head-scale-vert-incr', .12), T('nose-scale-vert-incr', .1),
-              T('mouth-lowerlip-volume-incr', .3), T('measure-neck-height-incr', .3)] + both('eye-corner2-up', .3) + both('cheek-bones-incr', .5)),
-    'Funmi': dict(body='Slim-thick', tone='medium', age=.55, skin=YOUNG, hair='bob02/bob02.mhclo', face=[T('head-square', .2), T('head-oval', .3), T('mouth-scale-horiz-incr', .1),
-              T('eyebrows-angle-up', .2), T('chin-width-incr', .1)]),
-    'Mama Nkechi': dict(body='Orobo', tone='dark', age=.72, skin=MIDDLE, hair='', face=[T('head-round', .5), T('head-fat-incr', .6), T('neck-double-incr', .4)] + both('cheek-volume-incr', .5)),
-    'Iya Basira': dict(body='Orobo', tone='medium', age=.66, skin=MIDDLE, hair='', face=[T('head-fat-incr', .4), T('head-square', .2), T('nose-scale-horiz-incr', .25), T('nose-flaring-incr', .3),
-              T('mouth-lowerlip-volume-incr', .3)]),
-    'Sgt Halima': dict(body='Slim-thick', tone='fair', age=.55, skin=YOUNG, hair='', face=[T('head-oval', .5), T('nose-scale-horiz-decr', .45), T('nose-scale-vert-incr', .15),
-              T('chin-prominent-incr', .2)] + both('eye-corner2-up', .25)),
+    'Amaka': dict(body='Figure 8', tone='caramel', age=.46, skin=YOUNG, hair='', lips=(.14, .025, .03), face=[T('head-oval', .1)]),
+    'Ada': dict(body='Lepa', tone='dark', age=.45, skin=YOUNG, hair='', lips=(.08, .015, .02), face=[T('nose-scale-horiz-decr', -.15), T('mouth-lowerlip-volume-incr', .15)] + both('cheek-bones-incr', .15)),
+    'Chioma': dict(body='Slim-thick', tone='fair', age=.43, skin=YOUNG, hair='ponytail01/ponytail01.mhclo', lips=(.2, .045, .05), face=[T('head-round', .25), T('mouth-dimples-in', .4)] + both('cheek-volume-incr', .35)),
+    'Bisi': dict(body='Figure 8', tone='caramel', age=.46, skin=YOUNG, hair='long01/long01.mhclo', lips=(.22, .008, .015), face=[T('head-diamond', .3)] + both('eye-corner2-up', .1)),
+    'Kemi': dict(body='Lepa', tone='deep', age=.45, skin=YOUNG, hair='short02/short02.mhclo', lips=(.05, .012, .015), face=[T('measure-neck-height-incr', .15)] + both('cheek-bones-incr', .2)),
+    'Funmi': dict(body='Slim-thick', tone='medium', age=.52, skin=YOUNG, hair='bob02/bob02.mhclo', lips=(.12, .035, .03), face=[T('head-oval', -.15), T('head-square', .12)]),
+    'Mama Nkechi': dict(body='Orobo', tone='dark', age=.68, skin=MIDDLE, hair='', lips=(.08, .018, .02), face=[T('head-round', .4), T('head-fat-incr', .9), T('neck-double-incr', .35)] + both('cheek-volume-incr', .6)),
+    'Iya Basira': dict(body='Orobo', tone='medium', age=.62, skin=MIDDLE, hair='', lips=(.09, .03, .025), face=[T('head-fat-incr', .75), T('nose-scale-horiz-decr', -.2)] + both('cheek-volume-incr', .4)),
+    'Sgt Halima': dict(body='Slim-thick', tone='fair', age=.5, skin=YOUNG, hair='', lips=(.12, .04, .035), face=[T('nose-scale-vert-incr', .2), T('chin-prominent-incr', .1)]),
 }
 
 def merge(*lists):
@@ -316,8 +371,8 @@ def make_woman(name, x=0., subdiv=1, clothes=(), with_hair=True, brows=None, las
     body = HS.deserialize_from_dict(info, st); rig = body.parent or body
     rig.location.x = x; rig.name = 'NW_' + name.replace(' ', '_')
     for o in [rig] + list(rig.children_recursive): o['nw'] = name
-    tone, value = TONES[P['tone']]
-    tune(name, rig, body, str(AssetService.find_asset_absolute_path(P['skin'], 'skins')), dict(tone=tone, value=value))
+    tune(name, rig, body, str(AssetService.find_asset_absolute_path(P['skin'], 'skins')), dict(skin=SKIN[P['tone']], lips=P.get('lips', (.4, .08, .1))))
+    makeup_masks(name, rig, body)
     log('woman', name, P['body'], 'height', round(body.dimensions.z, 3))
     return rig, body
 
@@ -325,16 +380,16 @@ def head_at(rig):
     pb = rig.pose.bones.get('mixamorig:Head') or rig.pose.bones.get('head')
     return rig.matrix_world @ pb.head if pb else rig.location + Vector((0, 0, 1.55))
 
-def portrait(rig, fn, yaw=-25):
+def portrait(rig, fn, yaw=-25, d=1.05, res=(700, 800), up=.06):
     """A head-and-shoulders picture of one woman."""
     sc = bpy.context.scene; h = head_at(rig)
     cam = bpy.data.objects.get('NW_PCam') or bpy.data.objects.new('NW_PCam', bpy.data.cameras.new('NW_PCam'))
     if cam.name not in sc.collection.objects: sc.collection.objects.link(cam)
     cam['nw_studio'] = 1; cam.data.lens = 85
-    a = math.radians(yaw); d = 1.05; tgt = h + Vector((0, 0, .06))
+    a = math.radians(yaw); tgt = h + Vector((0, 0, up))
     cam.location = tgt + Vector((math.sin(a) * d, -math.cos(a) * d, .02))
     cam.rotation_euler = (tgt - cam.location).to_track_quat('-Z', 'Y').to_euler()
-    old = (sc.render.resolution_x, sc.render.resolution_y); sc.render.resolution_x, sc.render.resolution_y = 700, 800
+    old = (sc.render.resolution_x, sc.render.resolution_y); sc.render.resolution_x, sc.render.resolution_y = res
     prev = sc.camera; sc.camera = cam
     try: shot(fn)
     finally:
@@ -418,3 +473,62 @@ def scalp_cap(name, front=.072):
     if i: i.default_value = .05
     o = shell(name + '.scalp', F, sc, lambda h, a, p: 0., body.users_collection[0], m, offset=.0008)
     return o
+
+# ---- make-up masks on the body: lips, eyeliner on the lash line, brows filled in, a little blush ----------------
+def _target_mag(name):
+    import gzip
+    p = os.path.join(MPFB_DATA, 'targets')
+    for root, ds, fs in os.walk(p):
+        if name + '.target.gz' in fs:
+            out = {}
+            for ln in gzip.open(os.path.join(root, name + '.target.gz'), 'rt'):
+                q = ln.split()
+                if len(q) == 4:
+                    try: out[int(q[0])] = (float(q[1]) ** 2 + float(q[2]) ** 2 + float(q[3]) ** 2) ** .5
+                    except ValueError: pass
+            return out
+    return {}
+
+def _rest_positions(body):
+    """The body's vertices with its shape (targets) but no subdivision or masks, in world space."""
+    off = [m for m in body.modifiers if m.type in ('SUBSURF', 'MASK') and m.show_viewport]
+    for m in off: m.show_viewport = False
+    try:
+        dg = bpy.context.evaluated_depsgraph_get(); dg.update(); e = body.evaluated_get(dg); me = e.to_mesh()
+        V = [body.matrix_world @ v.co for v in me.vertices]; e.to_mesh_clear()
+    finally:
+        for m in off: m.show_viewport = True
+    return V
+
+def _near(V, obj, r0, r1):
+    from mathutils.kdtree import KDTree
+    dg = bpy.context.evaluated_depsgraph_get(); e = obj.evaluated_get(dg); me = e.to_mesh()
+    P = [obj.matrix_world @ v.co for v in me.vertices]; e.to_mesh_clear()
+    kd = KDTree(len(P))
+    for i, p in enumerate(P): kd.insert(p, i)
+    kd.balance()
+    out = [0.] * len(V)
+    for i, v in enumerate(V):
+        _, _, d = kd.find(v)
+        if d is not None and d < r1: out[i] = 1. if d <= r0 else (r1 - d) / (r1 - r0)
+    return out
+
+def makeup_masks(name, rig, body):
+    V = _rest_positions(body); n = len(V); me = body.data
+    if len(me.vertices) != n: log('makeup: vertex count differs', len(me.vertices), n); return
+    def put(key, vals):
+        a = me.attributes.get(key) or me.attributes.new(key, 'FLOAT', 'POINT'); a.data.foreach_set('value', [float(max(0., min(1., x))) for x in vals])
+    def from_targets(names, lo, hi):
+        mag = [0.] * n
+        for t in names:
+            for i, m in _target_mag(t).items():
+                if i < n: mag[i] = max(mag[i], m)
+        mx = max(mag) or 1.
+        return [0. if x / mx < lo else 1. if x / mx > hi else ((x / mx - lo) / (hi - lo)) ** .7 for x in mag]
+    put('mk_lips', from_targets(['mouth-upperlip-volume-incr', 'mouth-lowerlip-volume-incr'], .12, .45))
+    put('mk_blush', from_targets(['l-cheek-bones-incr', 'r-cheek-bones-incr'], .2, .9))
+    kids = list(rig.children_recursive)
+    lash = next((o for o in kids if 'eyelash' in o.name), None); brow = next((o for o in kids if 'eyebrow' in o.name), None)
+    if lash: put('mk_liner', _near(V, lash, .001, .0026))
+    if brow: put('mk_brow', _near(V, brow, .002, .005))
+    log('makeup masks', name, 'lash' if lash else '-', 'brow' if brow else '-')
