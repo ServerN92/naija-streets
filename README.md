@@ -302,6 +302,20 @@ again for two minutes. A player who just came online is safe for 45 seconds, unt
 The police leave fights between players alone for now. During the fight for the chair at the motor park, knocking
 out a player of the other side puts them out of that fight for a while. The fights are on the server (`server/src/pvp.js`).
 
+## Online: the police force and wanted players
+Signed in online, your wanted stars show on your name for everybody near you (red ★). They come from the street police
+on your phone (street crimes) and from the server: knocking out a player gives a star (two if they were police on
+duty), hitting an officer on duty one; the server's stars go one by one when you keep quiet (one every 2.5 minutes).
+Join the police at the front desk of Mushin police station (with no stars on you) and go on duty: you wear the black
+uniform and beret, your name gets a blue dot, and you see every wanted player in Lagos: a list with distance and
+direction, and red stars on your minimap. Knock a wanted player down, or reach one who surrenders (a wanted player near
+an officer can press E to surrender), then press E to arrest them: they go to the cell, lose their stars and pay the
+usual fine; the force pays you ₦5,000 for each star the server saw itself and ₦1,500 for each street star (₦25,000 at
+most, not again for the same person within half an hour, ₦80,000 a day). Arrests raise your rank: Corporal at 3,
+Sergeant 10, Inspector 25, ASP 60, CSP 120. Officers on duty never take pocket money. An officer who knocks out somebody
+who is not wanted is suspended from duty for a day and gets two stars himself. The police are on the server
+(`server/src/law.js`); `src/police.js` draws the desk, the list and the prompts.
+
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
 big map, where the Guns chip shows only him). His boys smoke at the gap in the fence and stop you: ₦100 to pass (E).
