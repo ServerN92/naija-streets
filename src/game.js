@@ -13,20 +13,20 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=ae33b92074';
-import * as C2 from './char2.js?v=ae33b92074';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=ae33b92074';
-import { createPhone } from './phone.js?v=ae33b92074';
-import { createGuide } from './guide.js?v=ae33b92074';
-import { createFarm } from './farm.js?v=ae33b92074';
-import { createBusiness } from './business.js?v=ae33b92074';
-import { createOnline } from './online.js?v=ae33b92074';
-import { createPolice } from './police.js?v=ae33b92074';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=ae33b92074';
-import { MapView } from './mapview.js?v=ae33b92074';
+import * as CLOCK from './clock.js?v=921a4c35ef';
+import * as C2 from './char2.js?v=921a4c35ef';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=921a4c35ef';
+import { createPhone } from './phone.js?v=921a4c35ef';
+import { createGuide } from './guide.js?v=921a4c35ef';
+import { createFarm } from './farm.js?v=921a4c35ef';
+import { createBusiness } from './business.js?v=921a4c35ef';
+import { createOnline } from './online.js?v=921a4c35ef';
+import { createPolice } from './police.js?v=921a4c35ef';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=921a4c35ef';
+import { MapView } from './mapview.js?v=921a4c35ef';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='ae33b92074';
+const BUILD='921a4c35ef';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -715,9 +715,10 @@ const RAILS=WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([
   const wm=wa.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.15,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),false,true); if(wm) scene.add(wm);
   const em=ed.mesh(new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.9,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(em) scene.add(em); }
 
+const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emissive:0xffd08a,emissiveIntensity:0});
 // ---- like the Blender scene: open concrete gutters along the town streets (dark, damp channels between two lips) and a concrete
 // median barrier along the expressways (on the inner edge of each carriageway; a centre barrier where one road carries both ways)
-{ const gc=new Acc(), lip=new Acc(), bar=new Acc(), GC=new THREE.Color('#2a2620'), LC=new THREE.Color('#b9b2a5'), BC=new THREE.Color('#d6d2c8'), up=[0,1,0];
+{ const gc=new Acc(), lip=new Acc(), bar=new Acc(), paint=new Acc(), GC=new THREE.Color('#2a2620'), LC=new THREE.Color('#b9b2a5'), BC=new THREE.Color('#d6d2c8'), YC=new THREE.Color('#e3b21c'), WC2=new THREE.Color('#ecebe6'), up=[0,1,0];
   const strip=(acc,x0,z0,x1,z1,rx,rz,a,b,y,col)=>acc.quad([x0+rx*a,y,z0+rz*a],[x0+rx*b,y,z0+rz*b],[x1+rx*b,y,z1+rz*b],[x1+rx*a,y,z1+rz*a],up,[[0,0],[1,0],[1,Math.hypot(x1-x0,z1-z0)/2],[0,Math.hypot(x1-x0,z1-z0)/2]],col);
   const wall=(acc,x0,z0,x1,z1,rx,rz,o,y0,y1,col,s)=>acc.quad([x0+rx*o,y0,z0+rz*o],[x1+rx*o,y0,z1+rz*o],[x1+rx*o,y1,z1+rz*o],[x0+rx*o,y1,z0+rz*o],[rx*s,0,rz*s],[[0,0],[Math.hypot(x1-x0,z1-z0)/2,0],[Math.hypot(x1-x0,z1-z0)/2,1],[0,1]],col);
   const lipBox=(x0,z0,x1,z1,rx,rz,a,b,h)=>{ strip(lip,x0,z0,x1,z1,rx,rz,a,b,h,LC); wall(lip,x0,z0,x1,z1,rx,rz,a,0,h,LC,-1); wall(lip,x1,z1,x0,z0,rx,rz,b,0,h,LC,1); };
@@ -728,15 +729,24 @@ const RAILS=WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([
         for(const sd of [-1,1]){ const o=sd*e.hw, mx=(x0+x1)/2+rx*(o+sd*.5), mz=(z0+z1)/2+rz*(o+sd*.5), hit=roadAt(mx,mz,.2); if(hit&&hit!==e) continue;
           const a=Math.min(o,o+sd*.9), b=Math.max(o,o+sd*.9); strip(gc,x0,z0,x1,z1,rx,rz,a+.12,b-.12,.012,GC);
           lipBox(x0,z0,x1,z1,rx,rz,a,a+.12,.09); lipBox(x0,z0,x1,z1,rx,rz,b-.12,b,.09); } } }
-    if(e.c<=1&&e.drive&&(e.ow||e.w>=12)){   // expressway barrier: New Jersey profile (wide foot, narrow top)
+    if(e.c<=1&&(e.ow||e.w>=12)){   // expressway: the Blender look - edge lines, a New Jersey barrier on the median with twin lamp poles
       const o=e.ow?-(e.hw+.35):0;
+      for(let t=ra;t<e.len-rb;t+=seg){ const t1=Math.min(t+seg,e.len-rb), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;   // painted edges: yellow by the median, white by the shoulder
+        if(e.ow){ strip(paint,x0,z0,x1,z1,rx,rz,-e.hw+.25,-e.hw+.42,RY+.012,YC); strip(paint,x0,z0,x1,z1,rx,rz,e.hw-.42,e.hw-.25,RY+.012,WC2); } }
+      for(let t=ra+12;t<e.len-rb-6;t+=38){ const x=A0.x+e.fx*t+rx*o, z=A0.z+e.fz*t+rz*o; LAMPS2.push([x,z,e.fx,e.fz]); }
       for(let t=ra+4;t<e.len-rb-4;t+=seg){ const t1=Math.min(t+seg,e.len-rb-4), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;
         const P=[[-.3,0],[-.3,.08],[-.13,.32],[-.08,.82],[.08,.82],[.13,.32],[.3,.08],[.3,0]];
         for(let i=0;i+1<P.length;i++){ const [a0,y0]=P[i],[a1,y1]=P[i+1], nx=-(y1-y0), ny=a1-a0, nl=Math.hypot(nx,ny)||1;
           bar.quad([x0+rx*(o+a0),y0,z0+rz*(o+a0)],[x0+rx*(o+a1),y1,z0+rz*(o+a1)],[x1+rx*(o+a1),y1,z1+rz*(o+a1)],[x1+rx*(o+a0),y0,z1+rz*(o+a0)],[rx*nx/nl,ny/nl,rz*nx/nl],[[0,y0],[0,y1],[(t1-t)/2,y1],[(t1-t)/2,y0]],BC); } } } }
   const gm=gc.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.3,metalness:.1,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(gm) scene.add(gm);
   const cm=new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.92,side:THREE.DoubleSide}); RDTEX.conc.then(t=>{ if(t){ cm.map=t; cm.needsUpdate=true; } });
-  const lm=lip.mesh(cm,false,true); if(lm){ lm.castShadow=false; scene.add(lm); } const bm=bar.mesh(cm,false,true); if(bm){ bm.castShadow=Q.shadows; scene.add(bm); } }
+  const lm=lip.mesh(cm,false,true); if(lm){ lm.castShadow=false; scene.add(lm); } const bm=bar.mesh(cm,false,true); if(bm){ bm.castShadow=Q.shadows; scene.add(bm); } 
+  const pm=paint.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.7,polygonOffset:true,polygonOffsetFactor:-5,polygonOffsetUnits:-5}),false,true); if(pm) scene.add(pm);
+  // twin-arm lamp poles standing on the median barrier (they light up at night)
+  if(LAMPS2.length){ const pole=mergeGeometries([new THREE.CylinderGeometry(.09,.13,10,8).translate(0,5.8,0),new THREE.BoxGeometry(3.6,.12,.14).translate(0,10.7,0),new THREE.BoxGeometry(.12,.5,.12).translate(-1.8,10.5,0),new THREE.BoxGeometry(.12,.5,.12).translate(1.8,10.5,0)]),
+      head=new THREE.BoxGeometry(.7,.16,.36).translate(0,10.3,0), hl=[], pl=[];
+    for(const [x,z,fx,fz] of LAMPS2){ const ry=Math.atan2(-fx,-fz); pl.push({x,y:0,z,ry}); for(const sd of [-1,1]) hl.push({x:x+Math.cos(ry)*1.8*sd,y:0,z:z-Math.sin(ry)*1.8*sd,ry}); }
+    const pg=inst(pole,new THREE.MeshStandardMaterial({color:0x8d9196,metalness:.6,roughness:.45}),pl); const hg=inst(head,EXPWAY_HEAD,hl,{shadow:false}); } }
 
 /* ================= buildings ================= */
 await step('Building face-me-I-face-you houses…', 34);
@@ -1261,6 +1271,7 @@ function setPlants(S){ const L=(S.json&&S.json.inst)||[]; if(!L.length) return; 
   for(const [t,items] of Object.entries(trees)) plantTrees(t,items,Q.draw*.85);
   for(const [c,items] of Object.entries(crops)){ const max=3200, step=Math.max(1,Math.ceil(items.length/max)), pick=items.filter((_,i)=>i%step===0);
     farmGlb('fm_'+c).then(M=>{ new CullSet([{geo:M.geo,mat:M.mat,dist:Math.min(90,Q.lod0*1.2),shadow:true},...(M.geo1?[{geo:M.geo1,mat:M.mat1,dist:Q.draw*.9}]:[])],pick,{shadowDist:Q.shR,name:'set_'+c}); }).catch(e=>console.warn('crop',c,e)); } }
+PLACES.push({name:'Apapa-Oworonshoki Expressway',sub:'Expressway · Mushin west',kind:'place',x:-1570,z:-830},{name:'Agege Motor Road (dual carriageway)',sub:'Expressway look',kind:'place',x:743,z:124});
 for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B.hz)+700,detailDist:Math.max(B.hx,B.hz)+120});
   if(B.name==='set_city'){ const g=new THREE.PlaneGeometry(B.hx*2,B.hz*2).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*B.hx/4,uv.getY(i)*B.hz/4); const m=new THREE.Mesh(g,MAT.lawn); m.position.set(B.x,.012,B.z); m.rotation.y=B.ry; m.receiveShadow=true; scene.add(m); }   // the city quarter stands on grass, as in Blender
   PLACES.push({name:B.label,sub:'Mushin',kind:'place',x:B.x,z:B.z});
@@ -2413,7 +2424,7 @@ function updateEnv(dt,force=false){
   for(const k of FAC_KEYS) MAT[k].emissiveIntensity=Math.min(1.25,ENV.win)*(k==='shop'?.38:k==='oldmid'||k==='resi'?.7:1); MAT.sign.emissiveIntensity=ENV.sign*.8;
   fillLight.intensity=Math.max(0,(nw*.9+w.dim*.35*(1-dw))*7); for(const m of billboardMats) m.emissiveIntensity=ENV.sign*.9;
   { const lift=fillLight.intensity/7; for(const m of HERO_MATS) m.emissiveIntensity=lift*.32; HUMAN_MAT.emissiveIntensity=lift*.14; }
-  lampHeadMat.emissiveIntensity=ENV.lamp; POOLS.off=!(ENV.lamp>1);
+  lampHeadMat.emissiveIntensity=ENV.lamp; EXPWAY_HEAD.emissiveIntensity=ENV.lamp*1.4; POOLS.off=!(ENV.lamp>1);
   CM.head.emissiveIntensity=ENV.head; CM.tail.emissiveIntensity=ENV.tail; APT.doorMesh.material.emissiveIntensity=Math.min(1.2,ENV.win*.8);
   stars.visible=nw>.4&&w.cloud<.6; stars.material.opacity=.8*Math.min(1,(nw-.4)*3)*(1-w.cloud)*(1-veil.material.opacity);
   if(bloom){ bloom.strength=mixK('b0',dw,nw)+ENV.flash; bloom.radius=mixK('b1',dw,nw); bloom.threshold=mixK('b2',dw,nw); }
