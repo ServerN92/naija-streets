@@ -5,7 +5,7 @@ from mathutils import Vector
 
 def _frame(name):
     rig = bpy.data.objects['NW_' + name.replace(' ', '_')]; body = bpy.data.objects[name + '.body']
-    F = head_frame(rig, body)
+    F = head_F(name) if bpy.data.objects.get(name + '.head') else head_frame(rig, body)
     hv = [p for p in F['V'] if p.z > F['eyez'] - .01 and (p - F['ctr']).length < .2]
     F['w'] = max(p.x for p in hv) - min(p.x for p in hv); F['d'] = max(p.y for p in hv) - min(p.y for p in hv)
     F['top'] = max(p.z for p in hv); F['cy'] = (max(p.y for p in hv) + min(p.y for p in hv)) / 2

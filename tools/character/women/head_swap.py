@@ -28,7 +28,7 @@ def _skull(P, ez, ey):
     cx = (max(p.x for p in band) + min(p.x for p in band)) / 2; cy = (max(p.y for p in band) + min(p.y for p in band)) / 2
     return max(p.x for p in band) - min(p.x for p in band), cx, cy, max(p.z for p in P)
 
-def swap(name, seam_up=.035, blend=.03, size=1.0):
+def swap(name, seam_up=.035, blend=.03, size=1.0, shape=None):
     rig = bpy.data.objects['NW_' + name.replace(' ', '_')]; body = bpy.data.objects[name + '.body']
     for o in list(bpy.data.objects):
         if o.get('nw_head') == name: bpy.data.objects.remove(o, do_unlink=True)
@@ -44,6 +44,7 @@ def swap(name, seam_up=.035, blend=.03, size=1.0):
     me = S.data.copy(); h = bpy.data.objects.new(name + '.head', me); body.users_collection[0].objects.link(h)
     h['nw'] = name; h['nw_head'] = name
     for v, p in zip(me.vertices, SP): v.co = T(p)
+    if shape: reshape(me, SP, dm, s, shape)
     # her neck: the sculpt is cut across its own neck, her body across the base of her neck, and a short tube is
     # lofted between the two (each ring found by rays out from the neck's axis), smooth into both surfaces
     neck = rig.matrix_world @ rig.pose.bones['mixamorig:Neck'].head; hb = rig.matrix_world @ rig.pose.bones['mixamorig:Head'].head
@@ -290,3 +291,42 @@ def head_scalp(name, front=.06):
     o = shell(name + '.scalp', F, sc, lambda hh, a, p: 0., h.users_collection[0], m, offset=.0008)
     o['nw_head'] = name
     return o
+
+
+def _ss(x, a, b):
+    t = max(0., min(1., (x - a) / (b - a))); return t * t * (3 - 2 * t)
+
+def reshape(me, SP, dm, s, sh):
+    """Small changes so the women don't all share one face, worked in the sculpt's own millimetres (from between the eyes):
+    face_len (x), jaw (x), cheeks (+mm out), nose (x width), lips (x fullness)."""
+    k_len, k_jaw, d_ch, k_nose, k_lips = sh.get('face_len', 1.), sh.get('jaw', 1.), sh.get('cheeks', 0.), sh.get('nose', 1.), sh.get('lips', 1.)
+    for v, p in zip(me.vertices, SP):
+        r = (p - dm) * 1000.; x, y, z = r.x, r.y, r.z; dx = dy = dz = 0.
+        neck_fade = 1 - _ss(z, -110, -128) if z < -110 else 1.
+        if k_len != 1 and z < 0:
+            dz += z * (k_len - 1) * _ss(-y, -10, 30) * neck_fade
+        if k_jaw != 1:
+            dx += x * (k_jaw - 1) * _ss(-z, 55, 82) * neck_fade
+        if d_ch:
+            g = math.exp(-(((abs(x) - 45) / 22) ** 2 + ((z + 48) / 28) ** 2)) * _ss(-y, -5, 15)
+            dx += math.copysign(d_ch * g, x); dy -= d_ch * .4 * g
+        if k_nose != 1:
+            g = math.exp(-((x / 18) ** 2 + ((z + 46) / 18) ** 2)) * _ss(-y, 30, 45)
+            dx += x * (k_nose - 1) * g
+        if k_lips != 1:
+            e = (x / 22) ** 2 + ((z + 73.5) / 13) ** 2
+            g = max(0., 1 - e) ** 1.5 * _ss(-y, 28, 38)
+            dy += (y + 40) * (k_lips - 1) * g; dz += (z + 73.5) * (k_lips - 1) * g * .6
+        v.co.x += dx * s / 1000.; v.co.y += dy * s / 1000.; v.co.z += dz * s / 1000.
+
+def head_F(name):
+    """head_frame() for her new head: its points and normals (without the smoothing), eye height and centre."""
+    h = bpy.data.objects[name + '.head']; rig = h.parent
+    mods = [m for m in h.modifiers if m.type == 'SUBSURF']
+    for m in mods: m.show_viewport = False
+    dg = bpy.context.evaluated_depsgraph_get(); dg.update(); e = h.evaluated_get(dg); me = e.to_mesh(); mw = h.matrix_world; nm3 = mw.to_3x3().inverted().transposed()
+    Vv = [mw @ v.co for v in me.vertices]; Nn = [(nm3 @ v.normal).normalized() for v in me.vertices]; polys = [tuple(p.vertices) for p in me.polygons]; e.to_mesh_clear()
+    for m in mods: m.show_viewport = True
+    eyes = bpy.data.objects[name + '.eyes']; ez = sum((eyes.matrix_world @ v.co).z for v in eyes.data.vertices) / len(eyes.data.vertices)
+    hv = [p for p in Vv if p.z > ez - .01]; ctr = Vector(((min(p.x for p in hv) + max(p.x for p in hv)) / 2, (min(p.y for p in hv) + max(p.y for p in hv)) / 2, ez + .025))
+    return dict(V=Vv, N=Nn, polys=polys, eyez=ez, ctr=ctr, rig=rig, neckz=ez - .12)
