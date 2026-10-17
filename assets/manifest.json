@@ -1,4 +1,6 @@
 {
+"assets/models/bb_barber.glb": 361344,
+"assets/models/bb_barber_lod1.glb": 53972,
 "assets/models/beigehouse.glb": 354844,
 "assets/models/beigehouse_lod1.glb": 114636,
 "assets/models/bike_naked.glb": 514044,
@@ -361,6 +363,8 @@
 "assets/maps/mushin_world.json": 1228911,
 "assets/maps/oshodi.json": 1264924,
 "_v": {
+"assets/models/bb_barber.glb": "f678ac15",
+"assets/models/bb_barber_lod1.glb": "41c526a3",
 "assets/models/beigehouse.glb": "91da9e58",
 "assets/models/beigehouse_lod1.glb": "f6fec07d",
 "assets/models/bike_naked.glb": "ee7e7b9a",

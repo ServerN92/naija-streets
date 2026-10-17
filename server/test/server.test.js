@@ -165,7 +165,7 @@ test('forgot password: a code by email sets a new one; wrong codes run out', asy
 
 test('a buka over the line: the boards come at sign-in, buying takes the money, the owner sees the till', async () => {
   const [o, me] = await account('Iya_Buka');
-  const bz = await o.next(m => m.t === 'bz' && m.all); assert.equal(bz.s.length, 8); assert.equal(bz.rules.price, 100000);
+  const bz = await o.next(m => m.t === 'bz' && m.all); assert.equal(bz.s.length, 14); assert.equal(bz.rules.price, 100000);
   o.send({ t: 'bz', a: 'buy', id: 'buka_5' }); assert.match((await o.next('err')).m, /enough money/);
   o.send({ t: '$', d: 200000, s: 1, e: 'pg' }); await o.next('$');
   o.send({ t: 'bz', a: 'buy', id: 'buka_5' }); assert.equal((await o.next('$')).n, 100000); await o.next('ok');

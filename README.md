@@ -235,7 +235,19 @@ it is open.
 The server runs it all (`server/src/biz.js`: stock, prices, customers, the till, saved in SQLite) and sends the boards
 to everyone; `src/business.js` draws the bukas, the boards and the people and runs the menus. The model is made in
 Blender by `tools/blender_buka.py` (the farm's kit: colours per corner, light baked in, photo detail on wood, zinc and
-concrete) as `assets/models/bk_buka.glb` + `bk_buka_lod1.glb`. Next businesses: the barber, the POS stand, the farmer.
+concrete) as `assets/models/bk_buka.glb` + `bk_buka_lod1.glb`.
+
+## Online business: the barbing salon
+Six barbing salons (Barbing salon on the big map): three near your house, Idi-Oro Market, Mushin Market and Computer
+Village. Painted shipping containers on blocks, made in Blender by `tools/blender_barber.py` (`bb_barber.glb`). Buy one
+for ₦80,000 at the door (two businesses each at most). Keep supplies on the shelf (₦6,000 for 30 cuts: blades,
+clipper oil, powder, aftershave) and fuel in the generator: NEPA light comes and goes (it can change every 20 real
+minutes, a little differently in each part of town; the dot on the board is yellow when there is light), and without
+light every cut burns fuel (₦5,500 a 5-litre jerrycan, 20 litres in the tank). No supplies, or no light and no fuel:
+closed. Set your prices (low cut ₦1,500, botako ₦1,000, fade with a design ₦2,500, beard trim ₦800, wash, cut and
+style ₦3,000); people come most in the evening, after work. Barber Sunday cuts for you while you are away (₦9,000 for
+6 hours, ₦32,000 for 24). A second chair (₦45,000) and an AC (₦60,000; twice the fuel without light) bring more
+people. Any signed-in player can get a cut (+10 health) and pays the owner. Next: the POS stand and the farmer.
 
 ## Weapons: Oga Shege's black market
 Oga Shege hides in a zinc-fenced corner at the back of a market, away from the crowd (a red G on the minimap and on the
