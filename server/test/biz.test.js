@@ -84,3 +84,33 @@ test('the till and the buka are saved and come back after a restart', () => {
   T.biz.handle(o, { a: 'buy', id: 'buka_4' }); T.biz.handle(o, { a: 'buy', id: 'buka_5' }); T.biz.handle(o, { a: 'buy', id: 'buka_6' });
   assert.match(T.last('Saver', 'err').m, /own 2/);
 });
+
+test('the barbing salon: supplies, fuel when NEPA takes light, cuts sell in the evening, a player gets a cut', async () => {
+  const { BARBER, nepa } = await import('../src/biz.js');
+  const T = setup(11), o = T.mk('Barber_O', 300000), p = T.mk('Client', 5000);
+  T.biz.handle(o, { a: 'buy', id: 'barber_2' }); assert.equal(o.cash, 300000 - BARBER.price);
+  const b = T.biz.get('barber_2'); assert.equal(b.name, 'Barber_O Cuts');
+  T.biz.handle(o, { a: 'hire', id: 'barber_2', h: 24 });
+  assert.equal(T.biz.isOpen(b), false, 'no supplies: closed');
+  T.biz.handle(o, { a: 'supplies', id: 'barber_2' }); assert.equal(b.d.sup, 30);
+  // find a time with no light: without fuel it is closed, with fuel it is open
+  while (nepa('barber_2', T.now())) T.adv(20 * 60);
+  assert.equal(T.biz.isOpen(b), false, 'no light, no fuel: closed');
+  T.biz.handle(o, { a: 'fuel', id: 'barber_2' }); assert.equal(b.d.fuel, 5); assert.equal(T.biz.isOpen(b), true);
+  const f0 = b.d.fuel, s0 = b.d.sup;
+  for (let i = 0; i < 90; i++) { T.adv(10); if (nepa('barber_2', T.now())) break; T.biz.tick(10); }
+  const cuts = s0 - b.d.sup; assert.ok(cuts > 0, 'some cuts'); assert.ok(Math.abs((f0 - b.d.fuel) - cuts * BARBER.fuel.perCut) < .01, 'fuel used per cut');
+  assert.equal(b.till, b.d.day.earned);
+  // a real player gets a fade
+  T.biz.handle(p, { a: 'use', id: 'barber_2', k: 'fade' }); assert.equal(T.last('Client', 'bzcut').k, 'fade'); assert.equal(p.cash, 2500);
+  // the AC: more people, twice the fuel without light
+  T.biz.handle(o, { a: 'up', id: 'barber_2', w: 'ac' }); assert.equal(b.d.up.ac, 1);
+  T.biz.handle(o, { a: 'up', id: 'barber_2', w: 'ac' }); assert.match(T.last('Barber_O', 'err').m, /AC already/);
+  T.biz.handle(p, { a: 'supplies', id: 'barber_2' }); assert.match(T.last('Client', 'err').m, /not your salon/);
+  // two businesses of different kinds are fine; a third is not
+  T.biz.handle(o, { a: 'buy', id: 'buka_8' }); assert.equal(T.biz.get('buka_8').owner, o.user.id);
+  T.biz.handle(o, { a: 'buy', id: 'barber_3' }); assert.match(T.last('Barber_O', 'err').m, /own 2/);
+  // everyone sees the salon's board and whether it has light
+  T.biz.pushAll(); const bz = [...T.sent].reverse().find(([n, x]) => n === 'Client' && x.t === 'bz')[1];
+  const pb = bz.s.find(x => x.id === 'barber_2') || {}; assert.equal(pb.n, 'Barber_O Cuts'); assert.ok('light' in pb);
+});
