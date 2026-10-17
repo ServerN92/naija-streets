@@ -7015,7 +7015,7 @@ const RB_FEE={okada:100,keke:100,bike2:100,sbike:100,danfo:300,bus:300,benz:500,
     for(const r of CPB.list){ const S=RB_SPOTS.sign, p=r.at(S.x,S.z), m=new THREE.Mesh(new THREE.PlaneGeometry(S.w,S.h),new THREE.MeshStandardMaterial({map:tex,roughness:.8})); m.position.set(p.x,groundY(r.x,r.z)+S.y,p.z); m.rotation.y=r.ry; m.layers.set(1); scene.add(m); }
     CPB.ready=true; }).catch(e=>console.warn('roadblock model',e)); })();
 function rbPed(){ let q=freePed(); if(!q&&CPB.made<9){ q=newPed('police_m','off'); peds.push(q); CPB.made++; } return q; }   // (the street has few spare people: a few more for the police)
-function rbAlarm(r){ addHeat(.7); for(const q of r.guards) if(q.state==='gateguard'){ q.state='cop'; q.mad=1; q.van=null; q.wid=q.wid||'pistol'; q.atk=null; q.atkT=mrr(.2,.6); } r.guards=[]; r.alarmT=T0; }
+function rbAlarm(r){ addHeat(.9); for(const q of r.guards) if(q.state==='gateguard'){ q.state='cop'; q.mad=1; q.van=null; q.wid=q.wid||'pistol'; q.atk=null; q.atkT=mrr(.2,.6); } r.guards=[]; r.alarmT=T0; }
 function rbAt(){ const f=mode==='drive'&&drive.v?drive.v:player; let best=null, bd=1e9;
   for(const r of CPB.list){ const dx=f.x-r.x, dz=f.z-r.z, u=dx*r.fx+dz*r.fz, w=-(dx*r.nx+dz*r.nz), d=Math.hypot(dx,dz); if(d<bd){ bd=d; best={r,u,w,d}; } } return best; }
 const rbOpen=r=>T0<r.passT||T0-r.alarmT<90||cardOn();
@@ -7046,7 +7046,7 @@ function rbTalk(){ const r=rbNear(); if(!r) return false; r.talked=T0;
       openMenu('YOUR PAPERS','Officer: "Your papers don expire o. And where your fire extinguisher?"',()=>[
         {name:'Settle the matter',sub:'"Officer, how we go do am?"',price:1000,act(){ pass('Officer: "Next time, renew am. Go."'); }},
         {name:'Argue with them',sub:'Maybe they let you go…',btn:'ARGUE',price:0,act(){ if(MR()<.5) pass('Officer: "Hmm. Oya go, before I change my mind."'); else { closeMenu(); r.passT=T0+20; addHeat(.35); toast('Officer: "You dey argue with police? Oya, come down!"',2.6); } }}]); }},
-    {name:'Drive off',sub:'They will chase you',btn:'GO',price:0,act(){ closeMenu(); r.passT=T0+5; addHeat(.6); r.alarmT=T0; toast('Police: "Hey! Stop that motor!"',2.2); }}]);
+    {name:'Drive off',sub:'They will chase you',btn:'GO',price:0,act(){ closeMenu(); r.passT=T0+5; addHeat(.9); toast('Police: "Hey! Stop that motor!"',2.2); }}]);
   return true; }
 function updateRoadblocks(dt){ if(!CPB.ready) return; const f=mode==='drive'&&drive.v?drive.v:player;
   for(const r of CPB.list){ const d=Math.hypot(f.x-r.x,f.z-r.z);
@@ -7062,7 +7062,7 @@ function updateRoadblocks(dt){ if(!CPB.ready) return; const f=mode==='drive'&&dr
       if(Math.abs(u)<32&&Math.abs(u)>12&&T0-r.said>12){ r.said=T0; for(const q of r.guards){ q.act='hail'; q.actT=2.5; } toast(mpick(['Police: "Stop! Park for side!"','Police: "Oga, stop there! Checkpoint!"']),2.2); }
       const sideNow=Math.sign(u)||1;
       if(r.side&&sideNow!==r.side&&Math.abs(drive.speed)>3&&T0-r.talked>3){   // through without stopping
-        r.passT=T0+8; addHeat(.6); for(const q of r.guards){ q.act='argue'; q.actT=3; }
+        r.passT=T0+8; addHeat(.9); for(const q of r.guards){ q.act='argue'; q.actT=3; }
         if(w<4.2&&Math.abs(drive.speed)>9){ crashDamage(drive.v,18); drive.speed*=.55; drive.v.speed=drive.speed; thud(); toast('Bang! The nails don burst your tyre! Police: "Stop that motor!"',2.8); }
         else toast(mpick(['Police: "Hey! You no stop! Catch am!"','Police: "Na wa o! Stop that motor!"']),2.4); }
       r.side=Math.abs(u)<40?sideNow:0;
