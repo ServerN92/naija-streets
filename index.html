@@ -193,6 +193,12 @@ body.btnedit .zone{pointer-events:none}body.btnedit #touch::before{content:'';po
 .hpbar{width:132px;height:8px;border-radius:4px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.3);overflow:hidden}
 .hpbar i{display:block;height:100%;width:100%;background:var(--flag);transition:width .2s}
 .hpbar i.low{background:var(--rust)}
+.hpbar.ease{width:64px;height:6px}
+.hpbar.ease i{width:0;background:#5aa9e6}
+.hpbar.ease i.mid{background:#e8b923}
+.hpbar.ease i.full{background:#d9534f;animation:easeP 1s infinite alternate}
+@keyframes easeP{from{opacity:1}to{opacity:.45}}
+.vitals .wc{font:700 10px/1 'Barlow Semi Condensed',sans-serif;color:rgba(255,255,255,.75);letter-spacing:.04em;margin-right:-4px}
 .stars{color:var(--danfo);font-size:17px;letter-spacing:2px;text-shadow:0 1px 2px #000}
 .stars.chase{animation:siren .5s steps(2) infinite}
 .stars i{font-style:normal;opacity:.3}
@@ -309,7 +315,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
 
 <div class="hud" id="hud" hidden>
   <div class="tl"><div class="brand">NAIJA STREETS</div><div class="loc" id="loc">Lagos</div>
-    <div class="vitals" id="vitals" hidden><div class="hpbar" aria-label="Your health"><i id="hpFill"></i></div><span class="stars" id="stars" hidden aria-label="Police wanted level"></span></div>
+    <div class="vitals" id="vitals" hidden><div class="hpbar" aria-label="Your health"><i id="hpFill"></i></div><span class="wc" aria-hidden="true">WC</span><div class="hpbar ease" aria-label="How badly you need the toilet"><i id="easeFill"></i></div><span class="stars" id="stars" hidden aria-label="Police wanted level"></span></div>
     <div class="vitals2"><span class="cash" id="cash">₦0</span><span class="onlN" id="onlN" hidden></span><button type="button" class="weap" id="weap" hidden aria-label="Change weapon">Fists</button></div>
     <div class="jobhud" id="job" hidden></div>
     <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>

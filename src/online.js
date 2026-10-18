@@ -77,7 +77,7 @@ export function createOnline(api) {
       case 'say': heard(m); break;
       case '$': money(m); break;
       case 'kick': S.kicked = true; S.me = null; dropAll(); api.bizOut && api.bizOut(); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
-      case 'out': S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); restoreGuest(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
+      case 'out': S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
       case 'old': S.old = true; api.toast(m.m, 6); try { S.ws && S.ws.close(); } catch (e) { /* gone */ } ui(); break;
     }
   }
@@ -90,6 +90,7 @@ export function createOnline(api) {
     for (const p of S.cpend) send({ t: '$', d: p.d, s: p.s, e: S.ep });   // money made while the line was down
     showCash();
     S.look = ''; S.last = null; lookTick();
+    if (api.lifeIn) api.lifeIn(m.life || null, m.uid);   // where you sleep, your rent, your clothes: the account's own
     if (S.panel && fresh) closePanel();
     if (fresh) api.toast(`Welcome, ${m.name}! You are online · ${m.n || 1} in Lagos now.`, 3.5);
     ui();
@@ -405,7 +406,7 @@ export function createOnline(api) {
       if (p.length < 6) return showErr('login', 'Password: at least 6 characters.');
       if (S.st !== 'guest' || !S.ws) { connect(); return showErr('login', 'Not connected yet. Try again in a moment.'); }
       S.busy = true; buttons();
-      if (S.tab === 'new') { const L = api.look(); send({ t: 'reg', u, p, e: em || undefined, cash: api.getCash(), look: L || undefined }); }
+      if (S.tab === 'new') { const L = api.look(); send({ t: 'reg', u, p, e: em || undefined, cash: api.getCash(), look: L || undefined, life: api.getLife ? api.getLife() : undefined }); }
       else send({ t: 'login', u, p });
     });
     $('#olForgot').addEventListener('click', () => { const f = $('#olForgotF'); f.hidden = !f.hidden; $('#olResetF').hidden = true; if (!f.hidden) $('#olFUser').value = $('#olUser').value; hideMsg(); });

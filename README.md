@@ -235,8 +235,36 @@ yellow PICK UP ring (the route is on the minimap), then reach the green DROP OFF
 driving or in an OYA RIDE. Late, and the customer pays only part; busted or wasted, and the package is gone. Urgent
 jobs pay more and give less time.
 
+## A new life: from under the bridge
+Everybody starts with nothing: ₦1,000, torn clothes (the "Rags" outfit) and a tent in the camp under the flyover nearest
+your old house. Your old flat is for sale (₦650,000, a red FOR SALE board over the door). The way up:
+- **Your tent** (yellow ring): sleep (you rest, but not fully: mosquitoes) and change into clothes you own.
+- **Bend-down boutique** next to it: every outfit of your person has a price (Singlet ₦2,500 up to the Office suit
+  ₦50,000; women from Joggers ₦5,000 to the Office suit ₦40,000). What you have not bought is locked in the wardrobe.
+  The police uniform still comes by itself when you go on duty.
+- **Room to let** (green ring): the landlord of the nearest face-me-I-face-you house rents you a room by the game day
+  (₦3,000 a day, ₦8,000 for 3, ₦17,000 for 7). Rent runs only while you play (a game day is two real hours). Inside
+  (`int_faceme`): a mattress on the floor to sleep, clothes on the nails, a kerosene stove for indomie, a radio, and the
+  back door to the compound toilet (free for tenants).
+- **The flat**: the agent sells it only to somebody who has rented a room before. Once it is yours it is home again.
+- **Public toilet** (blue ring, ₦50) by your tent: one at a time. People from the camp come to use it; when somebody is
+  inside, press E to join the line and wait; they wait for you too. The door swings open as people go in and out.
+- **The WC bar** under your health fills slowly (about 40 minutes of play). At three quarters you are told; full, you
+  cannot run until you use a toilet (the public one, your room's, or a bath in your flat).
+
+Where you sleep, your rent, your clothes and the toilet bar are saved on the phone (`naija-life`); signed in, on your
+account (`server/src/life.js`, kept in the `life` table). The first time this version runs, everybody starts over: the
+phone's money, cars, guns and hotel room are cleared, and the server's database migration v6 sets every account to
+₦1,000 (what each had is kept in the `before6` table).
+
+The pieces were made in the user's Blender with `tools/blender_life.py` (public toilet and its door, your tent, the
+boutique, the room): `tools/blender_rooms/life_job.py` runs it in a separate background Blender, so the file open in
+Blender is never touched, writes each outside piece as faces with a colour per corner (`Documents/naija_rooms/life`),
+and bakes the room's light with `rooms_all.py`. `python3 tools/life_pack.py <that folder>` packs the pieces into
+`assets/models/ns_*.glb`.
+
 ## Money
-Cash is at the top left (kept on the device; you start with ₦5,000). People you floor or kill drop their money: walk
+Cash is at the top left (kept on the device; a new life starts with ₦1,000). People you floor or kill drop their money: walk
 over it to take it. With a weapon in your hand, G next to someone is a robbery: hands up, money on the floor, then they
 run, and the people around run too. Market and shop sellers carry the day's sales. Jobs pay, rides cost the fare,
 waking up at LUTH costs a hospital bill, and an arrest costs a fine.
@@ -528,7 +556,8 @@ Anything between knee and head height blocks walking. Wood, tiles and granite ar
 A side with no wall gets one. If the file cannot load, the old built-in flat is used.
 
 ## Wardrobe
-At home, walk to the wardrobe and press E to change your clothes. You keep your own face: each look lends you its body
+At home, walk to the wardrobe and press E to change your clothes (in your tent: your bag; in your room: the nails on the
+wall). Only clothes you have bought at the boutique can be worn. You keep your own face: each look lends you its body
 and clothes, its head and neck are cut away (with loose braids) and your own head and neck are skinned onto its
 skeleton, so they move with it. Men pick from the men's clothes, women from the women's. Shirt and trousers can be dyed
 (a dress, kaftan or thobe takes one colour); the dye keeps the cloth's folds and prints and leaves skin alone.
