@@ -1,4 +1,4 @@
-// Full-screen city map: pan, zoom, places by category, and a GPS route.
+// Full-screen city map: pan, zoom, places by category, a GPS route, and your own pin (hold on the map, or right-click, to drop it).
 // The game hands in a pre-drawn city image and callbacks; this file is only the map screen.
 
 export const KINDS = {
@@ -14,18 +14,23 @@ export const KINDS = {
   cars:    { label: 'Cars',     color: '#3ddc84', glyph: 'C' },
   sport:   { label: 'Sport',    color: '#7ed957', glyph: '⚽' },
   place:   { label: 'Places',   color: '#f7efdf', glyph: '★' },
+  pin:     { label: 'Your pin', color: '#ff3b30', glyph: '•' },
 };
+export const GPS_RED = '#ff3b30';   // the GPS line and the pins: red, easy to see on the yellow-brown streets
 const FILTERS = [['all', 'All'], ['guns', 'Guns'], ['food', 'Food'], ['shop', 'Shops'], ['service', 'Services'], ['office', 'Offices'], ['police', 'Police'], ['hotel', 'Hotels'], ['club', 'Clubs'], ['cars', 'Cars'], ['sport', 'Sport'], ['place', 'Places']];
 
 export class MapView {
   constructor(o) {
-    Object.assign(this, o); // {root, canvas, image, bounds:{x0,z0,x1,z1,ppm}, places, streets, getPlayer, routeTo, onRoute, fmtDist, detail?}
+    Object.assign(this, o); // {root, canvas, image, bounds:{x0,z0,x1,z1,ppm}, places, streets, getPlayer, routeTo, onRoute, fmtDist, detail?, nameAt?, onCab?, onPin?, touch?}
     this.g = this.canvas.getContext('2d');
     this.open_ = false; this.filter = 'all'; this.sel = null; this.route = null; this.dest = null;
-    this.view = { cx: 0, cz: 0, s: 1.2 };
+    this.view = { cx: 0, cz: 0, s: 1.2 }; this.pin = null; this.hold = null;
+    try { const q = JSON.parse(localStorage.getItem('ns-pin') || 'null'); if (q && isFinite(q.x) && isFinite(q.z)) this.pin = this.makePin(q.x, q.z); } catch (e) {}
     this.ptrs = new Map(); this.moved = 0;
     const $ = id => document.getElementById(id);
-    this.card = $('bmCard'); this.cName = $('bmName'); this.cSub = $('bmSub'); this.cIc = $('bmIc'); this.cGo = $('bmGo');
+    this.card = $('bmCard'); this.cName = $('bmName'); this.cSub = $('bmSub'); this.cIc = $('bmIc'); this.cGo = $('bmGo'); this.cCab = $('bmCab'); this.cDel = $('bmDel');
+    if (this.cCab) this.cCab.onclick = () => { if (this.sel && this.onCab) this.onCab(this.sel); };
+    if (this.cDel) this.cDel.onclick = () => this.removePin();
     const chips = $('bmChips');
     for (const [k, l] of FILTERS) {
       const b = document.createElement('button'); b.type = 'button'; b.dataset.f = k; b.setAttribute('aria-pressed', k === 'all' ? 'true' : 'false');
@@ -43,7 +48,9 @@ export class MapView {
       this.showCard(); this.draw();
     };
     const cv = this.canvas;
-    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.moved = 0; this.pinch = null; });
+    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.moved = 0; this.pinch = null; this.held = false;
+      clearTimeout(this.hold); if (this.ptrs.size === 1 && e.button === 0) { const sx = e.clientX, sy = e.clientY; this.hold = setTimeout(() => { if (this.moved < 8 && this.ptrs.size === 1) { this.held = true; this.dropPin(sx, sy); } }, 480); } });   // hold still: drop a pin
+    cv.addEventListener('contextmenu', e => { e.preventDefault(); this.dropPin(e.clientX, e.clientY); });   // right-click: drop a pin
     cv.addEventListener('pointermove', e => {
       const p = this.ptrs.get(e.pointerId); if (!p) return;
       if (this.ptrs.size === 2) {
@@ -54,8 +61,8 @@ export class MapView {
       const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; this.moved += Math.abs(dx) + Math.abs(dy);
       this.view.cx -= dx / this.view.s; this.view.cz -= dy / this.view.s; this.draw();
     });
-    const up = e => { const p = this.ptrs.get(e.pointerId); this.ptrs.delete(e.pointerId); if (p && this.moved < 8 && this.ptrs.size === 0) this.tap(e.clientX, e.clientY); };
-    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => this.ptrs.delete(e.pointerId));
+    const up = e => { clearTimeout(this.hold); const p = this.ptrs.get(e.pointerId); this.ptrs.delete(e.pointerId); if (p && this.moved < 8 && this.ptrs.size === 0 && !this.held && e.button !== 2) this.tap(e.clientX, e.clientY); };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', e => { clearTimeout(this.hold); this.ptrs.delete(e.pointerId); });
     cv.addEventListener('wheel', e => { e.preventDefault(); this.zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY); }, { passive: false });
     addEventListener('resize', () => { if (this.open_) this.resize(); });
   }
@@ -73,9 +80,22 @@ export class MapView {
     return this.places.filter(p => this.filter === 'all' ? (major(p) || this.view.s >= 1.7) : (p.kind === this.filter || (this.filter === 'police' && p.kind === 'home'))); }
   tap(sx, sy) {
     let best = null, bd = 26;
+    if (this.pin) { const [x, y] = this.toScreen(this.pin.x, this.pin.z); if (Math.hypot(x - sx, y - 18 - sy) < 30) { this.sel = this.pin; this.showCard(); this.draw(); return; } }   // your pin first
     for (const p of this.visiblePlaces()) { const [x, y] = this.toScreen(p.x, p.z); const d = Math.hypot(x - sx, y - sy); if (d < bd) { bd = d; best = p; } }
     this.sel = best; this.showCard(); this.draw();
   }
+  toWorld(sx, sy) { const v = this.view; return [v.cx + (sx - innerWidth / 2) / v.s, v.cz + (sy - innerHeight / 2) / v.s]; }
+  makePin(x, z) { const B = this.bounds; x = Math.min(B.x1 - 2, Math.max(B.x0 + 2, x)); z = Math.min(B.z1 - 2, Math.max(B.z0 + 2, z));
+    let near = ''; try { near = this.nameAt ? this.nameAt(x, z) || '' : ''; } catch (e) {}
+    return { name: 'Your pin', sub: near ? 'Near ' + near : 'Pinned spot', kind: 'pin', pin: true, x, z }; }
+  // drop (or move) your pin; if the GPS was on the old pin it follows the new one
+  dropPin(sx, sy) { const [x, z] = this.toWorld(sx, sy), was = this.pin, onIt = this.dest && was && this.dest.place === was;
+    this.pin = this.makePin(x, z); try { localStorage.setItem('ns-pin', JSON.stringify({ x: this.pin.x, z: this.pin.z })); } catch (e) {}
+    if (navigator.vibrate) try { navigator.vibrate(25); } catch (e) {}
+    if (onIt) this.setDest(this.pin.x, this.pin.z, this.pin);
+    this.sel = this.pin; this.showCard(); this.draw(); if (this.onPin) this.onPin(this.pin); }
+  removePin() { if (!this.pin) return; if (this.dest && this.dest.place === this.pin) this.clearRoute(); if (this.sel === this.pin) this.sel = null; this.pin = null;
+    try { localStorage.removeItem('ns-pin'); } catch (e) {} this.showCard(); this.draw(); if (this.onPin) this.onPin(null); }
   setDest(x, z, place = null) { this.dest = { x, z, place }; this.recompute(); if (this.onRoute) this.onRoute(this.dest); }
   clearRoute() { this.dest = null; this.route = null; if (this.onRoute) this.onRoute(null); }
   recompute() { if (!this.dest) { this.route = null; return; } const p = this.getPlayer(); this.route = this.routeTo(p.x, p.z, this.dest.x, this.dest.z); }
@@ -83,8 +103,10 @@ export class MapView {
     const p = this.sel; if (!p) { this.card.hidden = true; return; }
     const k = KINDS[p.kind] || KINDS.place, me = this.getPlayer();
     this.card.hidden = false; this.cIc.style.background = k.color; this.cIc.textContent = k.glyph;
-    this.cName.textContent = p.name; this.cSub.textContent = (p.sub ? p.sub.charAt(0) + p.sub.slice(1).toLowerCase() + ' · ' : '') + this.fmtDist(Math.hypot(p.x - me.x, p.z - me.z));
+    this.cName.textContent = p.name; this.cSub.textContent = (p.sub ? (p.pin ? p.sub : p.sub.charAt(0) + p.sub.slice(1).toLowerCase()) + ' · ' : '') + this.fmtDist(Math.hypot(p.x - me.x, p.z - me.z));
     const on = this.dest && this.dest.place === p; this.cGo.textContent = on ? 'CLEAR GPS' : 'SET GPS'; this.cGo.classList.toggle('off', on);
+    if (this.cCab) this.cCab.hidden = !this.onCab || Math.hypot(p.x - me.x, p.z - me.z) < 60;   // a cab there (not when you are already there)
+    if (this.cDel) this.cDel.hidden = !p.pin;
   }
   draw() {
     if (!this.open_) return;
@@ -96,8 +118,8 @@ export class MapView {
     if (this.detail && W / v.s < 900) { const hw = W / 2 / v.s, hh = H / 2 / v.s; this.detail(g, v.cx - hw, v.cz - hh, v.cx + hw, v.cz + hh); }
     if (this.route && this.route.length > 1) {
       g.lineJoin = 'round'; g.lineCap = 'round';
-      g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 10 / v.s + 3; g.beginPath(); this.route.forEach(([x, z], i) => i ? g.lineTo(x, z) : g.moveTo(x, z)); g.stroke();
-      g.strokeStyle = '#F2B705'; g.lineWidth = 6 / v.s + 2; g.stroke();
+      g.strokeStyle = 'rgba(40,0,0,.7)'; g.lineWidth = 10 / v.s + 4; g.beginPath(); this.route.forEach(([x, z], i) => i ? g.lineTo(x, z) : g.moveTo(x, z)); g.stroke();
+      g.strokeStyle = GPS_RED; g.lineWidth = 6 / v.s + 2.5; g.stroke();
     }
     g.restore();
     // street names (round joins: no spikes on letters like M and A)
@@ -126,8 +148,12 @@ export class MapView {
         g.font = `400 ${Math.round(rad * 1.05)}px Bungee, Impact, sans-serif`;
       }
     }
-    if (this.filter === 'all' && v.s < 1.7) { g.font = '600 14px "Barlow Semi Condensed", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(247,239,223,.75)'; g.fillText('Zoom in to see shops, food and services', W / 2, H - 28); }
-    if (this.dest) { const [x, y] = this.toScreen(this.dest.x, this.dest.z); g.fillStyle = '#F2B705'; g.strokeStyle = '#0E1014'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.arc(x, y - 22, 11, Math.PI * .75, Math.PI * .25); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#0E1014'; g.beginPath(); g.arc(x, y - 22, 4, 0, 7); g.fill(); }
+    if (this.card.hidden) { g.font = '600 14px "Barlow Semi Condensed", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(247,239,223,.8)';
+      const hint = (this.touch && this.touch() ? 'Hold your finger on the map' : 'Right-click the map') + ' to drop a pin';
+      g.fillText(this.filter === 'all' && v.s < 1.7 ? 'Zoom in to see shops, food and services  ·  ' + hint : hint, W / 2, H - 28); }
+    const drop = (x, y, big) => { const r = big ? 13 : 11; g.fillStyle = GPS_RED; g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.arc(x, y - r * 2, r, Math.PI * .75, Math.PI * .25); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x, y - r * 2, r * .38, 0, 7); g.fill(); };
+    if (this.dest && !(this.pin && this.dest.place === this.pin)) { const [x, y] = this.toScreen(this.dest.x, this.dest.z); drop(x, y, false); }
+    if (this.pin) { const [x, y] = this.toScreen(this.pin.x, this.pin.z); if (this.sel === this.pin) { g.fillStyle = 'rgba(255,59,48,.25)'; g.beginPath(); g.ellipse(x, y, 16, 7, 0, 0, 7); g.fill(); } drop(x, y, true); }
     // you
     const me = this.getPlayer(), [px, py] = this.toScreen(me.x, me.z);
     g.save(); g.translate(px, py); g.rotate(me.dir); g.fillStyle = '#f7efdf'; g.strokeStyle = '#0E1014'; g.lineWidth = 3;
