@@ -27,8 +27,25 @@ def collar(b, nl, width=.03, front=.03, name='collar', ease=.011):
 def waist_band(b, top, h=.035, ease=.0095, name='belt'):
     return gshell(b, [cut_below(b, top + .002), cut_above(b, top - h)], ease, min_ease=ease * .9, exclude=LOWER_EX + ('neck',), relax=6, name=name)
 
-def trousers(b, top, ease=.012, leg=.03, ankle=.024, t=1.93, name='trousers'):
-    return gshell(b, [cut_below(b, top), cut_leg(b, t)], ease_map(b, ease, leg=leg, ankle=ankle), min_ease=ease * .7, exclude=LOWER_EX, name=name)
+def trousers(b, top, ease=.012, leg=.03, ankle=.024, t=1.93, name='trousers', straight=1.):
+    piece = gshell(b, [cut_below(b, top), cut_leg(b, t)], ease_map(b, ease, leg=leg, ankle=ankle), min_ease=ease * .7, exclude=LOWER_EX, name=name)
+    return straight_legs(b, piece, straight) if straight else piece
+
+def straight_legs(b, piece, k=1.):
+    """trouser legs that hang straight from the knee (as wide as there, down to the hem) instead of following the calf"""
+    P = piece['verts'].copy()
+    for j, side in enumerate('LR'):
+        m = piece['part'] == 3 + j
+        if not m.any(): continue
+        a = b.leg[side][0]; f = b.leg[side][2]; ab = f - a; L2 = ab @ ab
+        Q = P[m]; t = np.clip(((Q - a) @ ab) / L2, 0, 1.2); c = a + t[:, None] * ab; r = Q - c; rr = np.linalg.norm(r, axis=1) + 1e-9
+        knee = (t > .44) & (t < .54)
+        if not knee.any(): continue
+        rk = np.percentile(rr[knee], 80)                                   # how wide the leg is at the knee
+        w = smoothstep(.46, .62, t) * k; want = rr + (np.maximum(rr, rk) - rr) * w
+        P[np.nonzero(m)[0]] = c + r * (want / rr)[:, None]
+    piece['verts'] = P
+    return piece
 
 def shirt(b, hem, sleeve, ease=.011, arm=.013, nl=None, name='shirt'):
     nl = neckline(b, .045, .006) if nl is None else nl
