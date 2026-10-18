@@ -16,8 +16,9 @@ import gametex as GT
 import garments as G
 
 MOVES = os.path.join(HERE, '..', '..', '..', 'assets', 'people', 'moves.glb')
-TUBES = {'gown_skirt', 'buba_tail', 'iro', 'bodycon_skirt', 'club_skirt', 'slip_skirt', 'pencil'}
-NO_HIDE = {'gele', 'button', 'lapels', 'pockets'}
+TUBES = {'gown_skirt', 'buba_tail', 'iro', 'bodycon_skirt', 'club_skirt', 'slip_skirt', 'pencil', 'senator_tail', 'kaftan_tail'}
+NO_HIDE = {'gele', 'button', 'lapels', 'pockets', 'tie', 'placket', 'buckle', 'pouch', 'beret', 'kufi'}
+B36 = '0123456789abcdefghijklmnopqrstuvwxyz'   # outfit i in a part's name (the men have eleven outfits)
 
 def gl(P): return np.stack([P[:, 0], P[:, 2], -P[:, 1]], 1).astype(np.float32)        # Blender -> glTF axes
 def lin_hex(h, a=1.):
@@ -124,10 +125,13 @@ def weld(part, corner_uvs, extra_v=None, polys=None):
     if extra_v is not None: out['X'] = extra_v[vs]
     return out, np.array(T, np.int64)
 
+class Z(dict):
+    files = property(lambda self: list(self.keys()))
+
 class Woman:
     def __init__(self, folder, texc):
         self.folder, self.texc = folder, texc
-        self.meta = json.load(open(os.path.join(folder, 'parts.json'))); self.z = np.load(os.path.join(folder, 'parts.npz'))
+        self.meta = json.load(open(os.path.join(folder, 'parts.json'))); z = np.load(os.path.join(folder, 'parts.npz')); self.z = Z({k: z[k] for k in z.files})
         self.g = GLB(); self.tx = {}
         self.char = skeleton(self.g, self.meta['bones'], self.meta['person'])
 
@@ -147,11 +151,13 @@ class Woman:
         if k == 'flat': return g.material(name, list(m['color']) + [1], None, rough=float(m['rough']))
         if k == 'image':
             src = os.path.join(self.folder, m['img'])
-            if not os.path.exists(src): src = os.path.join(os.path.dirname(self.folder), 'Amaka', m['img'])   # (every woman's trainers use the same picture)
+            if not os.path.exists(src):   # (everyone's trainers use the same picture)
+                src = next((q for q in (os.path.join(os.path.dirname(self.folder), d, m['img']) for d in sorted(os.listdir(os.path.dirname(self.folder)))) if os.path.exists(q)), src)
             t = self.texture(m['img'], lambda: self.pic(src, 512, 'jpg', 85))
             return g.material(name, [1, 1, 1, 1], t, 0, None, rough=m.get('rough', .6))
         if k == 'eye':
-            t = self.texture('iris', lambda: iris_pic(m['iris']), 'clamp')
+            e = self.meta.get('eye') or {}
+            t = self.texture('iris', lambda: iris_pic(m['iris'], k=e.get('k', 1.), white=e.get('white')), 'clamp')
             return g.material(name, [1, 1, 1, 1], t, 0, None, rough=.15, double=True)
         if k == 'hair':
             t = self.texture(m['img'], lambda: hair_pic(os.path.join(self.folder, m['img']), m))
@@ -220,9 +226,10 @@ def hair_pic(path, m, size=1024):
     out = np.concatenate([GT.srgb(rgb), a[..., 3:4] if m.get('alpha') else np.ones_like(a[..., 3:4])], 2)
     return GT.enc(Image.fromarray((np.clip(out, 0, 1) * 255 + .5).astype(np.uint8), 'RGBA'), 'png')
 
-def iris_pic(iris, size=256):
+def iris_pic(iris, size=256, k=1., white=None):
     """the eye seen from the front: the Blender colour ramp over the angle from the front of the eyeball"""
-    stops = [(0., (.004, .003, .003)), (.2, (.004, .003, .003)), (.24, tuple(c * 1.6 for c in iris)), (.4, tuple(iris)), (.47, (.008, .005, .004)), (.53, (.62, .58, .54)), (1.6, (.66, .62, .58))]
+    wh = tuple(white or (.62, .58, .54))
+    stops = [(0., (.004, .003, .003)), (.2 * k, (.004, .003, .003)), (.24 * k, tuple(c * 1.6 for c in iris)), (.4 * k, tuple(iris)), (.47 * k, (.008, .005, .004)), (.53 * k, wh), (1.6, tuple(c * 1.06 for c in wh))]
     yy, xx = np.mgrid[0:size, 0:size]; r = np.hypot(xx + .5 - size / 2, yy + .5 - size / 2) / (size / 2); ang = r * (math.pi / 2)
     out = np.zeros((size, size, 3))
     for (a0, c0), (a1, c1) in zip(stops, stops[1:]):
@@ -285,6 +292,16 @@ def build(folder, texc, out_dir):
         if p.get('piece') in TUBES and len(Q.V) % 72 == 0: tube = (len(Q.V) // 72, 72)
         c = covered(B.V, BN, Q.V, Q.faces(), tube, **(dict(near=.05, edge=.02) if k == 'shoe' else {}))
         for oi in ois: hide[c] |= 1 << oi
+    # where the head's neck meets the body (the men's head is zipped onto the body's own edge): one normal for both, no seam
+    hp = next((p for p in parts if p['kind'] == 'head'), None)
+    if hp:
+        H = Part(Wm.z, hp['key']); bc, hc = B.V[B.L], H.V[H.L]; tr = cKDTree(hc); d, j = tr.query(bc)
+        m = d < 1e-5
+        if m.sum():
+            Nb = B.N[m]; Nh = H.N[j[m]]; avg = Nb + Nh; avg /= np.linalg.norm(avg, axis=1, keepdims=True) + 1e-12
+            B.N[m] = avg; H.N[j[m]] = avg
+            Wm.z[f"{body['key']}_N"] = B.N; Wm.z[f"{hp['key']}_N"] = H.N
+            print('  neck seam: one normal for', int(m.sum()), 'corners')
     # the parts
     Wm.add(body, 'body', extra=hide.astype(np.float64))
     for p in parts:
@@ -292,13 +309,13 @@ def build(folder, texc, out_dir):
         if k == 'body': continue
         if k in ('head', 'brows', 'liner', 'scalp'): Wm.add(p, k)
         elif k == 'eyes': Wm.add(p, 'eyes', uv_fn=lambda q: [eye_uv(q)])
-        elif k == 'hair': Wm.add(p, 'hair~' + ''.join(str(OUT_IDX[meta['id']][o]) for o in p.get('hide', [])) + '~' + p['name'].split('.')[-1].replace(' ', '_'))
+        elif k == 'hair': Wm.add(p, 'hair~' + ''.join(B36[OUT_IDX[meta['id']][o]] for o in p.get('hide', [])) + '~' + p['name'].split('.')[-1].replace(' ', '_'))
         elif k == 'cloth':
             striped = any(m.get('spec', {}).get('stripes') for m in p['mats'])
-            Wm.add(p, f'o{p["outfit"]}~{p["piece"]}', uvmaps=('UVMap', 'Design'), uv_fn=stripes_uv if striped else None)
-        elif k == 'shoe': Wm.add(p, f'shoe{"".join(str(i) for i in p["outfits"])}~{p["shoe"]}')
+            Wm.add(p, f'o{B36[p["outfit"]]}~{p["piece"]}', uvmaps=('UVMap', 'Design'), uv_fn=stripes_uv if striped else None)
+        elif k == 'shoe': Wm.add(p, f'shoe{"".join(B36[i] for i in p["outfits"])}~{p["shoe"]}')
     hips = next(b for b in meta['bones'] if b['name'].endswith('Hips'))['head'][2]
-    Wm.g.js['scenes'][0]['extras'] = dict(person=meta['person'], id=meta['id'], male=False, outfits=meta['outfits'], height=float(B.V[:, 2].max()), hips=float(hips),
+    Wm.g.js['scenes'][0]['extras'] = dict(person=meta['person'], id=meta['id'], male=bool(meta.get('male')), outfits=meta['outfits'], height=float(B.V[:, 2].max()), hips=float(hips),
                                          skin='#' + ''.join('%02x' % int(GT.srgb(np.array(c)) * 255) for c in meta['skin']))
     path = os.path.join(out_dir, meta['id'] + '.glb'); size = Wm.g.save(path)
     covered_n = [int(((hide >> i) & 1).sum()) for i in range(nout)]

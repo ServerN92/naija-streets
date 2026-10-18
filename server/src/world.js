@@ -69,7 +69,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function parseLook(s) { try { const o = typeof s === 'string' ? JSON.parse(s) : s; if (!o || typeof o !== 'object') return null; return lookOk(o); } catch (e) { return null; } }
   function lookOk(o) {
     if (!o || typeof o !== 'object') return null;
-    const c = LOOK_IDS.test(o.c) ? o.c : null, f = Number.isInteger(o.f) && o.f >= -1 && o.f < 10 ? o.f : 0, g = o.g === 'f' ? 'f' : 'm';
+    const c = LOOK_IDS.test(o.c) ? o.c : null, f = Number.isInteger(o.f) && o.f >= -1 && o.f < 16 ? o.f : 0, g = o.g === 'f' ? 'f' : 'm';
     return c ? { c, f, g } : null;
   }
 
