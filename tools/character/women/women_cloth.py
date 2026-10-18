@@ -107,6 +107,92 @@ def straps(b, w=.014, zlow=None, xoff=None):
 
 def union(*a): return np.max(np.stack(a), 0)
 
+# ------------------------------------------------------------------ torn cloth (the rags)
+def ragged(b, z, amp=.018, seed=1):
+    """a torn hem: keep above z, the edge torn in uneven tongues"""
+    r = np.random.RandomState(seed); th = b.theta
+    n = sum(r.uniform(.4, 1.) * np.sin(k * th + r.uniform(0, 6.3)) / k ** .6 for k in (5, 9, 13, 21))
+    return b.V[:, 2] - (z + amp * n)
+
+def holes(b, count=7, rmin=.012, rmax=.03, parts=('torso',), zlo=None, zhi=None, seed=3):
+    """round tears in the cloth (blobs where the field is < 0)"""
+    r = np.random.RandomState(seed); V = b.V
+    cand = np.nonzero(np.isin(b.part, list(parts)) & (V[:, 2] > (zlo if zlo is not None else -9)) & (V[:, 2] < (zhi if zhi is not None else 9)))[0]
+    s = np.full(b.n, 9.)
+    for c in r.choice(cand, count, replace=False):
+        rad = r.uniform(rmin, rmax); d = np.linalg.norm((V - V[c]) * [1, 1, .8], axis=1)
+        s = np.minimum(s, d - rad)
+    return s
+
+# ------------------------------------------------------------------ head wear on the new head (the men's file uses these too)
+def head_piece(person, line_fn, off_fn, name, shift=None):
+    """the new head's surface above line_fn(angle) (m above eye level), lifted off it by off_fn(h, a, p)"""
+    F = head_F(person); V, N, polys, ez, c = F['V'], F['N'], F['polys'], F['eyez'], F['ctr']
+    H, A = [], []
+    for p in V:
+        d = p - c; a = math.degrees(math.atan2(d.x, -d.y)); A.append(a)
+        H.append(-1. if (d.length > .17 or p.z < ez - .1) else p.z - ez - line_fn(abs(a)))
+    verts, nrm, hh, aa, idx, ek, faces = [], [], [], [], {}, {}, []
+    def keep(i):
+        if i not in idx: idx[i] = len(verts); verts.append(V[i]); nrm.append(N[i]); hh.append(H[i]); aa.append(A[i])
+        return idx[i]
+    def cut(i, j):
+        k = (min(i, j), max(i, j))
+        if k not in ek:
+            t = H[i] / (H[i] - H[j]); ek[k] = len(verts); verts.append(V[i].lerp(V[j], t)); nrm.append(N[i].lerp(N[j], t).normalized()); hh.append(0.); aa.append(A[i])
+        return ek[k]
+    for poly in polys:
+        hs = [H[i] for i in poly]
+        if max(hs) <= 0: continue
+        if min(hs) > 0: faces.append([keep(i) for i in poly]); continue
+        out = []
+        for k in range(len(poly)):
+            i, j = poly[k], poly[(k + 1) % len(poly)]
+            if H[i] > 0: out.append(keep(i))
+            if (H[i] > 0) != (H[j] > 0): out.append(cut(i, j) if H[i] > 0 else cut(j, i))
+        if len(set(out)) >= 3: faces.append(out)
+    P = np.array([tuple(p + n * off_fn(h, a, p)) for p, n, h, a in zip(verts, nrm, hh, aa)])
+    if shift is not None: P = P + np.array([shift(h, a, p) for p, h, a in zip(verts, hh, aa)])
+    rig = F['rig']; hb = 'mixamorig:Head'
+    uv = np.c_[P[:, 0], P[:, 1]]
+    return dict(name=name, verts=P, faces=faces, uv=uv, duv=uv.copy(), part=np.full(len(P), 6.), uper=np.zeros(len(P)), weights={hb: np.ones(len(P))})
+
+def beret(person, name='beret', K=48):
+    """a police beret: a band round the head over the brows, and a flat round crown bigger than the head, pulled down
+    over his right ear (his right is -X) where it hangs past the head"""
+    from mathutils.bvhtree import BVHTree
+    F = head_F(person); c = F['ctr']; ez = F['eyez']
+    bvh = BVHTree.FromPolygons(F['V'], F['polys'])
+    top = max(p.z for p in F['V'])
+    def rad(z, a):
+        o = Vector((c.x, c.y, z)); d = Vector((math.sin(a), -math.cos(a), 0.)); hit = bvh.ray_cast(o + d * .2, -d, .2)
+        return (hit[0] - o).length if hit[0] is not None else .08
+    ang = np.linspace(-math.pi, math.pi, K, endpoint=False)
+    zb = np.array([ez + .036 - .04 * smoothstep(1., 2.9, abs(a)) for a in ang])         # the band: low over the brows, lower round the back
+    rows = []
+    for dz, out in ((0., .004), (.012, .0045), (.022, .006)):
+        rows.append([(rad(z + dz, a) + out, z + dz) for a, z in zip(ang, zb)])
+    r0 = np.array([r for r, z in rows[-1]]); z0 = np.array([z for r, z in rows[-1]])
+    right = np.maximum(0., -np.sin(ang)); left = np.maximum(0., np.sin(ang))            # (his right is -X)
+    over = .007 + .038 * right ** 1.5 + .006 * np.maximum(0., -np.cos(ang))
+    zr = z0 + .03 + .012 * left - .03 * right ** 1.5                                      # the rim: close over his left, flopped down over his right ear
+    zt = top + .012
+    # crown: from the band out to the rim (a soft roll), then in to a flat top
+    for t in (.3, .6, .85, 1.):
+        r = r0 + over * math.sin(t * math.pi / 2); z = z0 + (zr - z0) * (t ** .8)
+        rows.append(list(zip(r, z)))
+    for t in (.25, .55, .8):
+        r = (r0 + over) * (1 - t) ** .9; z = zr + (zt - zr) * math.sin(t * math.pi / 2) - .01 * right * (1 - t)
+        rows.append(list(zip(r, z)))
+    P = []
+    for row in rows:
+        for (r, z), a in zip(row, ang): P.append((c.x + math.sin(a) * r, c.y - math.cos(a) * r, z))
+    P.append((c.x - .01, c.y + .005, zt)); P = np.array(P)
+    R = len(rows); faces = [[i * K + k, (i + 1) * K + k, (i + 1) * K + (k + 1) % K, i * K + (k + 1) % K] for i in range(R - 1) for k in range(K)]
+    n = R * K; faces += [[(R - 1) * K + k, n, (R - 1) * K + (k + 1) % K] for k in range(K)]
+    uv = np.c_[P[:, 0], P[:, 1]]
+    return dict(name=name, verts=P, faces=faces, uv=uv, duv=uv.copy(), part=np.full(len(P), 6.), uper=np.zeros(len(P)), weights={'mixamorig:Head': np.ones(len(P))})
+
 # ------------------------------------------------------------------ shoes
 def sole(b, side, z0=-.003, z1=.007, grow=.006, name='sole'):
     m = b.part == f'foot{side}'; Vf = b.V[m]
@@ -252,14 +338,37 @@ def o_night(b):            # satin slip with thin straps
                folds=(9, lambda z: .004 * smoothstep(b.hip[2], hem, z), .6), name='slip_skirt')
     return [(bod, 'satin'), (sk, 'satin'), (sandals(b), 'slides')]
 
+def o_police(b):           # the police: a fitted black shirt open at the throat, a tight black skirt above the knee, belt, beret, court shoes
+    bz, waist = b.bust[2], b.spine[2]
+    nl = neckline(b, .06, .008, v_depth=.07, v_width=.32)
+    sh = gshell(b, [nl, cut_above(b, waist - .03), cut_sleeve(b, .3)], ease_map(b, .0042, .006), min_ease=.0034, exclude=HEADFEET, name='pshirt')
+    front = b.V[:, 1] < b.neck[1] - .02
+    col = gshell(b, [nl + .01, np.where(front, .026, .03) - nl, cut_sleeve(b, -.2)], .0075, min_ease=.0066, exclude=HEADFEET + ARMS, relax=6, name='pcollar')
+    sk = skirt(b, waist + .01, b.knee + .075, ease=.0038, hips=.45, name='pskirt')
+    belt = gshell(b, [cut_below(b, waist + .012), cut_above(b, waist - .02)], .0082, min_ease=.0075, exclude=LOWER_EX + ('neck',), relax=6, name='pbelt')
+    return [(sh, 'police'), (col, 'police'), (sk, 'police'), (belt, 'pbelt'), (button(b, waist - .004, .0084, r=.012, name='buckle'), 'buckle'),
+            (pumps(b), 'ppumps'), (soles(b), 'sole')]
+
+def o_rags(b):             # rags: a torn, dirty top and a torn skirt, worn slippers
+    bz = b.bust[2]
+    top = gshell(b, [union(top_line(b, bz + .075, b.neck[2] - .1, sharp=3), straps(b, .03, zlow=bz, xoff=XOFF)), armholes(b, XOFF + .02), cut_sleeve(b, -.3),
+                     ragged(b, b.spine[2] - .02, .025, seed=6), holes(b, 4, .008, .015, ('torso',), b.spine[2] + .01, bz - .04, seed=7)],
+                 ease_map(b, .006), min_ease=.005, exclude=HEADFEET, name='rag_top')
+    sk = skirt(b, b.spine[2] + .01, b.knee - .03, ease=.009, hips=.4, smooth=4, name='rag_skirt')
+    R, K = sk['rings'], sk['K']; G3 = sk['verts'].reshape(R, K, 3); r = np.random.RandomState(9); ang = np.linspace(0, 2 * math.pi, K, endpoint=False)
+    tear = sum(r.uniform(.4, 1.) * np.sin(k * ang + r.uniform(0, 6.3)) / k ** .5 for k in (4, 7, 11, 17))
+    for j, w in ((R - 1, 1.), (R - 2, .45)): G3[j, :, 2] += .022 * tear * w        # a torn hem
+    sk['verts'] = G3.reshape(-1, 3)
+    return [(top, 'rag_top'), (sk, 'rag_skirt'), (sandals(b), 'rag_slides')]
+
 # name: (recipe, MakeHuman shoes or None, head wear)
 OUTFITS = {
     'gown': (o_gown, None, None), 'iro_buba': (o_iro, None, 'gele'), 'bodycon': (o_bodycon, None, None), 'jeans': (o_jeans, 'shoes05', None),
     'joggers': (o_joggers, 'shoes06', None), 'office': (o_office, None, None), 'fitness': (o_fitness, 'shoes05', None), 'club': (o_club, None, None),
-    'night': (o_night, None, None),
+    'night': (o_night, None, None), 'police': (o_police, None, 'beret'), 'rags': (o_rags, None, None),
 }
 NAMES = {'gown': 'Ankara gown', 'iro_buba': 'Iro & buba', 'bodycon': 'Bodycon mini', 'jeans': 'Crop top & jeans', 'joggers': 'Joggers',
-         'office': 'Office suit', 'fitness': 'Fitness', 'club': 'Club', 'night': 'Night wear'}
+         'office': 'Office suit', 'fitness': 'Fitness', 'club': 'Club', 'night': 'Night wear', 'police': 'Police', 'rags': 'Rags'}
 
 # ------------------------------------------------------------------ fabrics
 def hexc(h, a=1.):
@@ -279,6 +388,11 @@ ROLE = {   # how each kind of cloth looks; the colour / print comes from her pal
     'sequin': dict(kind='sequin', tile=.15, metal=.85, spec=.5), 'satin': dict(rough=.4, weave=None, sheen=1., spec=.3),
     'pumps': dict(rough=.16, weave=None, spec=.6, coat=1.), 'sandals': dict(color='#c79a3a', rough=.32, metal=.75, weave=None),
     'slides': dict(rough=.95, weave='velvet', sheen=1.),
+    'police': dict(color='#121419', rough=.62, weave='twill'), 'pbelt': dict(color='#0b0b0c', rough=.3, weave=None, spec=.45, coat=.5),
+    'buckle': dict(color='#c8c8c8', rough=.25, metal=1., weave=None), 'beret': dict(color='#0d0e10', rough=.95, weave='fleece'),
+    'ppumps': dict(color='#0c0c0d', rough=.16, weave=None, spec=.6, coat=1.),
+    'rag_top': dict(img='rag_white.png', tile=.35, rough=.95, weave='plain'), 'rag_skirt': dict(img='rag_khaki.png', tile=.35, rough=.95, weave='twill'),
+    'rag_slides': dict(color='#4a4038', rough=.95, weave=None),
 }
 PAL = {
     'Amaka':       dict(gown='ankara_e', iro='ankara_c', buba='lace_gold', bodycon='#b3122e', crop='#f4f0e8', tee='#141414', jog='#8c8f96', jog_s='#ffffff', blouse='#f3efe6', blazer='#1d2d5c',
@@ -312,7 +426,7 @@ def spec_for(name, role):
     if role == 'leggings': s['stripes'] = p['leg_s']
     return s
 
-FOOT = ('pumps', 'sole', 'sandals', 'slides')
+FOOT = ('pumps', 'sole', 'sandals', 'slides', 'ppumps', 'rag_slides')
 _LOADED = set()
 def img(name):
     p = os.path.join(TEXC, name)
@@ -425,7 +539,7 @@ def build_piece(person, outfit, piece, role, rig, coll):
     for bn, w in piece['weights'].items():
         vg = o.vertex_groups.new(name=bn); nz = np.nonzero(w > 1e-4)[0]
         for i in nz: vg.add([int(i)], float(w[i]), 'REPLACE')
-    sol = o.modifiers.new('Thickness', 'SOLIDIFY'); sol.thickness = .0016 if role not in ('pumps', 'slides', 'sandals') else .002; sol.offset = 1.; sol.use_even_offset = role not in FOOT
+    sol = o.modifiers.new('Thickness', 'SOLIDIFY'); sol.thickness = .0016 if role not in ('pumps', 'slides', 'sandals', 'ppumps', 'rag_slides') else .002; sol.offset = 1.; sol.use_even_offset = role not in FOOT
     arm = o.modifiers.new('Armature', 'ARMATURE'); arm.object = rig; arm.use_deform_preserve_volume = False
     sub = o.modifiers.new('Smooth', 'SUBSURF'); sub.levels = 0; sub.render_levels = 1
     o.parent = rig; o.matrix_parent_inverse = rig.matrix_world.inverted()
@@ -519,6 +633,8 @@ def dress(person, keys):
                 s = add_shoes(person, rig, body, shoes)
                 L = set(filter(None, s.get('nw_outfits', '').split(','))); L.add(key); s['nw_outfits'] = ','.join(sorted(L))
             if head == 'gele': outfit_gele(person, key)
+            elif head == 'beret':
+                o = build_piece(person, key, beret(person), 'beret', rig, coll); o.modifiers['Thickness'].thickness = .004; made.append(o)
             log('dressed', person, key, round(time.time() - t, 1), 's')
         except Exception: log('outfit failed', person, key, traceback.format_exc())
     return made
@@ -547,11 +663,11 @@ def show(person, key):
         elif o.get('nw_shoe'): vis = bool(key) and key in o.get('nw_outfits', '').split(',')
         elif 'sportsuit' in o.name: vis = key is None
         elif o.get('nw_hair') or o.get('nw_headwear') or (o.type == 'MESH' and o.name.startswith('HAIR_')):
-            vis = not (head == 'gele' and PAL[person]['gele'] is not None)
+            vis = not ((head == 'gele' and PAL[person]['gele'] is not None) or head == 'beret')
         if vis is not None: o.hide_render = o.hide_viewport = not vis
     for o in bpy.data.objects:   # hair objects kept by name (the downloaded ones)
         if o.name.startswith('HAIR_') and o.get('nw') == person:
-            o.hide_render = o.hide_viewport = (head == 'gele' and PAL[person]['gele'] is not None)
+            o.hide_render = o.hide_viewport = (head == 'gele' and PAL[person]['gele'] is not None) or head == 'beret'
     for md in body.modifiers:
         if md.type == 'MASK' and md.name.startswith('Delete.'):
             sn = md.name[len('Delete.'):]

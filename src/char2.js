@@ -84,19 +84,21 @@ export function footOffset(root, D, clip) {
 
 // one of the outfits on: its clothes and shoes show, the skin under them is not drawn. The women (tools/character/women)
 // have one body mesh that keeps a cut of itself per outfit (bodyFits); hair~<outfits> is hidden under those outfits (a gele).
+// (outfit i is one character in a part's name, 0-9 then a-z: the men have eleven)
+export const outfitChar = i => (i >= 0 && i < 36 ? i.toString(36) : '-');
 export function setOutfit(root, i) {
-  const s = String(i);
+  const s = outfitChar(+i);
   root.traverse(o => { const n = o.name; let m;
-    if ((m = /^o(\d)~/.exec(n))) o.visible = m[1] === s;
-    else if ((m = /^shoe(\d*)~/.exec(n))) o.visible = m[1].includes(s);
-    else if ((m = /^body~(\d*)$/.exec(n))) o.visible = !m[1].includes(s);
-    else if ((m = /^hair~(\d*)~/.exec(n))) o.visible = !m[1].includes(s);
-    if (o.isMesh && o.geometry && o.geometry.userData.fits) { const F = o.geometry.userData.fits; o.geometry = F[s] || F.all; } });
+    if ((m = /^o([0-9a-z])~/.exec(n))) o.visible = m[1] === s;
+    else if ((m = /^shoe([0-9a-z]*)~/.exec(n))) o.visible = m[1].includes(s);
+    else if ((m = /^body~([0-9a-z]*)$/.exec(n))) o.visible = !m[1].includes(s);
+    else if ((m = /^hair~([0-9a-z]*)~/.exec(n))) o.visible = !m[1].includes(s);
+    if (o.isMesh && o.geometry && o.geometry.userData.fits) { const F = o.geometry.userData.fits; o.geometry = F[String(i)] || F.all; } });
 }
 // how many outfits a person's file has
 export const outfitCount = meta => (meta && meta.outfits && meta.outfits.length) || 4;
 
-// the women's body: per vertex, the outfits that cover it (bits in the second colour set, red = 0-7, green = 8-15). One
+// our people's body: per vertex, the outfits that cover it (bits in the second colour set, red = 0-7, green = 8-15). One
 // geometry per outfit shares the body's points and keeps only the triangles that outfit leaves showing.
 function bodyFits(mesh, n) {
   const g = mesh.geometry, A = g.attributes.color_1, I = g.index; if (!A || !I) return false;

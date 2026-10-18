@@ -143,14 +143,17 @@ and add the character to `CAST` in `src/game.js` (height, how common, what it do
 ## The city's women
 Nine women made in Blender (`tools/character/women`): Amaka, Ada, Chioma, Bisi, Kemi, Funmi, Mama Nkechi, Iya Basira and
 Sgt Halima. Four body types (curvy, slim-thick, slim, big), a sculpted head with real eyes, lipstick and her own skin tone,
-fitted hair (cornrows, afro, bun, ponytail, long, bob, short) or a gele / scarf, and nine outfits each, cut from her own
+fitted hair (cornrows, afro, bun, ponytail, long, bob, short) or a gele / scarf, and eleven outfits each, cut from her own
 body: Ankara gown, iro & buba with gele, bodycon mini, crop top & jeans, tee & joggers, office suit, fitness, sequin club
-dress and satin night wear (that one stays at home). One file each, `assets/people/p_<id>.glb` (about 2 MB).
+dress, satin night wear (that one stays at home), the police uniform (fitted black shirt, tight black skirt, belt, beret,
+court shoes) and rags (torn and dirty). Sgt Halima, the policewoman, has the biggest hips and backside of all (a shape of
+our own on top of MakeHuman's, `add_booty` in `women_lib.py`). One file each, `assets/people/p_<id>.glb` (about 2 MB).
 
 Each session a few of them are in town (4 on Low, 5 on Medium, 6 on High, so phones load less) and they play the parts the
 city's Mixamo women used to play, in that part's outfits (`ROLE_W` in `src/game.js`): the mama (Mama Nkechi or Iya Basira
-in iro & buba or a gown), the lady in red, the lady in black, the lady in a suit and the girl. The hawker and the
-policewoman are still the Mixamo ones.
+in iro & buba or a gown), the lady in red, the lady in black, the lady in a suit, the girl, and the policewoman who comes
+with the vans (Sgt Halima or Bisi, in uniform). The hawker is still the Mixamo one. On police duty, you wear your own
+person's police uniform.
 
 Making them again: build the women in `naija_women.blend` (`build_women.py`, then `dress()` in `women_cloth.py`), export from
 Blender with `women_export.py` (`export(name)`: rest-pose parts, weights, the skin, face and gele colours baked to pictures),
@@ -163,10 +166,26 @@ python3 tools/manifest.py
 The body is one mesh: its second colour set says which outfits cover each point, and the game draws only the skin the
 outfit leaves showing (`setOutfit` in `src/char2.js`). Fabrics come from `cloth_tex.py`.
 
+## The city's men
+Nine men made in Blender like the women (`tools/character/men`): Tunde, Emeka, Dayo, Chidi, Musa, Femi, Segun, Baba Sule and
+Sgt Okon. Six body types (slim, athletic, muscular, average, oga with a belly, old), a sculpted head joined onto the body's
+own neck, brows and beards painted on (stubble, moustache, goatee, full, grey), a short cut (low, fade, 360 waves, grey) or
+dreads, and eleven outfits each: senator, kaftan & cap, Super Eagles jersey, tee & jeans, office suit, singlet & shorts,
+hoodie & joggers, Ankara shirt, polo & chinos, the police uniform (black shirt and trousers, belt, beret, boots) and rags
+(torn and dirty). One file each, `assets/people/p_<id>.glb` (about 1.8 MB).
+
+Each session a few of them are in town, and they play the parts the city's Mixamo men used to play (`ROLE_M` in
+`src/game.js`): the baba (Baba Sule or Segun, in a kaftan or senator), the area boys (in singlets, jerseys and hoodies) and
+the policeman who comes with the vans (Sgt Okon, Chidi or Musa in uniform). The schoolboys are still the Mixamo ones.
+
+Making them again: `build()` in `tools/character/men/build_men.py`, `dress_m()` in `men_cloth.py`, `export_m()` in
+`men_export.py` (all in `naija_men.blend`, after `mload.py`), then outside Blender the same `women_glb.py` and gltfpack as
+for the women. Outfit parts are named `o<i>~` with i in base 36 (0-9, then a: the eleventh).
+
 ## Your profile
 The first time, you type a name and choose man or woman (and who you are). It is kept on the device and cannot be changed
 afterwards. A woman picks one of the city's nine women and walks, runs and fights with women's moves; the wardrobe shows her
-nine outfits, and the looks of your own side only.
+nine outfits, and the looks of your own side only. A man picks one of the nine men, with his eleven outfits.
 
 ## Life, fighting and the police
 People are solid: they step around each other, and you can't walk through them. Bump into someone hard and he may
@@ -558,6 +577,11 @@ Bodies, shoes and some hair from MakeHuman (MPFB, CC0). From Sketchfab, used und
 - Cornrows (Amaka): "Cornrow Braids Hairstyle" by OCBacon — https://sketchfab.com/3d-models/c8052613e7894027a272e5af04ca8da4
 - Afro (Ada): "Hair, Afro Style (Rose) - Character Items (Free)" by continuumreed — https://sketchfab.com/3d-models/4b2ab828306a4369a0665d9860b13541
 - Bun (Sgt Halima): "Messy Low Bun Female Hairstyle" by CliffUnderside — https://sketchfab.com/3d-models/db7a61ea9f2c45ddb0b7571972f9738f
+
+## Credits: the men
+Bodies, shoes and clothes' bases from MakeHuman (MPFB, CC0). From Sketchfab, used under CC BY 4.0:
+- The head: "Male Head Sculpt" by kleyyer — https://sketchfab.com/kleyyer
+- Dreads (Femi): "Short Dreadlocks" by tikoavp — https://sketchfab.com/tikoavp
 
 ## Credits: farm animals
 The farm's cows and hen are scanned models from Sketchfab, used under CC BY 4.0, rigged and animated for the game

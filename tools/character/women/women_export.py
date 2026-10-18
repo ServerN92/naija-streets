@@ -168,7 +168,7 @@ def export(name):
         o = bpy.data.objects.get(name + '.' + nm)
         if o: add(o, nm, [flat(s.material) for s in o.material_slots])
     # hair (hidden under a gele outfit) and her everyday head wear
-    gele_outfits = [k for k, (fn, sh, hd) in OUTFITS.items() if hd == 'gele' and PAL[name]['gele'] is not None]
+    gele_outfits = [k for k, (fn, sh, hd) in OUTFITS.items() if (hd == 'gele' and PAL[name]['gele'] is not None) or hd == 'beret']   # (her hair is under a gele or a beret)
     for o in bpy.data.objects:
         if o.get('nw') != name or o.type != 'MESH' or o.get('nw_cloth'): continue
         if o.get('nw_hair'):
@@ -182,9 +182,9 @@ def export(name):
     for i, k in enumerate(keys):
         fn, shoes, head = OUTFITS[k]; p = PAL[name]
         top = {'gown': p['gown'], 'iro_buba': p['buba'], 'bodycon': p['bodycon'], 'jeans': p['crop'], 'joggers': p['tee'], 'office': p['blazer'], 'fitness': p['bra'],
-               'club': p['sequin'], 'night': p['satin']}[k]
+               'club': p['sequin'], 'night': p['satin'], 'police': '#121419', 'rags': '#b9b09a'}[k]
         bot = {'gown': p['gown'], 'iro_buba': p['iro'], 'bodycon': p['bodycon'], 'jeans': '#3d5687', 'joggers': p['jog'], 'office': p['blazer'], 'fitness': p['leggings'],
-               'club': p['sequin'], 'night': p['satin']}[k]
+               'club': p['sequin'], 'night': p['satin'], 'police': '#121419', 'rags': '#7a6a4e'}[k]
         outfits.append(dict(id=k, name=NAMES[k], shoes=shoes, sw=[swatch(top, folder), swatch(bot, folder)]))
         for o in bpy.data.objects:
             if o.get('nw') != name or o.get('nw_cloth') != k or o.type != 'MESH': continue
