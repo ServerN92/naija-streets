@@ -5,6 +5,7 @@ import { createBiz } from './biz.js';
 import { createPark } from './park.js';
 import { createPvp } from './pvp.js';
 import { createLaw } from './law.js';
+import { lifeOk } from './life.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
 export const PROTO = 1;
@@ -13,6 +14,7 @@ const SEE = 160, CELL = 160;      // you see people this far away (m); grid cell
 const MAX_SEEN = 30;              // the nearest 30 at most
 const NEAR_CHAT = 60;             // "near" chat reaches this far (m)
 const START_MAX = 50000;          // money you can bring from playing as a guest, when you make an account
+const START_CASH = 1000;          // what a new life starts with (under the bridge)
 const EARN_CAP = 250000, EARN_RATE = 150;   // money from the game itself: ₦250k at once, then ₦150 a second (₦540k an hour)
 const SESSION_DAYS = 90;
 const LOOK_IDS = /^p_[a-z]{2,10}$/;
@@ -90,7 +92,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     C.p = { id: nextId++, name: u.name, look, lv: 0, x: 0, y: 0, z: 0, r: 0, a: 'i', s: 0, v: '', vc: '', q: 0, h: 1, ver: 0, has: false, bd: park.badge(u.id) };
     C.seen = new Map();
     db.seen(u.id, t);
-    send(C, { t: 'me', tok, id: C.p.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, n: online.size });
+    const life = db.lifeGet(u.id);
+    send(C, { t: 'me', tok, id: C.p.id, uid: u.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, life, n: online.size });
     biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C);
     log('in', u.name, online.size);
   }
@@ -109,10 +112,12 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (db.user(name)) return err(C, 'reg', 'That username is taken. Try another one.');
     const { salt, hash } = await hashPass(m.p);
     if (db.user(name)) return err(C, 'reg', 'That username is taken. Try another one.');
-    const cash = Math.max(0, Math.min(START_MAX, Math.floor(+m.cash || 0)));
+    const life = lifeOk(m.life, now());   // the life you lived as a guest comes with you (and the money, up to a limit)
+    const cash = life ? Math.max(0, Math.min(START_MAX, Math.floor(+m.cash || 0))) : START_CASH;
     const look = lookOk(m.look);
     const id = db.addUser({ name, salt, hash, email, now: now(), cash, look: look ? JSON.stringify(look) : null });
     db.log(id, now(), cash, 0, cash, 'start');
+    if (life) db.lifePut(id, life);
     log('new account', name);
     await signIn(C, db.userById(id));
   }
@@ -205,6 +210,10 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     C.dsum += m.d; C.dirty = true; C.cseq = seq;
     send(C, { t: '$', n: C.cash, s: seq });
   }
+  function setLife(C, m) {
+    C.lifeLim = C.lifeLim || new Bucket(6, .5); if (!C.lifeLim.take()) return;
+    const d = lifeOk(m.d, now()); if (d) db.lifePut(C.user.id, d);
+  }
   function setLook(C, m) {
     const look = lookOk(m); if (!look) return;
     C.p.look = look; C.p.lv++; C.p.ver++;
@@ -239,7 +248,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function pk(C, m) { C.pkLim = C.pkLim || new Bucket(10, 2); if (!C.pkLim.take()) return; if (typeof m.a === 'string') park.handle(C, m); }
   function hit(C, m) { C.hitLim = C.hitLim || new Bucket(8, 4); if (!C.hitLim.take()) return; pvp.hit(C, m); }
   function lawMsg(C, m) { C.lawLim = C.lawLim || new Bucket(10, 2); if (!C.lawLim.take()) return; if (typeof m.a === 'string') law.handle(C, m); }
-  const IN = { p: move, say, $: cash, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit, law: lawMsg };
+  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit, law: lawMsg };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };

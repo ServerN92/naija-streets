@@ -31,6 +31,13 @@ const SCHEMA = [
    CREATE TABLE park_m(uid INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, park TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(uid, park));`,
   // v5: the police: who is in the force, their arrests and rank, suspensions
   `CREATE TABLE law(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL);`,
+  // v6: everybody starts over, from under the bridge: ₦1,000 in the pocket (what each one had is kept in before6), and a
+  // life record (where you sleep, rent, the clothes you own) that the game fills in
+  `CREATE TABLE life(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL);
+   CREATE TABLE before6(uid INTEGER PRIMARY KEY, cash INTEGER NOT NULL, t INTEGER NOT NULL);
+   INSERT INTO before6(uid, cash, t) SELECT id, cash, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM users;
+   INSERT INTO ledger(uid, t, d, held, bal, k) SELECT id, CAST(strftime('%s','now') AS INTEGER) * 1000, 1000 - cash, 0, 1000, 'start over' FROM users;
+   UPDATE users SET cash = 1000;`,
 ];
 
 export function openDb(file) {
@@ -74,6 +81,8 @@ export function openDb(file) {
     backDel: q('DELETE FROM mkback WHERE uid=?'),
     lawGet: q('SELECT * FROM law WHERE uid=?'),
     lawPut: q('INSERT INTO law(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data'),
+    lifeGet: q('SELECT data FROM life WHERE uid=?'),
+    lifePut: q('INSERT INTO life(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data'),
     parkGet: q('SELECT * FROM park WHERE id=?'),
     parkPut: q('INSERT INTO park(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data'),
     pmAll: q('SELECT m.uid, m.data, u.name FROM park_m m JOIN users u ON u.id=m.uid WHERE m.park=?'),
@@ -119,6 +128,8 @@ export function openDb(file) {
     backTake: uid => { const r = S.backOf.all(uid); if (r.length) S.backDel.run(uid); return r; },
     lawGet: uid => S.lawGet.get(uid) || null,
     lawPut: (uid, data) => S.lawPut.run(uid, data),
+    lifeGet: uid => { const r = S.lifeGet.get(uid); if (!r) return null; try { return JSON.parse(r.data); } catch (e) { return null; } },
+    lifePut: (uid, d) => S.lifePut.run(uid, JSON.stringify(d)),
     parkGet: id => S.parkGet.get(id) || null,
     parkPut: (id, data) => S.parkPut.run(id, data),
     pmAll: park => S.pmAll.all(park),

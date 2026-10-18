@@ -38,6 +38,7 @@ function client() {
 async function account(name, pass = 'secret77', extra = {}) {
   const c = client(); await c.open; c.send({ t: 'hi', v: PROTO }); await c.next('guest');
   c.send({ t: 'reg', u: name, p: pass, ...extra }); const me = await c.next(m => m.t === 'me' || m.t === 'err');
+  if (me.t === 'me' && me.cash && !extra.life) { c.send({ t: '$', d: -me.cash, s: 0 }); await c.next('$'); }   // the tests count from nothing (a new life starts with ₦1,000)
   return [c, me];
 }
 
@@ -50,9 +51,9 @@ test('make an account, bad names and passwords refused, sign in again with the t
   for (const [u, p] of [['ab', 'secret77'], ['has space', 'secret77'], ['admin', 'secret77'], ['Tunde_1', '123'], ['Tunde_1', 'password'], ['Tunde_1', 'tunde_1']]) {
     c.send({ t: 'reg', u, p }); const e = await c.next('err'); assert.equal(e.w, 'reg', u + ' ' + p);
   }
-  c.send({ t: 'reg', u: 'Tunde_1', p: 'mushin2026', e: 'Tunde@Example.com', cash: 999999, look: { c: 'p_dayo', f: 2, g: 'm' } });
+  c.send({ t: 'reg', u: 'Tunde_1', p: 'mushin2026', e: 'Tunde@Example.com', cash: 999999, look: { c: 'p_dayo', f: 2, g: 'm' }, life: { home: 'room', rent: 3600, rented: 1, own: ['rags', 'polo'] } });
   const me = await c.next('me');
-  assert.equal(me.name, 'Tunde_1'); assert.equal(me.cash, 50000, 'guest money is capped'); assert.equal(me.email, 'tu***@example.com'); assert.ok(me.tok.length > 30);
+  assert.equal(me.name, 'Tunde_1'); assert.equal(me.cash, 50000, 'guest money is capped'); assert.equal(me.life.home, 'room'); assert.deepEqual(me.life.own, ['rags', 'polo']); assert.equal(me.email, 'tu***@example.com'); assert.ok(me.tok.length > 30);
   c.close();
   // the same name in other letters is taken
   const [d, e] = await account('tunde_1'); assert.equal(e.t, 'err'); assert.match(e.m, /taken/); d.close();
@@ -102,7 +103,8 @@ test('two players near each other see each other move, far ones do not; chat nea
 });
 
 test('money: spending works, earning is capped by time, the server number is the real one', async () => {
-  const [c, me] = await account('Cash_Man'); assert.equal(me.cash, 0);
+  const [c, me] = await account('Cash_Man'); assert.equal(me.cash, 1000, 'a new life starts with ₦1,000'); assert.equal(me.life, null);
+  c.send({ t: '$', d: -1000, s: 0 }); assert.equal((await c.next('$')).n, 0);
   c.send({ t: '$', d: 5000, s: 1 }); assert.deepEqual(await c.next('$'), { t: '$', n: 5000, s: 1 });
   c.send({ t: '$', d: -7000, s: 2 }); assert.equal((await c.next('$')).n, 0, 'never below zero');
   c.send({ t: '$', d: 4000000, s: 3 }); const big = await c.next('$'); assert.ok(big.n <= 250100 && big.n >= 245000, 'held at the cap: ' + big.n);
@@ -238,4 +240,14 @@ test('the police over the line: join, go on duty, the wanted list comes with the
   c.send({ t: 'law', a: 'settleok', i: ask.i }); const st = await r.next('settled'); assert.equal(st.amt, 2000);
   await r.next(m => m.t === '$' && m.n === r0 - 2000, 5000);   // he paid
   void cme; c.close(); r.close();
+});
+
+test('a life over the line: kept with the account, checked for sense, back at the next sign-in', async () => {
+  const [c, me] = await account('Life_Man'); assert.equal(me.life, null);
+  c.send({ t: 'life', d: { home: 'flat', flat: true, rent: 7200, rented: 3, own: ['rags', 'suit', 'BAD ONE', 7], ease: 5, t: 1 } });
+  c.send({ t: 'life', d: 'nonsense' });
+  await new Promise(r => setTimeout(r, 200)); c.close();
+  const d = client(); await d.open; d.send({ t: 'login', u: 'life_man', p: 'secret77' }); const me2 = await d.next('me');
+  assert.equal(me2.life.home, 'flat'); assert.equal(me2.life.flat, true); assert.equal(me2.life.rented, 3); assert.deepEqual(me2.life.own, ['rags', 'suit']); assert.equal(me2.life.ease, 1);
+  d.close();
 });
