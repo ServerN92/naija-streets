@@ -1767,12 +1767,13 @@ const CAST={
    the mama at the market, the lady in red, the lady in black, the lady in a suit, the girl (ROLE_W: who, and in what). */
 const WOMEN={p_amaka:'Amaka',p_ada:'Ada',p_chioma:'Chioma',p_bisi:'Bisi',p_kemi:'Kemi',p_funmi:'Funmi',p_nkechi:'Mama Nkechi',p_basira:'Iya Basira',p_halima:'Sgt Halima'};
 const W_SKIN={p_amaka:'#6c4e3b',p_ada:'#473224',p_chioma:'#7b5d48',p_bisi:'#6c4e3b',p_kemi:'#39271c',p_funmi:'#5b402f',p_nkechi:'#473224',p_basira:'#5b402f',p_halima:'#7b5d48'};
-const W_STREET=['gown','iro_buba','bodycon','jeans','joggers','office','fitness','club'];   // (night wear stays at home)
+const W_STREET=['gown','iro_buba','bodycon','jeans','joggers','office','fitness','club'];   // (night wear stays at home; police for the police, rags for nobody)
 const ROLE_W={mama:[['p_nkechi',['iro_buba','gown']],['p_basira',['iro_buba','gown','joggers']]],
   lady_red:[['p_amaka',['bodycon','club','gown']],['p_bisi',['gown','bodycon','club']]],
   lady_black:[['p_ada',['jeans','club','bodycon']],['p_kemi',['jeans','fitness','joggers']]],
   suit_lady:[['p_funmi',['office']],['p_halima',['office']]],
-  girl:[['p_chioma',['jeans','joggers','fitness','bodycon']],['p_kemi',['fitness','joggers','jeans']],['p_ada',['jeans','joggers']]]};
+  girl:[['p_chioma',['jeans','joggers','fitness','bodycon']],['p_kemi',['fitness','joggers','jeans']],['p_ada',['jeans','joggers']]],
+  police_f:[['p_halima',['police']],['p_bisi',['police']]]};   // the policewoman who comes with the vans: Sgt Halima (or Bisi) in uniform
 const W_IN=(()=>{ let me=null; try{ me=localStorage.getItem('naija-look2'); }catch(e){} if(!(me in WOMEN)) me=PROFILE&&PROFILE.c in WOMEN?PROFILE.c:null; if(!isF()) me=null;
   const want=qKey==='low'?4:qKey==='high'?6:5, S=new Set(), pick={}, rnd=L=>L[(Math.random()*L.length)|0];
   for(const r in ROLE_W){ const L=ROLE_W[r].filter(([w])=>w!==me), fresh=L.filter(([w])=>!S.has(w)), here=L.filter(([w])=>S.has(w));
@@ -3777,6 +3778,11 @@ function wearUnion(st,obj,kind){ const vk=kind==='p'?'k':kind==='c'?'g':kind==='
   if(st.hk!==hk){ if(st.hat){ if(st.hat.parent) st.hat.parent.remove(st.hat); (HATS.pool[st.hat.kind]||HATS.pool.fila).push(st.hat); st.hat=null; } st.hk=hk;
     if(hk){ const m=hatMesh(hk); if(!m){ loadHats(); st.hk=null; } else { const head=boneOf(obj,/Head$/); if(head){ attachTo(m,head,HAT_HOLD.beret); m.scale.multiplyScalar(HAT_HOLD.beret.k); st.hat=m; } else (HATS.pool[hk]||HATS.pool.fila).push(m); } } } }
 const MYWEAR={};
+// on police duty our people wear their own police uniform (their 'police' outfit); the vest and cap are for the Mixamo looks
+function dutyWear(st,obj,kind,id,fit){ const C=isV2(id)?V2.casts[id]:null, pi=C&&!C.mx?fitsOf(C,['police'])[0]:undefined, on=kind==='p'&&pi!==undefined;
+  if(st.dObj!==obj){ st.dObj=obj; st.dOn=false; }
+  if(obj&&on!==st.dOn){ C2.setOutfit(obj,on?pi:fit); st.dOn=on; }
+  wearUnion(st,obj,on?'':kind); }
 
 /* ================= fighting =================
    On foot: J or left click = punch (jab, cross, jab…), K or right click = kick (after two punches: the finisher that floors him),
@@ -5030,7 +5036,7 @@ function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); cons
     tpl.updateMatrixWorld(true); for(const m of ch.mats) if(m.map) renderer.initTexture(m.map);
     return V2.casts[id]={tpl,clips,off,y0:0,sc:1,f:P.f,idle0:'idle',v2:true,mx:!!P.mx,shape:!!P.shape,info:D,meta:ch.meta,wv:P.f?(fw?1.61:.93):1.77,rv:P.f?(fr?4.9:4.2):4.7,w2v:P.f?.97:.92,npc:{clips:nclips,off:noff}};
   })().catch(e=>{ console.warn('person '+id+' could not load',e); delete V2.job[id]; return null; })); }
-const fitOf=id=>{ const i=+V2.fit[id], C=V2.casts[id], n=C?C2.outfitCount(C.meta):id in WOMEN?9:id in MEN?11:4; return i>=0&&i<n?i:0; };
+const fitOf=id=>{ const i=+V2.fit[id], C=V2.casts[id], n=C?C2.outfitCount(C.meta):id in WOMEN||id in MEN?11:4; return i>=0&&i<n?i:0; };
 // Tunde, Amaka and Ada walk the streets too, each in one of their outfits
 const fitsOf=(C,ids)=>{ const outs=(C.meta&&C.meta.outfits)||[]; return (ids||[]).map(k=>outs.findIndex(o=>o.id===k)).filter(i=>i>=0); };
 // one of the women playing one of the city's parts (the mama, the lady in red ...), in that part's outfits
@@ -5039,7 +5045,7 @@ function womanPart(id){ const c=CAST[id], C=V2.casts[c.as[0]]; if(!C) return fal
     idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>cl[n]&&c.idle.includes(n))||(cl.f_idle&&C.f?'f_idle':'idle_1')}; PEOPLE.n++; return true; }   // (a man too, for ROLE_M)
 function npcV2(id){ const C=V2.casts[id], c=CAST[id]; if(!C||!c||PEOPLE.casts[id]) return; const cl=C.npc.clips, fits=fitsOf(C,c.fits);
   PEOPLE.casts[id]={tpl:C.tpl,clips:cl,off:C.npc.off,y0:0,sc:1,f:!!c.f,v2:true,fits:fits.length?fits:null,fit0:fits.length?fits[0]:0,idle0:['f_idle','idle_suit','idle_1','idle_baba','idle_2','idle_3','idle_4'].find(n=>cl[n]&&c.idle.includes(n))||'idle_1'}; PEOPLE.n++; }
-function wearFit(i){ const id=WARD.cur; if(!isV2(id)||!hero) return; C2.setOutfit(hero.cObj,i); V2.fit[id]=i; try{ localStorage.setItem('naija-fit',JSON.stringify(V2.fit)); }catch(e){} }
+function wearFit(i){ const id=WARD.cur; if(!isV2(id)||!hero) return; C2.setOutfit(hero.cObj,i); MYWEAR.dOn=false; V2.fit[id]=i; try{ localStorage.setItem('naija-fit',JSON.stringify(V2.fit)); }catch(e){} }
 // put on a look: the body is swapped inside the same character, so walking, driving and fighting carry on as before
 async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const v2=isV2(id), L=v2?v2Of(id):LOOK_LIST.find(l=>l.id===id); if(!L) return false; if(id===WARD.cur) return true;
   let C=null;
@@ -7353,7 +7359,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); if(hero&&(UNION||POLICE)) wearUnion(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():''); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -7480,7 +7486,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
   pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); },
   biz:m=>{ if(BIZ) BIZ.on(m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
-  wear:R=>wearUnion(R.wst||(R.wst={}),R.inner,R.b||''),
+  wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
 // the bukas players own (src/business.js): the model from Blender (tools/blender_buka.py) with the farm's photo detail
 BIZ=createBusiness({ THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGlb,

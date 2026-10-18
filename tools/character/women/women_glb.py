@@ -16,7 +16,7 @@ import gametex as GT
 import garments as G
 
 MOVES = os.path.join(HERE, '..', '..', '..', 'assets', 'people', 'moves.glb')
-TUBES = {'gown_skirt', 'buba_tail', 'iro', 'bodycon_skirt', 'club_skirt', 'slip_skirt', 'pencil', 'senator_tail', 'kaftan_tail'}
+TUBES = {'gown_skirt', 'buba_tail', 'iro', 'bodycon_skirt', 'club_skirt', 'slip_skirt', 'pencil', 'senator_tail', 'kaftan_tail', 'pskirt', 'rag_skirt'}
 NO_HIDE = {'gele', 'button', 'lapels', 'pockets', 'tie', 'placket', 'buckle', 'pouch', 'beret', 'kufi'}
 B36 = '0123456789abcdefghijklmnopqrstuvwxyz'   # outfit i in a part's name (the men have eleven outfits)
 

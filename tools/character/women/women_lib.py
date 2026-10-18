@@ -348,7 +348,7 @@ WOMEN = {
     'Funmi': dict(body='Slim-thick', tone='medium', age=.52, skin=YOUNG, hair='bob02/bob02.mhclo', lips=(.12, .035, .03), face=[T('head-oval', -.15), T('head-square', .12)]),
     'Mama Nkechi': dict(body='Orobo', tone='dark', age=.68, skin=MIDDLE, hair='', lips=(.08, .018, .02), face=[T('head-round', .4), T('head-fat-incr', .9), T('neck-double-incr', .35)] + both('cheek-volume-incr', .6)),
     'Iya Basira': dict(body='Orobo', tone='medium', age=.62, skin=MIDDLE, hair='', lips=(.09, .03, .025), face=[T('head-fat-incr', .75), T('nose-scale-horiz-decr', -.2)] + both('cheek-volume-incr', .4)),
-    'Sgt Halima': dict(body='Slim-thick', tone='fair', age=.5, skin=YOUNG, hair='', lips=(.12, .04, .035), face=[T('nose-scale-vert-incr', .2), T('chin-prominent-incr', .1)]),
+    'Sgt Halima': dict(body='Figure 8', tone='fair', age=.5, skin=YOUNG, hair='', lips=(.14, .03, .035), face=[T('nose-scale-vert-incr', .2), T('chin-prominent-incr', .1)], booty=1.),   # the policewoman: big hips and backside
 }
 
 def merge(*lists):
@@ -372,9 +372,35 @@ def make_woman(name, x=0., subdiv=1, clothes=(), with_hair=True, brows=None, las
     rig.location.x = x; rig.name = 'NW_' + name.replace(' ', '_')
     for o in [rig] + list(rig.children_recursive): o['nw'] = name
     tune(name, rig, body, str(AssetService.find_asset_absolute_path(P['skin'], 'skins')), dict(skin=SKIN[P['tone']], lips=P.get('lips', (.4, .08, .1))))
+    if P.get('booty'): add_booty(body, rig, P['booty'])
     makeup_masks(name, rig, body)
     log('woman', name, P['body'], 'height', round(body.dimensions.z, 3))
     return rig, body
+
+def add_booty(body, rig, k=1.):
+    """a rounder, bigger backside and wider hips than MakeHuman's own targets go: a shape key of our own on top of them"""
+    import numpy as np
+    me = body.data
+    if not me.shape_keys: body.shape_key_add(name='Basis', from_mix=False)
+    for nm in ('NW_Booty', 'NW_tmp'):
+        kb = me.shape_keys.key_blocks.get(nm)
+        if kb: body.shape_key_remove(kb)
+    tmp = body.shape_key_add(name='NW_tmp', from_mix=True); n = len(me.vertices)
+    P = np.zeros(n * 3); tmp.data.foreach_get('co', P); P = P.reshape(-1, 3); body.shape_key_remove(tmp)
+    M = np.array(body.matrix_world); Pw = P @ M[:3, :3].T + M[:3, 3]
+    h = np.array(rig.matrix_world @ rig.pose.bones['mixamorig:Hips'].head)
+    D = np.zeros((n, 3))
+    for s in (-1., 1.):
+        d = (Pw - (h + [s * .085, .075, -.075])) / [.085, .085, .11]
+        g = np.exp(-(d ** 2).sum(1)) * (Pw[:, 1] > h[1] - .01)                  # each cheek, out behind her (+Y is her back)
+        D += g[:, None] * np.array([s * .01, .056, -.006]) * k
+        d2 = (Pw - (h + [s * .15, 0., -.06])) / [.06, .1, .12]
+        g2 = np.exp(-(d2 ** 2).sum(1)); D += g2[:, None] * np.array([s * .013, .004, 0.]) * k   # the hips, wider
+    D[np.abs(Pw[:, 0] - h[0]) > .26] = 0.                                          # (never her hands)
+    Dl = D @ np.linalg.inv(M[:3, :3]).T
+    basis = me.shape_keys.key_blocks[0]; B = np.zeros(n * 3); basis.data.foreach_get('co', B)
+    kb = body.shape_key_add(name='NW_Booty', from_mix=False); kb.data.foreach_set('co', (B.reshape(-1, 3) + Dl).ravel()); kb.value = 1.
+    log('booty', body.name, round(float(np.abs(D).max()), 3), 'm')
 
 def head_at(rig):
     pb = rig.pose.bones.get('mixamorig:Head') or rig.pose.bones.get('head')

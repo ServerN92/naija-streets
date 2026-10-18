@@ -7,22 +7,6 @@ import numpy as np
 from mathutils import Vector
 
 # ------------------------------------------------------------------ helpers
-def ragged(b, z, amp=.018, seed=1):
-    """a torn hem: keep above z, the edge torn in uneven tongues"""
-    r = np.random.RandomState(seed); th = b.theta
-    n = sum(r.uniform(.4, 1.) * np.sin(k * th + r.uniform(0, 6.3)) / k ** .6 for k in (5, 9, 13, 21))
-    return b.V[:, 2] - (z + amp * n)
-
-def holes(b, count=7, rmin=.012, rmax=.03, parts=('torso',), zlo=None, zhi=None, seed=3):
-    """round tears in the cloth (blobs where the field is < 0)"""
-    r = np.random.RandomState(seed); V = b.V
-    cand = np.nonzero(np.isin(b.part, list(parts)) & (V[:, 2] > (zlo if zlo is not None else -9)) & (V[:, 2] < (zhi if zhi is not None else 9)))[0]
-    s = np.full(b.n, 9.)
-    for c in r.choice(cand, count, replace=False):
-        rad = r.uniform(rmin, rmax); d = np.linalg.norm((V - V[c]) * [1, 1, .8], axis=1)
-        s = np.minimum(s, d - rad)
-    return s
-
 def strip_front(b, w0, w1, ztop, zbot, out_y=.02):
     """a strip down the front centre (a tie): w0 wide at ztop, w1 at zbot"""
     V = b.V; cx = b.neck[0]; t = np.clip((ztop - V[:, 2]) / max(.01, ztop - zbot), 0, 1); w = w0 + (w1 - w0) * t
@@ -55,75 +39,7 @@ def tail(b, z_top, z_bot, ease=.02, name='tail', folds=None):
     return tube(b, z_top, z_bot, ['torso', 'legL', 'legR'], ease=ease, min_ease=ease * .6, weights_mix=('Hips', lambda z: .35 + .3 * smoothstep(b.hip[2], z_bot, z)),
                 folds=folds, name=name, step=.016)
 
-# ------------------------------------------------------------------ head wear on the new head (clipped clean like the haircuts)
-def head_piece(person, line_fn, off_fn, name, shift=None):
-    """the new head's surface above line_fn(angle) (m above eye level), lifted off it by off_fn(h, a, p)"""
-    F = head_F(person); V, N, polys, ez, c = F['V'], F['N'], F['polys'], F['eyez'], F['ctr']
-    H, A = [], []
-    for p in V:
-        d = p - c; a = math.degrees(math.atan2(d.x, -d.y)); A.append(a)
-        H.append(-1. if (d.length > .17 or p.z < ez - .1) else p.z - ez - line_fn(abs(a)))
-    verts, nrm, hh, aa, idx, ek, faces = [], [], [], [], {}, {}, []
-    def keep(i):
-        if i not in idx: idx[i] = len(verts); verts.append(V[i]); nrm.append(N[i]); hh.append(H[i]); aa.append(A[i])
-        return idx[i]
-    def cut(i, j):
-        k = (min(i, j), max(i, j))
-        if k not in ek:
-            t = H[i] / (H[i] - H[j]); ek[k] = len(verts); verts.append(V[i].lerp(V[j], t)); nrm.append(N[i].lerp(N[j], t).normalized()); hh.append(0.); aa.append(A[i])
-        return ek[k]
-    for poly in polys:
-        hs = [H[i] for i in poly]
-        if max(hs) <= 0: continue
-        if min(hs) > 0: faces.append([keep(i) for i in poly]); continue
-        out = []
-        for k in range(len(poly)):
-            i, j = poly[k], poly[(k + 1) % len(poly)]
-            if H[i] > 0: out.append(keep(i))
-            if (H[i] > 0) != (H[j] > 0): out.append(cut(i, j) if H[i] > 0 else cut(j, i))
-        if len(set(out)) >= 3: faces.append(out)
-    P = np.array([tuple(p + n * off_fn(h, a, p)) for p, n, h, a in zip(verts, nrm, hh, aa)])
-    if shift is not None: P = P + np.array([shift(h, a, p) for p, h, a in zip(verts, hh, aa)])
-    rig = F['rig']; hb = 'mixamorig:Head'
-    uv = np.c_[P[:, 0], P[:, 1]]
-    return dict(name=name, verts=P, faces=faces, uv=uv, duv=uv.copy(), part=np.full(len(P), 6.), uper=np.zeros(len(P)), weights={hb: np.ones(len(P))})
-
-def beret(person, name='beret', K=48):
-    """a police beret: a band round the head over the brows, and a flat round crown bigger than the head, pulled down
-    over his right ear (his right is -X) where it hangs past the head"""
-    from mathutils.bvhtree import BVHTree
-    F = head_F(person); c = F['ctr']; ez = F['eyez']
-    bvh = BVHTree.FromPolygons(F['V'], F['polys'])
-    top = max(p.z for p in F['V'])
-    def rad(z, a):
-        o = Vector((c.x, c.y, z)); d = Vector((math.sin(a), -math.cos(a), 0.)); hit = bvh.ray_cast(o + d * .2, -d, .2)
-        return (hit[0] - o).length if hit[0] is not None else .08
-    ang = np.linspace(-math.pi, math.pi, K, endpoint=False)
-    zb = np.array([ez + .036 - .04 * smoothstep(1., 2.9, abs(a)) for a in ang])         # the band: low over the brows, lower round the back
-    rows = []
-    for dz, out in ((0., .004), (.012, .0045), (.022, .006)):
-        rows.append([(rad(z + dz, a) + out, z + dz) for a, z in zip(ang, zb)])
-    r0 = np.array([r for r, z in rows[-1]]); z0 = np.array([z for r, z in rows[-1]])
-    right = np.maximum(0., -np.sin(ang)); left = np.maximum(0., np.sin(ang))            # (his right is -X)
-    over = .007 + .038 * right ** 1.5 + .006 * np.maximum(0., -np.cos(ang))
-    zr = z0 + .03 + .012 * left - .03 * right ** 1.5                                      # the rim: close over his left, flopped down over his right ear
-    zt = top + .012
-    # crown: from the band out to the rim (a soft roll), then in to a flat top
-    for t in (.3, .6, .85, 1.):
-        r = r0 + over * math.sin(t * math.pi / 2); z = z0 + (zr - z0) * (t ** .8)
-        rows.append(list(zip(r, z)))
-    for t in (.25, .55, .8):
-        r = (r0 + over) * (1 - t) ** .9; z = zr + (zt - zr) * math.sin(t * math.pi / 2) - .01 * right * (1 - t)
-        rows.append(list(zip(r, z)))
-    P = []
-    for row in rows:
-        for (r, z), a in zip(row, ang): P.append((c.x + math.sin(a) * r, c.y - math.cos(a) * r, z))
-    P.append((c.x - .01, c.y + .005, zt)); P = np.array(P)
-    R = len(rows); faces = [[i * K + k, (i + 1) * K + k, (i + 1) * K + (k + 1) % K, i * K + (k + 1) % K] for i in range(R - 1) for k in range(K)]
-    n = R * K; faces += [[(R - 1) * K + k, n, (R - 1) * K + (k + 1) % K] for k in range(K)]
-    uv = np.c_[P[:, 0], P[:, 1]]
-    return dict(name=name, verts=P, faces=faces, uv=uv, duv=uv.copy(), part=np.full(len(P), 6.), uper=np.zeros(len(P)), weights={'mixamorig:Head': np.ones(len(P))})
-
+# ------------------------------------------------------------------ head wear (head_piece, beret: women_cloth.py)
 def kufi(person, name='kufi'):
     """a round cap (with the kaftan): straight sides, a flat top"""
     line = lambda a: .05 - .03 * smoothstep(60, 170, a)

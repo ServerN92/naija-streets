@@ -143,14 +143,17 @@ and add the character to `CAST` in `src/game.js` (height, how common, what it do
 ## The city's women
 Nine women made in Blender (`tools/character/women`): Amaka, Ada, Chioma, Bisi, Kemi, Funmi, Mama Nkechi, Iya Basira and
 Sgt Halima. Four body types (curvy, slim-thick, slim, big), a sculpted head with real eyes, lipstick and her own skin tone,
-fitted hair (cornrows, afro, bun, ponytail, long, bob, short) or a gele / scarf, and nine outfits each, cut from her own
+fitted hair (cornrows, afro, bun, ponytail, long, bob, short) or a gele / scarf, and eleven outfits each, cut from her own
 body: Ankara gown, iro & buba with gele, bodycon mini, crop top & jeans, tee & joggers, office suit, fitness, sequin club
-dress and satin night wear (that one stays at home). One file each, `assets/people/p_<id>.glb` (about 2 MB).
+dress, satin night wear (that one stays at home), the police uniform (fitted black shirt, tight black skirt, belt, beret,
+court shoes) and rags (torn and dirty). Sgt Halima, the policewoman, has the biggest hips and backside of all (a shape of
+our own on top of MakeHuman's, `add_booty` in `women_lib.py`). One file each, `assets/people/p_<id>.glb` (about 2 MB).
 
 Each session a few of them are in town (4 on Low, 5 on Medium, 6 on High, so phones load less) and they play the parts the
 city's Mixamo women used to play, in that part's outfits (`ROLE_W` in `src/game.js`): the mama (Mama Nkechi or Iya Basira
-in iro & buba or a gown), the lady in red, the lady in black, the lady in a suit and the girl. The hawker and the
-policewoman are still the Mixamo ones.
+in iro & buba or a gown), the lady in red, the lady in black, the lady in a suit, the girl, and the policewoman who comes
+with the vans (Sgt Halima or Bisi, in uniform). The hawker is still the Mixamo one. On police duty, you wear your own
+person's police uniform.
 
 Making them again: build the women in `naija_women.blend` (`build_women.py`, then `dress()` in `women_cloth.py`), export from
 Blender with `women_export.py` (`export(name)`: rest-pose parts, weights, the skin, face and gele colours baked to pictures),
