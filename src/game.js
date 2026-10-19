@@ -467,6 +467,7 @@ for(const N of NEWV) LATE_FILES[N.k]=[N.k,'+x',0,1];   // size 0: they come at t
 LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
 const NEWV_K=Object.fromEntries(NEWV.map(N=>[N.k,N]));
 // run f(model) as soon as a late model is in (now, if it already is)
+let FDET=null;   // the farm detail texture (declared early: the police checkpoint asks for it before the farm code runs)
 const MODEL_WAIT={}; function whenModel(k,f){ if(MODELS[k]) f(MODELS[k]); else (MODEL_WAIT[k]=MODEL_WAIT[k]||[]).push(f); }
 function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker'].includes(k))) return;
   if(k==='policevan'){ WHEEL.policevan={r:.35,hw:.13}; SEATS.policevan=SEATS.police; return; }
@@ -8199,7 +8200,6 @@ function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-last
 // the farm's photo textures: every farm model marks each face wood / zinc / mud plaster / concrete (UV channel 0, set in
 // tools/blender_farm.py); this lays the matching photo (fm_detail.jpg: raw planks, rusty zinc, clay plaster, concrete from
 // Poly Haven) over the model's own colours, projected from the three sides so nothing needs unwrapping
-let FDET=null;
 function farmDetailTex(){ if(!FDET){ const p='assets/models/fm_detail.jpg', k=AV[p]||MANIFEST[p]; FDET=new THREE.TextureLoader().load(k?p+'?v='+k:p); FDET.anisotropy=Math.min(8,maxAniso); } return FDET; }
 function farmDetail(geo,mat){
   if(geo&&geo.attributes.uv&&!geo.attributes.fcls){ geo.setAttribute('fcls',geo.attributes.uv); geo.deleteAttribute('uv'); }
