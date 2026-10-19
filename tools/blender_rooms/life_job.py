@@ -64,6 +64,17 @@ try:
         for o in bpy.data.objects: o.hide_render = False
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(LIFE, 'naija_life.blend'))
         log('pieces done')
+    elif job == 'airport':
+        import blender_airport_landside as AL; importlib.reload(AL)
+        made = AL.build_all(names or None); log('built', made)
+        for o in list(bpy.data.objects):
+            if o.name == 'LookCam' or o.name.endswith('_lod1'): continue
+            for q in bpy.data.objects: q.hide_render = (q is not o) and q.name != 'LookCam'
+            big = o.name == 'ns_carpark'
+            look([o], os.path.join(LIFE, 'airport', f'look_{o.name}.png'), views=((.6, -1.0, .55), (-.7, .8, .9)) if not big else ((0, -1, .8), (.4, .2, 1)))
+        for o in bpy.data.objects: o.hide_render = False
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.join(LIFE, 'airport', 'naija_airport_landside.blend'))
+        log('airport done')
     elif job == 'room':
         src = open(os.path.join(BASE, 'rooms_all3.py'), encoding='utf8').read()
         src = src[:src.index("try:\n    open(LOGF")]

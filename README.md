@@ -436,6 +436,22 @@ On some side streets two area boys hold a rope across the road with a ₦200 TO 
 rope. Walk past without paying and they fight you (their friends join); drive through and the rope breaks: they chase
 you throwing stones, then give up and tie it again. Traffic pays and passes.
 
+## The airport road: toll gate, car park, impound yard
+Agege Motor Road leads north to Murtala Muhammed Airport. The road is open all the way to the terminal (the city's
+ground and the airport's ground now meet with no gap).
+- **Toll gate (₦300):** two lanes in, each with a booth and a barrier arm. Stop by the booth and press E to pay; the arm
+  lifts. A closed arm stops you; hit it fast and it breaks: airport security calls the police (one star). Going round
+  the plaza (grass, the exit lanes) does the same. Leaving is free. People on foot use the walkway on the side, free.
+  OYA RIDE taxis pay and pass by themselves.
+- **No okada, no keke** past the toll (red boards on both sides before it). Ride one in and security seizes it to the
+  **impound yard** next to the toll; pay ₦5,000 at its office to get it back (it waits outside the gate). An okada ride
+  on OYA RIDE drops you at the toll and you walk in.
+- **Car park (free):** marked bays on both sides of the road in front of the terminal, most taken by other cars. Stop in a
+  free bay and get out: your car waits there. Walk over the zebra crossings to the terminal doors.
+The pieces (`ns_airtoll`, `ns_airtoll_arm`, `ns_bansign`, `ns_carpark`, `ns_impound`) were made in the user's Blender with
+`tools/blender_airport_landside.py` (job `airport` of `tools/blender_rooms/life_job.py`) and packed with
+`tools/life_pack.py`.
+
 ## Police checkpoints
 Three police roadblocks stand on the busy roads of Mushin by day (drums, a striped plank, a plank of nails, the officers'
 umbrella and bench; built in Blender, `tools/blender_checkpoint.py`). Drive up and they wave you down: stop next to them
