@@ -13,20 +13,20 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=effe29393a';
-import * as C2 from './char2.js?v=effe29393a';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=effe29393a';
-import { createPhone } from './phone.js?v=effe29393a';
-import { createGuide } from './guide.js?v=effe29393a';
-import { createFarm } from './farm.js?v=effe29393a';
-import { createBusiness } from './business.js?v=effe29393a';
-import { createOnline } from './online.js?v=effe29393a';
-import { createPolice } from './police.js?v=effe29393a';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=effe29393a';
-import { MapView, GPS_RED } from './mapview.js?v=effe29393a';
+import * as CLOCK from './clock.js?v=bc631818a6';
+import * as C2 from './char2.js?v=bc631818a6';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=bc631818a6';
+import { createPhone } from './phone.js?v=bc631818a6';
+import { createGuide } from './guide.js?v=bc631818a6';
+import { createFarm } from './farm.js?v=bc631818a6';
+import { createBusiness } from './business.js?v=bc631818a6';
+import { createOnline } from './online.js?v=bc631818a6';
+import { createPolice } from './police.js?v=bc631818a6';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=bc631818a6';
+import { MapView, GPS_RED } from './mapview.js?v=bc631818a6';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='effe29393a';
+const BUILD='bc631818a6';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -8222,6 +8222,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     act(){ action(); return {mode,label:ROOM&&ROOM.label,prompt:$('#promptTxt').textContent,busy}; },
     here:()=>({mode,label:mode==='interior'?ROOM.label:null,x:player.x,z:player.z,yaw:player.yaw,prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,cash:CASH.n,stay:STAY,menu:MENU.open}),
     spots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>({l:spotLabel(s),x:s.x,z:s.z})):[],
+    graGo(k){ const f={eko:enterEko,motors:enterMotors,adunni:enterAdunni,cellar:enterCellar,velvet:enterVelvet}[k]; if(f) f(); return !!f; },
     gra:()=>({sets:Object.fromEntries(Object.entries(GRA.sites).map(([k,G])=>[k,G.S&&G.S.state])),villas:GRA.villas.length,eko:EKO,doors:GRA_DOOR}),
     at(x,z,yaw){ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } return true; },
     menuPick(i){ const b=[...document.querySelectorAll('#menuBody .sh-buy')][i]; if(b) b.click(); return !!b; },
