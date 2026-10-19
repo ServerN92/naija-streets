@@ -7471,19 +7471,18 @@ function setupVelvet(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=
     let T=0; R.tick=dt=>{ T+=dt; const beat=.55+.45*Math.max(0,Math.cos(T*Math.PI*2*2.05)); L.forEach((p,i)=>{ p.color.setHSL((T*.06+i/4)%1,.85,.55); p.intensity=8+beat*12; }); }; } }
 
 // ---- NAIJA MOTORS: brand new cars inside, cars for sale on the forecourt
-const NM_CARS=[{type:'suv',color:'#101114',name:'Mercedes-Benz G-Wagon (brand new)',price:3500000},{type:'suv',color:'#e9e7e2',name:'Range Rover Sport (brand new)',price:2800000},
-  {type:'sedan',color:'#1b2a44',name:'BMW 7 Series (brand new)',price:2200000},{type:'suv',color:'#6b6e72',name:'Lexus LX 600 (brand new)',price:1900000},{type:'sedan',color:'#8c1d1d',name:'Toyota Camry 2024 (brand new)',price:900000}];
-const NM_LOT=[{type:'sedan',color:'#f2f2f0',name:'Toyota Corolla 2018 (tokunbo)',price:320000},{type:'suv',color:'#1d1f22',name:'Toyota Highlander 2016 (tokunbo)',price:650000},
-  {type:'sedan',color:'#2f3f5a',name:'Honda Accord 2017 (tokunbo)',price:420000},{type:'suv',color:'#b7a27a',name:'Lexus RX 350 2017 (tokunbo)',price:780000},
-  {type:'sedan',color:'#7a1e22',name:'Mercedes C300 2016 (tokunbo)',price:700000},{type:'suv',color:'#3b4a5a',name:'Toyota Prado 2015 (tokunbo)',price:900000},
-  {type:'sedan',color:'#c9ccd1',name:'Toyota Camry 2015 (tokunbo)',price:380000},{type:'suv',color:'#2f5d3a',name:'Ford Explorer 2016 (tokunbo)',price:560000},
-  {type:'sedan',color:'#e3d9c4',name:'Lexus ES 350 2016 (tokunbo)',price:600000},{type:'suv',color:'#101114',name:'Mercedes GLE 2017 (tokunbo)',price:1100000}];
+// the cars are the game's own new models (tools/blender_rooms/ng_vehicles.py, our own names): big-man cars inside, tokunbo outside
+const NM_COL=['#101114','#e9e7e2','#6b6e72','#1b2a44','#8c1d1d','#c9ccd1','#2f3f5a','#b7a27a'];
+const nmCar=(k,i,used)=>{ const N=NEWV_K[k]; return N?{type:k,color:NM_COL[i%NM_COL.length],name:N.n+(used?' (tokunbo)':' (brand new)'),price:Math.round(N.price*(used?.7:1)/1000)*1000}:null; };
+const NM_CARS=['v_gwagon','v_rangerover','v_sclass','v_landcruiser','v_rolls'].map((k,i)=>nmCar(k,i,false)).filter(Boolean);
+const NM_LOT=['v_corolla','v_camry','v_accord','v_v190','v_hilux','v_corolla','v_landcruiser','v_camry','v_accord','v_rangerover'].map((k,i)=>nmCar(k,i+2,true)).filter(Boolean);
+const nmShape=k=>MODELS[k]?k:NEWV_K[k]&&(NEWV_K[k].s==='suv'||NEWV_K[k].s==='pickup')?'suv':'sedan';   // its own model once it has come in
 async function enterMotors(){ if(busy) return; const R=await intGet('int_naija_motors','Opening NAIJA MOTORS…'); if(!R) return; setupMotors(R); R.label='NAIJA MOTORS · Ikeja GRA'; goRoom(R,'spawn','Welcome to NAIJA MOTORS. Brand new, with papers!'); }
 function setupMotors(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
   R.fill=R=>{ folk(R.scene,'suit_lady',M.receptionist,['idle_suit','f_talk'],R.folk); folk(R.scene,'p_tunde',M.sales_1,['idle_1','talk'],R.folk); folk(R.scene,'baba',M.sales_2,['talk','idle_baba'],R.folk);
     roomGuests(R,4,[-19,0,19,15],73,TALK,[M.spawn,M.desk,M.car_1,M.car_2,M.car_3,M.car_4,M.car_5]); };
   fillRoom(R);
-  NM_CARS.forEach((s,i)=>{ const m=M['car_'+(i+1)]; if(!m) return; const c=makeCar(s.type,s.color,true); c.g.position.set(m.x,0,m.z); c.g.rotation.set(0,carYaw(m.yaw),0); R.scene.add(c.g);
+  NM_CARS.forEach((s,i)=>{ const m=M['car_'+(i+1)]; if(!m) return; const c=makeCar(nmShape(s.type),s.color,true); c.g.position.set(m.x,0,m.z); c.g.rotation.set(0,carYaw(m.yaw),0); R.scene.add(c.g);
     const nm=s.name.replace(' (brand new)',''), tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(`${nm} · ${naira(s.price)}`,'#121212','#ffd54a',1400,170)})); tag.scale.set(3.8,.46,1); tag.position.set(m.x,2.7,m.z); R.scene.add(tag);
     R.spot(m,`Buy the ${nm} · ${naira(s.price)}`,()=>buyNmCar(s),3); });
   R.spot(M.exit,'Go back outside',()=>leaveRoom(GRA_DOOR.motors),1.6);
@@ -7590,7 +7589,7 @@ PLACES.push({name:'NAIJA MOTORS',sub:'Car showroom · Ikeja GRA · brand new and
   {name:'Baba Sule Mechanic',sub:'Mechanic · fix your car · Ikeja GRA',kind:'service',x:GRA.sites.garage.x,z:GRA.sites.garage.z},
   {name:'Eko Grand Golf Course',sub:'Golf · Eko Grand Hotel',kind:'place',x:gp('hotel',100,30).x,z:gp('hotel',100,30).z,minor:true});
 // tokunbo cars for sale on the NAIJA MOTORS forecourt
-[-16.5,-13.8,-11.1,-8.4,-5.7,5.7,8.4,11.1,13.8,16.5].forEach((lx,i)=>{ const spec=NM_LOT[i%NM_LOT.length], m=gp('motors',lx,5.9,Math.PI), v=newVehicle(spec.type,spec.color,true); if(v.type!==spec.type) return;
+[-16.5,-13.8,-11.1,-8.4,-5.7,5.7,8.4,11.1,13.8,16.5].forEach((lx,i)=>{ const spec=NM_LOT[i%NM_LOT.length]; if(!spec) return; const m=gp('motors',lx,5.9,Math.PI), v=newVehicle(spec.type,spec.color,true);
   Object.assign(v,{x:m.x,z:m.z,y:0,h:carYaw(m.yaw),keep:1,parked:true,forSale:spec});
   const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(naira(spec.price),'#121212','#ffd54a',600,170),fog:false})); tag.scale.set(1.9,.54,1); tag.position.set(m.x,2.6,m.z); tag.layers.set(1); scene.add(tag); v.tag=tag; });
 // people: guards at the gates, doormen, the pool, golfers, the mechanics
@@ -7606,8 +7605,8 @@ worldGroup(GRA.sites.garage.x,GRA.sites.garage.z,G=>{ folk(scene,'areaboy',gp('g
 // when a set has loaded: cars parked at the hotel, the new cars seen through the showroom glass
 function graLoaded(k,S){ const J=S.json||{};
   if(k==='hotel'){ const rnd=mulberry32(808), B=(J.bays||[]).slice(); const cols=['#101114','#e9e7e2','#6b6e72','#1b2a44','#8c1d1d','#c9ccd1','#2f3f5a'];
-    for(let i=0;i<16&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(rnd()<.5?'suv':'sedan',cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:0,h:carYaw(S.ry+yw),keep:1,parked:true}); } }
-  if(k==='motors'){ const M=J.marks||{}; [['inside_1',0],['inside_2',1],['inside_3',2]].forEach(([n,i])=>{ const m=M[n]; if(!m) return; const s=NM_CARS[i], c=makeCar(s.type,s.color,true), w=setPt(S,m[0],m[1]); c.g.position.set(w.x,.15,w.z); c.g.rotation.set(0,carYaw(S.ry+(m[2]||0)),0); scene.add(c.g); }); } }
+    for(let i=0;i<16&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(['v_gwagon','v_rangerover','v_sclass','v_landcruiser','v_camry','v_accord','v_rolls','v_hilux'][(rnd()*8)|0],cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:0,h:carYaw(S.ry+yw),keep:1,parked:true}); } }
+  if(k==='motors'){ const M=J.marks||{}; [['inside_1',0],['inside_2',1],['inside_3',2]].forEach(([n,i])=>{ const m=M[n]; if(!m) return; const s=NM_CARS[i]; if(!s) return; const c=makeCar(nmShape(s.type),s.color,true), w=setPt(S,m[0],m[1]); c.g.position.set(w.x,.15,w.z); c.g.rotation.set(0,carYaw(S.ry+(m[2]||0)),0); scene.add(c.g); }); } }
 /* ---- a new life (see "a new life: from under the bridge" above): saving it, your tent, the boutique, the rooming
    house, the flat for sale, the public toilet and its line, the toilet bar */
 const owns=k=>k==='rags'||LIFE.own.includes(k);
