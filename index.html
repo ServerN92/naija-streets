@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="d66ddc5a2a">
+<meta name="ns-build" content="170f88e0f2">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -395,6 +395,13 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" data-s="on" aria-pressed="true">On</button>
       <button type="button" data-s="off" aria-pressed="false">Off</button>
     </div>
+    <div id="vols" style="margin-top:10px">
+      <label class="slide"><span>City</span><input type="range" data-v="amb" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Vehicles</span><input type="range" data-v="veh" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Voices</span><input type="range" data-v="voice" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Effects</span><input type="range" data-v="sfx" min="0" max="150" step="5" value="100"><b>100%</b></label>
+    </div>
+    <p class="note">Real Lagos street recordings by SFXAFRIK and other sound recordists on Freesound. <a href="assets/sounds/CREDITS.md" target="_blank" rel="noopener" style="color:var(--cream)">Sound credits</a></p>
     <h3>Tips</h3>
     <div class="seg" id="tipsSeg" role="group" aria-label="Tips">
       <button type="button" data-t="on" aria-pressed="true">On</button>
@@ -548,7 +555,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=d66ddc5a2a"></script>
+<script type="module" src="src/game.js?v=170f88e0f2"></script>
 
 </body>
 </html>

@@ -3,8 +3,10 @@ under "_v", a short content hash used as its cache key, so a changed file always
 import json, os, hashlib
 root = os.path.join(os.path.dirname(__file__), '..')
 out, ver = {}, {}
-for d in ['assets/models', 'assets/characters', 'assets/people', 'assets/maps']:
+for d in ['assets/models', 'assets/characters', 'assets/people', 'assets/maps', 'assets/sounds']:
+    if not os.path.isdir(os.path.join(root, d)): continue
     for f in sorted(os.listdir(os.path.join(root, d))):
+        if f.endswith('.md'): continue
         p = os.path.join(root, d, f)
         out[f'{d}/{f}'] = os.path.getsize(p)
         ver[f'{d}/{f}'] = hashlib.sha1(open(p, 'rb').read()).hexdigest()[:8]

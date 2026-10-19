@@ -1,0 +1,162 @@
+{
+"amb_traffic": {
+"gain": 1.0,
+"dur": 70.0,
+"src": 582367
+},
+"amb_busstop": {
+"gain": 1.0,
+"dur": 70.0,
+"src": 582955
+},
+"amb_market": {
+"gain": 1.0,
+"dur": 60.0,
+"src": 582962
+},
+"spot_cond_1": {
+"gain": 1.0,
+"dur": 58.0,
+"src": 582935
+},
+"spot_cond_2": {
+"gain": 1.0,
+"dur": 60.0,
+"src": 582935
+},
+"spot_market": {
+"gain": 1.0,
+"dur": 50.0,
+"src": 582962
+},
+"amb_estate": {
+"gain": 1.0,
+"dur": 62.0,
+"src": 727132
+},
+"amb_night": {
+"gain": 1.0,
+"dur": 70.0,
+"src": 608207
+},
+"amb_morning": {
+"gain": 1.0,
+"dur": 70.0,
+"src": 727135
+},
+"amb_rain": {
+"gain": 1.0,
+"dur": 50.0,
+"src": 132823
+},
+"amb_rainroof": {
+"gain": 1.0,
+"dur": 38.0,
+"src": 132823
+},
+"amb_airport": {
+"gain": 1.0,
+"dur": 60.0,
+"src": 333226
+},
+"church": {
+"gain": 1.0,
+"dur": 60.0,
+"src": 727136
+},
+"adhan": {
+"gain": 1.0,
+"dur": 148.0,
+"src": 255231
+},
+"gen": {
+"gain": 1.0,
+"dur": 6.0,
+"src": 367175
+},
+"jet": {
+"gain": 1.0,
+"dur": 14.0,
+"src": 465054
+},
+"thunder": {
+"gain": 1.0,
+"dur": 14.0,
+"src": 243778
+},
+"eng_okada": {
+"gain": 1.0,
+"dur": 4.0,
+"src": 518173,
+"r0": 0.8,
+"r1": 0.55
+},
+"eng_keke": {
+"gain": 1.0,
+"dur": 4.0,
+"src": 261059,
+"r0": 0.85,
+"r1": 0.6
+},
+"eng_danfo": {
+"gain": 1.0,
+"dur": 5.0,
+"src": 453994,
+"r0": 0.9,
+"r1": 0.7
+},
+"eng_car": {
+"gain": 1.0,
+"dur": 3.6,
+"src": 147242,
+"r0": 0.75,
+"r1": 0.65
+},
+"eng_truck": {
+"gain": 1.0,
+"dur": 5.0,
+"src": 453415,
+"r0": 0.9,
+"r1": 0.55
+},
+"horn_car": {
+"gain": 1.0,
+"dur": 0.7,
+"src": 423990
+},
+"horn_okada": {
+"gain": 1.0,
+"dur": 1.15,
+"src": 153049
+},
+"horn_truck": {
+"gain": 1.0,
+"dur": 0.57,
+"src": 513741
+},
+"horn_bus": {
+"gain": 1.0,
+"dur": 2.3,
+"src": 504565
+},
+"skid": {
+"gain": 1.0,
+"dur": 1.6,
+"src": 454687
+},
+"crash": {
+"gain": 1.0,
+"dur": 4.37,
+"src": 237375
+},
+"door": {
+"gain": 1.0,
+"dur": 3.99,
+"src": 556689
+},
+"siren": {
+"gain": 1.0,
+"dur": 9.4,
+"src": 70936
+}
+}

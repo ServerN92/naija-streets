@@ -3,7 +3,7 @@
 // The page and the game code always come from the network first (so updates arrive at once) and from
 // the cache only when offline. Bump VERSION only to wipe everything.
 const VERSION = 'ns-2026-10-11a';
-const HEAVY = u => (u.origin === location.origin && /\/assets\/(models|characters|people|maps)\//.test(u.pathname)) ||
+const HEAVY = u => (u.origin === location.origin && /\/assets\/(models|characters|people|maps|sounds)\//.test(u.pathname)) ||
   u.hostname === 'cdn.jsdelivr.net' || u.hostname === 'fonts.gstatic.com';
 
 self.addEventListener('install', () => self.skipWaiting());
