@@ -1,6 +1,7 @@
 # Naija Streets: build the "new life" pieces (tools/blender_life.py) in a background Blender, so the Blender the user
 # has open is never touched:   blender -b --factory-startup --python life_job.py -- <job> [names...]
 #   job 'pieces' : the outside pieces -> life/<name>.json (for the game's packer) and life/look_<name>.png
+#   job 'road'   : the airport road (tools/blender_airroad.py) -> life/road/set_airroad.glb, ns_palm.glb, pictures
 #   job 'room'   : int_faceme through rooms_all.py's build_room (light baked) -> out/int_faceme.glb + _lm.jpg, look png
 # Log: Documents/naija_rooms/life/job_log.txt
 import bpy, sys, os, math, time, traceback, importlib
@@ -75,6 +76,9 @@ try:
         for o in bpy.data.objects: o.hide_render = False
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(LIFE, 'airport', 'naija_airport_landside.blend'))
         log('airport done')
+    elif job == 'road':
+        import blender_airroad as AR; importlib.reload(AR)
+        info = AR.build_all(log); log('road done', len(info['palms']), 'palms', len(info['lamps']), 'lamps')
     elif job == 'room':
         src = open(os.path.join(BASE, 'rooms_all3.py'), encoding='utf8').read()
         src = src[:src.index("try:\n    open(LOGF")]
