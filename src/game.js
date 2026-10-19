@@ -8274,6 +8274,13 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     land:()=>LAND&&LAND.cp?{x:+LAND.cp.x.toFixed(1),z:+LAND.cp.z.toFixed(1),TX:AIRPORT.TX,TZ:AIRPORT.TZ,bays:LAND.bays.length,free:LAND.free.length}:null,
     tod:()=>({hour:+ENV.hour.toFixed(2),night:ENV.night,exp:+renderer.toneMappingExposure.toFixed(2)}),
     jams:()=>{ const L=vehicles.filter(v=>v.ai&&!v.ai.chase); return {ai:L.length,stuck8:L.filter(v=>v.ai.stuck>8).length,max:+Math.max(0,...L.map(v=>v.ai.stuck)).toFixed(1),slip:L.filter(v=>v.ai.slip>0).length,back:L.filter(v=>v.ai.back>0).length,tuck:L.filter(v=>v.ai.tuck>0).length}; },
+    faceOff(){ // two AI cars meeting head-on in one lane on a long street near you (a test of the drivers' manners)
+      const L=vehicles.filter(v=>v.ai&&!v.ai.chase&&v.ai.seg.k===0); if(L.length<2) return 'few cars';
+      let e=null; for(const o of ROADS){ if(!o.drive||o.ow||o.br||o.len<70||o.c<5||o.c>7) continue; const A=nodes[o.a]; if(!e||Math.hypot(A.x-player.x,A.z-player.z)<Math.hypot(nodes[e.a].x-player.x,nodes[e.a].z-player.z)) e=o; } if(!e) return 'no street';
+      const [A,B]=L; for(const [v,a,b,s0] of [[A,e.a,e.b,20],[B,e.b,e.a,null]]){ const ai=v.ai; ai.a=a; ai.b=b; ai.seg=lineSeg(a,b); ai.s=s0??Math.max(0,ai.seg.len-20-14); ai.pb=null; ai.pt=0; ai.po=0; ai.stuck=0; ai.wait=0; ai.ghost=0; v.speed=0; ai.cond='good'; ai.ec=e.c; }
+      B.ai.pt=B.ai.po=-2*(B.ai.seg.off||1.5); player.x=nodes[e.a].x+30; player.z=nodes[e.a].z+30; window.__fo=[A,B]; return {edge:e.i,c:e.c,hw:e.hw,len:Math.round(e.len),off:A.ai.seg.off}; },
+    faceInfo(){ const [A,B]=window.__fo||[]; if(!A) return null; const fx=Math.cos(A.h), fz=-Math.sin(A.h), dx=B.x-A.x, dz=B.z-A.z;
+      return {ah:+(dx*fx+dz*fz).toFixed(1),lat:+(-dx*fz+dz*fx).toFixed(2),sa:+A.speed.toFixed(1),sb:+B.speed.toFixed(1),stA:+A.ai.stuck.toFixed(1),stB:+B.ai.stuck.toFixed(1),ptA:+(A.ai.pt||0).toFixed(2),ptB:+(B.ai.pt||0).toFixed(2),slip:[A.ai.slip>0,B.ai.slip>0]}; },
     newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
       traffic:vehicles.reduce((a,v)=>{ const k=v.c.skin||v.type; a[k]=(a[k]||0)+1; return a; },{})}),
     showCars(list,gap=7){ const out=[]; list.forEach((k,i)=>{ const v=newVehicle(k,'#ffffff',true); Object.assign(v,{x:player.x+8,z:player.z-((list.length-1)/2-i)*gap,h:Math.PI/2,parked:true}); v.c.g.position.set(v.x,0,v.z); v.c.g.rotation.y=v.h; out.push(v.c.skin||v.type); }); return out; },
