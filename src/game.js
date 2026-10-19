@@ -8272,7 +8272,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
             const k=(c.src||'?')+(c.low?' low':'')+(c.car?' car':''); const g=out[k]||(out[k]={n:0,ex:[]}); g.n++; g.rd=(g.rd||{}); const rn=(e.name||'#'+e.i)+'/c'+e.c; g.rd[rn]=(g.rd[rn]||0)+1; g.off=(g.off||{}); g.off[o===0?'mid':'lane']=(g.off[o===0?'mid':'lane']||0)+1; if(g.ex.length<6) g.ex.push([Math.round(x),Math.round(z),e.name||'',e.c,+e.hw.toFixed(1),+(c.h).toFixed(2),o===0?'mid':'lane',e.ow?'ow':'2w']); } } }
       return out; },
     land:()=>LAND&&LAND.cp?{x:+LAND.cp.x.toFixed(1),z:+LAND.cp.z.toFixed(1),TX:AIRPORT.TX,TZ:AIRPORT.TZ,bays:LAND.bays.length,free:LAND.free.length}:null,
-    env:()=>({hour:+ENV.hour.toFixed(2),night:ENV.night,exp:+renderer.toneMappingExposure.toFixed(2)}),
+    tod:()=>({hour:+ENV.hour.toFixed(2),night:ENV.night,exp:+renderer.toneMappingExposure.toFixed(2)}),
     jams:()=>{ const L=vehicles.filter(v=>v.ai&&!v.ai.chase); return {ai:L.length,stuck8:L.filter(v=>v.ai.stuck>8).length,max:+Math.max(0,...L.map(v=>v.ai.stuck)).toFixed(1),slip:L.filter(v=>v.ai.slip>0).length,back:L.filter(v=>v.ai.back>0).length,tuck:L.filter(v=>v.ai.tuck>0).length}; },
     newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
       traffic:vehicles.reduce((a,v)=>{ const k=v.c.skin||v.type; a[k]=(a[k]||0)+1; return a; },{})}),
