@@ -439,6 +439,21 @@ On some side streets two area boys hold a rope across the road with a ₦200 TO 
 rope. Walk past without paying and they fight you (their friends join); drive through and the rope breaks: they chase
 you throwing stones, then give up and tie it again. Traffic pays and passes.
 
+## Sound: the city you hear
+Real recordings instead of computer beeps (`src/sound.js`, the files in `assets/sounds`, made with
+`tools/sound_build.py` + `tools/sound_recipes.py` from Freesound recordings; credits in `assets/sounds/CREDITS.md`,
+linked from Settings). Most of the street is Nigerian field recordings by SFXAFRIK.
+- **Where you are:** main roads roar with traffic and horns; at bus stops and the motor park the conductors shout their
+  routes (in 3-D, from the stop); markets have hawkers calling; quiet streets have people, dogs and goats; at night the
+  crickets come out, at dawn the cocks crow; rain drums on the zinc (louder inside and by your tent); the airport hall hums.
+- **Places:** the call to prayer from the nearest mosque five times a day, church singing in the morning and evening,
+  generators humming at night and whenever NEPA takes the light in that part of town (it changes every two game hours).
+- **Vehicles:** the nearest vehicles run their own engines in 3-D (okada, keke, danfo and BRT, cars, tankers), rising
+  with their speed; they honk, more when traffic is stuck. Your own engine follows your speed and the gas; hard braking
+  screeches; crashes, car doors, the police siren where the police van is, the jet taking off at the airport.
+- **Settings:** volume sliders for the city, vehicles, voices and effects (kept on the phone). Files load only when
+  first needed and are kept on the phone after.
+
 ## The airport road: toll gate, car park, impound yard
 Agege Motor Road leads north to Murtala Muhammed Airport. The road is open all the way to the terminal (the city's
 ground and the airport's ground now meet with no gap).

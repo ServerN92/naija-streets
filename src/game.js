@@ -2676,7 +2676,7 @@ let SND=null; const SNDF={files:null};
 fetch((()=>{ const u='assets/sounds/sounds.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u+'?v='+BUILD; })()).then(r=>r.ok?r.json():null).then(f=>{ SNDF.files=f; sndStart(); }).catch(()=>{});
 function sndStart(){ if(SND||!AC||!SNDF.files) return; try{
     SND=createSound({AC,out:master,files:SNDF.files,url:n=>{ const u=`assets/sounds/${n}.mp3`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; }});
-    SND.preload(['amb_traffic','amb_estate','amb_night','eng_car','eng_okada','eng_danfo','horn_car']); volUI(); }catch(e){ console.warn('sound',e); SND=null; } }
+    SND.preload(['amb_traffic','amb_estate','eng_car','eng_okada','eng_danfo','horn_car']); volUI(); }catch(e){ console.warn('sound',e); SND=null; } }
 function volUI(){ document.querySelectorAll('#vols input').forEach(i=>{ const k=i.dataset.v, v=SND?SND.vol[k]:1; i.value=Math.round(v*100); i.nextElementSibling.textContent=Math.round(v*100)+'%'; }); }
 document.querySelectorAll('#vols input').forEach(i=>i.addEventListener('input',()=>{ if(SND) SND.setVol(i.dataset.v,+i.value/100); i.nextElementSibling.textContent=i.value+'%'; }));
 // how much of each kind of place is around a point (cached on a 20 m grid: main roads, bus stops, markets)
@@ -2691,7 +2691,7 @@ function sndCell(x,z){ const i=Math.floor(x/SGC), j=Math.floor(z/SGC), k=i*10000
   c={main:clamp(1-(dm-6)/70,0,1),side:clamp(1-(ds-4)/35,0,1)*.5,stop:clamp(1-(st-8)/45,0,1),mk:clamp(1-mk/40,0,1)}; SG.set(k,c); if(SG.size>6000) SG.clear(); return c; }
 const smooth=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
 const RESI=['bungalow','storey','house','dup1','dup2','dup3','dup4','dup5','faceme','zinc','wood','flats3','flats4'];
-let SNDT={z:0,bark:3,horn:2,gen:null,genT:0,adhan:'',sp:0,skid:0};
+let SNDT={z:0,horn:2,gen:null,genT:0,adhan:'',sp:0,skid:0};
 function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.position, h=CLOCK.gameHour(), inside=mode==='interior';
   camera.getWorldDirection(_sv); SND.listen(cam.x,cam.y,cam.z,_sv.x,_sv.z);
   const me=mode==='drive'&&drive.v?drive.v:player, x=me.x, z=me.z;
@@ -2715,21 +2715,24 @@ function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.positi
   const list=[];
   const near=(arr,r)=>(arr||[]).filter(p=>Math.abs(p.x-x)<r&&Math.abs(p.z-z)<r);
   for(const m of near(houseInst.church,160)) if((h>7&&h<11.5)||(h>17.5&&h<20.5)) list.push({id:'ch'+m.x,file:'church',x:m.x,z:m.z,level:.9,ref:14,y:4});
-  const PRAY=[5.2,13.1,16.2,19.05,20.4]; for(const ph of PRAY){ const key=Math.floor(Date.now()/(CLOCK.DAY_MINUTES*6e4))+':'+ph; if(h>=ph&&h<ph+.08&&S.adhan!==key){ S.adhan=key;
-      let best=null,bd=900; for(const m of (houseInst.mosque||[])){ const d=Math.hypot(m.x-x,m.z-z); if(d<bd){ bd=d; best=m; } } if(best) SND.play('adhan',{x:best.x,z:best.z,y:12,b:'amb',ref:40,max:1500,roll:.9}); } }
+  const PRAY=[5.2,13.1,16.2,19.05,20.4]; for(const ph of PRAY){ const key=Math.floor(Date.now()/(CLOCK.DAY_MINUTES*6e4))+':'+ph;
+    if(h>=ph-.3&&h<ph) SND.need('adhan');   // load it before the time
+    if(h>=ph&&h<ph+.1&&S.adhan!==key){ let best=null,bd=900; for(const m of (houseInst.mosque||[])){ const d=Math.hypot(m.x-x,m.z-z); if(d<bd){ bd=d; best=m; } }
+      if(!best||inside||SND.play('adhan',{x:best.x,z:best.z,y:12,b:'amb',ref:40,max:1500,roll:.9})) S.adhan=key; } }
   if(!air&&!inside){ if((S.genT-=st)<=0||!S.gen){ S.genT=3; const off=sndNepaOff(x,z,h); S.gen=[]; if(off||h>18.5||h<.5){ const all=[]; for(const k of RESI) for(const q of near(houseInst[k],70)){ const hh=Math.abs(Math.sin(q.x*12.9898+q.z*78.233)*43758.5453)%1; if(hh<(off?.5:.22)) all.push({q,d:Math.hypot(q.x-x,q.z-z)}); } all.sort((a,b)=>a.d-b.d); S.gen=all.slice(0,3).map(o=>o.q); } }
     for(const q of S.gen) list.push({id:'gen'+q.x+','+q.z,file:'gen',x:q.x+2,z:q.z+2,level:.75,ref:4,roll:1.6,y:.6}); }
   if(AIRPORT&&AIRPORT.jet&&AIRPORT.jet.visible) list.push({id:'jet',file:'jet',x:AIRPORT.jet.position.x,z:AIRPORT.jet.position.z,y:AIRPORT.jet.position.y,level:1,ref:60,max:4000,roll:1,b:'veh',fade:.2});
-  SND.spots(list,st);
   // the nearest vehicles run their engines; some honk (more when traffic is stuck)
   const vs=[]; for(const v of vehicles){ if(v===dv||!v.c||v.type==='skate'||v.impounded) continue; const d=Math.hypot(v.x-x,v.z-z); if(d>70) continue; if(v.parked&&!v.ai&&Math.abs(v.speed||0)<.2) continue; vs.push({v,x:v.x,z:v.z,type:v.type,speed:Math.abs(v.speed||0),maxV:VT[v.type]?VT[v.type].maxV[1]:12,d}); }
   vs.sort((a,b)=>a.d-b.d); SND.engines(vs,st,Q.npc>=24?6:4);
   if((S.horn-=st)<=0&&!inside){ S.horn=.6; for(const e of vs){ if(e.d>45||!e.v.ai) continue; const stuck=e.speed<1.2, p=stuck?.05:.012; if(Math.random()<p*(night?.4:1)){ SND.horn(e.type,e.x,e.z,.8); S.horn=1.6; break; } } }
-  // voices: conductors at the bus stops and the motor park, hawkers in the markets, people on the street
-  if((S.bark-=st)<=0&&!inside&&!air){ S.bark=2.5+Math.random()*5;
-    if(stop>.35&&SND.has('bark_cond')){ let best=null,bd=1e9; for(const p of SND_STOPS()){ const d=Math.hypot(p.x-x,p.z-z); if(d<bd){ bd=d; best=p; } } if(best){ const a=Math.random()*6.28, r=4+Math.random()*(best.r+6); SND.play('bark_cond',{x:best.x+Math.cos(a)*r,z:best.z+Math.sin(a)*r,y:1.6,b:'voice',ref:7,gain:.9}); } }
-    else if(mk>.35&&SND.has('bark_hawk')){ const a=Math.random()*6.28, r=6+Math.random()*16; SND.play('bark_hawk',{x:x+Math.cos(a)*r,z:z+Math.sin(a)*r,y:1.6,b:'voice',ref:6,gain:.85}); }
-    else if(day>.5&&SND.has('bark_street')&&Math.random()<.35){ const ps=peds.filter(p=>p.active!==false&&p.lod>=0&&Math.hypot(p.x-x,p.z-z)<22&&p.state!=='dead'); if(ps.length){ const p=ps[(Math.random()*ps.length)|0]; SND.play('bark_street',{x:p.x,z:p.z,y:1.6,b:'voice',ref:5,gain:.8}); } } }
+  // voices: the conductors at the bus stops and the motor park, the hawkers in the markets (real Lagos recordings, in 3-D)
+  if(!inside&&!air){ const vl=1-.75*night;
+    const ss=SND_STOPS().map((p,i)=>({p,i,d:Math.hypot(p.x-x,p.z-z)})).filter(o=>o.d<110).sort((a,b)=>a.d-b.d).slice(0,2);
+    for(const o of ss) list.push({id:'stop'+o.i,file:o.i%2?'spot_cond_2':'spot_cond_1',x:o.p.x,z:o.p.z,y:1.6,level:vl,ref:9,roll:1.2,b:'voice'});
+    SND_MK.forEach((m,i)=>{ const d=Math.hypot(m.x-x,m.z-z); if(d>m.r+90) return; let ux=x-m.x, uz=z-m.z; const L=Math.hypot(ux,uz)||1, k=Math.min(L,m.r*.55)/L;
+      list.push({id:'mk'+i,file:'spot_market',x:m.x+ux*k+6,z:m.z+uz*k+4,y:1.6,level:vl*.9,ref:10,roll:1.1,b:'voice'}); }); }
+  SND.spots(list,st);
   // the police siren where the police van is
   if(SND.has('siren')){ const cv=FIGHT.cop; SND.siren(!!cv&&!inside&&Math.hypot(cv.x-x,cv.z-z)<220,cv?cv.x:0,cv?cv.z:0); } }
 const _sv=new THREE.Vector3();
@@ -3039,7 +3042,7 @@ function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx
 function pullOut(v){ const p=freePed(); if(!p) return; const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx, ow=v.c.def.W/2+.7;
   wakePed(p,MR()<.45?'areaboy':mpick(['baba','areaboy','schoolboy'])); const c={x:v.x+lx*ow+hx*.4,z:v.z+lz*ow+hz*.4}; resolveCircle(c,.3);
   Object.assign(p,{x:c.x,z:c.z,y:0,state:'down',timer:mrr(2,3),downT:.5,got:0,fall:0,vx:lx*1.6,vz:lz*1.6,yaw:Math.atan2(-lx,-lz),carjacked:true,hp:HP0(p.cast)}); p.seq=(p.seq||0)+1; }
-function enterCar(v){ drive.skl=null; SKILL.timers={}; v.mh=v.h; v.wh=0; v.lift=0; if(v.type==='skate'){ skReset(); camState.yaw=Math.atan2(Math.cos(v.h),-Math.sin(v.h)); camState.pitch=.2; }   // the camera goes straight behind the board
+function enterCar(v){ if(SND&&v&&!BIKE[v.type]&&v.type!=='skate'&&v.type!=='keke') SND.play('door',{b:'sfx',gain:.7}); drive.skl=null; SKILL.timers={}; v.mh=v.h; v.wh=0; v.lift=0; if(v.type==='skate'){ skReset(); camState.yaw=Math.atan2(Math.cos(v.h),-Math.sin(v.h)); camState.pitch=.2; }   // the camera goes straight behind the board
   if(v.ai){ v.ai=null; v.speed=0; v.jacked=true; pullOut(v); fleeFrom(v,Math.max(0,Math.min(5,(v.c.seats||[]).length-1)));
     addHeat(.45); incident(v.x,v.z,'carjack');
     toast(v.type==='danfo'?'Danfo don change hand! Driver and passengers ran off.':v.type==='okada'?'"My okada!" The rider ran off.':BIKE[v.type]?'"My bike! Ah, my bike!" The rider ran off.':v.type==='benz'?'"My Benz! Ah, you don finish me!" The driver ran off.':v.type==='tanker'?'"Thief! Leave my tanker!" The driver ran off.':v.type==='keke'?'"Ah, my keke!" The driver ran off.':v.type==='police'?'You took a police van. Wahala dey!':mpick(['"Oga, no wahala!" The driver bolted.','"Take am, take am!" The driver ran off.'])); }
@@ -3077,7 +3080,7 @@ function seatHero(v,idx=0){ if(v.type==='skate'&&hero&&v.c.hi){ const a=hero.act
   else { v.c.hi.add(rig.root); poseSeat(rig,st.k); rig.root.position.set(st.x,st.y-.86,st.z); rig.root.rotation.set(0,Math.PI/2,0); }
   rig.root.visible=true; }
 function unseatHero(){ if(rig.root.parent!==scene){ scene.add(rig.root); rig.root.rotation.set(0,0,0); } rig.root.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); skPoses(false); if(hero){ const a=hero.act; a.car.stop(); a.car.paused=false; a.idle.setEffectiveWeight(1); hero.w.idle=1; hero.w.walk=hero.w.run=0; } }
-function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let placed=false;
+function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let placed=false; if(SND&&v&&!BIKE[v.type]&&v.type!=='skate'&&v.type!=='keke') SND.play('door',{b:'sfx',gain:.6,rate:1.04});
   for(const [lx,lz] of [[hz,-hx],[-hz,hx]]){ for(const dd of [v.c.def.W/2+.8,v.c.def.W/2+1.4]){ const c={x:v.x+lx*dd,z:v.z+lz*dd}; let clear=onLand(c.x,c.z)&&!resolveCircle({...c},.34);
       if(clear) for(const o of vehicles){ if(o!==v&&Math.hypot(o.x-c.x,o.z-c.z)<o.c.def.L/2+.4){ clear=false; break; } }
       if(clear){ player.x=c.x; player.z=c.z; placed=true; break; } } if(placed) break; }

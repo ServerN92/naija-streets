@@ -54,12 +54,22 @@ export function createSound({ AC, out, url, files }) {
     s.start(t() + delay); return s;
   }
   // ---------------------------------------------------------------- loops (beds, places, engines)
+  // an MP3 starts and ends with a little silence (the encoder's padding): loop only the sound between, so it never gaps
+  const REG = new Map();
+  function region(buf) {
+    let r = REG.get(buf); if (r) return r;
+    const d = buf.getChannelData(0), n = d.length, lim = Math.min(n >> 2, 8192), thr = 2e-4;
+    let a = 0; while (a < lim && Math.abs(d[a]) < thr) a++;
+    let e = 0; while (e < lim && Math.abs(d[n - 1 - e]) < thr) e++;
+    r = { s: a / buf.sampleRate, e: (n - e) / buf.sampleRate }; REG.set(buf, r); return r;
+  }
   function loop(name, { x, z, y, b = 'amb', ref = 8, max = 500, roll = 1, rate = 1, offset } = {}) {
     const buf = need(name); if (!buf) return null;
     const s = AC.createBufferSource(); s.buffer = buf; s.loop = true; s.playbackRate.value = rate;
+    const rg = region(buf); s.loopStart = rg.s; s.loopEnd = rg.e;
     const g = AC.createGain(); g.gain.value = 0; s.connect(g);
     let p = null; if (x !== undefined) { p = panner(x, z, y, ref, max, roll); g.connect(p); p.connect(bus[b]); } else g.connect(bus[b]);
-    s.start(t(), offset ?? R() * buf.duration);
+    s.start(t(), rg.s + (offset ?? R() * (rg.e - rg.s)));
     return { name, s, g, p, k: files[name].gain || 1, idle: 0, stop() { try { this.g.gain.setTargetAtTime(0, t(), .3); const s = this.s, g = this.g, pp = this.p; setTimeout(() => { try { s.stop(); g.disconnect(); if (pp) pp.disconnect(); } catch (e) { } }, 1500); } catch (e) { } } };
   }
   // ---------------------------------------------------------------- the beds: where you are and the time of day
@@ -84,7 +94,7 @@ export function createSound({ AC, out, url, files }) {
     for (const [id, S] of SPOTS) if (!seen.has(id)) { S.L.g.gain.setTargetAtTime(0, t(), .8); if ((S.idle += dt) > 4) { S.L.stop(); SPOTS.delete(id); } }
   }
   // ---------------------------------------------------------------- vehicles: the nearest few have their engines running in 3-D
-  const ENG = { okada: 'eng_okada', bike2: 'eng_okada', sbike: 'eng_sbike', keke: 'eng_keke', danfo: 'eng_danfo', bus: 'eng_danfo', tanker: 'eng_truck', tipper: 'eng_truck',
+  const ENG = { okada: 'eng_okada', bike2: 'eng_okada', sbike: 'eng_okada', keke: 'eng_keke', danfo: 'eng_danfo', bus: 'eng_danfo', tanker: 'eng_truck', tipper: 'eng_truck',
     police: 'eng_car', sedan: 'eng_car', suv: 'eng_car', car2: 'eng_car', benz: 'eng_car', amb: 'eng_car' };
   const HORN = { okada: 'horn_okada', bike2: 'horn_okada', sbike: 'horn_okada', keke: 'horn_okada', danfo: 'horn_bus', bus: 'horn_bus', tanker: 'horn_truck', tipper: 'horn_truck' };
   const engOf = ty => { const n = ENG[ty] || 'eng_car'; return files[n] ? n : files.eng_car ? 'eng_car' : null; };
@@ -129,5 +139,6 @@ export function createSound({ AC, out, url, files }) {
   function horn(type, x, z, gain = 1) { if (t() - hornT < .25 && x !== undefined) return; hornT = t(); const n = HORN[type] && files[HORN[type]] ? HORN[type] : 'horn_car'; return play(n, { x, z, y: 1, b: 'veh', gain, ref: 10, max: 400, rate: .96 + R() * .08 }); }
   function stopAll() { for (const n of Object.keys(BEDS)) { BEDS[n].stop(); delete BEDS[n]; } for (const [id, S] of SPOTS) { S.L.stop(); SPOTS.delete(id); } for (const [v, L] of VOICES) { L.stop(); VOICES.delete(v); } if (MINE) { MINE.stop(); MINE = null; } }
   return { AC, bus, vol, setVol, need, preload, play, loop, beds, spots, engines, myEngine, skid, siren, horn, listen, place, stopAll, has: n => !!files[n] || !!fam[n],
-    muffle(on) { muffle.frequency.setTargetAtTime(on ? 700 : 20000, t(), .3); }, files };
+    muffle(on) { muffle.frequency.setTargetAtTime(on ? 700 : 20000, t(), .3); }, files,
+    debug() { return { beds: Object.keys(BEDS).map(n => [n, +BEDS[n].g.gain.value.toFixed(3)]), spots: [...SPOTS.keys()], engines: [...VOICES.values()].map(L => L.name), mine: MINE && MINE.name, loaded: [...BUF.keys()], state: AC.state }; } };
 }
