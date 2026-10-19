@@ -431,6 +431,38 @@ function gradeHouse(geo){ const c=geo.attributes.color; if(!c) return;
 function nodeMarks(gltf){ let mk=null; gltf.scene.traverse(o=>{ if(!mk&&o.userData&&o.userData.marks) mk=o.userData.marks; }); return mk; }
 const FACE_YAW={'-y':0,'+y':Math.PI,'+x':Math.PI/2,'-x':-Math.PI/2};   // Blender facing -> yaw in the game (yaw 0 looks toward +z)
 const LATE_FILES={skate:['skateboard','+z',.82,1],car2:['car_blue','+z',4.75,1],bike2:['bike_naked','+x',2.1,1],benz:['car_benz','+z',5.45,1],sbike:['bike_sport','+x',2.08,1],tanker:['tanker','+z',12,1]};   // yours first
+/* ================= the new vehicles made in the user's Blender from Sketchfab models (tools/blender_rooms/ng_vehicles.py):
+   our own names (no real brands), class by class from tokunbo to big-man cars, plus the police van, the ambulance and the tipper.
+   They load in the background after you enter; then they join the traffic, and you can buy them at the car lot and the showroom. */
+const NEWV=[
+  // key, game name, class, price, max speed (m/s), tyre radius, half tyre width, seat layout, health, traffic share
+  {k:'v_corolla',n:'Tokunbo Coro',c:'Everyday',price:220000,v:[11,15.5],r:.32,hw:.12,s:'car',hp:380,mix:.06},
+  {k:'v_camry',n:'Kamri Big Daddy',c:'Everyday',price:280000,v:[11,16],r:.33,hw:.12,s:'car',hp:390,mix:.06},
+  {k:'v_accord',n:'Akodu Eyes',c:'Everyday',price:260000,v:[11,16],r:.33,hw:.12,s:'car',hp:380,mix:.04},
+  {k:'v_v190',n:'V-Boot 190',c:'Everyday',price:180000,v:[10,15],r:.31,hw:.12,s:'car',hp:400,mix:.04},
+  {k:'v_hilux',n:'Hilo Workhorse',c:'Mid',price:600000,v:[10,15],r:.38,hw:.14,s:'pickup',hp:460,mix:.04},
+  {k:'v_landcruiser',n:'Lagos Cruiser',c:'SUV',price:1600000,v:[11,16.5],r:.39,hw:.14,s:'suv',hp:480,mix:.025},
+  {k:'v_rangerover',n:'Ikoyi Rover',c:'SUV',price:2200000,v:[12,17],r:.38,hw:.14,s:'suv',hp:470,mix:.02},
+  {k:'v_gwagon',n:'G-Boss',c:'SUV',price:3500000,v:[12,17],r:.39,hw:.14,s:'suv',hp:520,mix:.015},
+  {k:'v_sclass',n:'Senator S',c:'Luxury',price:4500000,v:[13,18],r:.35,hw:.13,s:'car',hp:450,mix:.015},
+  {k:'v_rolls',n:'Royal Ghost',c:'Super-luxury',price:15000000,v:[13,18],r:.38,hw:.14,s:'car',hp:520,mix:.006},
+  {k:'v_f40',n:'Lekki Flash',c:'Super-luxury',price:22000000,v:[15,23],r:.33,hw:.15,s:'car',hp:420,mix:.004},
+  {k:'v_urus',n:'Eko Bull',c:'Super-luxury',price:18000000,v:[14,21],r:.38,hw:.15,s:'suv',hp:480,mix:.006},
+  {k:'v_ambulance',n:'LASAMBUS ambulance',c:'Service',price:0,v:[11,15],r:.37,hw:.14,s:'van',hp:500,mix:.012,lights:'amb'},
+  {k:'v_tipper',n:'Tipper',c:'Truck',price:0,v:[7,10],r:.52,hw:.2,s:'truck',hp:800,mix:.03,main:1}];
+const NEWV_SEATS={   // as a share of the length (x, forward) and the height (y); z in metres
+  car:[[.04,.36,-.36,1],[.04,.36,.36,.35],[-.2,.36,-.36,.3],[-.2,.36,.36,.2]], suv:[[.05,.42,-.38,1],[.05,.42,.38,.35],[-.17,.43,-.38,.3],[-.17,.43,.38,.2]],
+  pickup:[[.08,.45,-.38,1],[.08,.45,.38,.4],[-.1,.45,-.38,.2]], van:[[.26,.4,-.42,1],[.26,.4,.42,.4]], truck:[[.34,.52,-.5,1],[.34,.52,.5,.3]]};
+for(const N of NEWV) LATE_FILES[N.k]=[N.k,'+x',0,1];   // size 0: they come at their real size from Blender
+LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
+const NEWV_K=Object.fromEntries(NEWV.map(N=>[N.k,N]));
+function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker'].includes(k))) return;
+  if(k==='policevan'){ WHEEL.policevan={r:.35,hw:.13}; SEATS.policevan=SEATS.police; return; }
+  if(k==='policehilux'){ WHEEL.policehilux={r:.38,hw:.15}; SEATS.policehilux=SEATS.police; return; }
+  if(k==='tanker'){ WHEEL.tanker={r:.5,hw:.2}; SEATS.tanker=[{x:M.W*.36,y:M.H*.5,z:-.5,k:'seat',drv:1},{x:M.W*.36,y:M.H*.5,z:.5,k:'seat',p:.3}]; return; }
+  VT[k]={maxV:N.v,name:N.n}; WHEEL[k]={r:N.r,hw:N.hw}; HERO_RIDE[k]={x:0,y:.03,z:0,ry:0}; VHP[k]=N.hp; CHOP_PRICE[k]=Math.round(Math.max(20000,N.price*.12||60000)/1000)*1000; FARE_V[k]=N.s==='truck'?1:N.s==='van'?2:3;
+  SEATS[k]=NEWV_SEATS[N.s].map(([x,y,z,p],i)=>({x:M.W*x,y:M.H*y,z,k:'seat',...(i===0?{drv:1}:{p})}));
+  if(N.mix) LATE_MIX[k]=N.mix; }
 const loadModelEntry=async([key,[file,front,size,lod]])=>{
   const get=f=>fetchBuf(murl(f)).then(b=>GLL.parseAsync(b,''));
   const res=await Promise.allSettled((lod?[file,file+'_lod1']:[file]).map(get)); if(res[0].status!=='fulfilled') throw res[0].reason;
@@ -2089,8 +2121,8 @@ const CROWD={c:{},seat:{},wait:[],used:[],list:[],hide:false,queue:[],busy:false
 function seatKind(seat){ return seat.k==='bike'?(seat.drv?'bike':'bikeP'):seat.k==='seat'?(seat.drv?'seat':'pass'):seat.k; }
 function seatHuman(seat,police,cast){ const root=new THREE.Group(); root.rotation.order='YXZ'; root.rotation.y=Math.PI/2+(seat.ry||0); root.position.set(seat.x,seat.y,seat.z);
   const o={root,mesh:null,k:seatKind(seat),police:!!police,cast:cast||null}; if(!crowdSeat(o)){ CROWD.wait.push(o); if(CROWD.wait.length>300) CROWD.wait.shift(); } return o; }
-function makeCar(type,color,empty=false){
-  if(MODELS[type]){ const M=MODELS[type], S=splitVehicle(type), g=new THREE.Group(); g.rotation.order='YZX';
+function makeCar(type,color,empty=false,skin=null){
+  if(MODELS[type]){ const mt=skin&&MODELS[skin]?skin:type, M=MODELS[mt], S=splitVehicle(mt), g=new THREE.Group(); g.rotation.order='YZX';
     const hi=new THREE.Group(), lo=new THREE.Group(); g.add(hi,lo); const mk=(geo,mat,par)=>{ const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); par.add(m); return m; };
     const wheels=[]; let steerG=null;
     if(S){ mk(S.body,M.mat,hi);
@@ -2102,7 +2134,8 @@ function makeCar(type,color,empty=false){
     if(M.geo1) mk(M.geo1,M.mat1,lo); lo.visible=false;
     if(type==='police'){ for(const [mat,zz] of [[polRed,.3],[polBlue,-.3]]){ const b=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),mat); b.position.set(M.W*.04,M.H+.02,zz); b.layers.set(1); g.add(b); } }
     const occ=new THREE.Group(); hi.add(occ); const seats=[]; if(!empty) for(const st of SEATS[type]||[]){ if(!st.drv&&MR()>st.p) continue; const h=seatHuman(st,type==='police'); occ.add(h.root); seats.push({st,h}); }
-    return {g,hi,lo,wheels,steerG,occ,seats,def:{L:M.W,W:M.D,H:M.H,r:(S&&S.wheels[0]?S.wheels[0].r:.35),maxV:VT[type].maxV},type}; }
+    if(NEWV_K[type]&&NEWV_K[type].lights==='amb') for(const [mat,zz] of [[polRed,.35],[polBlue,-.35]]){ const b=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),mat); b.position.set(M.W*.3,M.H+.02,zz); b.layers.set(1); g.add(b); }
+    return {g,hi,lo,wheels,steerG,occ,seats,def:{L:M.W,W:M.D,H:M.H,r:(S&&S.wheels[0]?S.wheels[0].r:.35),maxV:VT[type].maxV},type,skin:mt}; }
   const D=CAR_T[type], G=carGeos(type), g=new THREE.Group(); g.rotation.order='YZX';
   const pm=paintMat(color,type==='danfo'?.15:.55);
   for(const [geo,mat] of [[G.paint,pm],[G.glass,CM.glass],[G.trim,CM.trim],[G.head,CM.head],[G.tail,CM.tail]]){ const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); g.add(m); }
@@ -2111,7 +2144,7 @@ function makeCar(type,color,empty=false){
   return {g,wheels,def:D,type}; }
 const CAR_COLORS=['#111214','#f1f1ee','#8d939a','#1d3557','#7a0f12','#2b4b3a','#c4c8cc','#3a2a1e','#0f4c81','#b0b6bb'];
 const vehicles=[];
-function newVehicle(type,color,empty=false){ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty); scene.add(c.g); const v={c,type,color,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
+function newVehicle(type,color,empty=false){ const want=!MODELS[type]&&NEWV_K[type]?type:null; const skin=type==='police'?(()=>{ const r=MR(); return MODELS.policevan&&r<.35?'policevan':MODELS.policehilux&&r<.8?'policehilux':null; })():null; if(!MODELS[type]) type=NEWV_K[type]?(NEWV_K[type].s==='truck'||NEWV_K[type].s==='van'?'suv':'sedan'):({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty,skin); scene.add(c.g); const v={c,type,color,want,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
 function laneOff(a,b){ const e=edgeOf(a.i,b.i); if(!e) return 1.5; if(e.ow) return e.w>=8?e.w*.2:0; return e.hw>=10?4.6:e.hw*.45; }
 function lineSeg(ia,ib){ const a=nodes[ia],b=nodes[ib],dx=b.x-a.x,dz=b.z-a.z,L=Math.hypot(dx,dz)||.1,fx=dx/L,fz=dz/L,rx=-fz,rz=fx,off=laneOff(a,b),sa=Math.min(a.deg>=3?a.r+1.2:1.2,L*.45),sb=Math.min(b.deg>=3?b.r+1.2:1.2,L*.45);
   const p0={x:a.x+fx*sa+rx*off,z:a.z+fz*sa+rz*off}, p2={x:b.x-fx*sb+rx*off,z:b.z-fz*sb+rz*off}; return {k:0,p0,p2,len:Math.max(.1,Math.hypot(p2.x-p0.x,p2.z-p0.z)),fx,fz,rx,rz,off}; }
@@ -2135,7 +2168,7 @@ function placeCar(v,dmin,dmax,toward=false,at=null){ const CF=toward?(at?fieldTo
   const seg=lineSeg(a,b); if(seg.len<6) continue; const s=mrr(0,seg.len); segPos(seg,s,_sp);
   const d=Math.hypot(_sp.x-O.x,_sp.z-O.z); if(d<dmin||d>dmax) continue; if(CF&&t<40&&(CF[b]>Math.max(220,d*2.5+80)||d<90&&(O.x-_sp.x)*_sp.dx+(O.z-_sp.z)*_sp.dz<0)) continue;   // a street that really leads to you, not one that goes the long way round
   let clash=false; for(const o of vehicles) if(o!==v&&Math.hypot(o.x-_sp.x,o.z-_sp.z)<11){ clash=true; break; } if(clash) continue;
-  if((v.type==='bus'||v.type==='tanker')&&e.c>4) continue;   // big buses and tankers stay on the main roads
+  if((v.type==='bus'||v.type==='tanker'||v.type==='v_tipper')&&e.c>4) continue;   // big buses and tankers stay on the main roads
   const D=v.c.def; v.ai={a,b,s,seg,na:-1,maxV:mrr(D.maxV[0],D.maxV[1]),wait:0,ghost:0,stuck:0,cond:e.cond,ec:e.c}; v.parked=false; v.x=_sp.x; v.z=_sp.z; v.h=Math.atan2(-_sp.dz,_sp.dx); v.speed=v.ai.maxV*.6; v.y=groundY(v.x,v.z); return true; } return false; }
 // parked by the kerb: a spot on the street edge near (x,z), the vehicle along the street
 function kerbSpot(x,z,len,filter=e=>e.c>=4&&e.c<9){ const [e]=nearestRoad(x,z,filter); if(!e) return null; const A0=nodes[e.a], t=clamp((x-A0.x)*e.fx+(z-A0.z)*e.fz,A0.r+len/2+1,e.len-nodes[e.b].r-len/2-1);
@@ -2145,7 +2178,7 @@ let mySkate=null;
 const LATE_MIX={car2:.1,benz:.035,tanker:.045,bike2:.04,sbike:.025}, LATE={want:{},t:0,started:false};
 async function loadLate(){ if(LATE.started) return; LATE.started=true;
   for(const e of Object.entries(LATE_FILES)){ try{ const [k,out]=await loadModelEntry(e); MODELS[k]=out; lateReady(k); }catch(err){ console.warn('late model',e[0],err); } await new Promise(r=>setTimeout(r,400)); } }
-function lateReady(k){
+function lateReady(k){ newvReady(k); for(const v of vehicles) if(v.want===k){ retype(v,k); v.want=null; }   // your own car bought before its model came in
   if(k==='skate'){ const atFlat=homeNow()==='flat', rx=atFlat?-APT.nz:HOME_SD[0], rz=atFlat?APT.nx:HOME_SD[1], p=atFlat?{x:APT.front.x+rx*3.2-APT.nx*.3,z:APT.front.z+rz*3.2-APT.nz*.3}:nearHome(1.3); mySkate=newVehicle('skate','#ffffff',true); Object.assign(mySkate,{x:p.x,z:p.z,y:0,h:Math.atan2(-rz,rx),keep:1}); return; }   // by your door
   if(k==='benz'&&HOTEL_SITE){ const q=kerbSpot(HOTEL_SITE.door.x-6,HOTEL_SITE.door.z,6,e=>e.c<9); if(q&&!vehicles.some(o=>Math.hypot(o.x-q.x,o.z-q.z)<6)){ const v=newVehicle('benz','#111214',true); Object.assign(v,{x:q.x,z:q.z,h:q.h,y:0,keep:1}); } }   // a big man's car at the hotel
   if(LATE_MIX[k]) LATE.want[k]=Math.max(1,Math.round(Q.cars*LATE_MIX[k])); }
@@ -3028,7 +3061,7 @@ function updateWalk(dt,inside){
 function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
   if(v.type==='skate'){ updateSkate(dt); return; }
-  const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
+  const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker'||v.type==='v_tipper', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
   // drift: handbrake while turning at speed slides the back out (big buses and tankers just brake)
   const drifting=hb&&Math.abs(sp)>7&&Math.abs(s)>.15&&!big&&SKL.st<.05;
   const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40],car2:[1.1,42],benz:[1.3,52],tanker:[.38,21],bike2:[1.45,40],sbike:[1.8,48],skate:[.55,7.5]})[v.type]||[1,38];
@@ -5657,7 +5690,7 @@ function aimArms(root,cache,w,dir,kick=0){ const sh=boneOf(root,/RightShoulder$/
 function rayCyl(o,d,cx,cz,r,y0,y1){ const ox=o.x-cx, oz=o.z-cz, a=d.x*d.x+d.z*d.z; if(a<1e-9) return -1; const b=2*(d.x*ox+d.z*oz), c=ox*ox+oz*oz-r*r, D=b*b-4*a*c; if(D<0) return -1;
   const s=Math.sqrt(D); for(const t of [(-b-s)/(2*a),(-b+s)/(2*a)]){ if(t<=0) continue; const y=o.y+d.y*t; if(y>=y0&&y<=y1) return t; } return -1; }
 function raySphere(o,d,x,y,z,r){ const ox=o.x-x, oy=o.y-y, oz=o.z-z, b=ox*d.x+oy*d.y+oz*d.z, c=ox*ox+oy*oy+oz*oz-r*r, D=b*b-c; if(D<0) return -1; const t=-b-Math.sqrt(D); return t>0?t:-1; }
-function rayCar(o,d,v){ const fx=Math.cos(v.h), fz=-Math.sin(v.h), rx=o.x-v.x, rz=o.z-v.z, lx=rx*fx+rz*fz, lz=-rx*fz+rz*fx, dlx=d.x*fx+d.z*fz, dlz=-d.x*fz+d.z*fx, D=v.c.def, Hh=v.type==='tanker'?3.4:v.type==='skate'?.25:v.type==='bus'||v.type==='danfo'?2.3:v.type==='okada'||v.type==='pbike'?1.1:1.55;
+function rayCar(o,d,v){ const fx=Math.cos(v.h), fz=-Math.sin(v.h), rx=o.x-v.x, rz=o.z-v.z, lx=rx*fx+rz*fz, lz=-rx*fz+rz*fx, dlx=d.x*fx+d.z*fz, dlz=-d.x*fz+d.z*fx, D=v.c.def, Hh=v.type==='tanker'||v.type==='v_tipper'?3.4:v.type==='skate'?.25:v.type==='bus'||v.type==='danfo'?2.3:v.type==='okada'||v.type==='pbike'?1.1:1.55;
   SL.t0=0; SL.t1=1e9; return rslab(lx,dlx,-D.L/2,D.L/2)&&rslab(o.y,d.y,(v.y||0)+.2,(v.y||0)+Hh)&&rslab(lz,dlz,-D.W/2,D.W/2)?SL.t0:-1; }
 function rayHit(o,d,maxD,shooter){ let best={t:maxD,kind:null}; const tw=rayDist(o,d,maxD); if(tw<best.t) best={t:tw,kind:'world'};
   if(d.y<-1e-4){ const tg=(walkY(o.x,o.z,0)-o.y)/d.y; if(tg>0&&tg<best.t) best={t:tg,kind:'ground'}; }
@@ -7296,6 +7329,14 @@ for(const c of VENUES.clubs){ DOORS.push({x:c.door.x,z:c.door.z,r:2.2,label:()=>
 if(STATION.r&&STATION.r.M.marks) DOORS.push({x:STATION.front.x,z:STATION.front.z,r:2.2,label:'Enter the police station',act:enterPolice});
 if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x,z:V.door.z,r:2.2,label:'Enter the car showroom',act:enterShowroom});
   PLACES.push({name:'Oluwaseun Motors',sub:'Car stand · tokunbo and brand new cars',kind:'cars',x:V.x,z:V.z}); }
+// ---- the car catalogue at the car stand: every new car class by class, delivered to the kerb outside
+function buyNewCar(N){ // the menu takes the money before calling this
+  if(PH) PH.event('carbuy',{}); OWNED.push({type:N.k,color:'#ffffff',name:N.n}); saveOwned(); closeMenu();
+  const at=VENUES.carstand?VENUES.carstand.door:player; spawnOwned(OWNED[OWNED.length-1],at); toast(`Congrats! Your ${N.n} dey wait for you outside. Press E to drive.`,4); }
+function openCarCatalog(){ const rows=[]; for(const c of ['Everyday','Mid','SUV','Luxury','Super-luxury']) for(const N of NEWV) if(N.c===c&&N.price)
+    rows.push({name:N.n,sub:`${N.c} · top speed ${Math.round(N.v[1]*3.6*1.25)} km/h`,price:N.price,btn:naira(N.price),act:()=>buyNewCar(N)});
+  openMenu('NAIJA MOTORS CATALOGUE','Brand new, any class. Delivered to the kerb outside',rows); }
+if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x+2.6,z:V.door.z,r:1.8,label:'Car catalogue: buy any car',act:openCarCatalog}); }
 // ---- where to go in: a pulsing ring and a bobbing arrow at every door you can walk into (hotels, clubs, police, car stand)
 const DMARK={list:[],arrowG:(()=>{ const g=new THREE.ConeGeometry(.32,.62,4); g.rotateX(Math.PI); g.rotateY(Math.PI/4); return g; })(),t:0};
 function doorMark(x,z,col,text,txt2){ const y=groundY(x,z), c=new THREE.Color(col), g=new THREE.Group(); g.position.set(x,y,z); g.layers.set(1);
@@ -7887,6 +7928,10 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     requestAnimationFrame(tick); })(performance.now());
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
+    newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
+      traffic:vehicles.reduce((a,v)=>{ const k=v.c.skin||v.type; a[k]=(a[k]||0)+1; return a; },{})}),
+    showCars(list,gap=7){ const out=[]; list.forEach((k,i)=>{ const v=newVehicle(k,'#ffffff',true); Object.assign(v,{x:player.x+8,z:player.z-((list.length-1)/2-i)*gap,h:Math.PI/2,parked:true}); v.c.g.position.set(v.x,0,v.z); v.c.g.rotation.y=v.h; out.push(v.c.skin||v.type); }); return out; },
+    catalog(){ openCarCatalog(); return MENU.rows.length; },
     venues:()=>({hotels:HOTELS.map(h=>({n:h.name,...h.door})),clubs:VENUES.clubs.map(c=>({n:c.name,...c.door})),cars:VENUES.carstand&&VENUES.carstand.door,police:STATION.front,stadium:STADIUM&&{x:STADIUM.x,z:STADIUM.z,ry:STADIUM.ry},pitch:PITCH&&{x:PITCH.x,z:PITCH.z,ry:PITCH.ry},fly:FLYOVERS.map(f=>({x:f.cx,z:f.cz,camps:f.camps.length}))}),
     act(){ action(); return {mode,label:ROOM&&ROOM.label,prompt:$('#promptTxt').textContent,busy}; },
     here:()=>({mode,label:mode==='interior'?ROOM.label:null,x:player.x,z:player.z,yaw:player.yaw,prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,cash:CASH.n,stay:STAY,menu:MENU.open}),
