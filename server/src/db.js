@@ -38,6 +38,13 @@ const SCHEMA = [
    INSERT INTO before6(uid, cash, t) SELECT id, cash, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM users;
    INSERT INTO ledger(uid, t, d, held, bal, k) SELECT id, CAST(strftime('%s','now') AS INTEGER) * 1000, 1000 - cash, 0, 1000, 'start over' FROM users;
    UPDATE users SET cash = 1000;`,
+  // v7: the start over takes back the businesses too: every buka, salon and POS stand goes back on sale (what each was,
+  // with its till, is kept in before7; its owner is told once, next time they sign in)
+  `CREATE TABLE before7(id TEXT PRIMARY KEY, kind TEXT NOT NULL, owner INTEGER NOT NULL, name TEXT, data TEXT NOT NULL,
+     till INTEGER NOT NULL, bought INTEGER, t INTEGER NOT NULL, told INTEGER NOT NULL DEFAULT 0);
+   INSERT INTO before7(id, kind, owner, name, data, till, bought, t)
+     SELECT id, kind, owner, name, data, till, bought, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM biz WHERE owner IS NOT NULL;
+   UPDATE biz SET owner = NULL, name = NULL, till = 0, bought = NULL;`,
 ];
 
 export function openDb(file) {
@@ -81,6 +88,8 @@ export function openDb(file) {
     backDel: q('DELETE FROM mkback WHERE uid=?'),
     lawGet: q('SELECT * FROM law WHERE uid=?'),
     lawPut: q('INSERT INTO law(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data'),
+    lostOf: q('SELECT kind FROM before7 WHERE owner=? AND told=0'),
+    lostTold: q('UPDATE before7 SET told=1 WHERE owner=?'),
     lifeGet: q('SELECT data FROM life WHERE uid=?'),
     lifePut: q('INSERT INTO life(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data'),
     parkGet: q('SELECT * FROM park WHERE id=?'),
@@ -128,6 +137,7 @@ export function openDb(file) {
     backTake: uid => { const r = S.backOf.all(uid); if (r.length) S.backDel.run(uid); return r; },
     lawGet: uid => S.lawGet.get(uid) || null,
     lawPut: (uid, data) => S.lawPut.run(uid, data),
+    lostBiz: uid => { const r = S.lostOf.all(uid); if (r.length) S.lostTold.run(uid); return r.map(x => x.kind); },   // once
     lifeGet: uid => { const r = S.lifeGet.get(uid); if (!r) return null; try { return JSON.parse(r.data); } catch (e) { return null; } },
     lifePut: (uid, d) => S.lifePut.run(uid, JSON.stringify(d)),
     parkGet: id => S.parkGet.get(id) || null,
