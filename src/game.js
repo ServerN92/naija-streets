@@ -2625,7 +2625,7 @@ const C3=h=>new THREE.Color(h);
 const LK={
   day:   {turb:3.2,ray:1.25,mie:.004,mieG:.8, exp:.5,sun:C3(0xfff1dc),sunI:3.9, hs:C3(0xbfd6ff),hg:C3(0x8c7a60),hi:.62,fog:C3(0xc4ccd0),fd:.0015,win:0,  lamp:0,  sign:0,  b0:.22,b1:.45,b2:.92,env:.85,water:C3(0x0d4a5c),head:.15,tail:.3, spot:0},
   golden:{turb:9, ray:2.4,mie:.009,mieG:.86,exp:.6, sun:C3(0xffaf68),sunI:2.8, hs:C3(0xffc7a2),hg:C3(0x5a4636),hi:.55,fog:C3(0xd9a079),fd:.0018,win:.45,lamp:.8, sign:.25,b0:.32,b1:.55,b2:.86,env:1, water:C3(0x173947),head:1,  tail:1,  spot:40},
-  night: {turb:2, ray:.4, mie:.002,mieG:.8, exp:1.02,sun:C3(0x9fb4ff),sunI:.8,hs:C3(0x6478a6),hg:C3(0x2c2824),hi:1, fog:C3(0x22324c),fd:.0019,win:1.7,lamp:5,  sign:1.1,b0:.95,b1:.5, b2:.55,env:.72,water:C3(0x143444),head:3,  tail:2.2,spot:180}};   // a bright moonlit night: players should still see the city
+  night: {turb:2, ray:.4, mie:.002,mieG:.8, exp:1.3,sun:C3(0x9fb4ff),sunI:1.05,hs:C3(0x7487b4),hg:C3(0x38322b),hi:1.3, fog:C3(0x22324c),fd:.0019,win:1.7,lamp:5,  sign:1.1,b0:.95,b1:.5, b2:.55,env:.72,water:C3(0x143444),head:3,  tail:2.2,spot:180}};   // a bright moonlit night: players should still see the city
 const RAINFOG=C3(0x6f7a84), HAZE=C3(0xc8a273), _c1=new THREE.Color(), _c2=new THREE.Color();
 const ENV={hour:12,elev:40,lamp:0,win:0,sign:0,head:.15,tail:.3,spot:0,wet:0,rain:0,cloud:0,haze:0,dim:0,storm:0,night:false,w:null,label:'',icon:'sun',flash:0};
 const envScene=new THREE.Scene(); envScene.add(sky); let envRT=null, envKey='', envT=-99, skyT=-99;
@@ -8272,6 +8272,8 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
             const k=(c.src||'?')+(c.low?' low':'')+(c.car?' car':''); const g=out[k]||(out[k]={n:0,ex:[]}); g.n++; g.rd=(g.rd||{}); const rn=(e.name||'#'+e.i)+'/c'+e.c; g.rd[rn]=(g.rd[rn]||0)+1; g.off=(g.off||{}); g.off[o===0?'mid':'lane']=(g.off[o===0?'mid':'lane']||0)+1; if(g.ex.length<6) g.ex.push([Math.round(x),Math.round(z),e.name||'',e.c,+e.hw.toFixed(1),+(c.h).toFixed(2),o===0?'mid':'lane',e.ow?'ow':'2w']); } } }
       return out; },
     land:()=>LAND&&LAND.cp?{x:+LAND.cp.x.toFixed(1),z:+LAND.cp.z.toFixed(1),TX:AIRPORT.TX,TZ:AIRPORT.TZ,bays:LAND.bays.length,free:LAND.free.length}:null,
+    env:()=>({hour:+ENV.hour.toFixed(2),night:ENV.night,exp:+renderer.toneMappingExposure.toFixed(2)}),
+    jams:()=>{ const L=vehicles.filter(v=>v.ai&&!v.ai.chase); return {ai:L.length,stuck8:L.filter(v=>v.ai.stuck>8).length,max:+Math.max(0,...L.map(v=>v.ai.stuck)).toFixed(1),slip:L.filter(v=>v.ai.slip>0).length,back:L.filter(v=>v.ai.back>0).length,tuck:L.filter(v=>v.ai.tuck>0).length}; },
     newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
       traffic:vehicles.reduce((a,v)=>{ const k=v.c.skin||v.type; a[k]=(a[k]||0)+1; return a; },{})}),
     showCars(list,gap=7){ const out=[]; list.forEach((k,i)=>{ const v=newVehicle(k,'#ffffff',true); Object.assign(v,{x:player.x+8,z:player.z-((list.length-1)/2-i)*gap,h:Math.PI/2,parked:true}); v.c.g.position.set(v.x,0,v.z); v.c.g.rotation.y=v.h; out.push(v.c.skin||v.type); }); return out; },
