@@ -128,6 +128,9 @@ export function createBusiness(api) {
       if (m.kinds) RK = m.kinds; else if (m.rules) RK.buka = m.rules;
       for (const p of m.s) { const b = B[p.id]; if (!b) continue; b.pub = p; paint(b); people(b); }
       if (api.menuOpen() && CUR) refresh();
+    } else if (m.t === 'bzlost') {   // taken back in the start over (once)
+      const W = { buka: 'buka', barber: 'barbing salon', pos: 'POS stand' }, l = [...new Set(m.k)].map(k => W[k] || k), s = l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0];
+      api.toast(`Start over: your ${s} don go back on sale. Everybody dey start from zero. Hustle, then buy again!`, 7);
     } else if (m.t === 'bzd') { const b = B[m.b.id]; if (b) { b.mine = m.b; if (api.menuOpen() && CUR === b) refresh(); } }
     else if (m.t === 'bzate') { const D = RK.buka && RK.buka.items[m.k]; api.heal(40); api.toast(`You chop ${D ? D.n.toLowerCase() : 'food'}. Body don set! +40 health`, 3); }
     else if (m.t === 'mk') { MKT.l = m.l || []; if (api.menuOpen() && CUR) refresh(); }

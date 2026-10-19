@@ -237,7 +237,10 @@ jobs pay more and give less time.
 
 ## A new life: from under the bridge
 Everybody starts with nothing: ₦1,000, torn clothes (the "Rags" outfit) and a tent in the camp under the flyover nearest
-your old house. Your old flat is for sale (₦650,000, a red FOR SALE board over the door). The way up:
+your old house. Your old flat is for sale (₦650,000, a red FOR SALE board over the door). The businesses were taken
+back too: every buka, barbing salon and POS stand is for sale again (server v7; what each was, with its till, is kept
+in the `before7` table and its old owner gets a notice once at the next sign-in), and your farm goes back to the farm
+officer to collect again. The way up:
 - **Your tent** (yellow ring): sleep (you rest, but not fully: mosquitoes) and change into clothes you own.
 - **Bend-down boutique** next to it: every outfit of your person has a price (Singlet ₦2,500 up to the Office suit
   ₦50,000; women from Joggers ₦5,000 to the Office suit ₦40,000). What you have not bought is locked in the wardrobe.

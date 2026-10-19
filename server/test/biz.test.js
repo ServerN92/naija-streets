@@ -173,3 +173,12 @@ test('the produce market: a farmer sells tomatoes to a buka; the buka cooks chea
   for (let i = 0; i < 6; i++) T.biz.market(f, { a: 'list', crop: 'cassava', n: 1, p: PRODUCE.cassava.prices[0] });
   assert.match(T.last('Farmer_F', 'mkerr').m, /5 sales up/);
 });
+
+test('taken back in the start over: the old owner is told once when they sign in, and it is for sale', () => {
+  const T = setup(), old = T.mk('Old', 0);
+  T.db.raw.prepare('INSERT INTO before7(id, kind, owner, name, data, till, bought, t) VALUES(?,?,?,?,?,?,?,?)').run('buka_2', 'buka', old.user.id, "Old's Buka", '{}', 900, 1, 1);
+  T.biz.hello(old); assert.deepEqual(T.last('Old', 'bzlost').k, ['buka']);
+  const n = T.sent.filter(([w, o]) => w === 'Old' && o.t === 'bzlost').length; T.biz.hello(old);
+  assert.equal(T.sent.filter(([w, o]) => w === 'Old' && o.t === 'bzlost').length, n);
+  assert.equal(T.biz.get('buka_2').owner, null);
+});

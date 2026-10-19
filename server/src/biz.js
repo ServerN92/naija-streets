@@ -437,6 +437,7 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     const kinds = {}; for (const k in KIND) kinds[k] = KIND[k].rules();
     ctx.send(C, { t: 'bz', s: [...B.values()].map(pub), all: 1, rules: kinds.buka, kinds });
     for (const b of owned(C.user.id)) ctx.send(C, { t: 'bzd', b: mine(b) });
+    const lost = db.lostBiz ? db.lostBiz(C.user.id) : []; if (lost.length) ctx.send(C, { t: 'bzlost', k: lost });   // taken back in the start over
     ctx.send(C, { t: 'mk', l: mkList() });
     const back = db.backTake(C.user.id); if (back.length) ctx.send(C, { t: 'mkback', items: back.map(r => [r.crop, r.qty]) });
     if (mkOf(C.user.id).length) mkMine(C);
