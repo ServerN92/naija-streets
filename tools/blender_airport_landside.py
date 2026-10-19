@@ -1,7 +1,7 @@
 """Naija Streets: the airport's landside, made in the user's Blender (run in a background Blender by
 tools/blender_rooms/life_job.py, job 'airport'): what you meet on the road to Murtala Muhammed Airport.
 
-  ns_airtoll      the toll plaza across the airport road: a wider asphalt pad, two inbound lanes with booths (pay N300),
+  ns_airtoll      the toll plaza across the airport road (on the road's own asphalt): two inbound lanes with booths (pay N300),
                   two exit lanes, islands with chevrons and bollards, a green canopy with the toll board, a walkway for
                   people on foot (free) and the airport security post
   ns_airtoll_arm  one barrier arm (red and white), pivot at its origin; the game lifts it when you have paid
@@ -59,18 +59,13 @@ def booth(B, cx, y0, y1, detail, win_side=1):
 def toll(detail):
     B = Builder(detail, simple=True)
     y0, y1 = -24.0, 18.0
-    flat(B, -13.5, 13.5, y0, y1, .045, ASPH)                                                      # the pad, wider than the road
-    if detail:
-        for k in range(14):   # patches and oil stains
-            xx = -12 + 24 * hf(k, 1); yy = y0 + 2 + (y1 - y0 - 4) * hf(k, 2)
-            flat(B, xx, xx + .8 + 1.2 * hf(k, 3), yy, yy + .5 + 1.5 * hf(k, 4), .046, '#323437')
+    # (the asphalt under the plaza is the airport road's own, tools/blender_airroad.py: its median runs up to the centre island)
     lanes_in = ((.6, 4.0), (5.2, 8.6)); lanes_out = ((-8.6, -5.0), (-3.8, -.6))
     # lane lines leading in, the yellow centre line, stop lines at the barriers
     for xx in (-8.6, -5.0, -3.8, 4.0, 5.2, 8.6):
         for k in range(8):
             ya = y0 + 1 + k * 2.2
             flat(B, xx - .06, xx + .06, ya, ya + 1.2, .048, LINE)
-    flat(B, -.08, .08, y0, -9, .048, YEL)
     for (a, b) in lanes_in:
         flat(B, a, b, 1.15, 1.45, .048, LINE)
         for (yy) in (-16, -19):                                                                    # speed bumps
@@ -195,9 +190,7 @@ def carpark(detail):
         x_in, x_out = 12.0 * side, 92.0 * side
         xa, xb = sorted((x_in, x_out))
         flat(B, xa, xb, Y(38.5), Y(3), .04, '#46484b')                                                 # the asphalt
-        for (a, b) in AISLES:                                                                            # aisles reach the road
-            xr0, xr1 = sorted((8.0 * side, x_in))
-            flat(B, xr0, xr1, Y(b), Y(a), .041, '#46484b')
+        for (a, b) in AISLES:                                                                            # (the road's own asphalt reaches the aisles)
             if detail:
                 for k in range(3):
                     ax = x_in + side * (14 + k * 24)

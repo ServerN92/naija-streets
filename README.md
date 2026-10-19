@@ -452,6 +452,15 @@ The pieces (`ns_airtoll`, `ns_airtoll_arm`, `ns_bansign`, `ns_carpark`, `ns_impo
 `tools/blender_airport_landside.py` (job `airport` of `tools/blender_rooms/life_job.py`) and packed with
 `tools/life_pack.py`.
 
+**The road itself** (`set_airroad`, made in Blender with `tools/blender_airroad.py`, job `road`): a dual carriageway that
+carries on Agege Motor Road's two carriageways, two lanes each way on clean asphalt (wheel paths, a little dust at the
+kerbs), a raised kerb painted black and white round a green grass median with a row of palm trees (the Sketchfab palm from
+Naija Ground, `ns_palm` + a light copy far away) and double street lamps between them that light up at night; lane lines,
+a yellow line along the median, SLOW / AIRPORT / CITY and arrows painted on the road, drains, kerbs and sidewalks of
+interlocking stones (red and charcoal). The median narrows into the toll's centre island and opens at the link road and
+the car park aisles; there is a driveway to the impound yard and the drop-off road in front of the terminal. Cars can't
+cross the median (people step over it). It loads as you come near and replaces the old flat road.
+
 ## Police checkpoints
 Three police roadblocks stand on the busy roads of Mushin by day (drums, a striped plank, a plank of nails, the officers'
 umbrella and bench; built in Blender, `tools/blender_checkpoint.py`). Drive up and they wave you down: stop next to them

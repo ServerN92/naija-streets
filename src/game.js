@@ -329,8 +329,9 @@ let qStamp=0; const qOut=[];
 function query(x0,z0,x1,z1){ qStamp++; qOut.length=0; for(let i=Math.floor(x0/CELL);i<=Math.floor(x1/CELL);i++) for(let j=Math.floor(z0/CELL);j<=Math.floor(z1/CELL);j++){ const a=hash.get(hk(i,j)); if(a) for(const b of a) if(b._q!==qStamp){ b._q=qStamp; qOut.push(b); } } return qOut; }
 // push a circle (radius r, feet at height y) out of every box it overlaps
 let RC_FLY=null;   // the flyover the player's car is driving on: its ramp boxes don't block it
+let RC_CAR=false;  // a car is being pushed: boxes only for cars (a raised median) count too
 function resolveCircle(p,r,list=null,y=0){ let hit=false; const cand=list||query(p.x-r,p.z-r,p.x+r,p.z+r);
-  for(const b of cand){ if(b.y0>y+1.4||b.h<y+.25||(b.fly&&b.fly===RC_FLY)) continue;
+  for(const b of cand){ if(b.y0>y+1.4||b.h<y+.25||(b.fly&&b.fly===RC_FLY)||(b.car&&!RC_CAR)) continue;
     if(b.ob){ const o=b.ob, dx=p.x-o.cx, dz=p.z-o.cz, lu=dx*o.c+dz*o.s, lv=-dx*o.s+dz*o.c, cu=clamp(lu,-o.hx,o.hx), cv=clamp(lv,-o.hz,o.hz), du=lu-cu, dv=lv-cv, d2=du*du+dv*dv;
       if(d2<r*r){ hit=true; let nu=lu, nv=lv; if(d2>1e-6){ const d=Math.sqrt(d2); nu=cu+du/d*r; nv=cv+dv/d*r; }
         else { const m0=o.hx-lu, m1=lu+o.hx, m2=o.hz-lv, m3=lv+o.hz, m=Math.min(m0,m1,m2,m3); if(m===m0) nu=o.hx+r; else if(m===m1) nu=-o.hx-r; else if(m===m2) nv=o.hz+r; else nv=-o.hz-r; }
@@ -701,6 +702,13 @@ const PH_MAT={dry:new THREE.MeshStandardMaterial({map:texPothole(false),transpar
 
 
 // railway: the Lagos–Ibadan line runs through Mushin (ballast, sleepers and two rails per track)
+// it stops at the map's south edge: beyond is the airport's land, where the airport road runs (the line's data goes on there)
+{ const zc=-WB.z, out=[]; for(const r of WD.rail){ let cur=[]; const p=r.p, flush=()=>{ if(cur.length>=4) out.push({...r,p:cur}); cur=[]; };
+    for(let i=0;i<p.length;i+=2){ const x=p[i], z=p[i+1], inside=z>=zc;
+      if(i>0){ const px=p[i-2], pz=p[i-1], pin=pz>=zc; if(pin!==inside){ const t=(zc-pz)/(z-pz), cx=px+(x-px)*t; if(pin){ cur.push(cx,zc); flush(); } else cur.push(cx,zc); } }
+      if(inside) cur.push(x,z); }
+    flush(); }
+  WD.rail=out; }
 const RAILS=WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([r.p[i],r.p[i+1]]); return o; });
 { const bal=new Acc(), steel=new Acc(), BC=new THREE.Color('#8f8a82'), SC=new THREE.Color('#7d7f82');
   const T_SL=(()=>{ const [c,g]=cv(256,256); g.fillStyle='#77726b'; g.fillRect(0,0,256,256); grain(g,256,256,40); for(let y=0;y<256;y+=32){ g.fillStyle='#4f4031'; g.fillRect(28,y+6,200,14); g.fillStyle='rgba(0,0,0,.25)'; g.fillRect(28,y+18,200,3); } return tx(c); })();
@@ -1205,6 +1213,20 @@ function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,p
     if(S.state===2){ S.near_.visible=d<S.detailDist; if(S.tick) S.tick(dt,d); } } }
 // set-local point -> world
 const setPt=(S,lx,lz)=>{ const c=Math.cos(S.ry), s=Math.sin(S.ry); return {x:S.x+lx*c+lz*s,z:S.z-lx*s+lz*c}; };
+// the palm on the airport road's median (the Sketchfab palm from the user's Naija Ground, tools/blender_airroad.py):
+// trunk and leaves in one geometry (two materials), a light copy further away -> CullSet levels
+const PALM={p:null};
+function palmLevels(){ if(PALM.p) return PALM.p;
+  const one=n=>{ const u=murl(n); DL.exp[u]=MANIFEST[`assets/models/${n}.glb`]||4e5; return fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ g.scene.updateMatrixWorld(true); const geos=[], mats=[];
+      g.scene.traverse(o=>{ if(!o.isMesh) return; let w=floatGeo((o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone())); w.applyMatrix4(o.matrixWorld);
+        for(const k of Object.keys(w.attributes)) if(!['position','normal','uv'].includes(k)) w.deleteAttribute(k); if(!w.attributes.normal) w.computeVertexNormals();
+        if(!w.attributes.uv) w.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(w.attributes.position.count*2),2));
+        const m=o.material; if(m.map){ m.map.colorSpace=THREE.SRGBColorSpace; m.map.anisotropy=Math.min(4,maxAniso); }
+        if(/Leaf/i.test(m.name)){ m.transparent=false; m.alphaTest=.5; m.depthWrite=true; m.side=THREE.DoubleSide; m.alphaToCoverage=false; } else m.side=THREE.FrontSide;
+        geos.push(w); mats.push(m); });
+      const geo=mergeGeometries(geos,true); geo.computeBoundingSphere(); return {geo,mat:mats}; }); };
+  PALM.p=Promise.all([one('ns_palm'),one('ns_palm_lod1')]).then(([a,b])=>[{geo:a.geo,mat:a.mat,dist:Q.lod0*1.5,shadow:true},{geo:b.geo,mat:b.mat,dist:Q.draw*1.1,shadow:false}]);
+  PALM.p.catch(()=>{ PALM.p=null; }); return PALM.p; }
 // a Blender model with its own materials (the NAIJA AIR A350): one group, cloned for every copy
 const PLANE={p:null,g:null};
 function planeModel(){ if(PLANE.p) return PLANE.p; const u=murl('ns2_a350'); DL.exp[u]=MANIFEST['assets/models/ns2_a350.glb']||6e5;
@@ -1232,7 +1254,9 @@ const AIRPORT=(()=>{ if(!MODELS.jet) return null;
   // where taxis leave and join the street network: the drivable street end nearest the airport road (the expressway ramps there are not for taxis)
   let hand=null, hd=1e9; for(const e of ROADS){ if(!e.drive) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd], d=Math.hypot(n.x-st.x,n.z-st.z)+Math.max(0,n.z+WB.z)*2; if(d<hd){ hd=d; hand={x:n.x,z:n.z}; } } }
   if(!st) return null;
-  const TX=st.x, TZ=-WB.z-420, RZ=TZ-330, TWZ=TZ-205, RL=2700, z0=-WB.z-1;
+  // Agege Motor Road ends in two carriageways: the airport road carries on between them (its median where theirs is)
+  const ends=[]; for(const e of ROADS){ if(!/Agege Motor Road/i.test(e.name)) continue; for(const nd of [e.a,e.b]){ const n=nodes[nd]; if(Math.abs(n.z-st.z)<1&&Math.abs(n.x-st.x)<16&&!ends.some(x=>Math.abs(x-n.x)<.5)) ends.push(n.x); } }
+  const TX=ends.length>1?(Math.min(...ends)+Math.max(...ends))/2:st.x, TZ=-WB.z-420, RZ=TZ-330, TWZ=TZ-205, RL=2700, z0=-WB.z-1;
   LAND_EXTRA.push({x0:TX-1500,x1:TX+1500,z0:RZ-200,z1:z0+1});
   LAND_EXTRA.push({x0:Math.max(TX-1500,-WB.x+2),x1:Math.min(TX+1500,WB.x-2),z0:z0-20,z1:z0+40});   // where the city meets the airport land: no strip in between to stop you
   const flat=(w,d,x,z,mat,y=.02,rot=0)=>{ const g=new THREE.PlaneGeometry(w,d).rotateX(-Math.PI/2); if(rot) g.rotateY(rot); const m=new THREE.Mesh(g,mat); m.position.set(x,y,z); m.receiveShadow=true; scene.add(m); return m; };
@@ -1258,9 +1282,26 @@ const AIRPORT=(()=>{ if(!MODELS.jet) return null;
   for(const gx of [-70,0,70]){ flat(.35,92,TX+gx,TZ-96,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); flat(6,.4,TX+gx,TZ-52,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); }   // lead-in lines and stop bars at the three gates
   // landside: the forecourt road from Agege Motor Road, the drop-off road and the car park
   const roadM=new THREE.MeshStandardMaterial({map:T.road4,roughness:.88,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
-  { const len=st.z-(TZ+64), m=flat(len,16,TX,(st.z+TZ+64)/2,roadM,.03); m.rotation.y=Math.PI/2; }
-  const HZ=-WB.z-30; if(hand&&Math.abs(hand.x-TX)>8){ const m1=flat(Math.abs(hand.z-HZ)+8,8,hand.x,(hand.z+HZ)/2,roadM,.028); m1.rotation.y=Math.PI/2; flat(Math.abs(hand.x-TX),8,(hand.x+TX)/2,HZ,roadM,.028); }   // the link road from the street end
-  flat(300,16,TX,TZ+56,roadM,.03);
+  const oldRoad=[], oldLink=[]; { const len=st.z-(TZ+64), m=flat(len,16,TX,(st.z+TZ+64)/2,roadM,.03); m.rotation.y=Math.PI/2; oldRoad.push(m); }
+  const HZ=-WB.z-30; if(hand&&Math.abs(hand.x-TX)>8){ const m1=flat(Math.abs(hand.z-HZ)+8,8,hand.x,(hand.z+HZ)/2,roadM,.028); m1.rotation.y=Math.PI/2; oldLink.push(m1,flat(Math.abs(hand.x-TX),8,(hand.x+TX)/2,HZ,roadM,.028)); }   // the link road from the street end
+  oldRoad.push(flat(300,16,TX,TZ+56,roadM,.03));
+  // the airport road made in Blender (tools/blender_airroad.py): dual carriageway, painted kerbs round a grass median with palms
+  // and street lamps, sidewalks, the link road and the drop-off road. It replaces the flat roads above once it has loaded,
+  // if it was made for this map (Agege Motor Road's end and the link road where it expects them).
+  if(MANIFEST['assets/models/set_airroad.glb']&&Math.abs(st.z-TZ-420)<1.5&&Math.abs(HZ-TZ-390)<1.5){
+    const RS=addSet('set_airroad',TX,TZ,0,{near:1250,detailDist:0});
+    RS.onLoad=S=>{ const J=S.json||{}, F=J.frame||{};
+      for(const m of oldRoad) m.visible=false;
+      if(F.handLx!==undefined&&hand&&Math.abs(hand.x-TX-F.handLx)<1) for(const m of oldLink) m.visible=false;   // the set has the link road too
+      else if(oldLink[1]){ const m=oldLink[1], L=Math.abs(hand.x-TX), s=Math.sign(hand.x-TX); m.scale.x=(L-12)/L; m.position.x=TX+s*(12+L)/2; }   // else it starts at the sidewalk
+      S.far.traverse(o=>{ if(!o.isMesh) return; const m=o.material, n=m.name||'';
+        if(/^AR_(Paint|Grate|Soil)/.test(n)){ m.polygonOffset=true; m.polygonOffsetFactor=n==='AR_GrateSlot'?-4:-2; m.polygonOffsetUnits=n==='AR_GrateSlot'?-4:-2; }
+        if(n==='AR_LampGlow') S.glow=m; if(n==='AR_Lane'||n==='AR_Asphalt'){ o.castShadow=false; } });
+      S.tick=()=>{ if(S.glow) S.glow.emissiveIntensity=ENV.lamp>0?4:0; };
+      for(const [cx,cz,hx,hz] of (J.median||[])) addOB(TX+cx,TZ+cz,hx,hz,0,.35).car=true;   // the raised median stops cars (not people)
+      const P=(J.palms||[]).map(([x,z,ry,sc])=>({x:TX+x,y:.17,z:TZ+z,ry,sc}));
+      for(const p of P) addOB(p.x,p.z,.24,.24,0,8);
+      palmLevels().then(L=>{ if(P.length) new CullSet(L,P,{shadowDist:Q.shR,name:'air_palms'}); }).catch(e=>console.warn('palm',e)); }; }
   const cpT=mk(512,256,(g,W,H)=>{ g.fillStyle='#55585c'; g.fillRect(0,0,W,H); grain(g,W,H,20); g.fillStyle='#f2f2ee'; for(let x=0;x<W;x+=32){ g.fillRect(x,10,3,100); g.fillRect(x,146,3,100); } g.fillRect(0,124,W,4); });
   if(!MODELS.carpark) cpT.repeat.set(4,2), flat(260,90,TX,TZ+105,new THREE.MeshStandardMaterial({map:cpT,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}),.02);
   // buildings and planes (instanced, with near/far detail)
@@ -1328,7 +1369,7 @@ const LAND=(()=>{ if(!AIRPORT||!MODELS.airtoll) return null; const A=AIRPORT;
   if(MODELS.sedan&&items.length) new CullSet(modelLevels(MODELS.sedan,Q.lod0,Q.draw),items,{shadowDist:Q.shR,name:'air_parked'});
   const zebras=['zebra_w','zebra_e'].map(n=>mk(cp,n)).filter(Boolean);
   // the impound yard by the toll: zinc fence all round, the office by the gate
-  const im=at('impound',A.TX+31,TPZ+22,-Math.PI/2); put(im);
+  const im=at('impound',A.TX+31,TPZ+30,-Math.PI/2); put(im);   // its gate faces the driveway off the airport road
   if(im){ for(const [x0,x1,y0,y1] of [[-12,-3.6,-8.1,-7.9],[3.6,12,-8.1,-7.9],[-12,12,7.9,8.1],[-12.1,-11.9,-8,8],[11.9,12.1,-8,8]]) box(im,x0,x1,y0,y1,2.4); box(im,4.8,10,-11.6,-8.3,2.9);
     signs(im,n=>n==='sign_yard'?['#f4f2ec','#1d1d1f']:['#c0392b','#ffffff']); }
   const slots=im?Object.keys(im.M.marks||{}).filter(n=>/^slot_/.test(n)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(n=>mk(im,n)):[];
@@ -3017,7 +3058,7 @@ function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBra
   if(!onLand(nx,nz,1.2)||!onLand(nx+fx*2.2,nz+fz*2.2,1.2)||!onLand(nx-fx*2.2,nz-fz*2.2,1.2)){ nx=v.x; nz=v.z; if(Math.abs(sp)>4) bump(Math.abs(sp)); crashDamage(v,Math.abs(sp)); sp*=-.25; }
   const P={x:nx,z:nz}; let hit=false;
   const cr=v.c.def.W/2*.95, ck=Math.max(0,v.c.def.L/2-cr);
-  for(const k of (ck>.2?[ck,-ck]:[0])){ const c={x:P.x+fx*k,z:P.z+fz*k}, ox=c.x, oz=c.z; RC_FLY=FLYP.F; const hc=resolveCircle(c,cr,null,v.fh||0); RC_FLY=null; if(hc){ hit=true; P.x+=c.x-ox; P.z+=c.z-oz; } }
+  for(const k of (ck>.2?[ck,-ck]:[0])){ const c={x:P.x+fx*k,z:P.z+fz*k}, ox=c.x, oz=c.z; RC_FLY=FLYP.F; RC_CAR=true; const hc=resolveCircle(c,cr,null,v.fh||0); RC_FLY=null; RC_CAR=false; if(hc){ hit=true; P.x+=c.x-ox; P.z+=c.z-oz; } }
   if(hit){ if(Math.abs(sp)>6){ bump(Math.abs(sp)); crashDamage(v,Math.abs(sp)); sp*=.55; SKL.wh=0; } sp*=Math.max(0,1-dt*5); }
   for(const o of vehicles){ if(o===v||Math.abs((o.fh||0)-(v.fh||0))>2.5) continue; const dx=o.x-P.x, dz=o.z-P.z; if(Math.abs(dx)>5||Math.abs(dz)>5) continue; const d=Math.hypot(dx,dz), lim=(v.c.def.L+o.c.def.L)/2*.7;
     if(d<lim&&d>.01){ const push=lim-d; P.x-=dx/d*push; P.z-=dz/d*push; if(Math.abs(sp)>4){ bump(Math.abs(sp)); if(Math.abs(sp)>7){ crashDamage(v,Math.abs(sp)); crashDamage(o,Math.abs(sp)*1.1); } if(o.ai){ o.ai.wait=3; if(MR()<.7) setTimeout(horn,250); } } sp*=.5; } }
@@ -5406,9 +5447,9 @@ function rideSign(v,on,label='OYA RIDE'){ if(RIDE.sign){ RIDE.sign.parent&&RIDE.
 const atAirport=()=>!!AIRPORT&&player.z<-WB.z+2;
 function airportPath(toAirport,bike){ const A=AIRPORT, h=A.hand, c1={x:h.x,z:A.HZ}, c2={x:A.TX,z:A.HZ}, m={x:A.TX,z:A.TZ+62}, d={x:A.drop.x,z:A.drop.z};
   if(!LAND) return toAirport?[c1,c2,m,d]:[m,c2,c1,{x:h.x,z:h.z+4}];
-  const T=LAND.TPZ, I=A.TX+2.3, O=A.TX-2.2;   // in through toll lane A (the taxi pays), out by the exit lane
-  if(toAirport) return bike?[c1,{x:A.TX+4,z:A.HZ},{x:A.TX+6,z:T+30},{x:A.TX+11,z:T+16}]:[c1,{x:A.TX+4,z:A.HZ},{x:I,z:T+28},{x:I,z:T-22},{x:A.TX+4,z:A.TZ+68},d];
-  return [{x:A.TX-4,z:A.TZ+68},{x:O,z:T-22},{x:O,z:T+28},{x:A.TX-4,z:A.HZ},c1,{x:h.x,z:h.z+4}]; }
+  const T=LAND.TPZ, I=A.TX+2.3, O=A.TX-2.2, k=A.TX+3.6, w=A.TX-3.6;   // the inner lanes (beside the median); in through toll lane A (the taxi pays), out by the exit lane
+  if(toAirport) return bike?[c1,{x:k,z:A.HZ},{x:A.TX+6,z:T+30},{x:A.TX+11,z:T+16}]:[c1,{x:k,z:A.HZ},{x:k,z:T+56},{x:I,z:T+24},{x:I,z:T-16},{x:k,z:T-36},{x:k,z:A.TZ+70},d];
+  return [{x:w,z:A.TZ+66},{x:w,z:T-36},{x:O,z:T-16},{x:O,z:T+24},{x:w,z:T+56},{x:w,z:A.HZ},c1,{x:h.x,z:h.z+4}]; }
 const OKADA_STOP='Okada no dey enter the airport. Walk through the toll gate (people on foot pass free) to the terminal.';
 function bookRide(pl){ if(RIDE.state) return; if(mode!=='walk'){ toast('Book your ride when you are on foot.'); return; } const air=atAirport(), bike=PHONE.rideKind==='okada'&&!air, fare=rideFare(pl);
   if(air&&pl.airport){ toast('You dey the airport already!',2.4); return; }
