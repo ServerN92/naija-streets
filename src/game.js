@@ -323,7 +323,8 @@ function onLand(x,z,bm=.6){ if(Math.abs(x)<WB.x-bm&&Math.abs(z)<WB.z-bm) return 
    Boxes can be turned (ob: centre, axis cos/sin, half sizes) and can float (y0: bottom, h: top), e.g. footbridge rails. */
 const colliders=[], CELL=40, hash=new Map();
 const hk=(i,j)=>(i+500)*2000+(j+500);
-function addCol(b){ if(b.y0===undefined) b.y0=0; colliders.push(b); for(let i=Math.floor(b.x0/CELL);i<=Math.floor(b.x1/CELL);i++) for(let j=Math.floor(b.z0/CELL);j<=Math.floor(b.z1/CELL);j++){ const k=hk(i,j); let a=hash.get(k); if(!a) hash.set(k,a=[]); a.push(b); } return b; }
+const COL_SRC=/[?&]dev=1/.test(location.search);
+function addCol(b){ if(b.y0===undefined) b.y0=0; if(COL_SRC) b.src=((new Error().stack||'').split('\n').slice(2,4).map(l=>(l.match(/:(\d+):\d+\)?$/)||[])[1]).join('<')); colliders.push(b); for(let i=Math.floor(b.x0/CELL);i<=Math.floor(b.x1/CELL);i++) for(let j=Math.floor(b.z0/CELL);j<=Math.floor(b.z1/CELL);j++){ const k=hk(i,j); let a=hash.get(k); if(!a) hash.set(k,a=[]); a.push(b); } return b; }
 // a turned box: centre, half sizes along its own axes (u = angle ang, v = u turned 90 degrees), top height
 function addOB(cx,cz,hx,hz,ang,h,y0=0){ const c=Math.cos(ang), s=Math.sin(ang), ex=Math.abs(c*hx)+Math.abs(s*hz), ez=Math.abs(s*hx)+Math.abs(c*hz);
   return addCol({x0:cx-ex,x1:cx+ex,z0:cz-ez,z1:cz+ez,h,y0,ob:{cx,cz,c,s,hx,hz}}); }
@@ -464,6 +465,8 @@ const NEWV_SEATS={   // as a share of the length (x, forward) and the height (y)
 for(const N of NEWV) LATE_FILES[N.k]=[N.k,'+x',0,1];   // size 0: they come at their real size from Blender
 LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
 const NEWV_K=Object.fromEntries(NEWV.map(N=>[N.k,N]));
+// run f(model) as soon as a late model is in (now, if it already is)
+const MODEL_WAIT={}; function whenModel(k,f){ if(MODELS[k]) f(MODELS[k]); else (MODEL_WAIT[k]=MODEL_WAIT[k]||[]).push(f); }
 function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker'].includes(k))) return;
   if(k==='policevan'){ WHEEL.policevan={r:.35,hw:.13}; SEATS.policevan=SEATS.police; return; }
   if(k==='policehilux'){ WHEEL.policehilux={r:.38,hw:.15}; SEATS.policehilux=SEATS.police; return; }
@@ -800,6 +803,8 @@ const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emis
   const strip=(acc,x0,z0,x1,z1,rx,rz,a,b,y,col)=>acc.quad([x0+rx*a,y,z0+rz*a],[x0+rx*b,y,z0+rz*b],[x1+rx*b,y,z1+rz*b],[x1+rx*a,y,z1+rz*a],up,[[0,0],[1,0],[1,Math.hypot(x1-x0,z1-z0)/2],[0,Math.hypot(x1-x0,z1-z0)/2]],col);
   const wall=(acc,x0,z0,x1,z1,rx,rz,o,y0,y1,col,s)=>acc.quad([x0+rx*o,y0,z0+rz*o],[x1+rx*o,y0,z1+rz*o],[x1+rx*o,y1,z1+rz*o],[x0+rx*o,y1,z0+rz*o],[rx*s,0,rz*s],[[0,0],[Math.hypot(x1-x0,z1-z0)/2,0],[Math.hypot(x1-x0,z1-z0)/2,1],[0,1]],col);
   const lipBox=(x0,z0,x1,z1,rx,rz,a,b,h)=>{ strip(lip,x0,z0,x1,z1,rx,rz,a,b,h,LC); wall(lip,x0,z0,x1,z1,rx,rz,a,0,h,LC,-1); wall(lip,x1,z1,x0,z0,rx,rz,b,0,h,LC,1); };
+  // the median barrier must never stand on another road's lanes (the other carriageway, a BRT lane, a slip road): there it would be a wall in the traffic
+  const onOther=(e,x,z,pad=.45)=>roadsNear(x,z).some(o=>o!==e&&!o.br&&segD(o,x,z)<o.hw+pad);
   for(const e of ROADS){ const A0=nodes[e.a], B0=nodes[e.b], ra=(A0.deg>=3?A0.r:0)+1.5, rb=(B0.deg>=3?B0.r:0)+1.5; if(e.len-ra-rb<4||e.br) continue;
     const rx=-e.fz, rz=e.fx, seg=6;
     if(e.c>=4&&e.c<=7&&e.cond!=='dirt'){   // gutters, both sides
@@ -811,14 +816,15 @@ const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emis
       const o=e.ow?-(e.hw+.35):0;
       for(let t=ra;t<e.len-rb;t+=seg){ const t1=Math.min(t+seg,e.len-rb), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;   // painted edges: yellow by the median, white by the shoulder
         if(e.ow){ strip(paint,x0,z0,x1,z1,rx,rz,-e.hw+.25,-e.hw+.42,RY+.012,YC); strip(paint,x0,z0,x1,z1,rx,rz,e.hw-.42,e.hw-.25,RY+.012,WC2); } }
-      for(let t=ra+12;t<e.len-rb-6;t+=38){ const x=A0.x+e.fx*t+rx*o, z=A0.z+e.fz*t+rz*o; LAMPS2.push([x,z,e.fx,e.fz]); }
+      for(let t=ra+12;t<e.len-rb-6;t+=38){ const x=A0.x+e.fx*t+rx*o, z=A0.z+e.fz*t+rz*o; if(!onOther(e,x,z,1)) LAMPS2.push([x,z,e.fx,e.fz]); }
       for(let t=ra+4;t<e.len-rb-4;t+=seg){ const t1=Math.min(t+seg,e.len-rb-4), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;
+        if(onOther(e,x0+rx*o,z0+rz*o)||onOther(e,x1+rx*o,z1+rz*o)||onOther(e,(x0+x1)/2+rx*o,(z0+z1)/2+rz*o)) continue;
+        // the barrier is solid exactly where it is drawn: you can't walk or drive through it (jump and you hop over, like people do)
+        addOB((x0+x1)/2+rx*o,(z0+z1)/2+rz*o,(t1-t)/2+.05,.3,Math.atan2(e.fz,e.fx),.82).low=1; e.bar=e.ow?1:2;
         const P=[[-.3,0],[-.3,.08],[-.13,.32],[-.08,.82],[.08,.82],[.13,.32],[.3,.08],[.3,0]];
         for(let i=0;i+1<P.length;i++){ const [a0,y0]=P[i],[a1,y1]=P[i+1], nx=-(y1-y0), ny=a1-a0, nl=Math.hypot(nx,ny)||1;
           bar.quad([x0+rx*(o+a0),y0,z0+rz*(o+a0)],[x0+rx*(o+a1),y1,z0+rz*(o+a1)],[x1+rx*(o+a1),y1,z1+rz*(o+a1)],[x1+rx*(o+a0),y0,z1+rz*(o+a0)],[rx*nx/nl,ny/nl,rz*nx/nl],[[0,y0],[0,y1],[(t1-t)/2,y1],[(t1-t)/2,y0]],BC); } }
-      // the barrier is solid: you can't walk or drive through it (jump and you hop over, like people do); it stops short of each junction
-      { const t0=ra+4, t1=e.len-rb-4; if(t1>t0+.5){ const n=Math.ceil((t1-t0)/16), L=(t1-t0)/n, ang=Math.atan2(e.fz,e.fx);
-          for(let i=0;i<n;i++){ const tm=t0+L*(i+.5); addOB(A0.x+e.fx*tm+rx*o,A0.z+e.fz*tm+rz*o,L/2+.05,.3,ang,.82).low=1; } e.bar=e.ow?1:2; } } } }
+    } }
   const gm=gc.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.3,metalness:.1,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(gm) scene.add(gm);
   const cm=new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.92,side:THREE.DoubleSide}); RDTEX.conc.then(t=>{ if(t){ cm.map=t; cm.needsUpdate=true; } });
   const lm=lip.mesh(cm,false,true); if(lm){ lm.castShadow=false; scene.add(lm); } const bm=bar.mesh(cm,false,true); if(bm){ bm.castShadow=Q.shadows; scene.add(bm); } 
@@ -1332,7 +1338,8 @@ const AIRPORT=(()=>{ if(!MODELS.jet) return null;
   LAND_EXTRA.push({x0:Math.max(TX-1500,-WB.x+2),x1:Math.min(TX+1500,WB.x-2),z0:z0-20,z1:z0+40});   // where the city meets the airport land: no strip in between to stop you
   const flat=(w,d,x,z,mat,y=.02,rot=0)=>{ const g=new THREE.PlaneGeometry(w,d).rotateX(-Math.PI/2); if(rot) g.rotateY(rot); const m=new THREE.Mesh(g,mat); m.position.set(x,y,z); m.receiveShadow=true; scene.add(m); return m; };
   // grass all round, concrete aprons, asphalt runway and taxiway with painted markings
-  const gT=MAT.lawn; flat(3200,(-WB.z-300)-(RZ-260),TX,((-WB.z-300)+(RZ-260))/2,gT,-.005);
+  { const GW=3200, GD=(-WB.z-300)-(RZ-260), m=flat(GW,GD,TX,((-WB.z-300)+(RZ-260))/2,MAT.lawn,-.005), uv=m.geometry.attributes.uv;   // the photo grass tiled every 8 m (like the town's lawns), not one picture stretched over the airfield
+    for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*GW/8,uv.getY(i)*GD/8); uv.needsUpdate=true; }
   const mk=(W,H,fn)=>{ const [c,g]=cv(W,H); fn(g,W,H); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=maxAniso; t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; };
   const rwT=mk(1024,256,(g,W,H)=>{ asphalt(g,W,H); g.fillStyle='#f2f2ee'; for(let x=0;x<W;x+=64) g.fillRect(x,H/2-3,36,6); g.fillRect(0,10,W,5); g.fillRect(0,H-15,W,5); });
   const rw=new THREE.MeshStandardMaterial({map:rwT,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); rwT.repeat.set(RL/120,1);
@@ -1353,6 +1360,7 @@ const AIRPORT=(()=>{ if(!MODELS.jet) return null;
   for(const gx of [-70,0,70]){ flat(.35,92,TX+gx,TZ-96,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); flat(6,.4,TX+gx,TZ-52,new THREE.MeshBasicMaterial({color:0xe8b923}),.04); }   // lead-in lines and stop bars at the three gates
   // landside: the forecourt road from Agege Motor Road, the drop-off road and the car park
   const roadM=new THREE.MeshStandardMaterial({map:T.road4,roughness:.88,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+  RDTEX.asph.then(t=>{ if(!t) return; for(const m of [rw,tw,roadM,thM]){ roadPhoto(m,t); m.needsUpdate=true; } }); RDTEX.conc.then(t=>{ if(t){ roadPhoto(apM,t); apM.needsUpdate=true; } });   // the town's photo asphalt and concrete on the airfield too
   const oldRoad=[], oldLink=[]; { const len=st.z-(TZ+64), m=flat(len,16,TX,(st.z+TZ+64)/2,roadM,.03); m.rotation.y=Math.PI/2; oldRoad.push(m); }
   const HZ=-WB.z-30; if(hand&&Math.abs(hand.x-TX)>8){ const m1=flat(Math.abs(hand.z-HZ)+8,8,hand.x,(hand.z+HZ)/2,roadM,.028); m1.rotation.y=Math.PI/2; oldLink.push(m1,flat(Math.abs(hand.x-TX),8,(hand.x+TX)/2,HZ,roadM,.028)); }   // the link road from the street end
   oldRoad.push(flat(300,16,TX,TZ+56,roadM,.03));
@@ -1430,15 +1438,43 @@ const LAND=(()=>{ if(!AIRPORT||!MODELS.airtoll) return null; const A=AIRPORT;
   // the board before the plaza, on both sides of the road
   for(const sx of [11.6,-11.6]){ const P=at('bansign',A.TX+sx,TPZ+62,0); put(P); signs(P,n=>n==='sign_ban'?['#f4f2ec','#c0392b']:['#f4f2ec','#1d1d1f']); }
   // the car park
-  const cp=at('carpark',A.TX,A.TZ+83,0); put(cp); signs(cp,n=>/^sign_p/.test(n)?['#1f5fb8','#ffffff']:['#1f5fb8','#ffffff']);
+  // the car park: its layout (bays, signs, crossings) comes from the Blender model's marks, but it is drawn here like the rest of
+  // the town: photo asphalt lots with painted bays, photo grass verges, palms like the airport road's, real cars in the bays
+  const cp=at('carpark',A.TX,A.TZ+83,0); if(cp) SCAT_OFF.push({x:cp.x,z:cp.z,ry:cp.ry,hw:cp.M.W/2,hd:cp.M.D/2});
+  signs(cp,n=>['#1f5fb8','#ffffff']);
+  if(cp) for(const n of Object.keys(cp.M.marks||{})){ if(!/^sign_/.test(n)) continue; const m=mk(cp,n), h=m.h||.8, w=m.w||1, top=m.y-h/2;   // posts under the boards
+    for(const ox of (w>2?[-w*.38,w*.38]:[0])){ const yaw=m.yaw||0, px=m.x+Math.cos(yaw)*ox-Math.sin(yaw)*.06, pz=m.z-Math.sin(yaw)*ox-Math.cos(yaw)*.06;
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(.05,.06,top+.05,8),MAT.conc||new THREE.MeshStandardMaterial({color:0x9a9a9a})); pole.position.set(px,top/2,pz); pole.castShadow=true; scene.add(pole); } }
   const bays=[];
   if(cp) for(const n of Object.keys(cp.M.marks||{})){ if(!/^row_/.test(n)) continue; const m=mk(cp,n), st=R(cp.ry,m.dx||2.6,0);
     for(let i=0;i<(m.n|0);i++) bays.push({x:m.x+st.x*i,z:m.z+st.z*i,yaw:m.yaw,h:m.yaw-Math.PI/2,row:n,i}); }
   // other people's cars in most bays (solid); the rest are free for you
   const R2=mulberry32(4242), C=['#c0392b','#f2f2f2','#1f3b66','#2b2b2b','#7f8c8d','#d4ac0d','#8e9aa6','#2f5d3a','#5a2a2a'], items=[], free=[];
-  for(const b of bays){ if(R2()<.62&&b.i>1){ items.push({x:b.x,y:0,z:b.z,ry:b.yaw,sc:1,col:new THREE.Color(C[(R2()*C.length)|0])}); addOB(b.x,b.z,.95,2.3,-b.yaw,1.5); } else free.push(b); }
-  if(MODELS.sedan&&items.length) new CullSet(modelLevels(MODELS.sedan,Q.lod0,Q.draw),items,{shadowDist:Q.shR,name:'air_parked'});
+  // the parked cars are the game's own real cars (made in Blender), each solid once it has loaded and shows
+  const PK=['v_corolla','v_camry','v_accord','v_v190','v_hilux','v_landcruiser','v_rangerover','v_gwagon','v_sclass','v_corolla','v_camry'], byK={};
+  for(const b of bays){ if(R2()<.62&&b.i>1){ const k=PK[(R2()*PK.length)|0]; (byK[k]=byK[k]||[]).push({x:b.x,y:0,z:b.z,ry:b.h+(R2()<.5?Math.PI:0),sc:1}); } else free.push(b); }
+  for(const [k,L] of Object.entries(byK)) whenModel(k,M=>{ new CullSet(modelLevels(M,Q.lod0,Q.draw),L,{shadowDist:Q.shR,name:'air_parked_'+k}); for(const it of L) addOB(it.x,it.z,M.W/2-.1,M.D*.44,-it.ry,1.5); });
   const zebras=['zebra_w','zebra_e'].map(n=>mk(cp,n)).filter(Boolean);
+  if(cp&&bays.length){ const lots=[-1,1].map(sd=>bays.filter(b=>Math.sign(b.x-A.TX)===sd)).filter(L=>L.length).map(L=>({x0:Math.min(...L.map(b=>b.x))-1.6,x1:Math.max(...L.map(b=>b.x))+1.6,z0:Math.min(...L.map(b=>b.z))-3,z1:Math.max(...L.map(b=>b.z))+3}));
+    const rect=(x0,x1,z0,z1,mat,y,tile)=>{ const g=new THREE.PlaneGeometry(x1-x0,z1-z0).rotateX(-Math.PI/2); if(tile){ const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*(x1-x0)/tile,uv.getY(i)*(z1-z0)/tile); }
+      const m=new THREE.Mesh(g,mat); m.position.set((x0+x1)/2,y,(z0+z1)/2); m.receiveShadow=true; scene.add(m); return m; };
+    const gz0=Math.max(cp.z-cp.M.D/2,A.TZ+64.5), gz1=cp.z+cp.M.D/2, W2=cp.M.W/2;
+    for(const sd of [-1,1]){ const xa=A.TX+sd*12.2, xb=A.TX+sd*W2; rect(Math.min(xa,xb),Math.max(xa,xb),gz0,gz1,MAT.lawn,.012,8); }   // grass verges all round
+    const asM=new THREE.MeshStandardMaterial({color:0x5d5f63,roughness:.9,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}); RDTEX.asph.then(t=>{ if(t){ roadPhoto(asM,t); asM.needsUpdate=true; } });
+    const kM=new THREE.MeshStandardMaterial({color:0xc9c4b8,roughness:.85});
+    for(const L of lots){ rect(L.x0,L.x1,L.z0,L.z1,asM,.02);
+      for(const [x0,x1,z0,z1] of [[L.x0-.2,L.x1+.2,L.z0-.2,L.z0],[L.x0-.2,L.x1+.2,L.z1,L.z1+.2],[L.x0-.2,L.x0,L.z0,L.z1],[L.x1,L.x1+.2,L.z0,L.z1]]){ const k=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,.14,z1-z0),kM); k.position.set((x0+x1)/2,.07,(z0+z1)/2); k.receiveShadow=true; scene.add(k); } }   // a low kerb round each lot
+    // the painted bays: a white line between every two bays, and the line across their ends
+    const lines=[]; const seen=new Set(); for(const b of bays) for(const sx of [-1.3,1.3]){ const x=b.x+sx, key=Math.round(x*10)+'|'+Math.round(b.z*10); if(seen.has(key)) continue; seen.add(key); lines.push([x,b.z,.11,4.8]); }
+    for(const n of Object.keys(cp.M.marks||{})){ if(!/^row_/.test(n)) continue; const rb=bays.filter(b=>b.row===n); if(!rb.length) continue; const xa=Math.min(...rb.map(b=>b.x))-1.3, xb=Math.max(...rb.map(b=>b.x))+1.3, f=FACE_YAW[cp.M.marks[n].face]||0, zEnd=rb[0].z-Math.cos(f)*2.4;
+      lines.push([(xa+xb)/2,zEnd,xb-xa,.11]); }
+    const lm=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({color:0xf0efe9,roughness:.7,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}),lines.length); const M4=new THREE.Matrix4();
+    lines.forEach(([x,z,w,d],i)=>{ M4.makeScale(w,1,d); M4.setPosition(x,.03,z); lm.setMatrixAt(i,M4); }); lm.receiveShadow=true; scene.add(lm);
+    // palms: down the verge by the approach road, at the far ends, and along the back
+    const P=[]; for(const sd of [-1,1]){ for(let z=gz0+5;z<gz1-3;z+=9) P.push({x:A.TX+sd*12.9,z}); for(let z=gz0+6;z<gz1-3;z+=11) P.push({x:A.TX+sd*(W2-5),z});
+      for(let x=24;x<W2-8;x+=15) P.push({x:A.TX+sd*x,z:gz1-2.2}); }
+    const sgn=Object.keys(cp.M.marks||{}).filter(n=>/^sign_/.test(n)).map(n=>mk(cp,n)); const PP=P.filter(p=>!sgn.some(m=>Math.hypot(m.x-p.x,m.z-p.z)<3)&&!lots.some(L=>p.x>L.x0-.6&&p.x<L.x1+.6&&p.z>L.z0-.6&&p.z<L.z1+.6)).map((p,i)=>({x:p.x,y:.01,z:p.z,ry:i*2.39,sc:.85+((i*37)%30)/100}));
+    palmLevels().then(L=>{ if(PP.length){ new CullSet(L,PP,{shadowDist:Q.shR,name:'cp_palms'}); for(const p of PP) addOB(p.x,p.z,.24,.24,0,8); } }).catch(e=>console.warn('cp palms',e)); }
   // the impound yard by the toll: zinc fence all round, the office by the gate
   const im=at('impound',A.TX+31,TPZ+30,-Math.PI/2); put(im);   // its gate faces the driveway off the airport road
   if(im){ for(const [x0,x1,y0,y1] of [[-12,-3.6,-8.1,-7.9],[3.6,12,-8.1,-7.9],[-12,12,7.9,8.1],[-12.1,-11.9,-8,8],[11.9,12.1,-8,8]]) box(im,x0,x1,y0,y1,2.4); box(im,4.8,10,-11.6,-8.3,2.9);
@@ -2203,7 +2239,7 @@ function makeCar(type,color,empty=false,skin=null){
     if(type==='police'){ for(const [mat,zz] of [[polRed,.3],[polBlue,-.3]]){ const b=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),mat); b.position.set(M.W*.04,M.H+.02,zz); b.layers.set(1); g.add(b); } }
     const occ=new THREE.Group(); hi.add(occ); const seats=[]; if(!empty) for(const st of SEATS[type]||[]){ if(!st.drv&&MR()>st.p) continue; const h=seatHuman(st,type==='police'); occ.add(h.root); seats.push({st,h}); }
     if(NEWV_K[type]&&NEWV_K[type].lights==='amb') for(const [mat,zz] of [[polRed,.35],[polBlue,-.35]]){ const b=new THREE.Mesh(new THREE.SphereGeometry(.1,10,8),mat); b.position.set(M.W*.3,M.H+.02,zz); b.layers.set(1); g.add(b); }
-    return {g,hi,lo,wheels,steerG,occ,seats,def:{L:M.W,W:M.D,H:M.H,r:(S&&S.wheels[0]?S.wheels[0].r:.35),maxV:VT[type].maxV},type,skin:mt}; }
+    return {g,hi,lo,wheels,steerG,occ,seats,def:{L:M.W,W:(NEWV_K[mt]||/^police(van|hilux)$/.test(mt)?M.D*.88:M.D),H:M.H,r:(S&&S.wheels[0]?S.wheels[0].r:.35),maxV:VT[type].maxV},type,skin:mt}; }
   const D=CAR_T[type], G=carGeos(type), g=new THREE.Group(); g.rotation.order='YZX';
   const pm=paintMat(color,type==='danfo'?.15:.55);
   for(const [geo,mat] of [[G.paint,pm],[G.glass,CM.glass],[G.trim,CM.trim],[G.head,CM.head],[G.tail,CM.tail]]){ const m=new THREE.Mesh(geo,mat); m.castShadow=true; m.receiveShadow=true; m.layers.set(1); g.add(m); }
@@ -2246,7 +2282,7 @@ let mySkate=null;
 const LATE_MIX={car2:.1,benz:.035,tanker:.045,bike2:.04,sbike:.025}, LATE={want:{},t:0,started:false};
 async function loadLate(){ if(LATE.started) return; LATE.started=true;
   for(const e of Object.entries(LATE_FILES)){ try{ const [k,out]=await loadModelEntry(e); MODELS[k]=out; lateReady(k); }catch(err){ console.warn('late model',e[0],err); } await new Promise(r=>setTimeout(r,400)); } }
-function lateReady(k){ newvReady(k); for(const v of vehicles) if(v.want===k){ retype(v,k); v.want=null; }   // your own car bought before its model came in
+function lateReady(k){ newvReady(k); for(const f of (MODEL_WAIT[k]||[])) try{ f(MODELS[k]); }catch(e){ console.warn('whenModel',k,e); } delete MODEL_WAIT[k]; for(const v of vehicles) if(v.want===k){ retype(v,k); v.want=null; }   // your own car bought before its model came in
   if(k==='skate'){ const atFlat=homeNow()==='flat', rx=atFlat?-APT.nz:HOME_SD[0], rz=atFlat?APT.nx:HOME_SD[1], p=atFlat?{x:APT.front.x+rx*3.2-APT.nx*.3,z:APT.front.z+rz*3.2-APT.nz*.3}:nearHome(1.3); mySkate=newVehicle('skate','#ffffff',true); Object.assign(mySkate,{x:p.x,z:p.z,y:0,h:Math.atan2(-rz,rx),keep:1}); return; }   // by your door
   if(k==='benz'&&HOTEL_SITE){ const q=kerbSpot(HOTEL_SITE.door.x-6,HOTEL_SITE.door.z,6,e=>e.c<9); if(q&&!vehicles.some(o=>Math.hypot(o.x-q.x,o.z-q.z)<6)){ const v=newVehicle('benz','#111214',true); Object.assign(v,{x:q.x,z:q.z,h:q.h,y:0,keep:1}); } }   // a big man's car at the hotel
   if(LATE_MIX[k]) LATE.want[k]=Math.max(1,Math.round(Q.cars*LATE_MIX[k])); }
@@ -3210,6 +3246,7 @@ function passFree(v,fx,fz,lat,from,to,skip){ const W=v.c.def.W;
   if(mode!=='drive'&&!clear(player.x,player.z,.9)) return false;
   for(const p of peds) if(p.state!=='off'&&p.state!=='dead'&&p.state!=='down'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<to+5&&Math.abs(p.z-v.z)<to+5&&!clear(p.x,p.z,.8)) return false;
   return true; }
+let CAR_UID=0;
 function updateTraffic(dt){
   for(const v of vehicles){ const ai=v.ai; if(!ai) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
     const sc=ai.seg.k===0?(ai.cond||'good'):'good'; let target=ai.seg.k===1?Math.min((ai.seg.vmax||6.5)*(ai.chase?1.3:1),ai.maxV):ai.maxV*(sc==='dirt'?(ai.chase?.75:.5):sc==='bad'?(ai.chase?.85:.7):1)*ROAD_PACE(ai.ec,ai.chase), waiting=false; if(ai.wait>0){ ai.wait-=dt; target=0; waiting=true; }
@@ -3226,10 +3263,12 @@ function updateTraffic(dt){
       if((mine||lat<22)&&ah>-3&&ah<45) target=Math.min(target,Math.max(0,ah*.8)); ai.near=mine&&lat<45&&Math.abs(ah)<6; }   // (on the street nearest you they stop level with you and wait, even if you are back from the road)
     let blk=null, blkAh=1e9;   // the nearest car in this car's way
     if(ai.ghost>0) ai.ghost-=dt;   // a car just put on the road may slip out of a crowd unseen, but never while you watch
-    if(!(ai.ghost>0)||inView(v.x,1,v.z,4)){
+    if(ai.slip>0){ ai.slip-=dt; target=Math.min(target,3); }   // easing past at walking pace
+    if((!(ai.ghost>0)||inView(v.x,1,v.z,4))&&!(ai.slip>0)){
       const look=Math.max(22,Math.abs(v.speed)*2.4+8);   // fast cars look further ahead
       for(const o of vehicles){ if(o===v||Math.abs((o.fh||0)-(v.fh||0))>2.5) continue; const dx=o.x-v.x, dz=o.z-v.z; if(Math.abs(dx)>look||Math.abs(dz)>look) continue; const ah=dx*fx+dz*fz; if(ah<=0||ah>look) continue;
-        if(Math.abs(-dx*fz+dz*fx)<(v.c.def.W+o.c.def.W)/2+.12){ const gap=ah-((v.c.def.L+o.c.def.L)/2+1.8), os=Math.max(0,(Math.cos(o.h)*fx-Math.sin(o.h)*fz)*o.speed);
+        const opp=(Math.cos(o.h)*fx-Math.sin(o.h)*fz)<-.5;   // coming the other way: only blocks if it is really in our lane
+        if(Math.abs(-dx*fz+dz*fx)<(v.c.def.W+o.c.def.W)/2+(opp?-.45:.12)){ const gap=ah-((v.c.def.L+o.c.def.L)/2+1.8), os=Math.max(0,(Math.cos(o.h)*fx-Math.sin(o.h)*fz)*o.speed);
           const lim=Math.max(0,Math.min(gap*1.3+os*.9,brakeTo(gap)+os*.95)); if(lim<target){ target=lim; if(o.ai&&o.ai.waiting) waiting=true; } if(ah<blkAh){ blk=o; blkAh=ah; } } }
       if((mode==='walk'||mode==='enter')&&!flyUp(v)&&inPath(v,fx,fz,player.x,player.z)) target=0;
       if(!flyUp(v)) for(const p of peds) if(p.state!=='down'&&p.state!=='off'&&p.state!=='dead'&&!p.carried&&p.y<1&&Math.abs(p.x-v.x)<10&&Math.abs(p.z-v.z)<10&&inPath(v,fx,fz,p.x,p.z)) target=0;
@@ -3244,11 +3283,21 @@ function updateTraffic(dt){
       const e=edgeOf(ai.a,ai.b), hw=e?e.hw:3, W=v.c.def.W, dx=blk.x-v.x, dz=blk.z-v.z, bl=-dx*fz+dz*fx, want=bl-((W+blk.c.def.W)/2+.55), np=(ai.po||0)+want, minPo=e&&e.bar===2?-ai.seg.off+.6+W/2:-(ai.seg.off+hw)+W/2+.25;   // never round it over the centre barrier
       if(np>=minPo&&ai.seg.len-ai.s>blkAh+(blk.c.def.L+v.c.def.L)/2+6&&passFree(v,fx,fz,want,-6,blkAh+blk.c.def.L/2+12,blk)){ ai.pb=blk; ai.pt=np; ai.stuck=0; if(MR()<.5&&Math.hypot(v.x-player.x,v.z-player.z)<40) setTimeout(horn,200); }
       else ai.pcool=1.5; }
+    // held up for a while: sort it out like real drivers do
+    if(ai.back>0){ ai.back-=dt; target=-2.2; waiting=false; }   // reverse a little to make room to go round
+    else if(blk&&ai.seg.k===0&&ai.stuck>4&&!ai.chase&&!ai.pb){
+      const opp=(Math.cos(blk.h)*fx-Math.sin(blk.h)*fz)<-.3;
+      if(opp){ v.uid=v.uid||++CAR_UID; blk.uid=blk.uid||++CAR_UID;   // face to face: one squeezes to its kerb so both can pass
+        if(!blk.ai||v.uid>blk.uid){ const e=edgeOf(ai.a,ai.b), hw=e?e.hw:3, room=Math.max(.3,hw-(ai.seg.off||0)-v.c.def.W/2-.1); ai.pt=room; ai.tuck=3; } }
+      else if(ai.pcool>0&&!((ai.backed||0)>1)){ ai.back=1.4; ai.backed=(ai.backed||0)+1; ai.pcool=0; } }
+    if(ai.tuck>0&&(!blk||v.speed>.5)){ ai.tuck-=dt; if(ai.tuck<=0&&!ai.pb) ai.pt=0; }
+    if(blk&&ai.stuck>15&&!ai.chase){ ai.slip=2.5; ai.stuck=5; ai.backed=0; }   // still jammed: ease past it slowly
+    if(v.speed>2) ai.backed=0;
     ai.waiting=waiting;
     v.speed+=clamp(target-v.speed,-10*dt,3.5*dt);
     if((waiting&&!ai.chase)||v.speed>.5) ai.stuck=0; else if(target<.2&&!ai.near){ ai.stuck+=dt;
       if(ai.stuck>(ai.chase?6:12)){ ai.stuck=ai.chase?3:6; if(!ai.chase&&!v.taxi&&!v.keep&&(Math.hypot(v.x-player.x,v.z-player.z)>90||!inView(v.x,1,v.z,4))){ placeCar(v,120,250); continue; } } }   // stuck for good: taken away once you can't see it
-    ai.s+=v.speed*dt; let guard=0;
+    ai.s+=v.speed*dt; if(ai.s<0){ ai.s=0; if(v.speed<0) v.speed=0; } let guard=0;
     while(ai.s>=ai.seg.len&&guard++<4){ ai.s-=ai.seg.len;
       if(ai.seg.k===0){ const out=nodes[ai.b].out; let opts=out.filter(n=>n!==ai.a); if(v.type==='bus') { const big=opts.filter(n=>{ const e=edgeOf(ai.b,n); return e&&e.c<=4; }); if(big.length) opts=big; }
         if(!opts.length){ if(out.includes(ai.a)) opts=[ai.a]; else { placeCar(v,120,250); break; } }
@@ -7900,9 +7949,10 @@ const RB_FEE={okada:100,keke:100,bike2:100,sbike:100,danfo:300,bus:300,benz:500,
       const side={x:kx+nx*1.6,z:kz+nz*1.6}; if(!onLand(side.x,side.z,2)||resolveCircle({x:side.x,z:side.z},2.2)||roadsNear(side.x,side.z).some(o=>o!==e&&!FLYE.has(o.i)&&segD(o,side.x,side.z)<o.hw+3)) continue;
       if(CPB.list.some(r=>Math.hypot(r.x-kx,r.z-kz)<350)) continue;
       const ry=Math.atan2(-nx,-nz); CPB.list.push({x:kx,z:kz,ry,e,fx:e.fx,fz:e.fz,nx,nz,guards:[],passT:-99,talked:-99,alarmT:-99,side:0,said:-99,name:e.name||'the road'}); break; } }
-  for(const r of CPB.list){ r.at=(lx,lz)=>{ const c=Math.cos(r.ry), s=Math.sin(r.ry); return {x:r.x+lx*c+lz*s,z:r.z-lx*s+lz*c}; }; for(const [lx,lz,hx,hz,h] of RB_SPOTS.walls){ const p=r.at(lx,lz); addOB(p.x,p.z,hx,hz,-r.ry,h); }
+  for(const r of CPB.list){ r.at=(lx,lz)=>{ const c=Math.cos(r.ry), s=Math.sin(r.ry); return {x:r.x+lx*c+lz*s,z:r.z-lx*s+lz*c}; }; 
     PLACES.push({name:'Police checkpoint',sub:`${r.name} · they stop motors: roger them or show your papers`,kind:'place',x:r.x,z:r.z}); }
-  farmGlb('cp_roadblock').then(M=>{ const items=CPB.list.map(r=>({x:r.x,y:groundY(r.x,r.z),z:r.z,ry:r.ry,sc:1}));
+  farmGlb('cp_roadblock').then(M=>{ for(const r of CPB.list) for(const [lx,lz,hx,hz,h] of RB_SPOTS.walls){ const p=r.at(lx,lz); addOB(p.x,p.z,hx,hz,-r.ry,h); }   // solid only once you can see it
+    const items=CPB.list.map(r=>({x:r.x,y:groundY(r.x,r.z),z:r.z,ry:r.ry,sc:1}));
     const levels=M.geo1?[{geo:M.geo,mat:M.mat,dist:Q.lod0*1.1,shadow:true},{geo:M.geo1,mat:M.mat1,dist:Q.draw*.8,shadow:false}]:[{geo:M.geo,mat:M.mat,dist:Q.draw*.8,shadow:true}];
     if(items.length) new CullSet(levels,items,{shadowDist:Q.shR,name:'cp_roadblock'});
     const tex=texLabel('POLICE · STOP','#c8241e','#ffffff',512,420);
@@ -8216,6 +8266,12 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     requestAnimationFrame(tick); })(performance.now());
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
+    roadBlocks(r=.9){ const out={}, P={x:0,z:0}; for(const e of ROADS){ if(e.br) continue; const A=nodes[e.a], B=nodes[e.b], rx=-e.fz, rz=e.fx;
+        for(let t=(A.deg>=3?A.r:0)+3;t<e.len-(B.deg>=3?B.r:0)-3;t+=3) for(const o of [-e.hw*.5,0,e.hw*.5]){ const x=A.x+e.fx*t+rx*o, z=A.z+e.fz*t+rz*o;
+          for(const c of query(x-r,z-r,x+r,z+r)){ if(c.y0>1.4||c.h<.25) continue; P.x=x; P.z=z; RC_CAR=true; const h=resolveCircle(P,r,[c],0); RC_CAR=false; if(!h) continue;
+            const k=(c.src||'?')+(c.low?' low':'')+(c.car?' car':''); const g=out[k]||(out[k]={n:0,ex:[]}); g.n++; g.rd=(g.rd||{}); const rn=(e.name||'#'+e.i)+'/c'+e.c; g.rd[rn]=(g.rd[rn]||0)+1; g.off=(g.off||{}); g.off[o===0?'mid':'lane']=(g.off[o===0?'mid':'lane']||0)+1; if(g.ex.length<6) g.ex.push([Math.round(x),Math.round(z),e.name||'',e.c,+e.hw.toFixed(1),+(c.h).toFixed(2),o===0?'mid':'lane',e.ow?'ow':'2w']); } } }
+      return out; },
+    land:()=>LAND&&LAND.cp?{x:+LAND.cp.x.toFixed(1),z:+LAND.cp.z.toFixed(1),TX:AIRPORT.TX,TZ:AIRPORT.TZ,bays:LAND.bays.length,free:LAND.free.length}:null,
     newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
       traffic:vehicles.reduce((a,v)=>{ const k=v.c.skin||v.type; a[k]=(a[k]||0)+1; return a; },{})}),
     showCars(list,gap=7){ const out=[]; list.forEach((k,i)=>{ const v=newVehicle(k,'#ffffff',true); Object.assign(v,{x:player.x+8,z:player.z-((list.length-1)/2-i)*gap,h:Math.PI/2,parked:true}); v.c.g.position.set(v.x,0,v.z); v.c.g.rotation.y=v.h; out.push(v.c.skin||v.type); }); return out; },
