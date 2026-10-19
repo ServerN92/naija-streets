@@ -392,6 +392,12 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" data-s="on" aria-pressed="true">On</button>
       <button type="button" data-s="off" aria-pressed="false">Off</button>
     </div>
+    <div id="vols" style="margin-top:10px">
+      <label class="slide"><span>City</span><input type="range" data-v="amb" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Vehicles</span><input type="range" data-v="veh" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Voices</span><input type="range" data-v="voice" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Effects</span><input type="range" data-v="sfx" min="0" max="150" step="5" value="100"><b>100%</b></label>
+    </div>
     <h3>Tips</h3>
     <div class="seg" id="tipsSeg" role="group" aria-label="Tips">
       <button type="button" data-t="on" aria-pressed="true">On</button>

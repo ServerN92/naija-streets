@@ -18,6 +18,7 @@ import * as C2 from './char2.js?v=d5e2f7e13d';
 import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=d5e2f7e13d';
 import { createPhone } from './phone.js?v=d5e2f7e13d';
 import { createGuide } from './guide.js?v=d5e2f7e13d';
+import { createSound } from './sound.js?v=d5e2f7e13d';
 import { createFarm } from './farm.js?v=d5e2f7e13d';
 import { createBusiness } from './business.js?v=d5e2f7e13d';
 import { createOnline } from './online.js?v=d5e2f7e13d';
@@ -1369,7 +1370,7 @@ const AIRPORT=(()=>{ if(!MODELS.jet) return null;
     if(t<104){ const k=(t-78)/26, x=xe+(xs-xe)*k*k; return [x,0,0]; }                            // take-off roll
     if(t<CYC){ const k=(t-104)/(CYC-104), x=xs+3400*k, y=420*k*k+(k*40); return [x,y,-.15]; }   // climb out
     return null; }
-  let AT=0; return {TX,TZ,RZ,TWZ,RL,st,hand:hand||{x:st.x,z:st.z+6},HZ,drop:{x:TX+20,z:TZ+56},update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
+  let AT=0; return {TX,TZ,RZ,TWZ,RL,st,hand:hand||{x:st.x,z:st.z+6},HZ,drop:{x:TX+20,z:TZ+56},get jet(){ return fly; },update(dt){ AT+=dt; lights.material.emissiveIntensity=ENV.lamp>0?2.5:0; if(!fly) return; const p=pose(AT%CYC);
       if(!p){ fly.visible=false; return; } fly.visible=Math.hypot(p[0]-camera.position.x,RZ-camera.position.z)<Q.draw*6; fly.position.set(p[0],p[1],RZ); fly.rotation.set(p[2],(AT%CYC)<64?-Math.PI/2:Math.PI/2,0); }}; })();
 // ---- the airport's landside (tools/blender_airport_landside.py): the toll plaza across the airport road (cars pay ₦300,
 // okada and keke are not allowed in), the car park on both sides of the approach road, the impound yard by the toll
@@ -2654,18 +2655,86 @@ function initAudio(){ if(AC) return; try{ AC=new (window.AudioContext||window.we
   const o=AC.createOscillator(); o.type='sawtooth'; const o2=AC.createOscillator(); o2.type='triangle'; const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=420; const g=AC.createGain(); g.gain.value=0;
   o.connect(f); o2.connect(f); f.connect(g); g.connect(master); o.start(); o2.start(); eng={o,o2,g,f};
   const rn=AC.createBufferSource(); rn.buffer=noiseBuf(2.5); rn.loop=true; const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2600; bp.Q.value=.35; rainG=AC.createGain(); rainG.gain.value=0; rn.connect(bp); bp.connect(rainG); rainG.connect(master); rn.start();
-  if(AC.state==='suspended') AC.resume(); }catch(e){ AC=null; eng=null; } }
+  if(AC.state==='suspended') AC.resume(); }catch(e){ AC=null; eng=null; } sndStart(); }
 function setSound(on){ soundOn=on; try{ localStorage.setItem('naija-sound',on?'on':'off'); }catch(e){} if(master) master.gain.setTargetAtTime(on?1:0,AC.currentTime,.05); document.querySelectorAll('#snd button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.s==='on')===on?'true':'false')); }
 function updateAudio(){ if(!eng) return; const on=mode==='drive', sp=on?Math.abs(drive.speed):0, t=AC.currentTime; const big=on&&(drive.v.type==='bus'||drive.v.type==='danfo'); eng.g.gain.setTargetAtTime(on?(drive.v.type==='skate'?0:BIKE[drive.v.type]?.035:.045):0,t,.15); const fr=(big||on&&drive.v.type==='tanker'?28:drive.v&&drive.v.type==='sbike'?60:drive.v&&BIKE[drive.v.type]?48:36)+sp*3.1;
   eng.o.frequency.setTargetAtTime(fr,t,.08); eng.o2.frequency.setTargetAtTime(fr*.5,t,.08); eng.f.frequency.setTargetAtTime(300+sp*25,t,.1);
   rainG.gain.setTargetAtTime(mode==='interior'?ENV.rain*.025:ENV.rain*.085+ENV.storm*.03,t,.6); }
-function horn(){ if(!AC) return; const t=AC.currentTime, g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.07,t+.02); g.gain.setValueAtTime(.07,t+.38); g.gain.linearRampToValueAtTime(0,t+.45); g.connect(master);
+function horn(){ if(!AC) return; if(SND&&SND.has('horn_car')){ SND.horn(mode==='drive'&&drive.v?drive.v.type:'sedan',undefined,undefined,1); return; } const t=AC.currentTime, g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.07,t+.02); g.gain.setValueAtTime(.07,t+.38); g.gain.linearRampToValueAtTime(0,t+.45); g.connect(master);
   for(const fq of [392,494]){ const o=AC.createOscillator(); o.type='square'; o.frequency.value=fq; o.connect(g); o.start(t); o.stop(t+.5); } }
 function burst(dur,freq,gain,decay=3){ if(!AC) return; const t=AC.currentTime, n=AC.createBufferSource(), b=AC.createBuffer(1,Math.floor(AC.sampleRate*dur),AC.sampleRate), d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,decay);
   n.buffer=b; const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq; const g=AC.createGain(); g.gain.value=gain; n.connect(f); f.connect(g); g.connect(master); n.start(t); }
 function thud(){ burst(.25,380,.5); }
 function clunk(k){ burst(.16,260,.25+.35*k,4); }
-function thunder(k){ burst(2.6,140,.6*k,1.6); }
+function thunder(k){ if(SND&&SND.has('thunder')){ SND.play('thunder',{b:'amb',gain:.5+.5*k,rate:.9+Math.random()*.2}); return; } burst(2.6,140,.6*k,1.6); }
+/* ---- real sounds (src/sound.js, assets/sounds): the city around you changes with where you are and the time of day
+   (main road traffic, bus stops and the motor park with conductors, markets with hawkers, quiet streets, night crickets,
+   birds at dawn, rain), places make their own sound (the call to prayer from the mosques five times a day, church
+   singing, generators when NEPA takes the light), the nearest vehicles run their engines in 3-D and honk (more in a
+   go-slow), people shout and call out around you. */
+let SND=null; const SNDF={files:null};
+fetch((()=>{ const u='assets/sounds/sounds.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u+'?v='+BUILD; })()).then(r=>r.ok?r.json():null).then(f=>{ SNDF.files=f; sndStart(); }).catch(()=>{});
+function sndStart(){ if(SND||!AC||!SNDF.files) return; try{
+    SND=createSound({AC,out:master,files:SNDF.files,url:n=>{ const u=`assets/sounds/${n}.mp3`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; }});
+    SND.preload(['amb_traffic','amb_estate','amb_night','eng_car','eng_okada','eng_danfo','horn_car']); volUI(); }catch(e){ console.warn('sound',e); SND=null; } }
+function volUI(){ document.querySelectorAll('#vols input').forEach(i=>{ const k=i.dataset.v, v=SND?SND.vol[k]:1; i.value=Math.round(v*100); i.nextElementSibling.textContent=Math.round(v*100)+'%'; }); }
+document.querySelectorAll('#vols input').forEach(i=>i.addEventListener('input',()=>{ if(SND) SND.setVol(i.dataset.v,+i.value/100); i.nextElementSibling.textContent=i.value+'%'; }));
+// how much of each kind of place is around a point (cached on a 20 m grid: main roads, bus stops, markets)
+const SG=new Map(), SGC=20;
+const SND_STOPS=()=>{ if(SND_STOPS.l) return SND_STOPS.l; const l=WD.pois.stops.map(([x,z])=>({x,z,r:10})); if(SITES.park) l.push({x:SITES.park.cx,z:SITES.park.cz,r:26}); return SND_STOPS.l=l; };
+const SND_MK=MARKETS.map(m=>{ const P=m.a.pts; let x=0,z=0; for(const [a,b] of P){ x+=a; z+=b; } x/=P.length; z/=P.length; let r=0; for(const [a,b] of P) r=Math.max(r,Math.hypot(a-x,b-z)); return {x,z,r,P}; });
+function sndCell(x,z){ const i=Math.floor(x/SGC), j=Math.floor(z/SGC), k=i*100000+j; let c=SG.get(k); if(c) return c;
+  const cx=(i+.5)*SGC, cz=(j+.5)*SGC; let dm=1e9, ds=1e9; const seen=new Set();
+  for(let a=-3;a<=3;a++) for(let b=-3;b<=3;b++) for(const e of (RG.get(rgk(Math.floor(cx/RGC)+a,Math.floor(cz/RGC)+b))||[])){ if(seen.has(e)) continue; seen.add(e); if(!e.drive||e.c>5) continue; const d=segD(e,cx,cz)-e.hw; if(e.c<=3) dm=Math.min(dm,d); else ds=Math.min(ds,d); }
+  let st=1e9; for(const p of SND_STOPS()) st=Math.min(st,Math.hypot(p.x-cx,p.z-cz)-p.r);
+  let mk=1e9; for(const m of SND_MK){ const d=Math.hypot(m.x-cx,m.z-cz); if(d-m.r<60) mk=Math.min(mk,inPoly(m.P,cx,cz)?0:Math.max(0,d-m.r*.7)); }
+  c={main:clamp(1-(dm-6)/70,0,1),side:clamp(1-(ds-4)/35,0,1)*.5,stop:clamp(1-(st-8)/45,0,1),mk:clamp(1-mk/40,0,1)}; SG.set(k,c); if(SG.size>6000) SG.clear(); return c; }
+const smooth=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+const RESI=['bungalow','storey','house','dup1','dup2','dup3','dup4','dup5','faceme','zinc','wood','flats3','flats4'];
+let SNDT={z:0,bark:3,horn:2,gen:null,genT:0,adhan:'',sp:0,skid:0};
+function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.position, h=CLOCK.gameHour(), inside=mode==='interior';
+  camera.getWorldDirection(_sv); SND.listen(cam.x,cam.y,cam.z,_sv.x,_sv.z);
+  const me=mode==='drive'&&drive.v?drive.v:player, x=me.x, z=me.z;
+  // the player's own engine, a skid when you brake hard
+  const dv=mode==='drive'&&drive.v&&!drive.ride?drive.v:null, sp=dv?Math.abs(drive.speed):0;
+  SND.myEngine(dv&&dv.type!=='skate'?dv.type:null,sp,dv&&VT[dv.type]?VT[dv.type].maxV[1]:14,!!(K.w||K.arrowup),!!dv&&dv.type!=='skate');
+  const dec=dv?(S.sp-sp)/Math.max(dt,1e-3):0; S.sp=sp; S.skid=Math.max(S.skid*Math.exp(-dt*6),dv&&sp>7&&dec>7?clamp((dec-7)/10,0,1):0); SND.skid(S.skid);
+  if(SND.has('eng_car')&&eng) eng.g.gain.setTargetAtTime(0,AC.currentTime,.05);
+  if(SND.has('amb_rain')&&rainG) rainG.gain.setTargetAtTime(0,AC.currentTime,.3);
+  SND.muffle(inside);
+  if((S.z-=dt)>0) return; S.z=.3; const st=.3;
+  // beds
+  const c=inside?{main:.3,side:0,stop:0,mk:0}:sndCell(x,z), night=Math.max(smooth(18.6,20,h),1-smooth(4.6,5.8,h)), dawn=smooth(5,6,h)*(1-smooth(7.5,9,h)), day=1-night;
+  const air=AIRPORT&&z<-WB.z-20, term=air&&Math.abs(x-AIRPORT.TX)<150&&z<AIRPORT.TZ+50&&z>AIRPORT.TZ-70, farm=inFarmZone(x,z), rain=ENV.rain||0;
+  const traffic=air?0:clamp(c.main*(1-.45*night)+c.side*(1-.6*night),0,1), stop=air?0:c.stop*(1-.7*night), mk=air?0:c.mk*(1-.85*night);
+  const W={amb_traffic:traffic*.85,amb_busstop:stop,amb_market:mk*.9,amb_estate:air||farm?0:clamp(.55-traffic*.5-mk*.4,0,1)*day,amb_night:night*(1-traffic*.55)*(term?0:1)*(1-rain*.6),
+    amb_morning:dawn*(1-traffic*.6)*(term?0:1),amb_village:farm?day*.8:0,amb_airport:term?1:0,amb_rain:inside?0:rain*.9,amb_rainroof:inside||mode==='walk'&&LIFEC&&Math.hypot(player.x-LIFEC.tent.x,player.z-LIFEC.tent.z)<2.5?rain:0};
+  if(inside) for(const k of Object.keys(W)) if(k!=='amb_rainroof') W[k]*=.55;
+  SND.beds(W,st);
+  // places: mosques (the call to prayer five times a day), churches (morning and evening), generators when NEPA takes the light
+  const list=[];
+  const near=(arr,r)=>(arr||[]).filter(p=>Math.abs(p.x-x)<r&&Math.abs(p.z-z)<r);
+  for(const m of near(houseInst.church,160)) if((h>7&&h<11.5)||(h>17.5&&h<20.5)) list.push({id:'ch'+m.x,file:'church',x:m.x,z:m.z,level:.9,ref:14,y:4});
+  const PRAY=[5.2,13.1,16.2,19.05,20.4]; for(const ph of PRAY){ const key=Math.floor(Date.now()/(CLOCK.DAY_MINUTES*6e4))+':'+ph; if(h>=ph&&h<ph+.08&&S.adhan!==key){ S.adhan=key;
+      let best=null,bd=900; for(const m of (houseInst.mosque||[])){ const d=Math.hypot(m.x-x,m.z-z); if(d<bd){ bd=d; best=m; } } if(best) SND.play('adhan',{x:best.x,z:best.z,y:12,b:'amb',ref:40,max:1500,roll:.9}); } }
+  if(!air&&!inside){ if((S.genT-=st)<=0||!S.gen){ S.genT=3; const off=sndNepaOff(x,z,h); S.gen=[]; if(off||h>18.5||h<.5){ const all=[]; for(const k of RESI) for(const q of near(houseInst[k],70)){ const hh=Math.abs(Math.sin(q.x*12.9898+q.z*78.233)*43758.5453)%1; if(hh<(off?.5:.22)) all.push({q,d:Math.hypot(q.x-x,q.z-z)}); } all.sort((a,b)=>a.d-b.d); S.gen=all.slice(0,3).map(o=>o.q); } }
+    for(const q of S.gen) list.push({id:'gen'+q.x+','+q.z,file:'gen',x:q.x+2,z:q.z+2,level:.75,ref:4,roll:1.6,y:.6}); }
+  if(AIRPORT&&AIRPORT.jet&&AIRPORT.jet.visible) list.push({id:'jet',file:'jet',x:AIRPORT.jet.position.x,z:AIRPORT.jet.position.z,y:AIRPORT.jet.position.y,level:1,ref:60,max:4000,roll:1,b:'veh',fade:.2});
+  SND.spots(list,st);
+  // the nearest vehicles run their engines; some honk (more when traffic is stuck)
+  const vs=[]; for(const v of vehicles){ if(v===dv||!v.c||v.type==='skate'||v.impounded) continue; const d=Math.hypot(v.x-x,v.z-z); if(d>70) continue; if(v.parked&&!v.ai&&Math.abs(v.speed||0)<.2) continue; vs.push({v,x:v.x,z:v.z,type:v.type,speed:Math.abs(v.speed||0),maxV:VT[v.type]?VT[v.type].maxV[1]:12,d}); }
+  vs.sort((a,b)=>a.d-b.d); SND.engines(vs,st,Q.npc>=24?6:4);
+  if((S.horn-=st)<=0&&!inside){ S.horn=.6; for(const e of vs){ if(e.d>45||!e.v.ai) continue; const stuck=e.speed<1.2, p=stuck?.05:.012; if(Math.random()<p*(night?.4:1)){ SND.horn(e.type,e.x,e.z,.8); S.horn=1.6; break; } } }
+  // voices: conductors at the bus stops and the motor park, hawkers in the markets, people on the street
+  if((S.bark-=st)<=0&&!inside&&!air){ S.bark=2.5+Math.random()*5;
+    if(stop>.35&&SND.has('bark_cond')){ let best=null,bd=1e9; for(const p of SND_STOPS()){ const d=Math.hypot(p.x-x,p.z-z); if(d<bd){ bd=d; best=p; } } if(best){ const a=Math.random()*6.28, r=4+Math.random()*(best.r+6); SND.play('bark_cond',{x:best.x+Math.cos(a)*r,z:best.z+Math.sin(a)*r,y:1.6,b:'voice',ref:7,gain:.9}); } }
+    else if(mk>.35&&SND.has('bark_hawk')){ const a=Math.random()*6.28, r=6+Math.random()*16; SND.play('bark_hawk',{x:x+Math.cos(a)*r,z:z+Math.sin(a)*r,y:1.6,b:'voice',ref:6,gain:.85}); }
+    else if(day>.5&&SND.has('bark_street')&&Math.random()<.35){ const ps=peds.filter(p=>p.active!==false&&p.lod>=0&&Math.hypot(p.x-x,p.z-z)<22&&p.state!=='dead'); if(ps.length){ const p=ps[(Math.random()*ps.length)|0]; SND.play('bark_street',{x:p.x,z:p.z,y:1.6,b:'voice',ref:5,gain:.8}); } } }
+  // the police siren where the police van is
+  if(SND.has('siren')){ const cv=FIGHT.cop; SND.siren(!!cv&&!inside&&Math.hypot(cv.x-x,cv.z-z)<220,cv?cv.x:0,cv?cv.z:0); } }
+const _sv=new THREE.Vector3();
+// NEPA: the light goes off here and there for an hour or two (the same for everyone nearby in that game hour)
+function sndNepaOff(x,z,h){ const d=Math.floor(Date.now()/(CLOCK.DAY_MINUTES*6e4)), k=Math.floor(x/400)*31+Math.floor(z/400)*17+d*13+Math.floor(h/2)*7; return (Math.abs(Math.sin(k*12.9898)*43758.5453)%1)<.35; }
 
 /* ================= HUD ================= */
 // people talk to a woman as a woman
@@ -4719,7 +4788,7 @@ function updateRaid(dt){ if(RAID.cool>0) RAID.cool-=dt; const v=RAID.v; if(!v) r
       if(d<.8){ JAIL.add(p.cast); offPed(p); continue; } p.speed+=(1.25-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=ex/d*st; p.z+=ez/d*st; p.yaw=lerpA(p.yaw,Math.atan2(ex,ez),Math.min(1,dt*6)); }
     if((!left&&RAID.t>6)||RAID.t>35) leaveRaid(); } }
 let sirenNodes=null;
-function siren(on,vol){ if(!AC) return; if(!sirenNodes){ const o=AC.createOscillator(), g=AC.createGain(); o.type='square'; g.gain.value=0; o.connect(g); g.connect(master); o.start(); sirenNodes={o,g}; }
+function siren(on,vol){ if(!AC||(SND&&SND.has('siren'))) return; if(!sirenNodes){ const o=AC.createOscillator(), g=AC.createGain(); o.type='square'; g.gain.value=0; o.connect(g); g.connect(master); o.start(); sirenNodes={o,g}; }
   const t=AC.currentTime; sirenNodes.g.gain.setTargetAtTime(on?vol*.025:0,t,.1); if(on) sirenNodes.o.frequency.setTargetAtTime(Math.floor(t*2.2)%2?720:960,t,.02); }
 // ---- every frame
 function updateFight(dt){ FIGHT.attackers=peds.filter(p=>p.state==='fight').sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z));
@@ -5838,7 +5907,7 @@ const WRECK_MATS=new Map();
 function wreckMat(m){ let w=WRECK_MATS.get(m); if(!w){ w=new THREE.MeshStandardMaterial({map:m.map||null,color:0x2a2522,roughness:1,metalness:.05}); WRECK_MATS.set(m,w); } return w; }
 // how much a vehicle can take in crashes (bullets, bombs and fire still finish it the old way)
 const VHP={okada:220,bike2:240,sbike:240,keke:260,sedan:380,suv:400,car2:380,benz:450,danfo:480,police:500,bus:650,tanker:800};
-function crashDamage(v,sp){ if(!v||v.type==='skate'||sp<10) return; carDamage(v,Math.pow(sp-10,1.25)*2*100/(VHP[v.type]||380)); }   // a hard knock at 70 km/h costs a car about 9%, at 110 km/h about 22%
+function crashDamage(v,sp){ if(!v||v.type==='skate'||sp<10) return; if(SND&&SND.has('crash')) SND.play('crash',v===drive.v?{b:'veh',gain:clamp((sp-8)/18,.35,1)}:{x:v.x,z:v.z,b:'veh',gain:clamp((sp-8)/18,.35,1),ref:8}); carDamage(v,Math.pow(sp-10,1.25)*2*100/(VHP[v.type]||380)); }   // a hard knock at 70 km/h costs a car about 9%, at 110 km/h about 22%
 function carDamage(v,amt,byMe=true){ if(!v||v.wreck||amt<=0) return; v.dmg=(v.dmg||0)+amt; if(byMe) v.byMe=true;
   if(v.dmg>=100&&!v.fire){ v.fire=T0; v.fireT=v===drive.v?mrr(5,7):mrr(3.5,6);   // it catches fire: everybody out
     if(v.ai&&v!==drive.v){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); }
@@ -7765,7 +7834,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
