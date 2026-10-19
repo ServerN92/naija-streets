@@ -222,7 +222,7 @@ const POSTS = {
   rain: [['mushin_gist', 'Rain don start for {area} ☔ Everybody don run enter shade', '🌧️'], ['lagos_traffic', 'Flood don cover part of {road}. Drive slow abeg 🌊']],
   sun: [['ada_lagos_babe', 'Sun dey hot like oven for Lagos today 🥵'], ['mamaput_joy', 'Cold zobo dey my side ₦300. This heat no be joke 🥤', '🥤']],
   night: [['dj_kunle', 'Tonight na tonight!! Club dey burst for {area} 🔥🎧', '🎧', 'TONIGHT'], ['owambe_queen', 'Owambe for {area} this night. Aso ebi na gold 👑', '👑'], ['tunde_wey_dey', 'Lagos no dey sleep. {road} still busy for this night 🌃']],
-  hotel: [['eko_grand', 'Weekend for Eko Grand Hotel: rooms from ₦15,000. Pool, bar and good food. Book at reception 🏨', '🏨', 'BOOK NOW']],
+  hotel: [['eko_grand', 'Eko Grand Hotel, Ikeja GRA ⭐⭐⭐⭐⭐ Rooms from ₦25,000, suites up to the Presidential. Pool, golf, The Cellar wine bar and VELVET club 🏨', '🏨', 'BOOK NOW']],
   police: [['mushin_police', 'Report crime: call 112. We dey for you 👮'], ['lagos_traffic', 'Police checkpoint for {road}. Carry your papers 📄']],
 };
 const EVENTS = {
@@ -248,7 +248,7 @@ const CONTACTS = [
   { id: 'chidi', n: 'Chidi (Paddy)', c: '#27ae60', e: '🧑🏾', num: '0806 555 0123', lines: [['Guy! Wetin dey sup?', 'Tonight we dey go club, you dey inside?', 'Oya na, holla me later.'], ['Bros, I dey shop. Customer full ground.', 'Call me back later abeg.']] },
   { id: 'shege', n: 'Oga Shege', c: '#3e2723', e: '🕶️', num: '0909 555 0666', den: true, lines: [['Who be this?', '...', 'Ehen. If you need anything, come my corner for market. No talk too much for phone.']] },
   { id: 'ride', n: 'Oya Ride Help', c: '#f2b705', e: '🚕', num: '0700 OYA RIDE', lines: [['Welcome to Oya Ride. Your ride, our pride.', 'To book ride, open the Oya Ride app for your phone.', 'Thank you for choosing Oya Ride.']] },
-  { id: 'hotel', n: 'Eko Grand Hotel', c: '#6b1f2a', e: '🏨', num: '0201 555 0200', place: 'Eko Grand Hotel', lines: [['Eko Grand Hotel, good day. How we fit help you?', 'We get room from ₦15,000. Come reception make we book you.', 'Thank you for calling Eko Grand.']] },
+  { id: 'hotel', n: 'Eko Grand Hotel', c: '#6b1f2a', e: '🏨', num: '0201 555 0200', place: 'Eko Grand Hotel', lines: [['Eko Grand Hotel, Ikeja GRA, good day. How may we help you?', 'Rooms from ₦25,000 and suites up to ₦750,000. Pool, golf, spa, wine bar and VELVET club. Come to reception make we book you.', 'Thank you for calling Eko Grand.']] },
   { id: 'mech', n: 'Baba Ladipo (Mechanic)', c: '#795548', e: '🔧', num: '0805 555 0177', lines: [['Hello, Baba Ladipo here.', 'If your motor spoil, bring am come Ladipo. I go fix am sharp sharp.', 'Ok bye bye.']] },
   { id: 'police', n: 'Police Emergency', c: '#1a3a6b', e: '👮', num: '112', police: true },
 ];

@@ -653,6 +653,31 @@ function inBSite(x,z,pad=0){ for(const S of BSITES){ const dx=x-S.x, dz=z-S.z, c
   if(WD.foot) WD.foot=WD.foot.filter(f=>{ const p=f.p||f; if(!p||!p.length) return true; return !inBSite(p[0],p[1],2); });
   if(WD.water) WD.water=WD.water.filter(w=>!inBSite(w.p[0],w.p[1],4));
   for(const k in WD.pois){ const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!inBSite(q[0],q[1],6)); } }
+// ---- Ikeja GRA (the Alausa side of Kudirat Abiola Way, just past the Mushin gate): quiet streets, big villas behind walls,
+// lawns and palms, and four places made in the user's Blender: EKO GRAND HOTEL, NAIJA MOTORS, the mechanic garage and
+// Adunni's Fashion House (each a set: hz0..hz1 is back..front, the front looks at the road). The crowded houses there go.
+const GRA={poly:(a=>{ const p=[]; for(let i=0;i<a.length;i+=2) p.push([a[i],a[i+1]]); return p; })([-1839.0,-458.9,-1854.1,-472.1,-1869.1,-485.4,-1884.0,-498.6,-1899.0,-511.9,-1913.9,-525.2,-1928.9,-538.5,-1943.9,-551.7,-1958.8,-565.0,-1973.8,-578.2,-1988.5,-591.2,-2004.3,-602.7,-2020.5,-614.3,-2036.7,-625.7,-2053.1,-636.8,-2069.7,-646.6,-2087.1,-656.1,-2104.6,-664.4,-2123.0,-672.4,-2141.3,-680.5,-2159.6,-688.6,-2177.5,-696.2,-2196.2,-702.6,-2215.0,-708.8,-2234.0,-714.7,-2253.1,-720.6,-2271.9,-726.3,-2291.2,-730.9,-2310.1,-735.0,-2329.2,-737.4,-2348.9,-738.3,-2369.3,-740.3,-2389.5,-743.0,-2409.4,-746.1,-2459.9,-474.8,-2431.1,-470.1,-2404.1,-466.5,-2384.8,-464.6,-2368.6,-464.2,-2356.4,-462.9,-2346.3,-460.5,-2338.5,-458.4,-2328.4,-455.0,-2314.7,-450.7,-2303.0,-447.2,-2289.4,-442.8,-2275.6,-438.2,-2262.4,-432.4,-2249.2,-426.5,-2238.4,-421.7,-2225.7,-416.4,-2215.4,-411.8,-2206.0,-406.6,-2197.4,-401.6,-2188.4,-395.0,-2180.7,-389.6,-2171.8,-383.3,-2160.3,-375.2,-2149.6,-365.5,-2138.3,-355.3,-2126.9,-345.2,-2112.0,-331.9,-2097.1,-318.7,-2082.1,-305.4,-2067.0,-292.0,-2051.8,-278.5,-2036.6,-265.1,-2021.4,-251.7]),
+  sites:{hotel:{name:'set_gra_hotel',x:-2237.54,z:-550.92,ry:2.7873,hx:157,hz0:-130,hz1:135,drive:[[0,7.5,126,162]]},
+    motors:{name:'set_gra_motors',x:-1940.34,z:-507.5,ry:2.4159,hx:28,hz0:-25,hz1:23,drive:[[-18,2.8,21.6,37],[18,2.8,21.6,37]]},
+    garage:{name:'set_gra_garage',x:-1981.92,z:-563.05,ry:2.4171,hx:16,hz0:-17,hz1:11,drive:[[0,3.6,10,23]]},
+    boutique:{name:'set_gra_boutique',x:-1883.36,z:-481.33,ry:2.4157,hx:11,hz0:-7,hz1:8,drive:[[0,6,6.6,19]]}},
+  sign:{x:-1844.0,z:-459.3,ry:2.422}};
+GRA.in=(x,z)=>inPoly(GRA.poly,x,z);
+GRA.loc=(S,x,z)=>{ const dx=x-S.x, dz=z-S.z, c=Math.cos(S.ry), s=Math.sin(S.ry); return {lx:dx*c-dz*s,lz:dx*s+dz*c}; };
+GRA.site=(x,z,pad=0)=>{ for(const k in GRA.sites){ const S=GRA.sites[k], q=GRA.loc(S,x,z); if(Math.abs(q.lx)<S.hx+pad&&q.lz>S.hz0-pad&&q.lz<S.hz1+pad) return S; } return null; };
+GRA.drive=(x,z,pad=0)=>{ for(const k in GRA.sites){ const S=GRA.sites[k], q=GRA.loc(S,x,z); for(const [cx,hw,z0,z1] of S.drive) if(Math.abs(q.lx-cx)<hw+pad&&q.lz>z0-pad&&q.lz<z1+pad) return S; } return null; };
+{ // villas: a few big plots, well apart, away from the four places; everything else in the GRA goes
+  const keep=[], nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const x=WD.bld[i], z=WD.bld[i+1], w=WD.bld[i+2], d=WD.bld[i+3], r=Math.max(w,d)/2;
+    if(GRA.in(x,z)||GRA.site(x,z,r+4)){ if(w*d<150||GRA.site(x,z,r+14)||GRA.drive(x,z,r+4)||keep.some(q=>Math.hypot(q[0]-x,q[1]-z)<34)) continue; keep.push([x,z]); }
+    for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb; GRA.villas=keep;
+  const ne=[]; for(let k=0;k<WD.edges.length;k+=7){ const a=WD.edges[k], b=WD.edges[k+1], cl=WD.edges[k+2], x0=WD.nodes[a*2], z0=WD.nodes[a*2+1], x1=WD.nodes[b*2], z1=WD.nodes[b*2+1]; let hit=false;
+    for(let t=0;t<=1.0001&&!hit;t+=.125){ const x=x0+(x1-x0)*t, z=z0+(z1-z0)*t; if(GRA.site(x,z,4)||(cl>=7&&GRA.in(x,z))) hit=true; } if(!hit) for(let q=0;q<7;q++) ne.push(WD.edges[k+q]); } WD.edges=ne;
+  WD.areas=WD.areas.filter(a=>{ let x=0,z=0; const n=a.p.length/2; for(let i=0;i<a.p.length;i+=2){ x+=a.p[i]; z+=a.p[i+1]; } return !GRA.in(x/n,z/n); });
+  WD.areas.push({k:'gra',p:GRA.poly.flat(),n:'Ikeja GRA'});
+  if(WD.foot) WD.foot=WD.foot.filter(f=>{ const p=f.p||f; if(!p||!p.length) return true; return !GRA.in(p[0],p[1]); });
+  if(WD.water) WD.water=WD.water.filter(w=>!GRA.in(w.p[0],w.p[1]));
+  for(const k in WD.pois){ if(k==='place') continue; const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!GRA.in(q[0],q[1])); }
+  WD.pois.place=WD.pois.place.filter(q=>!GRA.in(q[0],q[1])); WD.pois.place.push([-2150,-560,'Ikeja GRA']); }
 water.visible=false; water.position.y=-40;   // no lagoon in Mushin
 // road classes: 0 expressway 1 trunk 2 primary 3 secondary 4 tertiary 5 unclassified 6 residential 7 living street 8 service lane 9 track
 const nodes=[]; for(let i=0;i<WD.nodes.length;i+=2) nodes.push({i:nodes.length,x:WD.nodes[i],z:WD.nodes[i+1],adj:[],wadj:[],out:[],ed:[],r:0,deg:0,ax:0,tl:false,tlo:0});
@@ -818,6 +843,7 @@ const signSpots=[]; let signIdx=0;
 const KIND=WD.kinds;   // house shop block kiosk market school hospital industrial worship bank fuel
 const BLD=[]; for(let i=0;i<WD.bld.length;i+=8){ const [cx,cz,w,d,ang,k,face,front]=WD.bld.slice(i,i+8); BLD.push({cx,cz,w,d,ang,c:Math.cos(ang),s:Math.sin(ang),kind:KIND[k],face,front,i:BLD.length,skip:false}); }
 for(const b of BLD) b.gap=Math.max(0,b.front-(b.face%2===0?b.w:b.d)/2);   // front = centre to road edge; gap = wall to road edge
+for(const b of BLD) if(GRA.in(b.cx,b.cz)) b.gra=true;   // Ikeja GRA: villas only
 // the direction a building's front looks (toward its street), and helpers for its outline
 const FACE_DIR=b=>{ const u=[b.c,b.s], v=[-b.s,b.c]; return [u,v,[-u[0],-u[1]],[-v[0],-v[1]]][b.face]; };
 const WALL_OF_FACE=[1,0,3,2];
@@ -1104,7 +1130,9 @@ const SCHOOL_N=['Mushin Community Primary School','Ansar-Ud-Deen Primary School'
 const SCHOOLS=AREAS.filter(a=>a.k==='school'&&a.a>2000).map((a,i)=>({a,name:SCHOOL_N[i%SCHOOL_N.length],signed:false}));
 let WORSHIP_N=0;
 let builtN=0;
+const GRA_PICK=[['dup1',1],['dup2',1],['dup3',1],['dup4',1],['dup5',1]];
 for(const b of BLD){ if(b.skip||b.special) continue; const ar=b.w*b.d;
+  if(b.gra&&fitModel(b,GRA_PICK,HOUSE_TINT,{lo:.45,hi:2.2})){ builtN++; continue; }
   switch(b.kind){
     case 'house': if(!fitHouse(b)) obBuilding(b,{type:pick(['oldmid','resi']),h:ar<70?3.4:3.4*ri(1,2)+.6}); if(b.gap<5&&b.gap>.6&&R()<.06){ const p=frontPoint(b,.9); GATES.push({x:p.x,z:p.z,nx:p.nx,nz:p.nz}); } break;
     case 'shop': if(!fitModel(b,SHOP_PICK,PLAIN_TINT,{lo:.45,hi:1.6})) obBuilding(b,{shop:true,type:'oldmid'}); break;
@@ -1203,10 +1231,10 @@ if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555
    tools/blender_rooms/ng_game_export.py with their own materials (Draco + WebP). Each loads when you come near.
    The meshes are merged per material (few draw calls); small things (seats, plants, bags, signs) form a "detail" layer that is
    only drawn up close. Walls and furniture block you: a 25 cm grid of everything between knee and head height, turned into boxes. */
-const SET_DETAIL=/^(CT_L_|AP_Bench|AP_Arm|AP_Plant|AP_Bags|AP_Nooks|AP_Fids|AP_Desk|AP_Shop|AP_Gate|AP_Cafe|AP_Pole|AP_Bridge|AP_DoorTxt|AP_LinearLights)/;
+const SET_DETAIL=/^(GD_|CT_L_|AP_Bench|AP_Arm|AP_Plant|AP_Bags|AP_Nooks|AP_Fids|AP_Desk|AP_Shop|AP_Gate|AP_Cafe|AP_Pole|AP_Bridge|AP_DoorTxt|AP_LinearLights)/;
 function setMerge(root,{detail=SET_DETAIL,lift=null}={}){ root.updateMatrixWorld(true); const far=new Map(), near=new Map(), all=[];
   root.traverse(o=>{ if(!o.isMesh) return; let top=o; while(top.parent&&top.parent!==root) top=top.parent; const nm=top.name||o.name, det=detail&&detail.test(nm), up=lift&&lift.test(nm)?lift.dy||0:0;
-    const ms=[].concat(o.material), g=o.geometry; const groups=g.groups.length?g.groups:[{start:0,count:(g.index?g.index.count:g.attributes.position.count),materialIndex:0}];
+    const ms=[].concat(o.material).map(m=>m&&/^G_leafy_grass/.test(m.name||'')?MAT.grass:m), g=o.geometry; const groups=g.groups.length?g.groups:[{start:0,count:(g.index?g.index.count:g.attributes.position.count),materialIndex:0}];
     for(const gr of groups){ const m=ms[gr.materialIndex]||ms[0]; let sub=g;
       if(groups.length>1){ sub=g.clone(); sub.clearGroups(); if(g.index) sub.setIndex(Array.from(g.index.array.slice(gr.start,gr.start+gr.count))); }
       let w=floatGeo(sub.index?sub.toNonIndexed():sub.clone()); w.applyMatrix4(o.matrixWorld); if(up) w.translate(0,up,0);
@@ -1421,6 +1449,34 @@ function setPlants(S){ const L=(S.json&&S.json.inst)||[]; if(!L.length) return; 
   for(const [c,items] of Object.entries(crops)){ const max=3200, step=Math.max(1,Math.ceil(items.length/max)), pick=items.filter((_,i)=>i%step===0);
     farmGlb('fm_'+c).then(M=>{ new CullSet([{geo:M.geo,mat:M.mat,dist:Math.min(90,Q.lod0*1.2),shadow:true},...(M.geo1?[{geo:M.geo1,mat:M.mat1,dist:Q.draw*.9}]:[])],pick,{shadowDist:Q.shR,name:'set_'+c}); }).catch(e=>console.warn('crop',c,e)); } }
 PLACES.push({name:'Apapa-Oworonshoki Expressway',sub:'Expressway · Mushin west',kind:'place',x:-1570,z:-830},{name:'Agege Motor Road (dual carriageway)',sub:'Expressway look',kind:'place',x:743,z:124});
+// ---- Ikeja GRA, outside: lawns (the four places cut out), driveways to the road, palms along Kudirat Abiola Way and in the
+// gardens, the IKEJA G.R.A. sign, and the four Blender sets (they load when you come near)
+{ const holes=[['hotel',-160,160,-128,127],['motors',-26.8,26.8,2.1,21.5],['garage',-14.9,14.9,-15.9,9.9],['boutique',-11,11,4.6,8.2]].map(([k,x0,x1,z0,z1])=>{ const S=GRA.sites[k];
+    return [[x0,z0],[x1,z0],[x1,z1],[x0,z1]].map(([lx,lz])=>setPt(S,lx,lz)); });
+  const all=[...GRA.poly,...holes.flat().map(p=>[p.x,p.z])];
+  let tris=[]; try{ tris=THREE.ShapeUtils.triangulateShape(GRA.poly.map(([x,z])=>new THREE.Vector2(x,z)),holes.map(h=>h.map(p=>new THREE.Vector2(p.x,p.z)))); }catch(e){ console.warn('gra lawn',e); }
+  const P=[], N=[], U=[]; for(const [a,b,c] of tris){ let P0=all[a],P1=all[b],P2=all[c]; const cr=(P1[0]-P0[0])*(P2[1]-P0[1])-(P1[1]-P0[1])*(P2[0]-P0[0]); if(cr>0){ const t=P1; P1=P2; P2=t; }
+    for(const q of [P0,P1,P2]){ P.push(q[0],.012,q[1]); N.push(0,1,0); U.push(q[0]/8,-q[1]/8); } }
+  if(P.length){ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2)); g.computeBoundingSphere();
+    const m=new THREE.Mesh(g,MAT.lawn); m.receiveShadow=true; scene.add(m); }
+  for(const k in GRA.sites){ const S=GRA.sites[k], c=setPt(S,0,(S.hz0+S.hz1)/2); SCAT_OFF.push({x:c.x,z:c.z,ry:S.ry,hw:S.hx+2,hd:(S.hz1-S.hz0)/2+2});   // no wild tufts on the paved and kept grounds
+    for(const [cx,hw,z0,z1] of S.drive){ const d=setPt(S,cx,(z0+z1)/2); SCAT_OFF.push({x:d.x,z:d.z,ry:S.ry,hw:hw+.5,hd:(z1-z0)/2}); } }
+  for(const k in GRA.sites){ const S=GRA.sites[k]; for(const [cx,hw,z0,z1] of S.drive){ const g=new THREE.PlaneGeometry(hw*2,z1-z0).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*hw/3,uv.getY(i)*(z1-z0)/6);
+      const m=new THREE.Mesh(g,MAT.asph), p=setPt(S,cx,(z0+z1)/2); m.position.set(p.x,.02,p.z); m.rotation.y=S.ry; m.receiveShadow=true; scene.add(m); } }
+  GRA.trees=()=>{ if(TREES.tree_palm){ const F=[-1849.5,-465.1,-1858.5,-473.1,-1867.5,-481.1,-1885.5,-497.0,-1894.5,-505.0,-1921.4,-528.9,-1930.4,-536.8,-1939.3,-544.8,-1948.3,-552.7,-1957.3,-560.7,-1966.3,-568.6,-1984.3,-584.5,-1992.6,-591.5,-2002.4,-598.5,-2012.1,-605.5,-2021.8,-612.6,-2031.4,-619.3,-2041.3,-626.1,-2051.2,-632.9,-2060.3,-638.9,-2070.8,-644.7,-2081.3,-650.5,-2091.8,-656.2,-2101.9,-660.8,-2112.9,-665.6,-2123.8,-670.4,-2134.8,-675.3,-2145.8,-680.1,-2156.8,-684.9,-2167.8,-689.8,-2200.7,-701.8,-2211.7,-705.5,-2223.2,-709.0,-2234.6,-712.6,-2246.1,-716.1,-2257.6,-719.6,-2269.0,-723.2,-2280.1,-725.9,-2291.7,-728.8,-2303.4,-731.7,-2314.2,-733.4,-2325.4,-734.8,-2337.3,-735.8,-2348.4,-736.1,-2361.5,-737.3,-2373.4,-738.5,-2385.9,-740.2,-2397.7,-742.0,-2409.6,-743.9];
+    const palms=[], oaks=[], rnd=mulberry32(4242);
+    for(let i=0;i<F.length;i+=2){ const x=F[i], z=F[i+1], s=.92+rnd()*.2; palms.push({x,y:0,z,ry:rnd()*6.28,sx:s,sy:s,sz:s}); addCol({x0:x-.3,x1:x+.3,z0:z-.3,z1:z+.3,h:4}); }
+    const xs=GRA.poly.map(p=>p[0]), zs=GRA.poly.map(p=>p[1]), X0=Math.min(...xs), X1=Math.max(...xs), Z0=Math.min(...zs), Z1=Math.max(...zs);
+    for(let t=0,n=0;t<4000&&n<110;t++){ const x=X0+rnd()*(X1-X0), z=Z0+rnd()*(Z1-Z0); if(!GRA.in(x,z)||GRA.site(x,z,5)||GRA.drive(x,z,3)||roadAt(x,z,3.5)||GRA.villas.some(q=>Math.hypot(q[0]-x,q[1]-z)<16)) continue;
+      const s=.85+rnd()*.3, it={x,y:0,z,ry:rnd()*6.28,sx:s,sy:s*(.95+rnd()*.15),sz:s}; (rnd()<.55?palms:oaks).push(it); addCol({x0:x-.35,x1:x+.35,z0:z-.35,z1:z+.35,h:4}); n++; }
+    plantTrees('tree_palm',palms,Q.draw*.85); if(TREES.tree_oak_big&&oaks.length) plantTrees('tree_oak_big',oaks,Q.draw*.85); } };
+  // the IKEJA G.R.A. sign at the way in from Mushin
+  { const s=GRA.sign, g=new THREE.Group(), post=new THREE.MeshStandardMaterial({color:0x2d3a2f,roughness:.6});
+    for(const dx of [-1.9,1.9]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.18,2.6,.18),post); p.position.set(dx,1.3,0); g.add(p); }
+    g.position.set(s.x,0,s.z); g.rotation.y=s.ry; scene.add(g); addCol({x0:s.x-1.5,x1:s.x+1.5,z0:s.z-1.5,z1:s.z+1.5,h:3});
+    signAt(g,{x:0,y:2.15,z:.1,yaw:0,w:4.2,h:1.25},'IKEJA G.R.A.\nWELCOME','#1f5130','#ffffff'); signAt(g,{x:0,y:2.15,z:-.1,yaw:Math.PI,w:4.2,h:1.25},'IKEJA G.R.A.\nDRIVE SLOWLY','#1f5130','#ffffff'); }
+  for(const k in GRA.sites){ const G=GRA.sites[k], S=addSet(G.name,G.x,G.z,G.ry,{near:(k==='hotel'?1100:650),detailDist:k==='hotel'?280:150}); G.S=S;
+    S.onLoad=S2=>{ setPlants(S2); for(const [x0,x1,z0,z1] of (S2.json&&S2.json.solids)||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,1.2); } graLoaded(k,S2); }; } }
 for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B.hz)+700,detailDist:Math.max(B.hx,B.hz)+120});
   if(B.name==='set_city'){ const g=new THREE.PlaneGeometry(B.hx*2,B.hz*2).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*B.hx/4,uv.getY(i)*B.hz/4); const m=new THREE.Mesh(g,MAT.lawn); m.position.set(B.x,.012,B.z); m.rotation.y=B.ry; m.receiveShadow=true; scene.add(m); }   // the city quarter stands on grass, as in Blender
   PLACES.push({name:B.label,sub:'Mushin',kind:'place',x:B.x,z:B.z});
@@ -1469,7 +1525,7 @@ if(HOUSES&&SITES.station){ const M=MODELS.station, r=M.marks?placeVenue(SITES.st
   if(M.marks) signAt(scene,markAt(r,'sign_name'),'NIGERIA POLICE · MUSHIN DIVISION','#13306b','#ffffff'); }
 let HOTEL_SITE=null; if((MODELS.hotel||MODELS.office)&&SITES.hotel){ const r=placeModelOn(SITES.hotel,MODELS.hotel?'hotel':'office',null); HOTEL_SITE={x:r.x,z:r.z,door:{x:r.door.x,z:r.door.z,ry:r.ry},hx:r.M.W*r.sc/2,hz:r.M.D*r.sc/2}; }
 // two more hotels (same Blender hotel, their own names), two night clubs and the car stand
-const HOTEL_NAMES=[['Eko Grand Hotel','#6b1f2a'],['Oduduwa Royal Hotel','#1f3d6b'],['Idi-Araba Suites','#24533a']];
+const HOTEL_NAMES=[['Mushin Grand Hotel','#6b1f2a'],['Oduduwa Royal Hotel','#1f3d6b'],['Idi-Araba Suites','#24533a']];
 if(MODELS.hotel) [SITES.hotel2,SITES.hotel3].forEach((b,i)=>{ if(!b) return; const r=placeModelOn(b,'hotel',null), [nm,col]=HOTEL_NAMES[i+1], d=r.door;
   const lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(nm.toUpperCase(),col,'#F7EFDF'),fog:false})); lab.scale.set(6,1.15,1); lab.position.set(d.x,SLAB+4.6,d.z); lab.layers.set(1); scene.add(lab); doorRing(d.x,d.z);
   VENUES.hotels.push({name:nm,col,x:r.x,z:r.z,door:{x:d.x,z:d.z,ry:r.ry}}); });
@@ -1620,6 +1676,7 @@ function plantTrees(kind,items,dist){ const t=TREES[kind]; new CullSet([{geo:t.g
     plantTrees('tree_oak',trees.filter(pk).map(mk),Q.draw*.8); plantTrees('tree_oak_big',trees.filter(t=>!pk(t)).map(mk),Q.draw*.8); }
   if(TREES.tree_palm&&palms.length) plantTrees('tree_palm',palms.map(p=>{ const k=rr(.8,1.25); return {x:p.x,y:0,z:p.z,ry:p.ry,sx:k,sy:k,sz:k}; }),Q.draw*.85);
   for(const t of [...trees,...palms]) addCol({x0:t.x-.3,x1:t.x+.3,z0:t.z-.3,z1:t.z+.3,h:4}); }
+GRA.trees();   // the GRA palms (planted once the tree shading exists)
 // ---- Oga Shege's den: a zinc-fenced corner at the back of a market, out of sight of the crowd. Area boys smoke at the
 // gap in the fence and want ₦100 before you pass. (Local axes: u along the market's edge, n into the market; the gap faces n.)
 const DEN={ok:false};
@@ -2695,7 +2752,7 @@ const mm=$('#mm'), mg=mm.getContext('2d');
 // the whole map as one picture for the big map (sharp detail is drawn on top when you zoom in)
 const MMB={x0:Math.min(-WB.x-20,...DISTS.map(d=>d.x0-20)),z0:AIRPORT?AIRPORT.RZ-140:-WB.z-20,x1:TMB?TMB.xBlock+260:WB.x+20,z1:Math.max(WB.z+20,...DISTS.map(d=>d.z1+20)),ppm:.45}; let mmCache=null;   // the map reaches the airport and the bridge
 const COND_COL={good:'#8d939e',bad:'#7b7468',dirt:'#9a6440'};
-const AREA_COL={npcfarm:'#2c4a30',pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
+const AREA_COL={gra:'#2a4630',npcfarm:'#2c4a30',pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
 function buildMinimapCache(){ const W=Math.ceil((MMB.x1-MMB.x0)*MMB.ppm), H=Math.ceil((MMB.z1-MMB.z0)*MMB.ppm); mmCache=document.createElement('canvas'); mmCache.width=W; mmCache.height=H;
   const g=mmCache.getContext('2d',{willReadFrequently:true}); g.fillStyle='#1f2226'; g.fillRect(0,0,W,H); g.scale(MMB.ppm,MMB.ppm); g.translate(-MMB.x0,-MMB.z0); drawWorldMap(g,MMB.x0,MMB.z0,MMB.x1,MMB.z1,true); }
 // draw the city (areas, buildings, roads, railway) into a 2D canvas already set to world metres
@@ -2781,7 +2838,7 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Eko Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
@@ -5416,7 +5473,7 @@ function mainRoadPlace(){ let best=null, bd=1e9; for(const e of ROADS){ if(!e.dr
   return best?{name:'Main road · '+best.name,sub:'Drop me at the big road',x:best.x,z:best.z,kind:'place'}:null; }
 
 const kmOf=d=>d<950?Math.round(d/10)*10+' m':(d/1000).toFixed(1)+' km';
-const POPULAR=/^(Your house|Eko Grand Hotel|Mushin Motor Park|Mushin Police Station|Mushin Station|LUTH gate)$|Market$/;
+const POPULAR=/^(Your house|Eko Grand Hotel|Mushin Grand Hotel|NAIJA MOTORS|Mushin Motor Park|Mushin Police Station|Mushin Station|LUTH gate)$|Market$/;
 function phoneUI(){ const b=$('#phBody'); if(!b) return; b.textContent=''; const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
   const btn=(c,x,fn)=>{ const e=el('button','ph-btn '+c,x); e.type='button'; e.addEventListener('click',fn); return e; };
   $('#phTime').textContent=$('#clockT').textContent;
@@ -6962,13 +7019,13 @@ function updateTolls(dt){ if(mode==='interior') return; const f=mode==='drive'&&
         if((q.stoneT-=dt)<=0&&e<24){ q.stoneT=mrr(1.1,2); q.speed=0; const o=new THREE.Vector3(q.x,q.y+1.6,q.z), tv=lob(o,f.x+mrr(-.6,.6),(f.y||0)+1,f.z+mrr(-.6,.6),15); throwThing('stone',o,tv,q);
           if(sayT<=0){ sayT=3; toast(mpick(['"Stone am! Stone am!"','"Come back here!"','"You go pay for that rope!"']),1.8); } } } } } }
 
-/* ================= Eko Grand Hotel: walk in to the lounge bar =================
+/* ================= Mushin Grand Hotel: walk in to the lounge bar =================
    The office tower nearest your house is the hotel. Its lounge (assets/models/hotel_bar.glb) loads the first time you come
    near, so nobody downloads it unless they visit. Inside: tables, a stage and the bar, with a few guests. */
-const HOTEL={ready:false,loading:null,place:null,door:null,label:'Eko Grand Hotel',camDist:3,guests:[]};
-{ if(HOTEL_SITE){ const best={name:'Eko Grand Hotel',sub:'Hotel and lounge bar',kind:'place',x:HOTEL_SITE.x,z:HOTEL_SITE.z}; PLACES.push(best); HOTEL.place=best;
+const HOTEL={ready:false,loading:null,place:null,door:null,label:'Mushin Grand Hotel',camDist:3,guests:[]};
+{ if(HOTEL_SITE){ const best={name:'Mushin Grand Hotel',sub:'Hotel and lounge bar',kind:'place',x:HOTEL_SITE.x,z:HOTEL_SITE.z}; PLACES.push(best); HOTEL.place=best;
     HOTEL.door={...HOTEL_SITE.door};
-    const d=HOTEL.door, lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('EKO GRAND HOTEL','#6b1f2a','#F7EFDF'),fog:false})); lab.scale.set(6,1.15,1); lab.position.set(d.x,SLAB+4.6,d.z); lab.layers.set(1); scene.add(lab);
+    const d=HOTEL.door, lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('MUSHIN GRAND HOTEL','#6b1f2a','#F7EFDF'),fog:false})); lab.scale.set(6,1.15,1); lab.position.set(d.x,SLAB+4.6,d.z); lab.layers.set(1); scene.add(lab);
     const ring=new THREE.Mesh(new THREE.RingGeometry(.9,1.15,40),new THREE.MeshBasicMaterial({color:0xF2B705,transparent:true,opacity:.7,depthWrite:false,fog:false})); ring.rotation.x=-Math.PI/2; ring.position.set(d.x,groundY(d.x,d.z)+.04,d.z); ring.layers.set(1); scene.add(ring); HOTEL.ring=ring; } }
 const nearHotel=()=>!!HOTEL.door&&Math.hypot(player.x-HOTEL.door.x,player.z-HOTEL.door.z)<2.2;
 function loadHotel(){ if(!HOTEL.loading){ const u=murl('hotel_bar'); DL.exp[u]=MANIFEST['assets/models/hotel_bar.glb']||3500000;
@@ -7027,10 +7084,10 @@ function addGuests(){ if(!HOTEL.scene||HOTEL.guests.length||!PEOPLE.n) return; c
   floor.forEach((s,i)=>{ const [id,dn]=dancers[i], C=PEOPLE.casts[id]; if(!C||!C.clips[dn]) return; const inner=cloneCast(C), root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(inner); inner.position.y=C.y0+(C.off[dn]||0);
     root.position.set(s.x,0,s.z); root.rotation.y=rnd()*6.28; S.add(root); const mixer=new THREE.AnimationMixer(inner), a=mixer.clipAction(C.clips[dn]); a.play(); a.time=rnd()*C.clips[dn].duration; HOTEL.guests.push({root,mixer}); }); }
 async function enterHotel(){ if(busy) return;
-  if(!HOTEL.ready){ toast('Opening Eko Grand Hotel…',4); busy=true; try{ await loadHotel(); }catch(e){} busy=false; if(!HOTEL.ready){ toast('The hotel is closed for now. Try again soon.'); return; } }
+  if(!HOTEL.ready){ toast('Opening Mushin Grand Hotel…',4); busy=true; try{ await loadHotel(); }catch(e){} busy=false; if(!HOTEL.ready){ toast('The hotel is closed for now. Try again soon.'); return; } }
   addGuests();
   fadeSwap(()=>{ ROOM=HOTEL; mode='interior'; enteredAt=T0; HOTEL.scene.add(rig.root); Object.assign(player,{x:HOTEL.spawn.x,z:HOTEL.spawn.z,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.22,dist:3}); setScene(HOTEL.scene);
-    toast('Welcome to Eko Grand Hotel. The lounge is open.',3); }); }
+    toast('Welcome to Mushin Grand Hotel. The lounge is open.',3); }); }
 // start downloading the lounge when you walk near the hotel, so the door opens at once
 let hotelPeek=0; function hotelPrefetch(dt){ if(!MYROOM.loading&&MANIFEST['assets/models/room.glb']&&Math.hypot(player.x-APT.front.x,player.z-APT.front.z)<60) loadMyRoom();
   if(HOTEL.loading||!HOTEL.door||(hotelPeek-=dt)>0) return; hotelPeek=1; if(Math.hypot(player.x-HOTEL.door.x,player.z-HOTEL.door.z)<70) loadHotel(); }
@@ -7078,16 +7135,21 @@ function buildRoom(name,g){
 /* ---- rooms made in Blender with real textures (tools: the user's Blender, ~/Documents/naija_rooms): many meshes,
    walls as separate WALL_* objects, spots as MARK_* empties. Seen from above like the Sims: every wall that stands
    between the camera and you drops to a low strip, so you see into the room you are in and the rooms around. */
+const BAKE_K={int_eko_cellar:1.55,int_eko_velvet:1.15};   // baked rooms that came out dark get a little lift
 let LM_K=2.5*Math.PI; const LM_ROOM={int_club:2.6,int_police:1.3,int_faceme:1.45};   // dark rooms get a little more   // light picture = 0.8 x light at half strength (baked on white); basic material divides by pi
 function buildSimsRoom(name,g){
   const S=new THREE.Scene(); S.background=new THREE.Color(0x101216);
   if(!INT_ENV.t) INT_ENV.t=pmrem.fromScene(new RoomEnvironment(),.04).texture; S.environment=INT_ENV.t; S.environmentIntensity=.55;
   S.add(new THREE.HemisphereLight(0xfff4e6,0x3a2c20,1.0)); const sun=new THREE.DirectionalLight(0xfff0dc,1.2); sun.position.set(6,14,9); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
   Object.assign(sun.shadow.camera,{left:-12,right:12,top:12,bottom:-12,far:40}); sun.shadow.bias=-.0005; S.add(sun,sun.target);
-  const root=g.scene; root.updateMatrixWorld(true); const MK={}, walls=[], solids=[];
-  root.traverse(o=>{ if(/^MARK_/.test(o.name)){ const k=o.name.slice(5), p=o.getWorldPosition(new THREE.Vector3()), u=o.userData||{}; MK[k]={...u,k,x:p.x,y:p.y,z:p.z,yaw:FACE_YAW[u.face]??0}; }
+  const root=g.scene; root.updateMatrixWorld(true); const MK={}, walls=[], solids=[], own=[]; let baked=false;
+  root.traverse(o=>{ if(/^MARK_/.test(o.name)){ const k=o.name.slice(5), p=o.getWorldPosition(new THREE.Vector3()), u=o.userData||{}; MK[k]={...u,k,x:p.x,y:p.y,z:p.z,yaw:typeof u.yaw==='number'?u.yaw:FACE_YAW[u.face]??0}; }
     if(o.isMesh){ o.castShadow=o.receiveShadow=true; const ms=[].concat(o.material); for(const m of ms){ m.side=THREE.DoubleSide; if(m.map) m.map.anisotropy=Math.min(8,maxAniso); if(m.transmission>0){ m.transparent=true; m.opacity=.25; m.transmission=0; m.depthWrite=false; } }
-      if(/^VIEW_/.test(o.name)){ o.castShadow=o.receiveShadow=false; for(const m of ms){ m.toneMapped=false; } } else solids.push(o); } });
+      own.push(o);
+      if(/^VIEW_/.test(o.name)||ms.some(m=>/^BAKED_/.test(m.name||''))){ o.castShadow=o.receiveShadow=false; baked=true;
+        const bk=BAKE_K[name]||1, bm=m=>{ const b=new THREE.MeshBasicMaterial({map:m.map,toneMapped:false,side:THREE.DoubleSide}); if(!/^VIEW_/.test(o.name)) b.color.setScalar(bk); return b; };
+        o.material=ms.length>1?ms.map(bm):bm(ms[0]); for(const m of ms) m.dispose(); }
+      if(!/^VIEW_/.test(o.name)) solids.push(o); } });
   S.add(root);
   // each wall: geometry in world space, origin at its foot, so it can drop toward the floor
   root.traverse(o=>{ if(!o.isMesh||!/^WALL_/.test(o.parent&&/^WALL_/.test(o.parent.name)?o.parent.name:o.name)) return; walls.push(o); });
@@ -7096,7 +7158,7 @@ function buildSimsRoom(name,g){
     const sx=b.max.x-b.min.x, sz=b.max.z-b.min.z, alongX=sx>=sz; return {o,cx:(b.min.x+b.max.x)/2,cz:(b.min.z+b.max.z)/2,h:b.max.y-b.min.y,low:b.min.y<.3,alongX,len:Math.max(sx,sz),k:1}; });
   root.updateMatrixWorld(true);
   // walking: knee-to-head things block; floors and rugs don't
-  const bb=new THREE.Box3().setFromObject(root), x0=bb.min.x, z0=bb.min.z, CS=.2, gw=Math.ceil((bb.max.x-x0)/CS)+1, gd=Math.ceil((bb.max.z-z0)/CS)+1, grid=new Uint8Array(gw*gd), a=new THREE.Vector3();
+  const bb=new THREE.Box3(); for(const o of solids) bb.expandByObject(o); const x0=bb.min.x, z0=bb.min.z, CS=.2, gw=Math.ceil((bb.max.x-x0)/CS)+1, gd=Math.ceil((bb.max.z-z0)/CS)+1, grid=new Uint8Array(gw*gd), a=new THREE.Vector3();
   for(const o of solids){ const P=o.geometry.attributes.position, I=o.geometry.index, n=(I?I.count:P.count)/3, M=o.matrixWorld;
     for(let t=0;t<n;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
       for(let k=0;k<3;k++){ a.fromBufferAttribute(P,I?I.getX(t*3+k):t*3+k).applyMatrix4(M); if(a.x<ax) ax=a.x; if(a.x>bx) bx=a.x; if(a.y<ay) ay=a.y; if(a.y>by) by=a.y; if(a.z<az) az=a.z; if(a.z>bz) bz=a.z; }
@@ -7120,7 +7182,8 @@ function buildSimsRoom(name,g){
         const b=new THREE.MeshBasicMaterial({map:m.map,color:e?m.emissive.clone().multiplyScalar(Math.min(1.6,m.emissiveIntensity)):m.color,vertexColors:!!o.geometry.attributes.color,lightMap:e?null:t,lightMapIntensity:LM_K*(LM_ROOM[name]||1),transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite,side:THREE.DoubleSide});
         b.userData.std=m; return b; }); if(o.material.length===1) o.material=o.material[0]; o.castShadow=false; o.receiveShadow=false; });
       S.environmentIntensity=.35; for(const l of S.children) if(l.isDirectionalLight){ l.intensity=.5; l.castShadow=false; } else if(l.isHemisphereLight) l.intensity=.7; R.lit=true; }); }
-  const R={name,scene:S,marks:MK,free,sims:false,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs,tick:null,walls:W,
+  if(baked){ S.environmentIntensity=.45; for(const l of S.children) if(l.isDirectionalLight){ l.intensity=.9; l.castShadow=false; } else if(l.isHemisphereLight) l.intensity=1.1; }
+  const R={name,scene:S,marks:MK,free,sims:false,baked,own,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs,tick:null,walls:W,
     bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:bb.min.x+.2,x1:bb.max.x-.2,z0:bb.min.z+.2,z1:bb.max.z-.2,y0:.5,y1:2.9},
     camHit(t,d,dist){ for(let q=.25;q<dist;q+=.08){ const x=t.x+d.x*q, z=t.z+d.z*q, i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); if(i<0||j<0||i>=gw||j>=gd||tall[j*gw+i]) return q; } return dist; },out:()=>STATION.front,
     move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
@@ -7170,21 +7233,40 @@ const HTIERS=[
   {f:3,m:'int_suite_exec',name:'Executive Suite',price:55000,what:'Room and parlour, bathroom'},
   {f:4,m:'int_suite_family',name:'Family Suite',price:80000,what:'Room, parlour, kitchen and bathroom'},
   {f:5,m:'int_suite_presidential',name:'Presidential Suite',price:150000,what:'Top floor: grand parlour, kitchen, jacuzzi'}];
-const HOTELS=[...(HOTEL_SITE?[{name:'Eko Grand Hotel',col:'#6b1f2a',x:HOTEL_SITE.x,z:HOTEL_SITE.z,door:HOTEL_SITE.door}]:[]),...VENUES.hotels];
-HOTELS.forEach((h,i)=>{ h.i=i; if(i) PLACES.push({name:h.name,sub:'Hotel · rooms from '+naira(HTIERS[0].price),kind:'hotel',x:h.x,z:h.z}); });
+// EKO GRAND HOTEL (Ikeja GRA): five-star, made in the user's Blender. Floor 1: rooms 101-105, floor 2: suites 201-205, each its own design
+const ETIERS=[
+  {m:'int_eko_r1',name:'Classic Room',price:25000,what:'King bed, rain shower, city view'},
+  {m:'int_eko_r2',name:'Superior Room',price:35000,what:'Oak floor, bathtub, velvet sofa'},
+  {m:'int_eko_r3',name:'Deluxe Room',price:50000,what:'Marble bath, sofa, work desk'},
+  {m:'int_eko_r4',name:'Premier Room',price:70000,what:'Sitting area, bistro table, bathtub'},
+  {m:'int_eko_r5',name:'Junior Suite',price:100000,what:'Bar, chandelier, corner windows'},
+  {m:'int_eko_r6',name:'Executive Suite',price:150000,what:'Bedroom and parlour, two TVs'},
+  {m:'int_eko_r7',name:'Business Suite',price:200000,what:'Bedroom and parlour, office desk'},
+  {m:'int_eko_r8',name:'Royal Suite',price:300000,what:'Parlour, dining table, marble bath'},
+  {m:'int_eko_r9',name:'Ambassador Suite',price:450000,what:'Parlour, bar, dining for six'},
+  {m:'int_eko_r10',name:'Presidential Suite',price:750000,what:'Grand piano, bar, dining, corner views'}];
+ETIERS.forEach((t,i)=>{ t.f=i<5?1:2; t.n=i%5+1; });
+const EKO={i:-1,fee:5000,door:null,back:null};
+{ const S=GRA.sites.hotel, c=Math.cos(S.ry), s=Math.sin(S.ry), at=(lx,lz,yaw)=>({x:S.x+lx*c+lz*s,z:S.z-lx*s+lz*c,ry:S.ry+yaw});
+  EKO.door=at(0,24.2,0); EKO.back=at(-9,-21.6,Math.PI); }
+const HOTELS=[...(HOTEL_SITE?[{name:'Mushin Grand Hotel',col:'#6b1f2a',x:HOTEL_SITE.x,z:HOTEL_SITE.z,door:HOTEL_SITE.door}]:[]),...VENUES.hotels,
+  {name:'Eko Grand Hotel',col:'#6b1f2a',x:GRA.sites.hotel.x,z:GRA.sites.hotel.z,door:EKO.door,grand:true}];
+const tiers=h=>HOTELS[h]&&HOTELS[h].grand?ETIERS:HTIERS;
+const stayTier=()=>STAY?tiers(STAY.h)[STAY.t]:null;
+HOTELS.forEach((h,i)=>{ h.i=i; if(h.grand) EKO.i=i; if(i) PLACES.push({name:h.name,sub:h.grand?'5-star hotel · Ikeja GRA · rooms from '+naira(ETIERS[0].price):'Hotel · rooms from '+naira(HTIERS[0].price),kind:'hotel',x:h.x,z:h.z}); });
 if(HOTEL.place){ HOTEL.place.kind='hotel'; HOTEL.place.sub='Hotel · rooms and lounge bar'; }
-let STAY=null; try{ const s=JSON.parse(localStorage.getItem('naija-hotel')||'null'); if(s&&s.until>Date.now()&&HOTELS[s.h]) STAY=s; }catch(e){}
+let STAY=null; try{ const s=JSON.parse(localStorage.getItem('naija-hotel')||'null'); if(s&&s.until>Date.now()&&HOTELS[s.h]&&tiers(s.h)[s.t]) STAY=s; }catch(e){}
 const H={cur:0,floor:1};
-const doorsOn=f=>f===5?2:8;   // the top floor has only the two presidential suites
+const doorsOn=f=>HOTELS[H.cur]&&HOTELS[H.cur].grand?5:f===5?2:8;   // the top floor has only the two presidential suites; Eko Grand: five a floor
 const roomNo=(f,n)=>f*100+n;
 function freeDoor(h,f){ const day=Math.floor(Date.now()/864e5), n=doorsOn(f); return 1+Math.floor(Math.abs(Math.sin((h*7+f*13+day)*12.9898)*43758.5453)%1*n); }
-function hotelRows(){ const h=H.cur; return HTIERS.map((t,ti)=>{ const mine=STAY&&STAY.h===h&&STAY.t===ti, n=mine?STAY.n:freeDoor(h,t.f);
+function hotelRows(){ const h=H.cur, G=HOTELS[h].grand; return tiers(h).map((t,ti)=>{ const mine=STAY&&STAY.h===h&&STAY.t===ti, n=G?t.n:mine?STAY.n:freeDoor(h,t.f);
   return {name:`${t.name} · ${roomNo(t.f,n)}`,sub:t.what+` · floor ${t.f}`,price:mine?0:t.price,btn:mine?'Your room':naira(t.price),off:mine,
     act:()=>{ const was=STAY; STAY={h,t:ti,n,until:Date.now()+864e5}; try{ localStorage.setItem('naija-hotel',JSON.stringify(STAY)); }catch(e){}
       closeMenu(); toast(`${was?'You don change room. ':''}Here is your key card for Room ${roomNo(t.f,n)}. Take the lift to floor ${t.f}.`,4); } }; }); }
-function hotelMenu(){ openMenu(HOTELS[H.cur].name.toUpperCase()+' · RECEPTION','A night in Lagos',hotelRows); toast(mpick(['"Welcome! Which room would you like?"','"Good evening sir/ma. We have rooms available."','"Welcome to our hotel. How many nights?"']),2.6); }
-async function enterLobby(i){ if(busy) return; const R=await intGet('int_hotel_lobby','Opening the hotel…'); if(!R) return; H.cur=i; setupLobby(R); R.label=HOTELS[i].name;
-  goRoom(R,'spawn',`Welcome to ${HOTELS[i].name}.`+(STAY&&STAY.h===i?` Your room ${roomNo(HTIERS[STAY.t].f,STAY.n)} is ready.`:' Reception is ahead.')); }
+function hotelMenu(){ const G=HOTELS[H.cur].grand; openMenu(HOTELS[H.cur].name.toUpperCase()+' · RECEPTION',G?'Five stars · a night in Ikeja GRA':'A night in Lagos',hotelRows); toast(mpick(['"Welcome! Which room would you like?"','"Good evening sir/ma. We have rooms available."','"Welcome to our hotel. How many nights?"']),2.6); }
+async function enterLobby(i){ if(busy) return; if(HOTELS[i]&&HOTELS[i].grand) return enterEko(); const R=await intGet('int_hotel_lobby','Opening the hotel…'); if(!R) return; H.cur=i; setupLobby(R); R.label=HOTELS[i].name;
+  goRoom(R,'spawn',`Welcome to ${HOTELS[i].name}.`+(STAY&&STAY.h===i?` Your room ${roomNo(stayTier().f,STAY.n)} is ready.`:' Reception is ahead.')); }
 function setupLobby(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2;
   R.fill=R=>{ folk(R.scene,'suit_lady',M.receptionist,['idle_suit','f_talk'],R.folk);
     const rnd=seeded(31), who=[['baba',['talk','idle_baba']],['lady_red',['phone','idle_3']],['p_tunde',['idle_1','text']],['mama',['talk']]];
@@ -7193,25 +7275,25 @@ function setupLobby(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R
   fillRoom(R);
   R.spot(M.exit,'Go back outside',()=>leaveRoom(HOTELS[H.cur].door),1.8);
   R.spot(M.desk,'Talk to the receptionist',hotelMenu,1.8);
-  R.spot(M.lift,()=>STAY&&STAY.h===H.cur?`Take the lift to floor ${HTIERS[STAY.t].f}`:'Take the lift',()=>{ if(!(STAY&&STAY.h===H.cur)){ toast('"You need a key card for the lift. Book a room at reception."',3); return; } goFloor(HTIERS[STAY.t].f); },1.8);
+  R.spot(M.lift,()=>STAY&&STAY.h===H.cur?`Take the lift to floor ${stayTier().f}`:'Take the lift',()=>{ if(!(STAY&&STAY.h===H.cur)){ toast('"You need a key card for the lift. Book a room at reception."',3); return; } goFloor(stayTier().f); },1.8);
   R.spot(M.bar_door,'Go to the lounge bar',enterLounge,1.8);
   setSign(R.signs.sign_reception,'RECEPTION','#2a1d14','#e9c46a');
   setSign(R.signs.sign_bar,'LOUNGE BAR','#2a1d14','#e9c46a');
   setSign(R.signs.sign_prices,'ROOMS & SUITES · PER NIGHT\n'+HTIERS.map(t=>`${t.name}  ${naira(t.price)}`).join('\n'),'#1d1712','#f3e3c3'); }
 async function goFloor(f,door){ if(busy) return; const R=await intGet('int_hotel_corridor','Going up…'); if(!R) return; H.floor=f; setupCorridor(R);
   for(let n=1;n<=8;n++) setSign(R.signs['plate_'+n],n<=doorsOn(f)?String(roomNo(f,n)):'STAFF','#b08a3e','#1b140c');
-  setSign(R.signs.sign_floor,`FLOOR ${f}\n${HTIERS[f-1].name.toUpperCase()}S`,'#1d1712','#f3e3c3'); R.label=`${HOTELS[H.cur].name} · floor ${f}`;
-  goRoom(R,door?backOf(R.marks['door_'+door]):'spawn',door?null:`Floor ${f}.`+(STAY&&STAY.h===H.cur&&HTIERS[STAY.t].f===f?` Your room is ${roomNo(f,STAY.n)}.`:'')); }
+  setSign(R.signs.sign_floor,HOTELS[H.cur].grand?`FLOOR ${f}\n${f===1?'ROOMS 101 - 105':'SUITES 201 - 205'}`:`FLOOR ${f}\n${HTIERS[f-1].name.toUpperCase()}S`,'#1d1712','#f3e3c3'); R.label=`${HOTELS[H.cur].name} · floor ${f}`;
+  goRoom(R,door?backOf(R.marks['door_'+door]):'spawn',door?null:`Floor ${f}.`+(STAY&&STAY.h===H.cur&&stayTier().f===f?` Your room is ${roomNo(f,STAY.n)}.`:'')); }
 function setupCorridor(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
   R.fill=R=>{ const d=M.door_6||M.door_2; if(d){ const q=R.nearFree(d.x-Math.sin(d.yaw)*1.2,d.z-Math.cos(d.yaw)*1.2); folk(R.scene,'mama',{...q,yaw:d.yaw},['idle_2','idle_1'],R.folk); } };   // housekeeping by a door
   fillRoom(R);
   R.spot(M.lift,'Take the lift down to the lobby',()=>enterLobbyFrom('lift'),1.8);
   for(let n=1;n<=8;n++){ const m=M['door_'+n]; if(!m) continue;
-    R.spot(m,()=>{ const f=H.floor; if(n>doorsOn(f)) return 'Staff only'; const mine=STAY&&STAY.h===H.cur&&HTIERS[STAY.t].f===f&&STAY.n===n; return mine?`Open Room ${roomNo(f,n)} (your room)`:`Room ${roomNo(f,n)}`; },
-      ()=>{ const f=H.floor; if(n>doorsOn(f)){ toast('Staff only. Locked.'); return; } const mine=STAY&&STAY.h===H.cur&&HTIERS[STAY.t].f===f&&STAY.n===n;
+    R.spot(m,()=>{ const f=H.floor; if(n>doorsOn(f)) return 'Staff only'; const mine=STAY&&STAY.h===H.cur&&stayTier().f===f&&STAY.n===n; return mine?`Open Room ${roomNo(f,n)} (your room)`:`Room ${roomNo(f,n)}`; },
+      ()=>{ const f=H.floor; if(n>doorsOn(f)){ toast('Staff only. Locked.'); return; } const mine=STAY&&STAY.h===H.cur&&stayTier().f===f&&STAY.n===n;
         if(mine) openHotelRoom(); else toast(mpick(['Locked. Someone dey inside.','"Do not disturb" dey the door.','Locked. Book this room at reception.']),2.4); },1.1); } }
-async function enterLobbyFrom(at){ const R=await intGet('int_hotel_lobby'); if(!R) return; setupLobby(R); goRoom(R,backOf(R.marks[at])); }
-async function openHotelRoom(){ if(busy||!STAY) return; const t=HTIERS[STAY.t], R=await intGet(t.m,'Opening the door…'); if(!R) return; setupHotelRoom(R,STAY.t);
+async function enterLobbyFrom(at){ if(HOTELS[H.cur]&&HOTELS[H.cur].grand) return enterEko(at); const R=await intGet('int_hotel_lobby'); if(!R) return; setupLobby(R); goRoom(R,backOf(R.marks[at])); }
+async function openHotelRoom(){ if(busy||!STAY) return; const t=stayTier(), G=HOTELS[STAY.h].grand; if(G) ekoDrop(t.m); const R=await intGet(t.m,'Opening the door…'); if(!R) return; if(G) setupEkoRoom(R,t); else setupHotelRoom(R,STAY.t);
   R.label=`${HOTELS[H.cur].name} · Room ${roomNo(t.f,STAY.n)}`; goRoom(R,'spawn',mpick([`Room ${roomNo(t.f,STAY.n)}. Enjoy your stay!`,`Room ${roomNo(t.f,STAY.n)}. Na correct room be this!`])); }
 function setupHotelRoom(R,ti){ if(R.ready) return; R.ready=true; const M=R.marks, t=HTIERS[ti];
   R.spot(M.exit,'Go out to the corridor',()=>goFloor(t.f,STAY?STAY.n:1),1.4);
@@ -7301,6 +7383,139 @@ function buyShowCar(s){ if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)
   toast(`Congrats! Your ${s.name.replace(' (brand new)','')} dey wait for you outside${v?'':' your house'}.`,4); }
 function spawnOwned(o,near){ const k=kerbSpot(near.x,near.z,2.2)||{x:near.x+3,z:near.z,h:0}; const v=newVehicle(o.type,o.color,true); Object.assign(v,{x:k.x,z:k.z,h:k.h||0,y:0,keep:1,mine:true,parked:true}); return v; }
 
+/* ---- Ikeja GRA, inside: EKO GRAND HOTEL (lobby with reception and concierge, lifts and grand stairs, The Cellar wine bar,
+   VELVET club, ten rooms and suites), NAIJA MOTORS showroom, Adunni's Fashion House. All made and lit in the user's Blender:
+   the light is baked into each room's picture, so they look like the Blender renders. */
+const gp=(k,lx,lz,yaw=0)=>{ const S=GRA.sites[k], c=Math.cos(S.ry), s=Math.sin(S.ry); return {x:S.x+lx*c+lz*s,z:S.z-lx*s+lz*c,yaw:S.ry+yaw,ry:S.ry+yaw}; };
+const GRA_DOOR={motors:gp('motors',0,3.4),garage:gp('garage',0,12.2),boutique:gp('boutique',0,5.8)};
+// big baked pictures: keep the lobby, let the other Eko rooms go when you move on (phones have little memory)
+function intDrop(name){ const I=INTS[name]; if(!I||!I.room||ROOM===I.room) return; for(const o of I.room.own||[]){ o.geometry&&o.geometry.dispose(); for(const m of [].concat(o.material||[])){ m.map&&m.map.dispose(); m.dispose(); } } delete INTS[name]; }
+function ekoDrop(keep){ for(const k of Object.keys(INTS)) if(/^int_eko_(r\d+|cellar|velvet)$/.test(k)&&k!==keep) intDrop(k); }
+// guests standing and talking somewhere free inside a rectangle of the room (Blender x, y)
+function roomGuests(R,n,rect,seed,casts,avoid=[]){ const rnd=mulberry32(seed), [bx0,by0,bx1,by1]=rect; let k=0;
+  for(let t=0;t<500&&k<n;t++){ const x=bx0+rnd()*(bx1-bx0), z=-(by0+rnd()*(by1-by0)); if(!R.free(x,z,.6)||avoid.some(m=>m&&Math.hypot(x-m.x,z-m.z)<2.6)) continue;
+    const [c,clips]=casts[k%casts.length]; folk(R.scene,c,{x,z,yaw:rnd()*6.28},clips,R.folk); k++; } }
+const TALK=[['baba',['talk','idle_baba']],['lady_red',['phone','idle_3']],['p_tunde',['idle_1','text']],['suit_lady',['f_talk','idle_suit']],['p_ada',['talk','idle_2']],['lady_black',['text','idle_3']]];
+
+// ---- the lobby
+async function enterEko(at){ if(busy) return; const R=await intGet('int_eko_lobby','Opening Eko Grand Hotel…'); if(!R) return; H.cur=EKO.i; ekoDrop(); setupEkoLobby(R); R.label='Eko Grand Hotel';
+  const mine=STAY&&STAY.h===EKO.i; goRoom(R,at&&R.marks[at]?backOf(R.marks[at]):'spawn',at?null:'Welcome to Eko Grand Hotel.'+(mine?` Your room ${roomNo(stayTier().f,STAY.n)} is ready.`:' Reception is on your left.')); }
+function setupEkoLobby(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
+  R.fill=R=>{ folk(R.scene,'suit_lady',M.receptionist,['idle_suit','f_talk'],R.folk); folk(R.scene,'p_ada',M.receptionist_2,['f_talk','idle_2'],R.folk);
+    folk(R.scene,'baba',M.concierge_man,['idle_baba','talk'],R.folk); folk(R.scene,'p_tunde',M.bellboy,['idle_1'],R.folk);
+    roomGuests(R,7,[-10,-15,10,6],41,TALK,[M.spawn,M.desk,M.concierge,M.piano]); };
+  fillRoom(R);
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(EKO.door),1.6);
+  R.spot(M.desk,'Talk to the receptionist',hotelMenu,1.8);
+  R.spot(M.concierge,'Talk to the concierge',ekoConcierge,1.6);
+  const up=k=>()=>{ if(!(STAY&&STAY.h===EKO.i)){ toast(k?'Security: "Upstairs na for guests only. Book a room at reception."':'"You need a key card for the lift. Book a room at reception."',3); return; } goFloor(stayTier().f); };
+  for(const k of ['lift','lift_l','lift_r']) R.spot(M[k],()=>STAY&&STAY.h===EKO.i?`Take the lift to floor ${stayTier().f}`:'Take the lift',up(0),1.5);
+  for(const k of ['stairs_l','stairs_r']) R.spot(M[k],()=>STAY&&STAY.h===EKO.i?`Walk up the grand stairs to floor ${stayTier().f}`:'Walk up the grand stairs',up(1),1.6);
+  R.spot(M.wine,'Go into The Cellar (wine bar)',enterCellar,1.6);
+  R.spot(M.club,()=>CLUB.paid==='velvet'||(STAY&&STAY.h===EKO.i)?'Go into VELVET (club)':`Go into VELVET (club · ${naira(EKO.fee)})`,enterVelvet,1.6);
+  for(const k of ['pool','pool_2']) R.spot(M[k],'Go out to the pool and garden',()=>leaveRoom(EKO.back),1.8);
+  R.spot(M.piano,'Play the grand piano',()=>toast(mpick(['You play small Fela tune. The whole lobby dey clap!','Soft jazz from the white piano. Classy!','You press two keys. The pianist look you somehow.']),2.8),1.5); }
+function ekoConcierge(){ toast(mpick(['"Good day. How may I help you today?"','"Welcome. Anything you need, just ask."']),2.2);
+  openMenu('CONCIERGE · EKO GRAND','Golf, spa, cars and the helipad',[
+    {name:'Round of golf (6 holes)',sub:'Clubs, caddie and cart. Course behind the hotel',price:15000,act:()=>{ closeMenu(); golfRound(); }},
+    {name:'Spa and massage',sub:'One hour. You come out brand new',price:25000,act:()=>{ closeMenu(); fadeSwap(()=>{ FIGHT.hp=100; }); toast('Hot stones, palm oil and soft music. Your body don rest well well.',3.5); }},
+    {name:'Helicopter tour of Lagos',sub:'From the rooftop helipad: Lekki, Eko Atlantic, Third Mainland',price:500000,act:()=>{ closeMenu(); fadeSwap(()=>{}); toast(mpick(['You fly over Eko Atlantic and Lekki bridge. Lagos fine from up!','Third Mainland Bridge, the lagoon, VI: the pilot show you everything. Big man life!']),4.5); }},
+    {name:'Valet: bring my car',sub:'Your cars wait in the hotel car park',price:0,btn:'Ask',act:()=>{ closeMenu(); toast(OWNED.length?'"Your car dey the car park, sir/ma. The valet don wash am."':'"You no get car for here. NAIJA MOTORS dey down the road."',3); }}]); }
+function golfRound(){ fadeSwap(()=>{}); const sc=Math.round(18+Math.random()*14), par=24; toast(sc<par?`Birdies everywhere! You finish ${sc} for 6 holes (par ${par}). Tiger Woods who?`:sc===par?`Par ${par} for 6 holes. Correct golfer!`:`You finish ${sc} for 6 holes (par ${par}). The caddie dey laugh small.`,4.2); }
+
+// ---- the rooms and suites (the corridor upstairs is the hotels' corridor)
+function setupEkoRoom(R,t){ if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=2.6;
+  R.spot(M.exit,'Go out to the corridor',()=>goFloor(t.f,t.n),1.1);
+  R.spot(M.bed,'Sleep',()=>{ fadeSwap(()=>{ FIGHT.hp=100; }); toast(mpick(['Egyptian cotton, soft pillows. You sleep like a king. Health full.','You sleep well well. Your body don strong again.']),3.2); },1.9);
+  for(const k of ['tv','tv2']) if(M[k]) R.spot(M[k],'Watch TV',()=>toast(mpick(['Super Eagles highlights. Goal!','Nollywood on the big screen: the mother-in-law don enter.','Business news: the naira dey move.','Afrobeats music videos all night.']),3),1.4);
+  if(M.bath) R.spot(M.bath,t.f===1&&t.n===1?'Take a shower':'Take a bubble bath',()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+30); }); toast(mpick(['Hot water, nice soap. You fresh like new!','Bubble bath with rose petals. Life good!']),3); },1.6);
+  if(M.bar) R.spot(M.bar,'Pour yourself a drink',()=>toast(mpick(['Cognac in a crystal glass. Big boy life!','Chilled champagne from the minibar. Cheers!']),3),1.4);
+  if(M.piano) R.spot(M.piano,'Play the grand piano',()=>toast('You play soft music for the whole suite. E sweet!',2.6),1.4);
+  if(M.sofa) R.spot(M.sofa,'Relax on the sofa',()=>toast(mpick(['Soft velvet sofa. You stretch your leg small.','You relax, scroll your phone. Peace.']),2.6),1.4);
+  if(M.dine) R.spot(M.dine,'Order room service',roomService,1.5);
+  else if(M.desk) R.spot(M.desk,'Order room service',roomService,1.4);
+  R.spot(M.window,'Look out the window',()=>toast(t.f===1?'The drive, the fountain and the gate below. Lagos traffic far away.':'High up: palm trees, the gate and the city lights.',3),1.6); }
+function roomService(){ openMenu('ROOM SERVICE','Eko Grand kitchen · 24 hours',[['Jollof rice and grilled chicken',9000,'Party jollof, smoky'],['Pepper soup (goat meat)',7500,'Hot, with agidi'],['Pounded yam and egusi',8500,'With assorted meat'],['Club sandwich and chips',6000,'Continental'],['Bottle of champagne',85000,'On ice, two glasses']].map(([n,p,sub])=>({name:n,sub,price:p,
+  act:()=>{ closeMenu(); fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+25); }); toast(mpick([`The waiter bring ${n.toLowerCase()} on a silver tray. Enjoy!`,`Knock knock: room service! ${n}.`]),3); }}))); }
+
+// ---- The Cellar: wine bar off the lobby
+async function enterCellar(){ if(busy) return; ekoDrop('int_eko_cellar'); const R=await intGet('int_eko_cellar','Opening The Cellar…'); if(!R) return; setupCellar(R); R.label='The Cellar · Eko Grand Hotel'; goRoom(R,'spawn','The Cellar. Fine wine and soft music.'); }
+function setupCellar(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.0;
+  R.fill=R=>{ folk(R.scene,'p_tunde',M.bartender,['idle_1','talk'],R.folk); folk(R.scene,'suit_lady',M.sommelier,['idle_suit','f_talk'],R.folk);
+    roomGuests(R,8,[-33,-17,-17,15],57,TALK,[M.spawn,M.bar,M.bar_2,M.wine]); };
+  fillRoom(R);
+  R.spot(M.exit,'Back to the lobby',()=>enterEko('wine'),1.3);
+  for(const k of ['bar','bar_2']) R.spot(M[k],'Order a drink',cellarMenu,1.6);
+  R.spot(M.wine,'Look at the wine collection',()=>toast(mpick(['Bottles from France, Spain and South Africa. Some na ₦2 million!','The sommelier say: "This one na 1998. Very good year."']),3),1.8); }
+function cellarMenu(){ openMenu('THE CELLAR · WINE BAR','Eko Grand Hotel',[['Glass of red wine',6000,'Bordeaux, smooth'],['Glass of white wine',5500,'Chilled, from the Cape'],['Chapman',3500,'The Lagos classic'],['Fresh palm wine',2500,'Tapped this morning'],['Bottle of vintage red',150000,'For the table'],['Suya platter',7000,'Spicy beef, onions, pepper']].map(([n,p,sub])=>({name:n,sub,price:p,
+  act:()=>{ closeMenu(); toast(p>=100000?'The sommelier open am with style. Everybody dey look your table!':mpick([`${n}. E sweet well well.`,`${n} don land. Cheers!`]),3); }}))); }
+
+// ---- VELVET: the hotel's dance club (hotel guests go in free)
+async function enterVelvet(){ if(busy) return; const free=STAY&&STAY.h===EKO.i; if(!free&&CLUB.paid!=='velvet'&&CASH.n<EKO.fee){ toast(`Bouncer: "VELVET na ${naira(EKO.fee)} at the door. Hotel guests enter free."`,3); return; }
+  ekoDrop('int_eko_velvet'); const R=await intGet('int_eko_velvet','Opening VELVET…'); if(!R) return; if(!free&&CLUB.paid!=='velvet'){ addCash(-EKO.fee); cashHUD(); CLUB.paid='velvet'; }
+  setupVelvet(R); R.label='VELVET · Eko Grand Hotel'; goRoom(R,'spawn',mpick(['VELVET! Lights, smoke and gbedu.','Welcome to VELVET. The DJ don start!'])); }
+function setupVelvet(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x050407);
+  for(const o of R.scene.children) if(o.isHemisphereLight) o.intensity=.45; else if(o.isDirectionalLight) o.intensity=.2;
+  const D=['dance_salsa','dance_macarena','dance_1'], who=['lady_red','areaboy','lady_black','p_tunde','girl','p_amaka','baba','p_ada'];
+  R.fill=R=>{ for(let i=1;i<=8;i++){ const m=M['dance_'+i]; if(m) folk(R.scene,who[i-1],{...m,yaw:Math.random()*6.28},[D[i%3],D[(i+1)%3]],R.folk); }
+    folk(R.scene,'areaboy',M.bartender,['idle_1','talk'],R.folk); const dj=folk(R.scene,'p_tunde',M.dj,['talk','idle_1'],R.folk); if(dj) dj.root.position.y=.9;
+    for(const k of ['vip_1','vip_2']) if(M[k]) folk(R.scene,k==='vip_1'?'suit_lady':'baba',M[k],['f_talk','talk','idle_suit'],R.folk); };
+  fillRoom(R);
+  R.spot(M.exit,'Back to the lobby',()=>enterEko('club'),1.3);
+  R.spot(M.bar,'Buy a drink',()=>openMenu('VELVET · BAR','Cold drinks, loud music',[['Chapman',3000],['Chilled beer',2500],['Cocktail',6000],['Shisha',15000],['Bottle of champagne',120000]].map(([n,p])=>({name:n,sub:n==='Bottle of champagne'?'With sparklers. Everybody go know!':'Cold one',price:p,
+    act:()=>{ closeMenu(); toast(n==='Bottle of champagne'?'Sparklers, bottle girls, the DJ shout your name. Big boss!':mpick([`${n}. E enter body well.`,`${n} don land. Enjoy!`]),3); }}))),1.6);
+  if(M.dj) R.spot({x:M.dj.x,z:M.dj.z+2.4},'Request a song',()=>toast(mpick(['DJ: "Your song dey come next!"','DJ: "Shout out to the big boss for VIP!"','DJ: "Make I play amapiano? E don set!"']),3),2.2);
+  if(M.vip) R.spot(M.vip,'Book the VIP section (₦100,000)',()=>{ if(CASH.n<100000){ toast('Bouncer: "VIP na ₦100,000. Come back when you ready."',3); return; } addCash(-100000); cashHUD(); toast('VIP section na your own tonight. Bottles dey come!',3.5); },1.8);
+  const dc=[1,2,3,4,5,6,7,8].map(i=>M['dance_'+i]).filter(Boolean); if(dc.length){ const x=dc.reduce((a,m)=>a+m.x,0)/dc.length, z=dc.reduce((a,m)=>a+m.z,0)/dc.length; R.spot({x,z},'Dance',clubDance,3.4);
+    const L=[]; for(let i=0;i<4;i++){ const p=new THREE.PointLight(0xff3ad8,14,12,1.6); p.position.set(x+Math.cos(i*1.57)*3,3.4,z+Math.sin(i*1.57)*3); R.scene.add(p); L.push(p); }
+    let T=0; R.tick=dt=>{ T+=dt; const beat=.55+.45*Math.max(0,Math.cos(T*Math.PI*2*2.05)); L.forEach((p,i)=>{ p.color.setHSL((T*.06+i/4)%1,.85,.55); p.intensity=8+beat*12; }); }; } }
+
+// ---- NAIJA MOTORS: brand new cars inside, cars for sale on the forecourt
+const NM_CARS=[{type:'suv',color:'#101114',name:'Mercedes-Benz G-Wagon (brand new)',price:3500000},{type:'suv',color:'#e9e7e2',name:'Range Rover Sport (brand new)',price:2800000},
+  {type:'sedan',color:'#1b2a44',name:'BMW 7 Series (brand new)',price:2200000},{type:'suv',color:'#6b6e72',name:'Lexus LX 600 (brand new)',price:1900000},{type:'sedan',color:'#8c1d1d',name:'Toyota Camry 2024 (brand new)',price:900000}];
+const NM_LOT=[{type:'sedan',color:'#f2f2f0',name:'Toyota Corolla 2018 (tokunbo)',price:320000},{type:'suv',color:'#1d1f22',name:'Toyota Highlander 2016 (tokunbo)',price:650000},
+  {type:'sedan',color:'#2f3f5a',name:'Honda Accord 2017 (tokunbo)',price:420000},{type:'suv',color:'#b7a27a',name:'Lexus RX 350 2017 (tokunbo)',price:780000},
+  {type:'sedan',color:'#7a1e22',name:'Mercedes C300 2016 (tokunbo)',price:700000},{type:'suv',color:'#3b4a5a',name:'Toyota Prado 2015 (tokunbo)',price:900000},
+  {type:'sedan',color:'#c9ccd1',name:'Toyota Camry 2015 (tokunbo)',price:380000},{type:'suv',color:'#2f5d3a',name:'Ford Explorer 2016 (tokunbo)',price:560000},
+  {type:'sedan',color:'#e3d9c4',name:'Lexus ES 350 2016 (tokunbo)',price:600000},{type:'suv',color:'#101114',name:'Mercedes GLE 2017 (tokunbo)',price:1100000}];
+async function enterMotors(){ if(busy) return; const R=await intGet('int_naija_motors','Opening NAIJA MOTORS…'); if(!R) return; setupMotors(R); R.label='NAIJA MOTORS · Ikeja GRA'; goRoom(R,'spawn','Welcome to NAIJA MOTORS. Brand new, with papers!'); }
+function setupMotors(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
+  R.fill=R=>{ folk(R.scene,'suit_lady',M.receptionist,['idle_suit','f_talk'],R.folk); folk(R.scene,'p_tunde',M.sales_1,['idle_1','talk'],R.folk); folk(R.scene,'baba',M.sales_2,['talk','idle_baba'],R.folk);
+    roomGuests(R,4,[-19,0,19,15],73,TALK,[M.spawn,M.desk,M.car_1,M.car_2,M.car_3,M.car_4,M.car_5]); };
+  fillRoom(R);
+  NM_CARS.forEach((s,i)=>{ const m=M['car_'+(i+1)]; if(!m) return; const c=makeCar(s.type,s.color,true); c.g.position.set(m.x,0,m.z); c.g.rotation.set(0,carYaw(m.yaw),0); R.scene.add(c.g);
+    const nm=s.name.replace(' (brand new)',''), tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(`${nm} · ${naira(s.price)}`,'#121212','#ffd54a',1400,170)})); tag.scale.set(3.8,.46,1); tag.position.set(m.x,2.7,m.z); R.scene.add(tag);
+    R.spot(m,`Buy the ${nm} · ${naira(s.price)}`,()=>buyNmCar(s),3); });
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(GRA_DOOR.motors),1.6);
+  R.spot(M.desk,'Talk to the receptionist',()=>toast(mpick(['"Welcome to NAIJA MOTORS. Our sales team go attend to you."','"Coffee or water while you wait?"']),3),1.6);
+  for(const k of ['desk_1','desk_2']) R.spot(M[k],'Talk to the salesman',()=>toast(mpick(['"All our cars get full papers, plate and 3 years warranty."','"Cash, transfer or we arrange finance. Which one you like?"','"Test drive? Buy am first, oga!"']),3.2),1.5);
+  R.spot(M.lounge,'Sit in the customer lounge',()=>toast('Leather sofa, cold air, Super Eagles on the TV. You fit wait here all day.',3),1.6);
+  R.spot(M.service,'Service department',()=>toast('"Bring your car for service. We dey here Monday to Saturday."',3),1.6); }
+function buyNmCar(s){ if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)}. Come back when you ready."`,3); return; }
+  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned(); spawnOwned(OWNED[OWNED.length-1],gp('motors',-12,12));
+  toast(`Congrats! Your ${s.name.replace(' (brand new)','')} dey wait for you outside. Press E to drive.`,4); }
+
+// ---- Adunni's Fashion House: designer clothes on the rails, the tailor sews native wear to measure
+const NATIVE=new Set(['ankara','kaftan','senator','iro_buba','gown','agbada','buba']);
+async function enterAdunni(){ if(busy) return; const R=await intGet('int_adunni','Opening Adunni\'s Fashion House…'); if(!R) return; setupAdunni(R); R.label='Adunni\'s Fashion House'; goRoom(R,'spawn','Adunni\'s Fashion House. Designer clothes and native wear.'); }
+function setupAdunni(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=2.8;
+  R.fill=R=>{ folk(R.scene,'p_amaka',M.owner,['f_talk','idle_3'],R.folk); folk(R.scene,'suit_lady',M.sales,['idle_suit','f_talk'],R.folk); folk(R.scene,'baba',M.tailor,['idle_baba','talk'],R.folk);
+    roomGuests(R,3,[-6.5,-2,6.5,3],91,[['lady_red',['phone','idle_3']],['lady_black',['idle_3','text']],['p_ada',['talk','idle_2']]],[M.spawn,M.sales,M.tailor,M.counter]); };
+  fillRoom(R);
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(GRA_DOOR.boutique),1.3);
+  const shop=()=>boutiqueMenu({title:'ADUNNI\'S FASHION HOUSE',note:'Adunni: "Designer pieces. You go shine!"',mult:1.8,only:id=>!NATIVE.has(id)});
+  R.spot(M.sales,'Buy designer clothes',shop,1.5); R.spot(M.rails,'Look at the clothes',shop,1.5);
+  R.spot(M.counter,'Talk to Adunni',()=>toast(mpick(['Adunni: "Welcome! Everything here na my own design."','Adunni: "For wedding, owambe or office, we get am."','Adunni: "My tailor fit sew any style for you."']),3),1.5);
+  R.spot(M.tailor,'Sew native wear (tailor)',()=>boutiqueMenu({title:'TAILOR · NATIVE WEAR',note:'Baba Tailor: "Make I take your measurement."',mult:2.2,only:id=>NATIVE.has(id),sewn:true}),1.6);
+  R.spot(M.mirror,'Look in the mirror',()=>toast(mpick(['Correct! You fine pass.','The mirror say: "Who be this fine person?"']),2.4),1.3); }
+
+// ---- the mechanic: drive in, step out, talk to Baba; the car nearest the yard gets fixed
+function garageCar(){ const c=gp('garage',0,0); let best=null, bd=1e9; for(const v of vehicles){ if(v.ai||v===RIDE.v||!(v.dmg>0||v.wreck)) continue; const d=Math.hypot(v.x-c.x,v.z-c.z)-(v.mine?15:0); if(d<30&&d<bd){ bd=d; best=v; } } return best; }
+function garageMenu(){ const v=garageCar(); if(!v){ toast(mpick(['Mechanic: "Bring the car inside the yard first. Wetin spoil?"','Mechanic: "Your car no get problem. Na fuel you need?"']),3); return; }
+  const nm=(VT[v.type]||{name:'car'}).name, cost=v.wreck?60000:Math.max(2000,Math.round((1500+(v.dmg||0)*300)/500)*500);
+  openMenu('MECHANIC · IKEJA GRA','Baba Sule and his boys',[{name:`Fix the ${nm}`,sub:v.wreck?'Burnt and broken: new engine, panels and paint':`Damage ${Math.round(v.dmg)}%: panel beating, spraying, engine`,price:cost,
+    act:()=>{ closeMenu(); fadeSwap(()=>{ unwreck(v); }); toast(mpick([`The boys work am sharp sharp. Your ${nm} don dey like new!`,`Panel beating, spraying, oil change. ${nm} ready!`]),3.5); }}]); }
+
 /* ---- out in the street: who stands at the doors, footballers and fans at the stadium and the field */
 const WFOLK={groups:[]};
 function worldGroup(x,z,make){ WFOLK.groups.push({x,z,make,list:null,on:false}); }
@@ -7352,7 +7567,7 @@ function doorMarkFloor(m){ try{ _dmRay.set(new THREE.Vector3(m.x,m.g.position.y+
   if(top>m.g.position.y+.05) m.ring.position.y=top-m.g.position.y+.06; }catch(e){ console.warn(e); } }
 function doorMarkText(m,text){ if(!m.lab||m.text===text) return; m.text=text; const old=m.lab.material.map; m.lab.material.map=texLabel(text,m.col,'#0E1014'); m.lab.material.needsUpdate=true; if(old) old.dispose(); }
 function doorMarksTick(dt){ DMARK.t+=dt; const k=Math.sin(DMARK.t*3), px=mode==='drive'&&drive.v?drive.v.x:player.x, pz=mode==='drive'&&drive.v?drive.v.z:player.z;
-  if((DMARK.lab=(DMARK.lab||0)-dt)<=0){ DMARK.lab=1; for(const h of HOTELS) if(h.mark) doorMarkText(h.mark,STAY&&STAY.h===h.i?`YOUR HOTEL · ROOM ${roomNo(HTIERS[STAY.t].f,STAY.n)}`:h.markTxt); }
+  if((DMARK.lab=(DMARK.lab||0)-dt)<=0){ DMARK.lab=1; for(const h of HOTELS) if(h.mark) doorMarkText(h.mark,STAY&&STAY.h===h.i?`YOUR HOTEL · ROOM ${roomNo(stayTier().f,STAY.n)}`:h.markTxt); }
   for(const m of DMARK.list){ const d=Math.hypot(m.x-px,m.z-pz); m.g.visible=d<120&&mode!=='interior'; if(!m.g.visible) continue;
     if(!m.fixed&&d<90){ m.fixed=true; doorMarkFloor(m); }
     if(m.near){ const sh=d>m.near; m.arrow.visible=sh; if(m.lab) m.lab.visible=sh; }
@@ -7361,6 +7576,38 @@ for(const h of HOTELS){ h.markTxt=h.i?'ENTER · '+h.name.toUpperCase():null; h.m
 for(const c of VENUES.clubs) doorMark(c.door.x,c.door.z,'#c86bff','ENTER · '+c.name.toUpperCase());
 if(STATION.r&&STATION.r.M.marks) doorMark(STATION.front.x,STATION.front.z,'#4c7dff',null);
 if(VENUES.carstand) doorMark(VENUES.carstand.door.x,VENUES.carstand.door.z,'#2fbf71',null);
+// ---- Ikeja GRA, outside: doors, door marks, places on the map, people at the gates, the pool bar, golf, cars
+DOORS.push({x:GRA_DOOR.motors.x,z:GRA_DOOR.motors.z,r:2.2,label:'Enter NAIJA MOTORS showroom',act:enterMotors});
+DOORS.push({x:GRA_DOOR.boutique.x,z:GRA_DOOR.boutique.z,r:2,label:'Enter Adunni\'s Fashion House',act:enterAdunni});
+{ const m=gp('garage',-3,1); DOORS.push({x:m.x,z:m.z,r:3.4,label:()=>garageCar()?'Talk to the mechanic · fix your car':'Talk to the mechanic',act:garageMenu}); doorMark(m.x,m.z,'#f28c28','MECHANIC · FIX YOUR CAR'); }
+DOORS.push({x:EKO.back.x,z:EKO.back.z,r:2,label:'Go into the hotel lobby',act:()=>enterEko('pool')});
+{ const m=gp('hotel',28,-61.6); DOORS.push({x:m.x,z:m.z,r:2.2,label:'Pool bar · buy a drink',act:()=>openMenu('POOL BAR · EKO GRAND','Cold drinks by the water',[['Chapman',3000,'With ice and cucumber'],['Coconut water',2000,'Fresh from the tree'],['Cocktail',6000,'Pina colada'],['Chilled beer',2500,'Very cold'],['Club sandwich',6000,'With chips']].map(([n,p,sub])=>({name:n,sub,price:p,act:()=>{ closeMenu(); toast(mpick([`${n} by the pool. Soft life!`,`${n}. The sun, the water, the music. Enjoy!`]),3); }})))}); }
+{ const m=gp('hotel',-4,-36.6); DOORS.push({x:m.x,z:m.z,r:2.6,label:'Swim in the pool',act:()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+15); }); toast(mpick(['You dive in. The water cool well well!','Ten laps of the pool. Your body don fresh.']),3); }}); }
+{ const m=gp('hotel',70,39.6); DOORS.push({x:m.x,z:m.z,r:2.4,label:'Golf club · play 6 holes (₦15,000)',act:()=>{ if(CASH.n<15000){ toast('"Green fee na ₦15,000. Come back."',2.8); return; } addCash(-15000); cashHUD(); golfRound(); }}); }
+doorMark(GRA_DOOR.motors.x,GRA_DOOR.motors.z,'#2fbf71','ENTER · NAIJA MOTORS'); doorMark(GRA_DOOR.boutique.x,GRA_DOOR.boutique.z,'#e85d9b','ENTER · ADUNNI\'S FASHION HOUSE');
+PLACES.push({name:'NAIJA MOTORS',sub:'Car showroom · Ikeja GRA · brand new and tokunbo',kind:'cars',x:GRA.sites.motors.x,z:GRA.sites.motors.z},
+  {name:'Adunni\'s Fashion House',sub:'Boutique and tailor · Ikeja GRA',kind:'shop',x:GRA.sites.boutique.x,z:GRA.sites.boutique.z},
+  {name:'Baba Sule Mechanic',sub:'Mechanic · fix your car · Ikeja GRA',kind:'service',x:GRA.sites.garage.x,z:GRA.sites.garage.z},
+  {name:'Eko Grand Golf Course',sub:'Golf · Eko Grand Hotel',kind:'place',x:gp('hotel',100,30).x,z:gp('hotel',100,30).z,minor:true});
+// tokunbo cars for sale on the NAIJA MOTORS forecourt
+[-16.5,-13.8,-11.1,-8.4,-5.7,5.7,8.4,11.1,13.8,16.5].forEach((lx,i)=>{ const spec=NM_LOT[i%NM_LOT.length], m=gp('motors',lx,5.9,Math.PI), v=newVehicle(spec.type,spec.color,true); if(v.type!==spec.type) return;
+  Object.assign(v,{x:m.x,z:m.z,y:0,h:carYaw(m.yaw),keep:1,parked:true,forSale:spec});
+  const tag=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel(naira(spec.price),'#121212','#ffd54a',600,170),fog:false})); tag.scale.set(1.9,.54,1); tag.position.set(m.x,2.6,m.z); tag.layers.set(1); scene.add(tag); v.tag=tag; });
+// people: guards at the gates, doormen, the pool, golfers, the mechanics
+{ const H_=GRA.sites.hotel;
+  worldGroup(gp('hotel',0,113).x,gp('hotel',0,113).z,G=>{ folk(scene,'police_m',gp('hotel',2.6,115.5),['idle_1','phone'],G.list); folk(scene,'police_m',gp('hotel',-2.6,111.6),['idle_1'],G.list); });
+  worldGroup(EKO.door.x,EKO.door.z,G=>{ folk(scene,'p_tunde',gp('hotel',3.2,23.4),['idle_1'],G.list); folk(scene,'suit_lady',gp('hotel',-3.2,23.4),['idle_suit','f_talk'],G.list); });
+  worldGroup(gp('hotel',0,-50).x,gp('hotel',0,-50).z,G=>{ folk(scene,'areaboy',gp('hotel',28,-65.6),['idle_1','talk'],G.list); const L=(H_.S&&H_.S.json&&H_.S.json.loungers)||[], ids=townCasts(), rnd=mulberry32(515);
+    for(let i=0;i<L.length&&ids.length;i++){ if(rnd()>.4) continue; const [lx,lz,yw]=L[i], id=ids[(rnd()*ids.length)|0], clip=castSit(id), w=setPt(H_.S||H_,lx,lz); if(clip) setPerson(id,{x:w.x,y:.32,z:w.z,yaw:H_.ry+yw+Math.PI},clip,G.list); }
+    const P=(H_.S&&H_.S.json&&H_.S.json.picnic)||[]; P.slice(0,5).forEach(([lx,lz],i)=>{ const w=setPt(H_.S||H_,lx,lz); folk(scene,TALK[i%TALK.length][0],{x:w.x+1.2,z:w.z,yaw:-1.2},TALK[i%TALK.length][1],G.list); folk(scene,TALK[(i+2)%TALK.length][0],{x:w.x-1.2,z:w.z+.4,yaw:1.6},TALK[(i+2)%TALK.length][1],G.list); }); });
+  worldGroup(gp('hotel',67,97).x,gp('hotel',67,97).z,G=>{ folk(scene,'baba',gp('hotel',66,97,Math.PI),['idle_baba','talk'],G.list); folk(scene,'schoolboy',gp('hotel',68.5,97.5,Math.PI),['idle_1'],G.list); }); }
+worldGroup(GRA.sites.motors.x,GRA.sites.motors.z,G=>{ folk(scene,'baba',gp('motors',-6,8.5,Math.PI),['talk','idle_baba'],G.list); folk(scene,'police_m',gp('motors',-24,20.6),['idle_1','phone'],G.list); });
+worldGroup(GRA.sites.garage.x,GRA.sites.garage.z,G=>{ folk(scene,'areaboy',gp('garage',-8.6,-3.2,Math.PI),['idle_1','talk'],G.list); folk(scene,'p_tunde',gp('garage',.8,-2.2,.6),['idle_2','idle_1'],G.list); folk(scene,'baba',gp('garage',9.8,-1.2,-2.6),['idle_baba','talk'],G.list); });
+// when a set has loaded: cars parked at the hotel, the new cars seen through the showroom glass
+function graLoaded(k,S){ const J=S.json||{};
+  if(k==='hotel'){ const rnd=mulberry32(808), B=(J.bays||[]).slice(); const cols=['#101114','#e9e7e2','#6b6e72','#1b2a44','#8c1d1d','#c9ccd1','#2f3f5a'];
+    for(let i=0;i<16&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(rnd()<.5?'suv':'sedan',cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:0,h:carYaw(S.ry+yw),keep:1,parked:true}); } }
+  if(k==='motors'){ const M=J.marks||{}; [['inside_1',0],['inside_2',1],['inside_3',2]].forEach(([n,i])=>{ const m=M[n]; if(!m) return; const s=NM_CARS[i], c=makeCar(s.type,s.color,true), w=setPt(S,m[0],m[1]); c.g.position.set(w.x,.15,w.z); c.g.rotation.set(0,carYaw(S.ry+(m[2]||0)),0); scene.add(c.g); }); } }
 /* ---- a new life (see "a new life: from under the bridge" above): saving it, your tent, the boutique, the rooming
    house, the flat for sale, the public toilet and its line, the toilet bar */
 const owns=k=>k==='rags'||LIFE.own.includes(k);
@@ -7407,10 +7654,12 @@ function tentMenu(){ openMenu('YOUR TENT','Under the '+(LIFEC?LIFEC.fo.name:'fly
   {name:'Sleep',sub:'Rest your body (the mosquitoes come too)',btn:'Sleep',act:()=>{ closeMenu(); lifeSleep('tent'); }},
   {name:'Change clothes',sub:'What you have in your bag',btn:'Open',act:()=>{ closeMenu(); openWard(player.yaw); }}]); }
 // the bend-down boutique: your person's outfits, new ones for a price (rags you have, the police uniform comes with the job)
-function boutiqueMenu(){ const id=WARD.cur, C=isV2(id)&&V2.casts[id]; if(!C||!C.meta||!C.meta.outfits){ toast('"Come back small time, I still dey arrange the clothes."',2.5); return; }
-  openMenu('BEND-DOWN BOUTIQUE','Mama Bose: "Fine clothes, correct price!"',()=>{ const outs=C.meta.outfits, cur=fitOf(id);
-    return outs.map((o,i)=>({o,i})).filter(({o})=>o.id!=='police').map(({o,i})=>{ const own=owns(o.id), p=CLOTH_PRICE[o.id]||8000;
-      return {name:o.name,sub:o.id==='rags'?'Your old torn clothes':own?'Yours · wear it again':'New in the market',price:own?0:p,btn:i===cur?'Wearing':own?'Wear':naira(p),off:i===cur,
+function boutiqueMenu(opt={}){ const id=WARD.cur, C=isV2(id)&&V2.casts[id]; if(!C||!C.meta||!C.meta.outfits){ toast('"Come back small time, I still dey arrange the clothes."',2.5); return; }
+  const outs0=C.meta.outfits.filter(o=>o.id!=='police'&&o.id!=='rags'&&(!opt.only||opt.only(o.id)));
+  if(opt.only&&!outs0.length){ toast(opt.sewn?'Tailor: "I never get your size for native. Come back next week."':'"Nothing for your size today. Check again."',2.8); return; }
+  openMenu(opt.title||'BEND-DOWN BOUTIQUE',opt.note||'Mama Bose: "Fine clothes, correct price!"',()=>{ const outs=C.meta.outfits, cur=fitOf(id);
+    return outs.map((o,i)=>({o,i})).filter(({o})=>o.id!=='police'&&(!opt.only||(o.id!=='rags'&&opt.only(o.id)))).map(({o,i})=>{ const own=owns(o.id), p=Math.round((CLOTH_PRICE[o.id]||8000)*(opt.mult||1)/500)*500;
+      return {name:o.name,sub:o.id==='rags'?'Your old torn clothes':own?'Yours · wear it again':opt.sewn?'Sewn to your measure':opt.mult>1?'Designer piece':'New in the market',price:own?0:p,btn:i===cur?'Wearing':own?'Wear':naira(p),off:i===cur,
         act:()=>{ if(!own){ LIFE.own.push(o.id); lifeSave(true); } wearFit(i);
           toast(own?'You don change.':mpick([`${o.name}! You don dey look like somebody now.`,'"E fit you well well! Go and shine."','New clothes, new life. Lagos go notice.']),3); }}; }); }); }
 // the rooming house: the landlord rents you a room by the day; once you have paid, you go in through the house
@@ -7563,8 +7812,8 @@ const GUIDE={scene:null,key:'',path:[],t:0,re:0,
   lab:new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,fog:false,depthTest:false})), txt:''};
 GUIDE.arrow.scale.setScalar(.7); GUIDE.lab.scale.set(2.3,.43,1); GUIDE.lab.renderOrder=5;
 function guideTarget(){ if(mode!=='interior'||!ROOM||!ROOM.marks) return null; const R=ROOM, M=R.marks, mine=STAY&&STAY.h===H.cur;
-  if(R.name==='int_hotel_lobby') return mine?{m:M.lift,txt:`LIFT TO FLOOR ${HTIERS[STAY.t].f}`}:{m:M.desk,txt:'RECEPTION · BOOK A ROOM'};
-  if(R.name==='int_hotel_corridor'){ if(mine&&HTIERS[STAY.t].f===H.floor&&M['door_'+STAY.n]) return {m:M['door_'+STAY.n],txt:`ROOM ${roomNo(H.floor,STAY.n)} · YOUR ROOM`}; return {m:M.lift,txt:mine?`LIFT TO FLOOR ${HTIERS[STAY.t].f}`:'LIFT TO THE LOBBY'}; }
+  if(R.name==='int_hotel_lobby'||R.name==='int_eko_lobby') return mine?{m:M.lift,txt:`LIFT TO FLOOR ${stayTier().f}`}:{m:M.desk,txt:'RECEPTION · BOOK A ROOM'};
+  if(R.name==='int_hotel_corridor'){ if(mine&&stayTier().f===H.floor&&M['door_'+STAY.n]) return {m:M['door_'+STAY.n],txt:`ROOM ${roomNo(H.floor,STAY.n)} · YOUR ROOM`}; return {m:M.lift,txt:mine?`LIFT TO FLOOR ${stayTier().f}`:'LIFT TO THE LOBBY'}; }
   return null; }
 // a walkable route over the room's floor (0.5 m cells), round the furniture
 function guidePath(R,sx,sz,tx,tz){ const B=R.bounds, C=.5, gw=Math.ceil((B.x1-B.x0)/C)+1, gd=Math.ceil((B.z1-B.z0)/C)+1; if(gw*gd>40000) return [{x:tx,z:tz}];
@@ -7936,6 +8185,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     act(){ action(); return {mode,label:ROOM&&ROOM.label,prompt:$('#promptTxt').textContent,busy}; },
     here:()=>({mode,label:mode==='interior'?ROOM.label:null,x:player.x,z:player.z,yaw:player.yaw,prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,cash:CASH.n,stay:STAY,menu:MENU.open}),
     spots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>({l:spotLabel(s),x:s.x,z:s.z})):[],
+    gra:()=>({sets:Object.fromEntries(Object.entries(GRA.sites).map(([k,G])=>[k,G.S&&G.S.state])),villas:GRA.villas.length,eko:EKO,doors:GRA_DOOR}),
     at(x,z,yaw){ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } return true; },
     menuPick(i){ const b=[...document.querySelectorAll('#menuBody .sh-buy')][i]; if(b) b.click(); return !!b; },
     cash(n){ CASH.n=n; return n; },
