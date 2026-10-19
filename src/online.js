@@ -65,7 +65,7 @@ export function createOnline(api) {
       case 'me': signedIn(m); break;
       case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showErr(m.w, m.m); break;
       case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showOk(m.w, m.m); break;
-      case 'bz': case 'bzd': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
+      case 'bz': case 'bzd': case 'bzlost': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;

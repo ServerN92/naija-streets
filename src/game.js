@@ -79,6 +79,8 @@ const isF=()=>!!PROFILE&&PROFILE.g==='f';
 const LIFE_NEW=(()=>{ try{ if(localStorage.getItem('naija-life')!==null) return false;
   localStorage.setItem('naija-cash','1000'); if(localStorage.getItem('naija-cash-guest')!==null) localStorage.setItem('naija-cash-guest','1000');
   for(const k of ['naija-cars','naija-hotel','naija-arms','naija-fit','naija-look2']) localStorage.removeItem(k); return true; }catch(e){ return false; } })();
+// the start over takes back the farm too (once): it goes back to the farm officer, to collect again (the online businesses go back on sale on the server)
+const FARM_BACK=(()=>{ try{ if(localStorage.getItem('naija-start2')) return false; localStorage.setItem('naija-start2','1'); const f=JSON.parse(localStorage.getItem('naija-farm')||'null'); localStorage.removeItem('naija-farm'); return !!(f&&f.got); }catch(e){ return false; } })();
 if(!QUAL[qKey]) qKey=GPU_TIER==='high'&&isTouch?'medium':GPU_TIER; const Q=QUAL[qKey];
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
 Q.prTop=Q.pr; const fitPR=()=>Math.max(Q.prMin,Math.min(Q.prTop,Math.sqrt(Q.px/Math.max(1,innerWidth*innerHeight)))); Q.pr=fitPR();
@@ -7454,7 +7456,7 @@ function toiletTick(dt){ if(!TL.ok) return; const C=LIFEC, near=Math.hypot(playe
 
 // ---- every frame: the rent runs, the toilet bar fills, the clothes you have on are yours, the toilet
 function lifeTick(dt){ if(!started) return; toiletTick(dt);
-  if(!LIFE_SYNC.intro&&(LIFE_SYNC.introT=(LIFE_SYNC.introT||0)+dt)>6){ LIFE_SYNC.intro=1; if(homeNow()==='tent'&&!LIFE.rented) toast(`New life: you dey sleep for tent under the bridge, with torn clothes and ${naira(CASH.n)}. Hustle: buy clothes, rent a room, then buy back your flat.`,8); }
+  if(!LIFE_SYNC.intro&&(LIFE_SYNC.introT=(LIFE_SYNC.introT||0)+dt)>6){ LIFE_SYNC.intro=1; if(homeNow()==='tent'&&!LIFE.rented) toast(`New life: you dey sleep for tent under the bridge, with torn clothes and ${naira(CASH.n)}. Hustle: buy clothes, rent a room, then buy back your flat.${FARM_BACK?' Your farm don go back to the farm officer: collect am again.':''}`,9); else if(FARM_BACK) toast('Start over: your farm don go back to the farm officer. Go collect am again and start small.',7); }
   if(LIFE.rent>0){ LIFE.rent=Math.max(0,LIFE.rent-dt); if(LIFE.rent===0){ if(LIFE.home==='room') LIFE.home=LIFE.flat?'flat':'tent'; lifeSave(true); lifePlaces(); toast(LIFE.flat?'The rent for your room don finish.':'Your rent don finish! Pay the landlord again, or na under the bridge you go sleep.',5); } }
   if(TL.inside!=='me'&&!(HL.act&&HL.act.kind==='bath')){ LIFE.ease=Math.min(1,LIFE.ease+dt/EASE_S); }
   if(LIFE.ease>=.75&&!LIFE_SYNC.warn75){ LIFE_SYNC.warn75=true; toast('You go need toilet soon. Public toilet dey by your tent (₦50), or use the one for your house.',4.5); }
