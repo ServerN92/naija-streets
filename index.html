@@ -170,7 +170,7 @@ body.touchui .ward .kb{display:none}
 .tbtns{--bs:1;--bo:1}.tbtns button{opacity:var(--bo);width:calc(64px * var(--bs));height:calc(64px * var(--bs));border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
 .tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
-#tE{grid-column:3;grid-row:1}#tHorn{grid-column:2;grid-row:1}#tGrab{grid-column:2;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tBrake{grid-column:2;grid-row:3}#tJump{grid-column:3;grid-row:2}#tCrouch{grid-column:3;grid-row:3}#tSk1{grid-column:1;grid-row:2}#tSk2{grid-column:2;grid-row:2}#tSk3{grid-column:1;grid-row:1}
+#tE{grid-column:3;grid-row:1}#tHorn{grid-column:2;grid-row:1}#tRadio{grid-column:1;grid-row:3;font-size:11px}#tGrab{grid-column:2;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tBrake{grid-column:2;grid-row:3}#tJump{grid-column:3;grid-row:2}#tCrouch{grid-column:3;grid-row:3}#tSk1{grid-column:1;grid-row:2}#tSk2{grid-column:2;grid-row:2}#tSk3{grid-column:1;grid-row:1}
 .tbtns #tPunch.fire{background:rgba(190,40,30,.85);border-color:rgba(255,200,190,.6);font-size:14px}.tbtns #tCrouch{font-size:12px}
 .trick{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;font-family:var(--fd);color:var(--danfo);text-shadow:0 2px 0 #0E1014,0 4px 14px rgba(0,0,0,.6);white-space:nowrap;z-index:6}
 .trick b{display:block;font-weight:400;font-size:clamp(18px,3.4vw,30px);letter-spacing:.02em}.trick span{display:block;font-size:clamp(15px,2.4vw,22px);color:#F7EFDF}
@@ -400,6 +400,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <label class="slide"><span>Vehicles</span><input type="range" data-v="veh" min="0" max="150" step="5" value="100"><b>100%</b></label>
       <label class="slide"><span>Voices</span><input type="range" data-v="voice" min="0" max="150" step="5" value="100"><b>100%</b></label>
       <label class="slide"><span>Effects</span><input type="range" data-v="sfx" min="0" max="150" step="5" value="100"><b>100%</b></label>
+      <label class="slide"><span>Music</span><input type="range" data-v="music" min="0" max="150" step="5" value="80"><b>80%</b></label>
     </div>
     <p class="note">Real Lagos street recordings by SFXAFRIK and other sound recordists on Freesound. <a href="assets/sounds/CREDITS.md" target="_blank" rel="noopener" style="color:var(--cream)">Sound credits</a></p>
     <h3>Tips</h3>
@@ -441,6 +442,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
     <div class="joy" id="joy" hidden><i id="joyK"></i></div>
     <div class="tbtns">
       <button type="button" id="tHorn" hidden>HORN</button>
+      <button type="button" id="tRadio" hidden aria-label="Radio: change the station">RADIO</button>
       <button type="button" id="tGrab" hidden aria-label="Grab, rob or aim">GRAB</button>
       <button type="button" id="tJump" hidden aria-label="Jump, or dodge in a fight">JUMP</button>
       <button type="button" class="act" id="tE">E</button>

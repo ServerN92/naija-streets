@@ -2758,7 +2758,11 @@ function initAudio(){ if(AC) return; try{ AC=new (window.AudioContext||window.we
   const o=AC.createOscillator(); o.type='sawtooth'; const o2=AC.createOscillator(); o2.type='triangle'; const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=420; const g=AC.createGain(); g.gain.value=0;
   o.connect(f); o2.connect(f); f.connect(g); g.connect(master); o.start(); o2.start(); eng={o,o2,g,f};
   const rn=AC.createBufferSource(); rn.buffer=noiseBuf(2.5); rn.loop=true; const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2600; bp.Q.value=.35; rainG=AC.createGain(); rainG.gain.value=0; rn.connect(bp); bp.connect(rainG); rainG.connect(master); rn.start();
-  if(AC.state==='suspended') AC.resume(); }catch(e){ AC=null; eng=null; } sndStart(); }
+  if(AC.state==='suspended') AC.resume(); }catch(e){ AC=null; eng=null; }
+  // four <audio> players for songs, started (silently) by this tap so the phone lets them play later
+  if(AC&&!SND_EL.length) for(let i=0;i<4;i++){ const el=new Audio(); el.preload='none'; el.muted=true; el.src='data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAABgAAAykAWlpaWlpaWlpaWlpaWlpaWnt7e3t7e3t7e3t7e3t7e3t7nJycnJycnJycnJycnJycnL29vb29vb29vb29vb29vb293t7e3t7e3t7e3t7e3t7e3t7/////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQCowAAAAAAAAMpso+sIAAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NAxKQAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEowAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU='; const pr=el.play(); if(pr) pr.then(()=>{ el.pause(); el.muted=false; }).catch(()=>{ el.muted=false; }); else el.muted=false; SND_EL.push(el); }
+  sndStart(); }
+const SND_EL=[];
 function setSound(on){ soundOn=on; try{ localStorage.setItem('naija-sound',on?'on':'off'); }catch(e){} if(master) master.gain.setTargetAtTime(on?1:0,AC.currentTime,.05); document.querySelectorAll('#snd button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.s==='on')===on?'true':'false')); }
 function updateAudio(){ if(!eng) return; const on=mode==='drive', sp=on?Math.abs(drive.speed):0, t=AC.currentTime; const big=on&&(drive.v.type==='bus'||drive.v.type==='danfo'); eng.g.gain.setTargetAtTime(on?(drive.v.type==='skate'?0:BIKE[drive.v.type]?.035:.045):0,t,.15); const fr=(big||on&&drive.v.type==='tanker'?28:drive.v&&drive.v.type==='sbike'?60:drive.v&&BIKE[drive.v.type]?48:36)+sp*3.1;
   eng.o.frequency.setTargetAtTime(fr,t,.08); eng.o2.frequency.setTargetAtTime(fr*.5,t,.08); eng.f.frequency.setTargetAtTime(300+sp*25,t,.1);
@@ -2778,7 +2782,7 @@ function thunder(k){ if(SND&&SND.has('thunder')){ SND.play('thunder',{b:'amb',ga
 let SND=null; const SNDF={files:null};
 fetch((()=>{ const u='assets/sounds/sounds.json', k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u+'?v='+BUILD; })()).then(r=>r.ok?r.json():null).then(f=>{ SNDF.files=f; sndStart(); }).catch(()=>{});
 function sndStart(){ if(SND||!AC||!SNDF.files) return; try{
-    SND=createSound({AC,out:master,files:SNDF.files,url:n=>{ const u=`assets/sounds/${n}.mp3`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; }});
+    SND=createSound({AC,out:master,files:SNDF.files,els:SND_EL,url:n=>{ const u=`assets/sounds/${n}.mp3`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; }});
     SND.preload(['amb_traffic','amb_estate','eng_car','eng_okada','eng_danfo','horn_car']); volUI(); }catch(e){ console.warn('sound',e); SND=null; } }
 function volUI(){ document.querySelectorAll('#vols input').forEach(i=>{ const k=i.dataset.v, v=SND?SND.vol[k]:1; i.value=Math.round(v*100); i.nextElementSibling.textContent=Math.round(v*100)+'%'; }); }
 document.querySelectorAll('#vols input').forEach(i=>i.addEventListener('input',()=>{ if(SND) SND.setVol(i.dataset.v,+i.value/100); i.nextElementSibling.textContent=i.value+'%'; }));
@@ -2836,11 +2840,57 @@ function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.positi
     SND_MK.forEach((m,i)=>{ const d=Math.hypot(m.x-x,m.z-z); if(d>m.r+90) return; let ux=x-m.x, uz=z-m.z; const L=Math.hypot(ux,uz)||1, k=Math.min(L,m.r*.55)/L;
       list.push({id:'mk'+i,file:'spot_market',x:m.x+ux*k+6,z:m.z+uz*k+4,y:1.6,level:vl*.9,ref:10,roll:1.1,b:'voice'}); }); }
   SND.spots(list,st);
+  musTick(x,z,h,inside);
   // the police siren where the police van is
   if(SND.has('siren')){ const cv=FIGHT.cop; SND.siren(!!cv&&!inside&&Math.hypot(cv.x-x,cv.z-z)<220,cv?cv.x:0,cv?cv.z:0); } }
 const _sv=new THREE.Vector3();
 // NEPA: the light goes off here and there for an hour or two (the same for everyone nearby in that game hour)
 function sndNepaOff(x,z,h){ const d=Math.floor(Date.now()/(CLOCK.DAY_MINUTES*6e4)), k=Math.floor(x/400)*31+Math.floor(z/400)*17+d*13+Math.floor(h/2)*7; return (Math.abs(Math.sin(k*12.9898)*43758.5453)%1)<.35; }
+/* ---- music: the radio in your car (and in the danfo or cab you ride), the radio at home, the club's DJ, the area boys'
+   speakers on street corners (songs in assets/sounds, mu_*; free Afrobeats, amapiano, highlife; credits in CREDITS.md).
+   N (or the radio button) changes the station; the last press turns the radio off. */
+const STATIONS=[{name:'Gbedu FM 98.1',g:['afrobeats','street']},{name:'Piano Radio 101.5',g:['amapiano']},{name:'Highlife Gold 92.3',g:['highlife','afrobeat']}];
+const MUS={st:0,on:true,home:false,r0:null,c1:null,sp:{},last:{},horn:12};
+try{ const m=JSON.parse(localStorage.getItem('naija-radio')||'{}'); MUS.st=clamp(m.st|0,0,STATIONS.length-1); MUS.on=m.on!==false; }catch(e){}
+const RADIO_V={sedan:1,suv:1,car2:1,benz:1,police:1,danfo:1,bus:1,keke:1,tanker:1};
+function musPick(genres,ch){ const L=SND.songsOf(genres).length?SND.songsOf(genres):SND.songsOf(null); if(!L.length) return null; let n=L[0]; for(let k=0;k<8;k++){ n=L[(Math.random()*L.length)|0]; if(n!==MUS.last[ch]) break; } MUS.last[ch]=n; return n; }
+function radioPress(){ if(!SND||!SND.SONGS.length) return; if(!MUS.on){ MUS.on=true; MUS.st=0; } else if(MUS.st<STATIONS.length-1) MUS.st++; else MUS.on=false;
+  MUS.r0=null; if(!MUS.on){ SND.songStop(0,.3); toast('📻 Radio off',1.6); } try{ localStorage.setItem('naija-radio',JSON.stringify({st:MUS.st,on:MUS.on})); }catch(e){} }
+let SPEAKERS=null;
+// people talk out loud (recorded Pidgin lines, assets/sounds say_*): a family per kind of line, women's lines in say_*_f
+const SAYV={t:0};
+function sayAt(p,fam,gain=1){ if(!SND||!p||T0-SAYV.t<.8) return; const f=p.cast&&CAST[p.cast]&&CAST[p.cast].f&&SND.has(fam+'_f')?fam+'_f':fam; if(!SND.has(f)) return; SAYV.t=T0;
+  SND.play(f,{x:p.x,z:p.z,y:1.6,b:'voice',ref:4,gain,rate:.97+Math.random()*.06}); }
+function musTick(x,z,h,inside){ if(!SND||!SND.SONGS.length) return;
+  // channel 0: home radio, else your vehicle's radio, else the cab you ride in
+  const dv=mode==='drive'&&drive.v?drive.v:null, ty=dv?dv.type:'';
+  let ctx=null;
+  if(inside&&MUS.home) ctx={lp:16000,gain:.75,home:true};
+  else if(dv&&drive.ride&&RADIO_V[ty]) ctx={lp:3200,gain:.45};
+  else if(dv&&!drive.ride&&RADIO_V[ty]&&MUS.on) ctx={lp:ty==='danfo'||ty==='keke'||ty==='bus'?3800:9000,gain:.6};
+  if(!inside) MUS.home=false;
+  if(!ctx){ if(MUS.r0){ SND.songStop(0,.6); MUS.r0=null; } }
+  else { const C=SND.channelOf(0);
+    if(MUS.r0&&MUS.r0.st===MUS.st&&C&&C.song) SND.songSet(0,{lp:ctx.lp,gain:ctx.gain});
+    else { const st=STATIONS[MUS.st], n=musPick(ctx.home?null:st.g,0); if(n){ const first=!MUS.r0; MUS.r0={st:MUS.st};
+        SND.song(0,n,{lp:ctx.lp,gain:ctx.gain,at:first&&!ctx.home?Math.random()*50:0,onEnd:()=>{ MUS.r0={st:-1}; }}); const I=SND.songInfo(n);
+        toast(`📻 ${ctx.home?'Radio':st.name} · ${I.title} — ${I.artist}`,3.4); } } }
+  { const b=$('#tRadio'), show=!!ctx&&!ctx.home||(dv&&!drive.ride&&RADIO_V[ty]); if(b&&b.hidden===!!show) b.hidden=!show; }
+  // channel 1: the club (inside full, outside at night through the walls)
+  const inClub=inside&&ROOM&&ROOM.isClub; let cl=null;
+  if(!inside&&(h>20||h<3.5)) for(const c of VENUES.clubs){ const d=Math.hypot(c.x-x,c.z-z); if(d<70&&(!cl||d<cl.d)) cl={c,d}; }
+  if(inClub||cl){ const C=SND.channelOf(1); const spec=inClub?{gain:.95,lp:18000}:{x:cl.c.door.x,z:cl.c.door.z,y:1.5,gain:1,lp:520,ref:7};
+    if(!C||!C.song||MUS.c1!==(inClub?'in':'out')){ const n=musPick(['afrobeats','amapiano','street'],1); if(n){ MUS.c1=inClub?'in':'out'; SND.song(1,n,{...spec,at:Math.random()*40,onEnd:()=>{ MUS.c1=null; }}); } }
+    else SND.songSet(1,spec);
+    if(inClub&&(MUS.horn-=.3)<=0){ MUS.horn=14+Math.random()*25; if(SND.has('dj_horn')) SND.play('dj_horn',{b:'music',gain:.7}); } }
+  else if(MUS.c1){ SND.songStop(1,1); MUS.c1=null; }
+  // channels 2-3: area boys' speakers at street corners (by day and into the night)
+  if(!SPEAKERS) return;
+  const on=!inside&&h>9.5&&h<23.5;
+  const near=on?SPEAKERS.map(s=>({s,d:Math.hypot(s.x-x,s.z-z)})).filter(o=>o.d<60).sort((a,b)=>a.d-b.d).slice(0,2).map(o=>o.s):[];
+  for(const ch of [2,3]){ const cur=MUS.sp[ch]; if(cur&&!near.includes(cur)){ SND.songStop(ch,1.2); MUS.sp[ch]=null; } }
+  for(const s of near){ if(MUS.sp[2]===s||MUS.sp[3]===s){ const ch=MUS.sp[2]===s?2:3, C=SND.channelOf(ch); if(!C||!C.song){ const n=musPick(['afrobeats','street','amapiano'],ch); if(n) SND.song(ch,n,{x:s.x,z:s.z,y:.8,gain:.9,lp:5200,ref:4}); } continue; }
+    const ch=!MUS.sp[2]?2:!MUS.sp[3]?3:0; if(!ch) continue; MUS.sp[ch]=s; const n=musPick(['afrobeats','street','amapiano'],ch); if(n) SND.song(ch,n,{x:s.x,z:s.z,y:.8,gain:.9,lp:5200,ref:4,at:Math.random()*60}); } }
 
 /* ================= HUD ================= */
 // people talk to a woman as a woman
@@ -3021,7 +3071,7 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(k==='escape'){ if(mapView.isOpen) mapView.close(); $('#settings').hidden=true; closeWard(); closePhone(); return; }
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
-  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crDown(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(ARMS.cur==='board'&&mode==='walk') boardRide(); else if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='7') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
+  if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crDown(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(ARMS.cur==='board'&&mode==='walk') boardRide(); else if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='7') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k==='n') radioPress(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
 addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; if(k==='x') crUp(); });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
@@ -3065,7 +3115,7 @@ function fsSettings(){ const box=$('#fsSet'); if(!box) return; box.hidden=!touch
 addEventListener('pointerdown',()=>{ if(started&&touchUI) goFull(); },{passive:true});   // swiped out of full screen by mistake: the next tap brings it back
 // ---- your own button layout (phones): drag each button where your thumb likes it, size and see-through; kept on this
 // phone for upright and sideways separately (positions are the button centres as parts of the screen)
-const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tBrake','tSk1','tSk2','tSk3'],data:{},edit:false,drag:null,was:null};
+const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tRadio','tBrake','tSk1','tSk2','tSk3'],data:{},edit:false,drag:null,was:null};
 try{ BL.data=JSON.parse(localStorage.getItem('naija-btns')||'{}')||{}; }catch(e){ BL.data={}; }
 const blKey=()=>innerWidth>innerHeight?'land':'port';
 const BL_NAME={tE:'E',tGrab:'GRAB / AIM',tPunch:'ATTACK / FIRE',tCrouch:'CROUCH',tJump:'JUMP'};
@@ -3113,6 +3163,7 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   $('#tGrab').addEventListener('pointerdown',e=>{ e.preventDefault(); if(gunOut()) ARMS.aim=!ARMS.aim; else carryGrab(); });
   const tb=$('#tBrake'); tb.addEventListener('pointerdown',e=>{ e.preventDefault(); touchBrake=true; tb.classList.add('on'); }); for(const ev of ['pointerup','pointercancel','pointerleave']) tb.addEventListener(ev,()=>{ touchBrake=false; tb.classList.remove('on'); });
   $('#tHorn').addEventListener('pointerdown',e=>{ e.preventDefault(); horn(); hornHeard(); });
+  $('#tRadio').addEventListener('pointerdown',e=>{ e.preventDefault(); radioPress(); });
   // a quick tap is held for a few frames, so the game always sees it
   [['#tSk1','b1'],['#tSk2','b2'],['#tSk3','b3']].forEach(([id,k])=>{ const b=$(id); let n=0, t0=0; b.addEventListener('pointerdown',e=>{ e.preventDefault(); TSK[k]=true; n++; t0=performance.now(); b.classList.add('on'); });
     for(const ev of ['pointerup','pointercancel','pointerleave']) b.addEventListener(ev,()=>{ const my=n; setTimeout(()=>{ if(n===my) TSK[k]=false; },Math.max(0,110-(performance.now()-t0))); b.classList.remove('on'); }); });
@@ -3486,14 +3537,14 @@ function playerPeds(dt){ if(mode!=='walk'||!started||FIGHT.dead) return; const f
     if(look) stareAt(p,dt,d); else if(p.stare){ p.stare=Math.max(0,p.stare-dt*.7); if(p.staring&&p.stare<1){ p.staring=false; } } } }
 function shoveCheck(p,ux,uz){ if(p.cool>0&&T0<p.bumpT+1.2) return; if(T0<p.bumpT+1.2) return; const fast=player.speed>WALK_V*1.25;
   p.bumps=T0-p.bumpT<14?p.bumps+1:1; p.bumpT=T0; if(!(p.state==='walk'||p.state==='idle'||p.state==='spot'||p.state==='react')) return;
-  if(hotHead(p)&&p.bumps>=2&&!p.beaten){ p.state='fight'; p.atk=null; p.atkT=.35; p.staring=false; sayT=5; toast(mpick(['"You dey push me again?! Today na today!"','"I warn you! Come, make we see!"']),2.4); return; }
+  if(hotHead(p)&&p.bumps>=2&&!p.beaten){ p.state='fight'; p.atk=null; p.atkT=.35; p.staring=false; sayT=5; sayAt(p,'say_angry'); toast(mpick(['"You dey push me again?! Today na today!"','"I warn you! Come, make we see!"']),2.4); return; }
   const chance=hotHead(p)?(fast?.85:.5):(fast?.3:.08);
   if(MR()<chance){ react(p,'punch',player.x,player.z,.9); p.seq=(p.seq||0)+1; p.cool=4;   // a shove: he puts his hands on you and you stagger back
     FIGHT.dash={vx:-ux*3.4,vz:-uz*3.4,t:0,dur:.38}; camState.shake=Math.min(1.2,camState.shake+.3); thud(); if(hero&&!(hero.ov&&hero.ov.lock)) heroDo('hit_body',{force:true,ts:1.9});
-    if(sayT<=0||fast){ sayT=4; toast(mpick(SHOVE),2.2); } }
+    if(sayT<=0||fast){ sayT=4; toast(mpick(SHOVE),2.2); sayAt(p,'say_angry'); } }
   else if(p.cool<=0) bumped(p); }
 function stareAt(p,dt,d){ p.stare=(p.stare||0)+dt*(d<2.5?1.3:1);
-  if(p.stare>2.4&&!p.staring){ p.staring=true; react(p,hotHead(p)?'argue':'no',player.x,player.z,4); p.cool=8; if(sayT<=0){ sayT=4; toast(hotHead(p)?mpick(['"Wetin you dey look?"','"Oga, you sabi me?"','"Why you dey stare me like that?"']):mpick(['"Abeg, why you dey look me?"','"Ehen? Wetin happen?"']),2.4); } }
+  if(p.stare>2.4&&!p.staring){ p.staring=true; react(p,hotHead(p)?'argue':'no',player.x,player.z,4); p.cool=8; if(sayT<=0){ sayT=4; sayAt(p,hotHead(p)?'say_angry':'say_stare'); toast(hotHead(p)?mpick(['"Wetin you dey look?"','"Oga, you sabi me?"','"Why you dey stare me like that?"']):mpick(['"Abeg, why you dey look me?"','"Ehen? Wetin happen?"']),2.4); } }
   if(p.staring&&p.state==='react'){ p.timer=Math.max(p.timer,.6); p.ry=Math.atan2(player.x-p.x,player.z-p.z); }   // he looks right back at you
   if(p.stare>5.5){ p.staring=false; p.stare=0;
     if(hotHead(p)&&!p.beaten){ p.state='fight'; p.atk=null; p.atkT=.4; sayT=5; toast(mpick(['"You still dey look? Na fight you want!"','"Okay o! Since you no wan stop looking!"']),2.4); }
@@ -3742,6 +3793,14 @@ const SPOTS=[];
       const m=[['schoolboy',['talk','idle_1','no','text']],['schoolboy',['idle_1','talk','idle_2']],['schoolboy',['talk','no','idle_1']]]; if(addSpot('pupils',x,z,m,{rot:SR()*6.28,hours:[7.3,13.4]})) n++; } } }
 
 
+// the area boys' speakers: a black box on the ground at about half the street corners (musTick plays music from them)
+{ SPEAKERS=SPOTS.filter(sp=>sp.type==='corner'&&(Math.abs(Math.sin(sp.x*12.9898+sp.z*78.233)*43758.5453)%1)<.45).map(sp=>{ for(const [a,b] of [[1.4,.6],[-1.4,.6],[.6,1.4],[.6,-1.4],[1.6,-.8]]){ const x=sp.x+a, z=sp.z+b; if(onLand(x,z)&&!onRoad(x,z)&&!resolveCircle({x,z},.45)) return {x,z,sp}; } return null; }).filter(Boolean);
+  if(SPEAKERS.length){ const part=(g,c,x,y,z,rx=0)=>{ if(rx) g.rotateX(rx); g.translate(x,y,z); const n=g.toNonIndexed(); n.deleteAttribute('uv'); const col=new THREE.Color(c), a=new Float32Array(n.attributes.position.count*3); for(let i=0;i<a.length;i+=3){ a[i]=col.r; a[i+1]=col.g; a[i+2]=col.b; } n.setAttribute('color',new THREE.BufferAttribute(a,3)); return n; };
+    const geo=mergeGeometries([part(new THREE.BoxGeometry(.5,.82,.42),'#141416',0,.41,0),part(new THREE.CylinderGeometry(.17,.17,.03,20),'#2c2c30',0,.3,.215,Math.PI/2),part(new THREE.CylinderGeometry(.08,.08,.03,14),'#2c2c30',0,.64,.215,Math.PI/2),
+      part(new THREE.CylinderGeometry(.06,.06,.031,12),'#0b0b0c',0,.3,.22,Math.PI/2),part(new THREE.BoxGeometry(.3,.04,.06),'#3a3a3e',0,.84,0)]); geo.computeVertexNormals();
+    new CullSet([{geo,mat:new THREE.MeshStandardMaterial({vertexColors:true,roughness:.6,metalness:.1}),dist:Math.min(140,Q.draw*.5),shadow:true}],
+      SPEAKERS.map(s=>({x:s.x,y:0,z:s.z,ry:Math.atan2(s.sp.x-s.x,s.sp.z-s.z),sc:1})),{shadowDist:Q.shR,name:'speakers'});
+    for(const s of SPEAKERS) addOB(s.x,s.z,.27,.23,-Math.atan2(s.sp.x-s.x,s.sp.z-s.z),.85); } }
 // ---- loading the characters and moves (after the title screen shows, so the game starts as fast as before)
 const PEOPLE={n:0,clips:{},casts:{}};
 const purl=f=>{ const u=`assets/people/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
@@ -3992,7 +4051,7 @@ function endReact(p){ if(p.fightAfter){ p.fightAfter=false; p.state='fight'; p.a
   if(p.replan||!p.q.length) replanPed(p); p.state='walk'; p.startT=1.6; }
 function bumped(p){ const fast=player.speed>WALK_V*1.3;
   react(p,fast?(MR()<.6?'argue':'no'):(MR()<.6?'talk':'sassy'),player.x,player.z,fast?mrr(3,4.5):mrr(2.5,4));   // slow: greet and wave; fast: quarrel
-  if(sayT<=0&&MR()<.75){ sayT=7; const h=ENV.hour; toast(fast?mpick(BUMP):mpick(SAY[p.cast]||['"How far?"']).replace('%s',h<12?'morning':h<16?'afternoon':'evening'),2.4); } }
+  if(sayT<=0&&MR()<.75){ sayT=7; const h=ENV.hour; sayAt(p,fast?'say_bump':'say_greet'); toast(fast?mpick(BUMP):mpick(SAY[p.cast]||['"How far?"']).replace('%s',h<12?'morning':h<16?'afternoon':'evening'),2.4); } }
 function hornHeard(){ if(mode!=='drive'||!drive.v) return; const v=drive.v, fx=Math.cos(v.h), fz=-Math.sin(v.h); let n=0;
   for(const p of peds){ if(!(p.state==='walk'||p.state==='idle'||p.state==='spot')||p.cool>0) continue; const dx=p.x-v.x, dz=p.z-v.z, ah=dx*fx+dz*fz; if(ah<-4||ah>24||Math.abs(-dx*fz+dz*fx)>10) continue;
     react(p,(p.cast==='areaboy'||p.cast==='mama')&&MR()<.6?'argue':'no',v.x,v.z,mrr(2.5,4)); p.cool=6; n++; }
@@ -5101,7 +5160,10 @@ function holdProp(obj,side='Right',pos=[0,.06,.02],rot=[0,0,0]){ const hb=handBo
 function dropProp(obj){ if(obj&&obj.parent) obj.parent.remove(obj); }
 
 // ---- sound: an afrobeat loop for the speaker, the shower, the pot frying, the broom
-function homeMusic(on){ if(!AC) initAudio(); if(!AC) return; if(!on){ if(HL.music){ clearInterval(HL.music.iv); HL.music.g.gain.setTargetAtTime(0,AC.currentTime,.2); const g=HL.music.g; setTimeout(()=>g.disconnect(),1500); HL.music=null; } return; }
+function homeMusic(on){ if(!AC) initAudio(); if(!AC) return;
+  if(SND&&SND.SONGS.length){ if(!on){ MUS.home=false; if(HL.music){ clearInterval(HL.music.iv); HL.music=null; } return; } if(HL.music) return;   // the real radio (musTick plays it); the lights keep the beat
+    MUS.home=true; MUS.r0=null; const M={beat:0,iv:0,real:true}; M.iv=setInterval(()=>{ M.beat=Math.floor(AC.currentTime*108/60*4)%16; },60); HL.music=M; return; }
+  if(!on){ if(HL.music){ clearInterval(HL.music.iv); HL.music.g.gain.setTargetAtTime(0,AC.currentTime,.2); const g=HL.music.g; setTimeout(()=>g.disconnect(),1500); HL.music=null; } return; }
   if(HL.music) return; const g=AC.createGain(); g.gain.value=0; g.connect(master); g.gain.setTargetAtTime(.5,AC.currentTime,.3); const bpm=108, st=60/bpm/4, M={g,iv:0,next:AC.currentTime+.08,step:0,beat:0};
   const BASS=[0,null,null,0,null,null,7,null,0,null,null,0,null,5,null,null], ROOT=[55,55,65.4,49];
   const hit=(t,dur,f0,f1,type,gain)=>{ const o=AC.createOscillator(), e=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f0,t); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dur); e.gain.setValueAtTime(gain,t); e.gain.exponentialRampToValueAtTime(.001,t+dur); o.connect(e); e.connect(g); o.start(t); o.stop(t+dur+.02); };
@@ -7473,7 +7535,7 @@ const CLUB={fee:2000,paid:-1,cur:0,danceI:0};
 async function enterClub(c){ if(busy) return; if(CLUB.paid!==c.i){ if(CASH.n<CLUB.fee){ toast(`Bouncer: "Gate fee na ${naira(CLUB.fee)}. No money, no entry!"`,3); return; } }
   const R=await intGet('int_club','Opening the club…'); if(!R) return; if(CLUB.paid!==c.i){ addCash(-CLUB.fee); cashHUD(); CLUB.paid=c.i; } CLUB.cur=c; setupClub(R); R.label=c.name; setSign(R.signs.sign_name,c.name.toUpperCase(),'#0c0a12','#ff4fd8');
   goRoom(R,'spawn',mpick([`${c.name}! The DJ dey on fire tonight.`,`Welcome to ${c.name}. Gbedu dey play!`])); }
-function setupClub(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x07060a); R.scene.environmentIntensity=.15;
+function setupClub(R){ R.isClub=true; fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x07060a); R.scene.environmentIntensity=.15;
   for(const o of R.scene.children) if(o.isHemisphereLight) o.intensity=.35; else if(o.isDirectionalLight) o.intensity=.12;
   R.fill=R=>{ const D=['dance_salsa','dance_macarena','dance_1'], who=['lady_red','areaboy','lady_black','p_tunde','girl','p_amaka','baba','p_ada'];
     for(let i=1;i<=8;i++){ const m=M['dance_'+i]; if(m) folk(R.scene,who[i-1],{...m,yaw:Math.random()*6.28},[D[i%3],D[(i+1)%3]],R.folk); }
@@ -7616,7 +7678,7 @@ function cellarMenu(){ openMenu('THE CELLAR · WINE BAR','Eko Grand Hotel',[['Gl
 async function enterVelvet(){ if(busy) return; const free=STAY&&STAY.h===EKO.i; if(!free&&CLUB.paid!=='velvet'&&CASH.n<EKO.fee){ toast(`Bouncer: "VELVET na ${naira(EKO.fee)} at the door. Hotel guests enter free."`,3); return; }
   ekoDrop('int_eko_velvet'); const R=await intGet('int_eko_velvet','Opening VELVET…'); if(!R) return; if(!free&&CLUB.paid!=='velvet'){ addCash(-EKO.fee); cashHUD(); CLUB.paid='velvet'; }
   setupVelvet(R); R.label='VELVET · Eko Grand Hotel'; goRoom(R,'spawn',mpick(['VELVET! Lights, smoke and gbedu.','Welcome to VELVET. The DJ don start!'])); }
-function setupVelvet(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x050407);
+function setupVelvet(R){ R.isClub=true; fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x050407);
   for(const o of R.scene.children) if(o.isHemisphereLight) o.intensity=.45; else if(o.isDirectionalLight) o.intensity=.2;
   const D=['dance_salsa','dance_macarena','dance_1'], who=['lady_red','areaboy','lady_black','p_tunde','girl','p_amaka','baba','p_ada'];
   R.fill=R=>{ for(let i=1;i<=8;i++){ const m=M['dance_'+i]; if(m) folk(R.scene,who[i-1],{...m,yaw:Math.random()*6.28},[D[i%3],D[(i+1)%3]],R.folk); }
@@ -7844,7 +7906,8 @@ function setupFaceRoom(R){ if(R.ready) return; R.ready=true; const M=R.marks; R.
   R.spot(M.ward,'Change clothes',()=>openWard((M.ward.yaw||0)+Math.PI),1.2);
   R.spot(M.stove,'Cook indomie',()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+20); }); toast(mpick(['Indomie and egg don ready. You chop am finish!','Hot noodles on the kerosene stove. Belle don full.']),3.4); },1.2);
   R.spot(M.yard,'Use the compound toilet (free)',()=>lifeEase(mpick(['The compound toilet for the back. E no too clean, but e free.','You use the toilet for the backyard. Free for tenants.'])),1.2);
-  if(M.radio) R.spot(M.radio,'Play the radio',()=>toast(mpick(['Radio: "Na Wazobia FM be this! Traffic for Ikorodu Road heavy o."','Radio: fuji music dey play. You nod your head.','Radio: news, then Afrobeats.']),3.2),1.1); }
+  if(M.radio) R.spot(M.radio,()=>MUS.home?'Turn the radio off':'Play the radio',()=>{ if(SND&&SND.SONGS.length){ MUS.home=!MUS.home; MUS.r0=null; if(!MUS.home){ SND.songStop(0,.4); toast('Radio off',1.6); } return; }
+    toast(mpick(['Radio: "Na Wazobia FM be this! Traffic for Ikorodu Road heavy o."','Radio: fuji music dey play. You nod your head.','Radio: news, then Afrobeats.']),3.2); },1.1); }
 // ease yourself somewhere free (your room's compound toilet, your flat's bathroom)
 function lifeEase(msg){ fadeSwap(()=>{ LIFE.ease=0; LIFE_SYNC.warn75=false; lifeSave(); }); toast(msg,3.4); }
 
