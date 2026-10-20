@@ -35,3 +35,28 @@ RECIPES.update({
     'door':         dict(src=556689, kind='shot', fo=.1),
     'siren':        dict(src=70936, a=5.2, d=9.4, kind='loop', level=-20, xf=.25),
 })
+# --- music (Pixabay Content License): whole songs for the radio, the club, homes and the area boys' speakers
+SONGS = [
+    ('mu_duro', 'Duro', 'kontraa', 'afrobeats', 'afrobeat-duro-afro-pop-music-278978'),
+    ('mu_water', 'Water', 'kontraa', 'afrobeats', 'afrobeat-water-afro-pop-music-445661'),
+    ('mu_naijalove', 'Naija Love', 'PremiumMusicOdyssey', 'afrobeats', 'afrobeat-naija-love-245453'),
+    ('mu_afrobeat', 'Afrobeat Music', 'soundoffreedom', 'afrobeats', 'upbeat-afrobeat-music-422623'),
+    ('mu_wordle', 'Wordle', 'kontraa', 'amapiano', 'afrobeat-wordle-amapiano-music-149474'),
+    ('mu_unlockme', 'Unlock Me', 'kontraa', 'amapiano', 'upbeat-unlock-me-amapiano-music-149058'),
+    ('mu_matchout', 'Match Out', 'artbybigvee', 'amapiano', 'afrobeat-match-out-free-afro-amapiano-instrumental-178406'),
+    ('mu_nigparty', 'Nigerian Party', 'u_98673jp944', 'highlife', 'upbeat-nigerian-party-310982'),
+    ('mu_jujuwaves', 'Juju Waves', 'Free_Audio_Library', 'highlife', 'afrobeat-juju-waves-302586'),
+    ('mu_lagoshigh', 'Lagos Highlife', 'u_98673jp944', 'highlife', 'upbeat-lagos-highlife-344786'),
+    ('mu_wadud', 'Wadud', 'kontraa', 'street', 'afrobeat-wadud-afro-drill-music-440945'),
+    ('mu_whip', 'Whip', 'kontraa', 'street', 'beats-whip-afro-dancehall-music-110235'),
+    ('mu_sisicaro', 'Sisi Caro', 'BabaBellz', 'street', 'afrobeat-bababellz-sisi-caro-prod-by-drimz-beat-387220'),
+]
+for n, t, a, g, page in SONGS:
+    RECIPES[n] = dict(src=n, kind='song', title=t, artist=a, genre=g)
+    MUSIC_URL[n] = f'https://pixabay.com/music/{page}/'
+RECIPES.update({
+    'dj_horn':      dict(src='fx_airhorn', kind='shot', fo=.2),
+    'dj_scratch':   dict(src='fx_scratch', kind='shot', fo=.1),
+    'radio_static': dict(src='fx_static', a=2, d=1.1, kind='shot', level=-24, fi=.02, fo=.25),
+    'radio_jingle': dict(src='fx_jingle', kind='shot', fo=.2),
+})

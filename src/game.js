@@ -2855,7 +2855,7 @@ try{ const m=JSON.parse(localStorage.getItem('naija-radio')||'{}'); MUS.st=clamp
 const RADIO_V={sedan:1,suv:1,car2:1,benz:1,police:1,danfo:1,bus:1,keke:1,tanker:1};
 function musPick(genres,ch){ const L=SND.songsOf(genres).length?SND.songsOf(genres):SND.songsOf(null); if(!L.length) return null; let n=L[0]; for(let k=0;k<8;k++){ n=L[(Math.random()*L.length)|0]; if(n!==MUS.last[ch]) break; } MUS.last[ch]=n; return n; }
 function radioPress(){ if(!SND||!SND.SONGS.length) return; if(!MUS.on){ MUS.on=true; MUS.st=0; } else if(MUS.st<STATIONS.length-1) MUS.st++; else MUS.on=false;
-  MUS.r0=null; if(!MUS.on){ SND.songStop(0,.3); toast('📻 Radio off',1.6); } try{ localStorage.setItem('naija-radio',JSON.stringify({st:MUS.st,on:MUS.on})); }catch(e){} }
+  MUS.r0=null; if(!MUS.on){ SND.songStop(0,.3); toast('📻 Radio off',1.6); } else SND.play('radio_static',{b:'music',gain:.55}); try{ localStorage.setItem('naija-radio',JSON.stringify({st:MUS.st,on:MUS.on})); }catch(e){} }
 let SPEAKERS=null;
 // people talk out loud (recorded Pidgin lines, assets/sounds say_*): a family per kind of line, women's lines in say_*_f
 const SAYV={t:0};
@@ -2880,7 +2880,7 @@ function musTick(x,z,h,inside){ if(!SND||!SND.SONGS.length) return;
   const inClub=inside&&ROOM&&ROOM.isClub; let cl=null;
   if(!inside&&(h>20||h<3.5)) for(const c of VENUES.clubs){ const d=Math.hypot(c.x-x,c.z-z); if(d<70&&(!cl||d<cl.d)) cl={c,d}; }
   if(inClub||cl){ const C=SND.channelOf(1); const spec=inClub?{gain:.95,lp:18000}:{x:cl.c.door.x,z:cl.c.door.z,y:1.5,gain:1,lp:520,ref:7};
-    if(!C||!C.song||MUS.c1!==(inClub?'in':'out')){ const n=musPick(['afrobeats','amapiano','street'],1); if(n){ MUS.c1=inClub?'in':'out'; SND.song(1,n,{...spec,at:Math.random()*40,onEnd:()=>{ MUS.c1=null; }}); } }
+    if(!C||!C.song||MUS.c1!==(inClub?'in':'out')){ const n=musPick(['afrobeats','amapiano','street'],1); if(n){ const was=MUS.c1; MUS.c1=inClub?'in':'out'; SND.song(1,n,{...spec,at:was===null?Math.random()*40:0,onEnd:()=>{ MUS.c1='next'; }}); if(inClub&&was==='next') SND.play('dj_scratch',{b:'music',gain:.6}); } }
     else SND.songSet(1,spec);
     if(inClub&&(MUS.horn-=.3)<=0){ MUS.horn=14+Math.random()*25; if(SND.has('dj_horn')) SND.play('dj_horn',{b:'music',gain:.7}); } }
   else if(MUS.c1){ SND.songStop(1,1); MUS.c1=null; }
@@ -3794,7 +3794,7 @@ const SPOTS=[];
 
 
 // the area boys' speakers: a black box on the ground at about half the street corners (musTick plays music from them)
-{ SPEAKERS=SPOTS.filter(sp=>sp.type==='corner'&&(Math.abs(Math.sin(sp.x*12.9898+sp.z*78.233)*43758.5453)%1)<.45).map(sp=>{ for(const [a,b] of [[1.4,.6],[-1.4,.6],[.6,1.4],[.6,-1.4],[1.6,-.8]]){ const x=sp.x+a, z=sp.z+b; if(onLand(x,z)&&!onRoad(x,z)&&!resolveCircle({x,z},.45)) return {x,z,sp}; } return null; }).filter(Boolean);
+{ SPEAKERS=SPOTS.filter(sp=>sp.type==='corner'&&(Math.abs(Math.sin(sp.x*12.9898+sp.z*78.233)*43758.5453)%1)<.12).map(sp=>{ for(const [a,b] of [[1.4,.6],[-1.4,.6],[.6,1.4],[.6,-1.4],[1.6,-.8]]){ const x=sp.x+a, z=sp.z+b; if(onLand(x,z)&&!onRoad(x,z)&&!resolveCircle({x,z},.45)) return {x,z,sp}; } return null; }).filter(Boolean);
   if(SPEAKERS.length){ const part=(g,c,x,y,z,rx=0)=>{ if(rx) g.rotateX(rx); g.translate(x,y,z); const n=g.toNonIndexed(); n.deleteAttribute('uv'); const col=new THREE.Color(c), a=new Float32Array(n.attributes.position.count*3); for(let i=0;i<a.length;i+=3){ a[i]=col.r; a[i+1]=col.g; a[i+2]=col.b; } n.setAttribute('color',new THREE.BufferAttribute(a,3)); return n; };
     const geo=mergeGeometries([part(new THREE.BoxGeometry(.5,.82,.42),'#141416',0,.41,0),part(new THREE.CylinderGeometry(.17,.17,.03,20),'#2c2c30',0,.3,.215,Math.PI/2),part(new THREE.CylinderGeometry(.08,.08,.03,14),'#2c2c30',0,.64,.215,Math.PI/2),
       part(new THREE.CylinderGeometry(.06,.06,.031,12),'#0b0b0c',0,.3,.22,Math.PI/2),part(new THREE.BoxGeometry(.3,.04,.06),'#3a3a3e',0,.84,0)]); geo.computeVertexNormals();

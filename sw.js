@@ -26,6 +26,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(req.url);
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return;
 
+  if (/\/assets\/sounds\/mu_/.test(u.pathname)) return;   // songs stream straight from the network (media range requests)
   if (HEAVY(u)) { // cache first
     e.respondWith(caches.open(VERSION).then(async c => {
       const hit = await c.match(req); if (hit) return hit;
