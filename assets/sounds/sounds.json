@@ -158,5 +158,155 @@
 "gain": 1.0,
 "dur": 9.4,
 "src": 70936
+},
+"mu_duro": {
+"gain": 1.0,
+"dur": 235.3,
+"src": "mu_duro",
+"m": {
+"title": "Duro",
+"artist": "kontraa",
+"genre": "afrobeats"
+}
+},
+"mu_water": {
+"gain": 1.0,
+"dur": 69.9,
+"src": "mu_water",
+"m": {
+"title": "Water",
+"artist": "kontraa",
+"genre": "afrobeats"
+}
+},
+"mu_naijalove": {
+"gain": 1.0,
+"dur": 240.1,
+"src": "mu_naijalove",
+"m": {
+"title": "Naija Love",
+"artist": "PremiumMusicOdyssey",
+"genre": "afrobeats"
+}
+},
+"mu_afrobeat": {
+"gain": 1.0,
+"dur": 186.6,
+"src": "mu_afrobeat",
+"m": {
+"title": "Afrobeat Music",
+"artist": "soundoffreedom",
+"genre": "afrobeats"
+}
+},
+"mu_wordle": {
+"gain": 1.0,
+"dur": 210.1,
+"src": "mu_wordle",
+"m": {
+"title": "Wordle",
+"artist": "kontraa",
+"genre": "amapiano"
+}
+},
+"mu_unlockme": {
+"gain": 1.0,
+"dur": 185.5,
+"src": "mu_unlockme",
+"m": {
+"title": "Unlock Me",
+"artist": "kontraa",
+"genre": "amapiano"
+}
+},
+"mu_matchout": {
+"gain": 1.0,
+"dur": 166.5,
+"src": "mu_matchout",
+"m": {
+"title": "Match Out",
+"artist": "artbybigvee",
+"genre": "amapiano"
+}
+},
+"mu_nigparty": {
+"gain": 1.0,
+"dur": 150.0,
+"src": "mu_nigparty",
+"m": {
+"title": "Nigerian Party",
+"artist": "u_98673jp944",
+"genre": "highlife"
+}
+},
+"mu_jujuwaves": {
+"gain": 1.0,
+"dur": 215.1,
+"src": "mu_jujuwaves",
+"m": {
+"title": "Juju Waves",
+"artist": "Free_Audio_Library",
+"genre": "highlife"
+}
+},
+"mu_lagoshigh": {
+"gain": 1.0,
+"dur": 145.0,
+"src": "mu_lagoshigh",
+"m": {
+"title": "Lagos Highlife",
+"artist": "u_98673jp944",
+"genre": "highlife"
+}
+},
+"mu_wadud": {
+"gain": 1.0,
+"dur": 127.0,
+"src": "mu_wadud",
+"m": {
+"title": "Wadud",
+"artist": "kontraa",
+"genre": "street"
+}
+},
+"mu_whip": {
+"gain": 1.0,
+"dur": 164.3,
+"src": "mu_whip",
+"m": {
+"title": "Whip",
+"artist": "kontraa",
+"genre": "street"
+}
+},
+"mu_sisicaro": {
+"gain": 1.0,
+"dur": 193.5,
+"src": "mu_sisicaro",
+"m": {
+"title": "Sisi Caro",
+"artist": "BabaBellz",
+"genre": "street"
+}
+},
+"dj_horn": {
+"gain": 1.0,
+"dur": 2.01,
+"src": "fx_airhorn"
+},
+"dj_scratch": {
+"gain": 1.0,
+"dur": 1.88,
+"src": "fx_scratch"
+},
+"radio_static": {
+"gain": 1.0,
+"dur": 1.1,
+"src": "fx_static"
+},
+"radio_jingle": {
+"gain": 1.0,
+"dur": 3.43,
+"src": "fx_jingle"
 }
 }

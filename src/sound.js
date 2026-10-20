@@ -6,17 +6,17 @@
 // vehicles (engines, horns, skids, crashes, sirens), voices (conductors, hawkers, people) and effects.
 // Beds are stereo loops that cross-fade with where you are and the time of day; places, vehicles and voices are
 // positioned in 3-D around the camera. Files load only when first needed, so the game starts as fast as before.
-export const VOL_KEYS = ['amb', 'veh', 'voice', 'sfx'];
+export const VOL_KEYS = ['amb', 'veh', 'voice', 'sfx', 'music'];
 
-export function createSound({ AC, out, url, files }) {
+export function createSound({ AC, out, url, files, els = [] }) {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const R = Math.random, pick = a => a[(R() * a.length) | 0];
   const t = () => AC.currentTime;
   // ---------------------------------------------------------------- buses and volumes
-  const vol = (() => { try { return { amb: 1, veh: 1, voice: 1, sfx: 1, ...JSON.parse(localStorage.getItem('naija-vol') || '{}') }; } catch (e) { return { amb: 1, veh: 1, voice: 1, sfx: 1 }; } })();
+  const vol = (() => { const d = { amb: 1, veh: 1, voice: 1, sfx: 1, music: .8 }; try { return { ...d, ...JSON.parse(localStorage.getItem('naija-vol') || '{}') }; } catch (e) { return d; } })();
   const bus = {};
   const muffle = AC.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 20000; muffle.connect(out);   // indoors: the street is behind walls
-  for (const k of VOL_KEYS) { bus[k] = AC.createGain(); bus[k].gain.value = vol[k]; bus[k].connect(k === 'sfx' ? out : muffle); }
+  for (const k of VOL_KEYS) { bus[k] = AC.createGain(); bus[k].gain.value = vol[k]; bus[k].connect(k === 'sfx' || k === 'music' ? out : muffle); }
   function setVol(k, v) { vol[k] = clamp(+v || 0, 0, 1.5); bus[k].gain.setTargetAtTime(vol[k], t(), .05); try { localStorage.setItem('naija-vol', JSON.stringify(vol)); } catch (e) { } }
   // ---------------------------------------------------------------- loading (each file once, when first asked for)
   const BUF = new Map(), LOADING = new Map();
@@ -138,7 +138,44 @@ export function createSound({ AC, out, url, files }) {
   let hornT = 0;
   function horn(type, x, z, gain = 1) { if (t() - hornT < .25 && x !== undefined) return; hornT = t(); const n = HORN[type] && files[HORN[type]] ? HORN[type] : 'horn_car'; return play(n, { x, z, y: 1, b: 'veh', gain, ref: 10, max: 400, rate: .96 + R() * .08 }); }
   function stopAll() { for (const n of Object.keys(BEDS)) { BEDS[n].stop(); delete BEDS[n]; } for (const [id, S] of SPOTS) { S.L.stop(); SPOTS.delete(id); } for (const [v, L] of VOICES) { L.stop(); VOICES.delete(v); } if (MINE) { MINE.stop(); MINE = null; } }
+  // ---------------------------------------------------------------- music: songs stream from <audio> elements (a song is too long to
+  // hold decoded), each on its own channel: 0 the radio (your car, the danfo you ride, your room), 1 the club, 2-3 street speakers.
+  // The elements are unlocked on the first tap (phones only let a page play sound a tap started), then reused.
+  const SONGS = Object.keys(files).filter(n => files[n].m);
+  const CH = [];
+  function channel(i) {
+    if (CH[i]) return CH[i];
+    const el = els[i] || new Audio(); el.preload = 'none';
+    const src = AC.createMediaElementSource(el), f = AC.createBiquadFilter(), g = AC.createGain(), p = AC.createPanner();
+    f.type = 'lowpass'; f.frequency.value = 20000; g.gain.value = 0;
+    p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 6; p.maxDistance = 400; p.rolloffFactor = 1.3;
+    src.connect(f); f.connect(g);
+    const C = { i, el, f, g, p, song: null, pos: false, want: 0, onEnd: null };
+    const route = pos => { if (C.pos === pos && C.routed) return; try { g.disconnect(); } catch (e) { } if (pos) { g.connect(p); p.connect(bus.music); } else g.connect(bus.music); C.pos = pos; C.routed = true; };
+    C.route = route; route(false);
+    el.addEventListener('ended', () => { C.song = null; if (C.onEnd) C.onEnd(C); });
+    el.addEventListener('error', () => { const s = C.song; C.song = null; if (C.onEnd && s) setTimeout(() => C.onEnd && C.onEnd(C), 3000); });
+    return CH[i] = C;
+  }
+  function unlock(n = 4) { for (let i = 0; i < n; i++) { const C = channel(i); try { C.el.muted = true; const pr = C.el.play(); if (pr) pr.catch(() => { }).then(() => { C.el.pause(); C.el.muted = false; }); else { C.el.pause(); C.el.muted = false; } } catch (e) { C.el.muted = false; } } }
+  // play a song on a channel (from a point: x, z; through walls or a cheap speaker: lp), from `at` seconds
+  function song(i, name, { x, z, y = 1.2, lp = 20000, gain = 1, at = 0, ref = 6, onEnd } = {}) {
+    const C = channel(i); if (!files[name]) return C;
+    C.onEnd = onEnd || null;
+    if (C.song !== name) { C.song = name; C.el.src = url(name); C.el.currentTime = 0; try { C.el.load(); } catch (e) { }
+      const go = () => { try { if (at) C.el.currentTime = at; } catch (e) { } const pr = C.el.play(); if (pr) pr.catch(e => console.warn('song', name, e && e.name)); };
+      if (C.el.readyState >= 1) go(); else C.el.addEventListener('loadedmetadata', go, { once: true }); }
+    else if (C.el.paused) { const pr = C.el.play(); if (pr) pr.catch(() => { }); }
+    C.route(x !== undefined); if (x !== undefined) { place(C.p, x, z, y); C.p.refDistance = ref; }
+    C.f.frequency.setTargetAtTime(lp, t(), .2); C.g.gain.setTargetAtTime(gain * (files[name].gain || 1), t(), .4); C.want = gain;
+    return C;
+  }
+  function songSet(i, { x, z, y = 1.2, lp, gain } = {}) { const C = CH[i]; if (!C || !C.song) return; if (x !== undefined && C.pos) place(C.p, x, z, y); if (lp) C.f.frequency.setTargetAtTime(lp, t(), .2); if (gain !== undefined) C.g.gain.setTargetAtTime(gain * (files[C.song].gain || 1), t(), .3); }
+  function songStop(i, fade = .5) { const C = CH[i]; if (!C || !C.song) return; C.g.gain.setTargetAtTime(0, t(), fade / 3); const el = C.el, me = C.song; C.song = null; C.onEnd = null; setTimeout(() => { if (!C.song || C.song === me) { try { el.pause(); } catch (e) { } } }, fade * 1000 + 200); }
+  const songsOf = genres => SONGS.filter(n => !genres || genres.includes(files[n].m.genre));
+  const songInfo = n => files[n] && files[n].m;
   return { AC, bus, vol, setVol, need, preload, play, loop, beds, spots, engines, myEngine, skid, siren, horn, listen, place, stopAll, has: n => !!files[n] || !!fam[n],
+    unlock, song, songSet, songStop, songsOf, songInfo, SONGS, channelOf: i => CH[i],
     muffle(on) { muffle.frequency.setTargetAtTime(on ? 700 : 20000, t(), .3); }, files,
     debug() { return { beds: Object.keys(BEDS).map(n => [n, +BEDS[n].g.gain.value.toFixed(3)]), spots: [...SPOTS.keys()], engines: [...VOICES.values()].map(L => L.name), mine: MINE && MINE.name, loaded: [...BUF.keys()], state: AC.state }; } };
 }

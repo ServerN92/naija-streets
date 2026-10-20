@@ -17,6 +17,10 @@ SR = 44100
 
 # id: (title, author, licence)
 SRC = {
+    'fx_airhorn': ('DJ airhorn sound', 'pfranzen', 'CC0'),
+    'fx_scratch': ('Record Scratch #6', 'musicvision31', 'CC0'),
+    'fx_static': ('Radio tuning-static-interference', 'quantumriver', 'CC0'),
+    'fx_jingle': ('jingle breaking news radio', 'Thejack288', 'CC0'),
     582367: ('AMBTraf Ambience traffic Van Bus Truck car siren', 'SFXAFRIK', 'CC BY 4.0'),
     582935: ('AMBTraf Ambience bus stop close perspective conductors 01', 'SFXAFRIK', 'CC0'),
     582955: ('AMBTraf Ambience bus stop close perspective conductors 02', 'SFXAFRIK', 'CC BY 4.0'),
@@ -52,8 +56,9 @@ SRC = {
     70936: ('police.wav', 'guitarguy1985', 'CC0'),
 }
 
-# name: dict(src, a=start s, d=length s, kind='bed'|'loop'|'shot', level, extra json fields)
+# name: dict(src, a=start s, d=length s, kind='bed'|'loop'|'shot'|'song', level, extra json fields)
 RECIPES = {}
+MUSIC_URL = {}
 
 
 def load(folder, i, stereo=True):
@@ -97,6 +102,13 @@ def build(folder, only=None):
         if only and name not in only: continue
         kind = R['kind']; stereo = kind == 'bed'
         if not os.path.exists(os.path.join(folder, f'{R["src"]}.mp3')): print(f'{name:16s} (no recording {R["src"]} yet)'); continue
+        if kind == 'song':   # a whole song: levelled (EBU R128, -16 LUFS), stereo 96 kb/s, streamed by the game
+            pth = os.path.join(OUT, name + '.mp3')
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', os.path.join(folder, f'{R["src"]}.mp3'), '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ac', '2', '-ar', '44100',
+                            '-c:a', 'libmp3lame', '-b:a', '96k', pth], check=True)
+            dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', pth], capture_output=True, text=True).stdout.strip() or 0)
+            meta[name] = {'gain': R.get('gain', 1.0), 'dur': round(dur, 1), 'src': R['src'], 'm': {'title': R['title'], 'artist': R['artist'], 'genre': R['genre']}}
+            print(f'{name:16s} song  {dur:6.1f}s {os.path.getsize(pth)//1024:5d} KB  {R["title"]} - {R["artist"]}'); continue
         key = (R['src'], stereo)
         if key not in cache: cache[key] = load(folder, R['src'], stereo)
         x = cache[key]; a = int((R.get('a') or 0) * SR); d = int(R['d'] * SR) if R.get('d') else len(x) - a
@@ -124,13 +136,20 @@ def build(folder, only=None):
     pj = os.path.join(OUT, 'sounds.json')
     if only and os.path.exists(pj): old = json.load(open(pj))
     old.update(meta); json.dump(old, open(pj, 'w'), indent=0)
-    srcs = sorted({m['src'] for m in old.values()})
+    srcs = sorted({m['src'] for m in old.values()}, key=str)
+    FX_ID = {'fx_airhorn': 528807, 'fx_scratch': 431779, 'fx_static': 552160, 'fx_jingle': 156060}
     with open(os.path.join(OUT, 'CREDITS.md'), 'w') as f:
         f.write('# Sound credits\n\nRecordings from [Freesound](https://freesound.org), cut, levelled and looped for the game.\n'
                 'CC0 needs no credit (listed anyway, with thanks); CC BY sounds are used under their licence.\n\n')
         for i in srcs:
+            if i not in SRC: continue
             t, a, l = SRC[i]
-            f.write(f'- "{t}" by {a} (https://freesound.org/s/{i}/), {l}\n')
+            f.write(f'- "{t}" by {a} (https://freesound.org/s/{FX_ID.get(i, i)}/), {l}\n')
+        songs = [(n, m) for n, m in old.items() if m.get('m')]
+        if songs:
+            f.write('\n## Music\n\nSongs from [Pixabay](https://pixabay.com/music/), used under the Pixabay Content License (free for use in a game; thank you to the artists):\n\n')
+            for n, m in sorted(songs, key=lambda q: q[1]['m']['genre']):
+                f.write(f'- "{m["m"]["title"]}" by {m["m"]["artist"]} ({m["m"]["genre"]}), {MUSIC_URL.get(n, "pixabay.com")}\n')
     print(len(old), 'sounds,', round(sum(os.path.getsize(os.path.join(OUT, n + '.mp3')) for n in old) / 1e6, 2), 'MB')
 
 

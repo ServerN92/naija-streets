@@ -451,8 +451,16 @@ linked from Settings). Most of the street is Nigerian field recordings by SFXAFR
 - **Vehicles:** the nearest vehicles run their own engines in 3-D (okada, keke, danfo and BRT, cars, tankers), rising
   with their speed; they honk, more when traffic is stuck. Your own engine follows your speed and the gas; hard braking
   screeches; crashes, car doors, the police siren where the police van is, the jet taking off at the airport.
-- **Settings:** volume sliders for the city, vehicles, voices and effects (kept on the phone). Files load only when
-  first needed and are kept on the phone after.
+- **Settings:** volume sliders for the city, vehicles, voices, effects and music (kept on the phone). Files load only
+  when first needed and are kept on the phone after (songs stream).
+- **Music** (free Afrobeats, amapiano, highlife and street songs from Pixabay, credited in `CREDITS.md`): the car radio
+  has three stations (Gbedu FM, Piano Radio, Highlife Gold): press **N** or the RADIO button to change station, the last
+  press turns it off; in a danfo or cab you ride, the driver's radio plays. At home and in your rented room, the radio.
+  The night clubs play their DJ inside (airhorn, scratches between songs) and you hear the bass through the walls outside
+  at night. About one street corner in eight has the area boys' speaker box playing loud, by day and into the night.
+  Real artists' songs can only go in with their (or their label's) permission.
+- **Talking:** people greet you, complain when you bump them, quarrel and ask why you are staring, out loud, once the
+  recorded Pidgin lines are in (`say_greet`, `say_bump`, `say_angry`, `say_stare`; women's lines end in `_f`).
 
 ## The airport road: toll gate, car park, impound yard
 Agege Motor Road leads north to Murtala Muhammed Airport. The road is open all the way to the terminal (the city's
