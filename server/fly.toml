@@ -7,7 +7,7 @@ kill_timeout = "10s"
 [env]
   PORT = "8080"
   DB_PATH = "/data/naija.db"
-  ORIGINS = "https://servern92.github.io"
+  ORIGINS = "https://naijastreet.app,https://www.naijastreet.app,https://servern92.github.io"
   TRUST_PROXY = "1"
 
 [[mounts]]
