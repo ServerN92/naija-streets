@@ -24,7 +24,7 @@ function serverUrl() {
   const q = new URLSearchParams(location.search).get('server');
   if (local && q && /^wss?:\/\//.test(q)) return q;
   if (local) return `ws://${location.hostname}:8080/ws`;
-  return 'wss://naija-streets-lagos.fly.dev/ws';
+  return 'wss://game.naijastreet.app/ws';
 }
 
 export function createOnline(api) {
