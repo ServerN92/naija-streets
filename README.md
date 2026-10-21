@@ -683,6 +683,12 @@ packs every part's picture into one atlas. Vehicles keep their own textures when
 `autorig.py` works best on a T-pose body; arms that touch the thighs (A-pose) stretch when the arms move (`--nocut` keeps
 the mesh whole, `--gentle` cuts less).
 
+## Picture and messages
+When the phone is busy (screen recording, heat) the game draws fewer pixels to keep moving, but never softer than three
+quarters of the full picture, only after two slow spells in a row, and it comes back sharp quickly. Settings, Graphics:
+**Always sharp** never softens it. The messages at the top are see-through glass (white text on a light dark glass,
+blurred behind on computers), smaller on phones, and fade away.
+
 ## Last step: sharper picture on phones
 When the game is finished, the very last job is a sharp upscale for phones, like AMD FSR 1 (DLSS can't run in browsers).
 Phones draw the game smaller than the screen; the browser stretches it and it looks soft. The two shaders in
