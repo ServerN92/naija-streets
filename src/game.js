@@ -8306,9 +8306,13 @@ const sstep=x=>{ x=clamp(x,0,1); return x*x*(3-2*x); };
 if(LIFEC&&LIFEC.tent){ const T=LIFEC.tent, ux={x:Math.cos(T.ry),z:-Math.sin(T.ry)}, uz={x:Math.sin(T.ry),z:Math.cos(T.ry)};
   const clear=(cx,cz,b)=>{ const ax={x:Math.cos(b),z:-Math.sin(b)}, az={x:Math.sin(b),z:Math.cos(b)};
     for(let i=-1;i<=1;i+=.25) for(let j=-1;j<=1;j+=.5){ const x=cx+ax.x*i*1.15+az.x*j*.55, z=cz+ax.z*i*1.15+az.z*j*.55;
-      if(!onLand(x,z,.5)||roadAt(x,z,.9)||resolveCircle({x,z},.28)) return false; } return true; };
-  for(const [s,a] of [[1,0],[-1,0],[1,.7],[-1,.7],[1,-.7],[-1,-.7],[1.4,0],[-1.4,0]]){ const o=1.02+.62+.12*Math.abs(s), cx=T.x+ux.x*o*Math.sign(s)+uz.x*a, cz=T.z+ux.z*o*Math.sign(s)+uz.z*a, b=T.ry-Math.PI/2;
-    if(clear(cx,cz,b)){ CB.bed={x:cx,z:cz,b,y:groundY(cx,cz)}; break; } }
+      if(!onLand(x,z,.5)||roadAt(x,z,.7)||resolveCircle({x,z},.28)) return false; } return true; };
+  // the nearest clear patch round the tent (beside it first, then in front or behind), lying along or across it, not in the doorway
+  const D=LIFEC.tentDoor||T, cand=[];
+  for(let r=1.9;r<=7.2;r+=.35) for(let k=0;k<32;k++){ const a=k/32*Math.PI*2, cx=T.x+Math.cos(a)*r, cz=T.z+Math.sin(a)*r; if(Math.hypot(cx-D.x,cz-D.z)<1.7) continue;
+    for(const db of [-Math.PI/2,0,Math.PI/4,-Math.PI/4]) cand.push({cx,cz,b:T.ry+db,d:r+(db===-Math.PI/2?0:.4)}); }
+  cand.sort((p,q)=>p.d-q.d);
+  for(const c of cand) if(clear(c.cx,c.cz,c.b)){ CB.bed={x:c.cx,z:c.cz,b:c.b,y:groundY(c.cx,c.cz)}; break; }
   if(CB.bed){ const B=CB.bed; SCAT_OFF.push({x:B.x,z:B.z,ry:B.b,hw:1.2,hd:.65});
     DOORS.push({x:B.x,z:B.z,r:1.55,label:()=>CB.act?'':'Sleep on your carton',act:()=>cbStart()});
     const u=murl('ns_carton'); DL.exp[u]=MANIFEST['assets/models/ns_carton.glb']||3e5;
@@ -8931,6 +8935,10 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     faceInfo(){ const [A,B]=window.__fo||[]; if(!A) return null; const fx=Math.cos(A.h), fz=-Math.sin(A.h), dx=B.x-A.x, dz=B.z-A.z;
       return {ah:+(dx*fx+dz*fz).toFixed(1),lat:+(-dx*fz+dz*fx).toFixed(2),sa:+A.speed.toFixed(1),sb:+B.speed.toFixed(1),stA:+A.ai.stuck.toFixed(1),stB:+B.ai.stuck.toFixed(1),ptA:+(A.ai.pt||0).toFixed(2),ptB:+(B.ai.pt||0).toFixed(2),slip:[A.ai.slip>0,B.ai.slip>0]}; },
     cb:()=>CB.bed?{x:CB.bed.x,z:CB.bed.z,b:CB.bed.b,y:CB.bed.y,mesh:!!CB.bed.mesh,ph:CB.act?CB.act.ph:null,t:CB.act?+CB.act.t.toFixed(2):null,say:!!CB.sayOn,ground:+groundY(CB.bed.x,CB.bed.z).toFixed(3),py:+rig.root.position.y.toFixed(3)}:null,
+    cbWhy(){ if(!LIFEC) return 'no LIFEC'; const T=LIFEC.tent, ux={x:Math.cos(T.ry),z:-Math.sin(T.ry)}, uz={x:Math.sin(T.ry),z:Math.cos(T.ry)}, out=[];
+      for(const [s,a] of [[1,0],[-1,0],[1,.7],[-1,.7],[1.4,0],[-1.4,0]]){ const o=1.02+.62+.12*Math.abs(s), cx=T.x+ux.x*o*Math.sign(s)+uz.x*a, cz=T.z+ux.z*o*Math.sign(s)+uz.z*a, b=T.ry-Math.PI/2, ax={x:Math.cos(b),z:-Math.sin(b)}, az={x:Math.sin(b),z:Math.cos(b)}; const fail={land:0,road:0,col:0};
+        for(let i=-1;i<=1;i+=.25) for(let j=-1;j<=1;j+=.5){ const x=cx+ax.x*i*1.15+az.x*j*.55, z=cz+ax.z*i*1.15+az.z*j*.55; if(!onLand(x,z,.5)) fail.land++; else if(roadAt(x,z,.9)) fail.road++; else if(resolveCircle({x,z},.28)) fail.col++; }
+        out.push([s,a,fail]); } return {tent:{x:+T.x.toFixed(1),z:+T.z.toFixed(1),ry:+T.ry.toFixed(2)},door:LIFEC.tentDoor&&{x:+LIFEC.tentDoor.x.toFixed(1),z:+LIFEC.tentDoor.z.toFixed(1)},out}; },
     cbGo(){ if(!CB.bed) return 'no bed'; const p=cbAt(.2,1.3); player.x=p.x; player.z=p.z; cbStart(); return 'ok'; },
     draw(){ updateCamera(0); renderFrame(0); return 1; },
     newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
