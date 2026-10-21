@@ -115,10 +115,48 @@ function bodyFits(mesh, n) {
   return true;
 }
 
+// the shoes and sandals: in some people's files they were made for another body, so they sat off the feet, too big or
+// stretched (big, long shoes walking beside people). Each one is fitted to its own foot here: as long as the body's foot
+// (a little longer, it goes round it), standing on the same ground, where the foot is in the pose the body was bound in.
+const SIDE = /(Left|Right)(UpLeg|Leg|Foot|ToeBase|Toe_End)$/, FOOT = /(Left|Right)(Foot|ToeBase|Toe_End)$/;
+const groupOf = (o, root) => { for (let q = o; q && q !== root; q = q.parent) if (/^(body|head|eyes|scalp|hair|shoe|o[0-9a-z]~)/.test(q.name)) return q.name; return o.name || ''; };
+function fitShoes(root) {
+  root.updateMatrixWorld(true);
+  const v = new THREE.Vector3(), feet = { Left: new THREE.Box3(), Right: new THREE.Box3() }, shoes = [];
+  const mainBone = (m, i) => { const I = m.geometry.attributes.skinIndex, W = m.geometry.attributes.skinWeight; let b = -1, w = -1; for (let k = 0; k < 4; k++) { const x = W.getComponent(i, k); if (x > w) { w = x; b = I.getComponent(i, k); } } const B = m.skeleton.bones[b]; return B ? B.name : ''; };
+  root.traverse(m => { if (!m.isSkinnedMesh || !m.geometry.attributes.skinIndex) return; const g = groupOf(m, root);
+    if (/^body/.test(g)) { const P = m.geometry.attributes.position; for (let i = 0; i < P.count; i++) { const f = FOOT.exec(mainBone(m, i)); if (f) feet[f[1]].expandByPoint(v.fromBufferAttribute(P, i).applyMatrix4(m.bindMatrix)); } }
+    else if (/^shoe|~.*(shoe|sandal|slipper|boot|pump|sole|heel|slide)/i.test(g)) shoes.push([g.split('~')[0], m]); });
+  if (feet.Left.isEmpty() || feet.Right.isEmpty()) return 0;
+  let fixed = 0;
+  // the parts of one pair go together (pumps and their soles): one fit for all of them
+  const sets = new Map(); for (const [k, m] of shoes) { if (!sets.has(k)) sets.set(k, []); sets.get(k).push(m); }
+  for (const list of sets.values()) { const box = { Left: new THREE.Box3(), Right: new THREE.Box3() }, sides = new Map();
+    for (const m of list) { const P = m.geometry.attributes.position, side = new Array(P.count);
+      for (let i = 0; i < P.count; i++) { const f = SIDE.exec(mainBone(m, i)); side[i] = f ? f[1] : null; if (f) box[f[1]].expandByPoint(v.fromBufferAttribute(P, i).applyMatrix4(m.bindMatrix)); }
+      sides.set(m, side); }
+    const T = {};
+    for (const s of ['Left', 'Right']) { const F = feet[s], S = box[s]; if (S.isEmpty()) continue;
+      const fs = F.getSize(new THREE.Vector3()), ss = S.getSize(new THREE.Vector3()), fc = F.getCenter(new THREE.Vector3()), sc = S.getCenter(new THREE.Vector3());
+      const fl = Math.max(fs.x, fs.z), sl = Math.max(ss.x, ss.z); if (!(fl > 0 && sl > 0)) continue;
+      const k = Math.min(3, Math.max(.3, fl * 1.08 / sl)), off = Math.hypot(fc.x - sc.x, fc.z - sc.z), H = fs.y || .1;
+      if (Math.abs(k - 1) < .06 && off < .025 * Math.max(1, fl / .25) && Math.abs(S.min.y - F.min.y) < H * .25) continue;   // this one fits already
+      T[s] = { k, fc, sc, fy: F.min.y - H * .04, sy: S.min.y }; }
+    if (!T.Left && !T.Right) continue;
+    for (const m of list) { const G = m.geometry, P = G.attributes.position, side = sides.get(m), inv = new THREE.Matrix4().copy(m.bindMatrix).invert(), out = new Float32Array(P.count * 3);
+      for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i); const t = T[side[i]];
+        if (t) { v.applyMatrix4(m.bindMatrix); v.set(t.fc.x + (v.x - t.sc.x) * t.k, t.fy + (v.y - t.sy) * t.k, t.fc.z + (v.z - t.sc.z) * t.k); v.applyMatrix4(inv); }
+        out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z; }
+      G.setAttribute('position', new THREE.BufferAttribute(out, 3)); G.computeBoundingBox(); G.computeBoundingSphere(); }
+    fixed++; }
+  return fixed;
+}
+
 // the character as it comes out of the file, ready for the street
 export function prepChar(gltf, { maxAniso = 4, layer = 1, shadows = true } = {}) {
   const root = gltf.scene, meta = root.userData || {}, mats = [];
   root.traverse(o => { if (/mixamorig\d+:?/.test(o.name)) o.name = o.name.replace(/mixamorig\d+:?/, 'mixamorig'); });   // some Mixamo files say mixamorig9Hips: one name for every move
+  try { root.userData.shoesFixed = fitShoes(root); } catch (e) { console.warn('shoes', e); }
   root.traverse(o => { if (o.isMesh && o.geometry && o.geometry.attributes.color_1) bodyFits(o, outfitCount(meta)); });
   root.traverse(o => { if (!o.isMesh) return; o.frustumCulled = false; o.castShadow = shadows; o.receiveShadow = true; if (layer != null) o.layers.set(layer);
     const ms = Array.isArray(o.material) ? o.material : [o.material];
