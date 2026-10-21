@@ -2754,8 +2754,8 @@ function renderFrame(dt){ if(PERF) renderer.info.reset(); if(composer&&usePost) 
 const C3=h=>new THREE.Color(h);
 const LK={
   day:   {turb:3.2,ray:1.25,mie:.004,mieG:.8, exp:.5,sun:C3(0xfff1dc),sunI:3.9, hs:C3(0xbfd6ff),hg:C3(0x8c7a60),hi:.62,fog:C3(0xc4ccd0),fd:.0015,win:0,  lamp:0,  sign:0,  b0:.22,b1:.45,b2:.92,env:.85,water:C3(0x0d4a5c),head:.15,tail:.3, spot:0},
-  golden:{turb:9, ray:2.4,mie:.009,mieG:.86,exp:.6, sun:C3(0xffaf68),sunI:2.8, hs:C3(0xffc7a2),hg:C3(0x5a4636),hi:.55,fog:C3(0xd9a079),fd:.0018,win:.45,lamp:.8, sign:.25,b0:.32,b1:.55,b2:.86,env:1, water:C3(0x173947),head:1,  tail:1,  spot:40},
-  night: {turb:2, ray:.4, mie:.002,mieG:.8, exp:1.3,sun:C3(0x9fb4ff),sunI:1.05,hs:C3(0x7487b4),hg:C3(0x38322b),hi:1.3, fog:C3(0x22324c),fd:.0019,win:1.7,lamp:5,  sign:1.1,b0:.95,b1:.5, b2:.55,env:.72,water:C3(0x143444),head:3,  tail:2.2,spot:180}};   // a bright moonlit night: players should still see the city
+  golden:{turb:9, ray:2.4,mie:.009,mieG:.86,exp:.74,sun:C3(0xffaf68),sunI:2.8, hs:C3(0xffc7a2),hg:C3(0x6a5442),hi:.8, fog:C3(0xd9a079),fd:.0018,win:.45,lamp:.8, sign:.25,b0:.32,b1:.55,b2:.86,env:1, water:C3(0x173947),head:1,  tail:1,  spot:40},
+  night: {turb:2, ray:.4, mie:.002,mieG:.8, exp:1.65,sun:C3(0x9fb4ff),sunI:1.2,hs:C3(0x8a9ccb),hg:C3(0x4d453b),hi:1.9, fog:C3(0x34496c),fd:.0019,win:1.7,lamp:5,  sign:1.1,b0:.95,b1:.5, b2:.55,env:.72,water:C3(0x143444),head:3,  tail:2.2,spot:180}};   // a bright moonlit night: players should still see the city
 const RAINFOG=C3(0x6f7a84), HAZE=C3(0xc8a273), _c1=new THREE.Color(), _c2=new THREE.Color();
 const ENV={hour:12,elev:40,lamp:0,win:0,sign:0,head:.15,tail:.3,spot:0,wet:0,rain:0,cloud:0,haze:0,dim:0,storm:0,night:false,w:null,label:'',icon:'sun',flash:0};
 const envScene=new THREE.Scene(); envScene.add(sky); let envRT=null, envKey='', envT=-99, skyT=-99;
@@ -2846,11 +2846,11 @@ function updateEnv(dt,force=false){
   sun.intensity=(e>=-1?mixK('sunI',dw,nw):LK.night.sunI)*fade*(1-w.dim*.82);
   mixC(hemi.color,'hs',dw,nw); mixC(hemi.groundColor,'hg',dw,nw); hemi.intensity=mixK('hi',dw,nw)*(1+w.dim*.12*(1-nw))+ENV.flash*2.5;
   if(w.cloud>.3){ _c1.copy(hemi.color); hemi.color.lerp(_c2.setRGB(.62,.66,.7),Math.min(1,(w.cloud-.3))*(1-nw)*.8); }
-  mixC(scene.fog.color,'fog',dw,nw); scene.fog.color.lerp(_c1.copy(RAINFOG).multiplyScalar(1-nw*.85),w.rain*.75).lerp(_c2.copy(HAZE).multiplyScalar(1-nw*.8),w.haze*.8);
+  mixC(scene.fog.color,'fog',dw,nw); scene.fog.color.lerp(_c1.copy(RAINFOG).multiplyScalar(1-nw*.6),w.rain*.75).lerp(_c2.copy(HAZE).multiplyScalar(1-nw*.8),w.haze*.8);
   scene.fog.density=mixK('fd',dw,nw)*Q.fog*(1+w.rain*2.2+w.storm*1.6+w.haze*6.5);
   // sky veil: the sky and far city fade into rain grey or harmattan dust, like real bad-weather days
   veil.material.color.copy(scene.fog.color); veil.material.opacity=Math.min(.86,w.haze*.74+w.rain*.42+w.storm*.28+Math.max(0,w.cloud-.5)*.35+nw*.5);   // at night it tints the black sky a deep moonlit blue veil.visible=veil.material.opacity>.02&&mode!=='interior'; veil.position.copy(camera.position);
-  renderer.toneMappingExposure=mixK('exp',dw,nw)*(1-w.dim*.4*(1-nw))+ENV.flash*.35;
+  renderer.toneMappingExposure=(mixK('exp',dw,nw)*(1-w.dim*.4*(1-nw))+ENV.flash*.35)*PIC.b;   // (and how bright the player wants it)
   WU.sunDirection.value.copy(lightDir).normalize(); mixC(WU.waterColor.value,'water',dw,nw); WU.sunColor.value.setRGB(1-nw*.55,1-nw*.5,1-nw*.3).multiplyScalar(1-w.dim*.8);
   ENV.lamp=Math.max(mixK('lamp',dw,nw), dark>.55?2.4*(dark-.55)/.45:0); ENV.win=Math.max(mixK('win',dw,nw),dark*.9); ENV.sign=Math.max(mixK('sign',dw,nw),dark*.6);
   ENV.head=Math.max(mixK('head',dw,nw),dark*2); ENV.tail=Math.max(mixK('tail',dw,nw),dark*1.6); ENV.spot=Math.max(mixK('spot',dw,nw),dark*120); ENV.night=nw>.5;
@@ -3187,7 +3187,7 @@ function updateHUD(dt){ if(!started) return;
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; const t=$('#toast'); if(toastT<.3) t.classList.add('out'); if(toastT<=0) t.hidden=true; }   // (fades out)
-  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':''; }
+  if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; if(touchUI) drvShow(dv); $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':''; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ const job=pl&&pl.job; mapView.clearRoute(); if(!job) toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
@@ -3216,7 +3216,20 @@ function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lo
 
 /* ================= input ================= */
 const K={}, joy={x:0,y:0}; let touchRun=false, touchBrake=false, touchUI=false;
-function inputVec(){ if(WARD.open||NOMOVE||TL.hold) return [0,0]; let f=0,s=0; if(K.w||K.arrowup) f+=1; if(K.s||K.arrowdown) f-=1; if(K.d||K.arrowright) s+=1; if(K.a||K.arrowleft) s-=1; f-=joy.y; s+=joy.x; return [clamp(f,-1,1),clamp(s,-1,1)]; }
+function inputVec(){ if(WARD.open||NOMOVE||TL.hold) return [0,0]; let f=0,s=0; if(K.w||K.arrowup) f+=1; if(K.s||K.arrowdown) f-=1; if(K.d||K.arrowright) s+=1; if(K.a||K.arrowleft) s-=1; f-=joy.y; s+=joy.x;
+  if(mode==='drive'&&drvPedals()){ f+=DRV.gas-DRV.rev; s+=DRV.sv; } return [clamp(f,-1,1),clamp(s,-1,1)]; }
+// driving on a phone: ARROWS (the default: ◀ ▶ on the right steer, GAS and BRAKE on the left, BRAKE held when stopped
+// reverses), WHEEL (a steering wheel you turn with your thumb, the same pedals) or JOYSTICK (the old way). Kept on this phone.
+const DRV={m:'easy',gas:0,rev:0,l:0,r:0,sv:0,wr:0,wp:null,wa:0,w0:0}; try{ const m=localStorage.getItem('naija-drive'); if(m==='easy'||m==='wheel'||m==='joy') DRV.m=m; }catch(e){}
+const drvPedals=()=>touchUI&&DRV.m!=='joy';
+function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
+  if(DRV.m==='wheel'){ if(DRV.wp==null) DRV.wr*=Math.exp(-10*dt); if(Math.abs(DRV.wr)<.3&&DRV.wp==null) DRV.wr=0; DRV.sv=clamp(DRV.wr/90,-1,1); $('#tWheel').style.transform=DRV.wr?`rotate(${DRV.wr.toFixed(1)}deg)`:''; }   // let go and it turns back to straight
+  else { const t=DRV.r-DRV.l, k=!t?8:(DRV.sv&&Math.sign(t)!==Math.sign(DRV.sv)?10:4.5); DRV.sv+=(t-DRV.sv)*Math.min(1,dt*k); if(!t&&Math.abs(DRV.sv)<.02) DRV.sv=0; } }   // the arrows turn the wheel in smoothly, not all at once
+function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
+  $('#tBrake').hidden=!(on&&!drvPedals()); document.body.classList.toggle('drvpad',p&&!w); document.body.classList.toggle('drvwheel',w);
+  if(!p){ DRV.gas=DRV.rev=DRV.l=DRV.r=0; DRV.sv=DRV.wr=0; DRV.wp=null; for(const id of ['tGas','tRev','tLeft','tRight','tWheel']) $('#'+id).classList.remove('on'); } }
+function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
+document.querySelectorAll('#drvSeg button').forEach(b=>b.addEventListener('click',()=>{ DRV.m=b.dataset.d; drvSettings(); }));
 // physical key positions, so AZERTY / other layouts still use the WASD spot
 const CODE={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arrowdown',ArrowLeft:'arrowleft',ArrowRight:'arrowright',ShiftLeft:'shift',ShiftRight:'shift',Space:' ',KeyE:'e',KeyF:'f',KeyH:'h',KeyJ:'j',KeyK:'k',KeyM:'m',KeyC:'c',KeyG:'g',Escape:'escape',Enter:'enter'};
 const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
@@ -3241,6 +3254,10 @@ const CAMS={s:1,f:1}; try{ Object.assign(CAMS,JSON.parse(localStorage.getItem('n
 function camSettings(){ $('#camSens').value=Math.round(CAMS.s*100); $('#camSensV').textContent=Math.round(CAMS.s*100)+'%'; document.querySelectorAll('#camFol button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.c===CAMS.f))); try{ localStorage.setItem('naija-cam',JSON.stringify(CAMS)); }catch(e){} }
 $('#camSens').addEventListener('input',e=>{ CAMS.s=+e.target.value/100; camSettings(); });
 document.querySelectorAll('#camFol button').forEach(b=>b.addEventListener('click',()=>{ CAMS.f=+b.dataset.c; camSettings(); })); camSettings();
+// brightness: the player's own setting on top of the day and night (kept on this device)
+const PIC={b:1}; try{ Object.assign(PIC,JSON.parse(localStorage.getItem('naija-pic')||'{}')); }catch(e){} PIC.b=clamp(+PIC.b||1,.7,1.6);
+function picSettings(){ $('#bright').value=Math.round(PIC.b*100); $('#brightV').textContent=Math.round(PIC.b*100)+'%'; try{ localStorage.setItem('naija-pic',JSON.stringify(PIC)); }catch(e){} }
+$('#bright').addEventListener('input',e=>{ PIC.b=+e.target.value/100; picSettings(); updateEnv(0); }); picSettings();
 function look(dx,dy){ const a=gunOut()&&ARMS.aim, k=CAMS.s; camState.yaw-=dx*(a?.0021:.0028)*k; camState.pitch=clamp(camState.pitch+dy*(a?.0017:.0022)*k,a?-.6:-.15,1.15); camState.last=T0; }
 // on foot the camera comes round behind you while you move (not while you aim, turn it yourself, or run towards it)
 function camFollow(dt){ if(!CAMS.f||mode!=='walk'||(gunOut()&&ARMS.aim)||T0-camState.last<.6||player.speed<.5||WARD.open||HL.act) return;
@@ -3274,7 +3291,7 @@ function fsSettings(){ const box=$('#fsSet'); if(!box) return; box.hidden=!touch
 addEventListener('pointerdown',()=>{ if(started&&touchUI) goFull(); },{passive:true});   // swiped out of full screen by mistake: the next tap brings it back
 // ---- your own button layout (phones): drag each button where your thumb likes it, size and see-through; kept on this
 // phone for upright and sideways separately (positions are the button centres as parts of the screen)
-const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tRadio','tBrake','tSk1','tSk2','tSk3'],data:{},edit:false,drag:null,was:null};
+const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tRadio','tBrake','tSk1','tSk2','tSk3','tGas','tRev','tLeft','tRight','tWheel'],data:{},edit:false,drag:null,was:null};
 try{ BL.data=JSON.parse(localStorage.getItem('naija-btns')||'{}')||{}; }catch(e){ BL.data={}; }
 const blKey=()=>innerWidth>innerHeight?'land':'port';
 const BL_NAME={tE:'E',tGrab:'GRAB / AIM',tPunch:'ATTACK / FIRE',tCrouch:'CROUCH',tJump:'JUMP'};
@@ -3308,9 +3325,9 @@ function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.bod
   $('#beDone').addEventListener('click',()=>blEdit(false));
   $('#btnEdit').addEventListener('click',()=>blEdit(true));
   addEventListener('resize',()=>{ if(touchUI) blApply(); }); }
-function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=!lastPrompt; if(typeof fsSettings==='function') fsSettings(); $('#btnSet').hidden=false; blApply(); $('#keys').hidden=true; $('#lookhint').hidden=true;
+function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=!lastPrompt; if(typeof fsSettings==='function') fsSettings(); $('#btnSet').hidden=false; $('#drvSet').hidden=false; blApply(); $('#keys').hidden=true; $('#lookhint').hidden=true;
   const zl=$('#zoneL'), zr=$('#zoneR'), jo=$('#joy'), jk=$('#joyK'); let jid=null,jx=0,jy=0; const lp=new Map(); let pinch=0;
-  zl.addEventListener('pointerdown',e=>{ $('#settings').hidden=true; jid=e.pointerId; jx=e.clientX; jy=e.clientY; jo.hidden=false; jo.style.left=jx+'px'; jo.style.top=jy+'px'; try{ zl.setPointerCapture(jid); }catch(_){} });
+  zl.addEventListener('pointerdown',e=>{ $('#settings').hidden=true; if(mode==='drive'&&drvPedals()&&!drive.ride) return; jid=e.pointerId; jx=e.clientX; jy=e.clientY; jo.hidden=false; jo.style.left=jx+'px'; jo.style.top=jy+'px'; try{ zl.setPointerCapture(jid); }catch(_){} });
   zl.addEventListener('pointermove',e=>{ if(e.pointerId!==jid) return; let dx=e.clientX-jx, dy=e.clientY-jy; const d=Math.hypot(dx,dy), m=50; if(d>m){ dx*=m/d; dy*=m/d; } joy.x=dx/m; joy.y=dy/m; jk.style.transform=`translate(${dx}px,${dy}px)`; jo.classList.toggle('run',Math.hypot(joy.x,joy.y)>.88); });
   const jend=e=>{ if(e.pointerId!==jid) return; jid=null; joy.x=joy.y=0; jo.hidden=true; jk.style.transform=''; jo.classList.remove('run'); }; zl.addEventListener('pointerup',jend); zl.addEventListener('pointercancel',jend);
   zr.addEventListener('pointerdown',e=>{ $('#settings').hidden=true; lp.set(e.pointerId,{x:e.clientX,y:e.clientY}); try{ zr.setPointerCapture(e.pointerId); }catch(_){} if(lp.size===2){ const [a,b]=[...lp.values()]; pinch=Math.hypot(a.x-b.x,a.y-b.y); } });
@@ -3321,6 +3338,20 @@ function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classL
   $('#tE').addEventListener('pointerdown',e=>{ e.preventDefault(); action(); });
   $('#tGrab').addEventListener('pointerdown',e=>{ e.preventDefault(); if(gunOut()) ARMS.aim=!ARMS.aim; else carryGrab(); });
   const tb=$('#tBrake'); tb.addEventListener('pointerdown',e=>{ e.preventDefault(); touchBrake=true; tb.classList.add('on'); }); for(const ev of ['pointerup','pointercancel','pointerleave']) tb.addEventListener(ev,()=>{ touchBrake=false; tb.classList.remove('on'); });
+  // the pedals: held down while your thumb is on them
+  for(const [id,k] of [['tGas','gas'],['tRev','rev']]){ const b=$('#'+id); b.addEventListener('pointerdown',e=>{ e.preventDefault(); DRV[k]=1; b.classList.add('on'); try{ b.setPointerCapture(e.pointerId); }catch(_){} });
+    for(const ev of ['pointerup','pointercancel','lostpointercapture']) b.addEventListener(ev,()=>{ DRV[k]=0; b.classList.remove('on'); }); }
+  // the arrows: one thumb can slide from one to the other without lifting
+  { const AL=$('#tLeft'), AR=$('#tRight'); let pid=null; const set=d=>{ DRV.l=d<0?1:0; DRV.r=d>0?1:0; AL.classList.toggle('on',d<0); AR.classList.toggle('on',d>0); };
+    const side=(x,y)=>{ const a=AL.getBoundingClientRect(), b=AR.getBoundingClientRect(); return Math.hypot(x-(a.left+a.right)/2,y-(a.top+a.bottom)/2)<Math.hypot(x-(b.left+b.right)/2,y-(b.top+b.bottom)/2)?-1:1; };
+    for(const [B,d] of [[AL,-1],[AR,1]]){ B.addEventListener('pointerdown',e=>{ e.preventDefault(); pid=e.pointerId; try{ B.setPointerCapture(pid); }catch(_){} set(d); });
+      B.addEventListener('pointermove',e=>{ if(e.pointerId===pid) set(side(e.clientX,e.clientY)); });
+      for(const ev of ['pointerup','pointercancel','lostpointercapture']) B.addEventListener(ev,e=>{ if(e.pointerId===pid){ pid=null; set(0); } }); } }
+  // the wheel: turn it round its middle like a real one (up to a turn and a half of lock either way shows, full lock at 90°)
+  { const W=$('#tWheel'); const ang=e=>{ const r=W.getBoundingClientRect(); return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))*180/Math.PI; };
+    W.addEventListener('pointerdown',e=>{ e.preventDefault(); DRV.wp=e.pointerId; DRV.wa=ang(e); DRV.w0=DRV.wr; W.classList.add('on'); try{ W.setPointerCapture(e.pointerId); }catch(_){} });
+    W.addEventListener('pointermove',e=>{ if(e.pointerId!==DRV.wp) return; let d=ang(e)-DRV.wa; d=((d+540)%360)-180; DRV.wa+=d; DRV.wr=clamp(DRV.w0+(DRV.wr-DRV.w0)+d,-120,120); DRV.w0=DRV.wr; });
+    for(const ev of ['pointerup','pointercancel','lostpointercapture']) W.addEventListener(ev,e=>{ if(e.pointerId!==DRV.wp) return; DRV.wp=null; W.classList.remove('on'); }); }
   $('#tHorn').addEventListener('pointerdown',e=>{ e.preventDefault(); horn(); hornHeard(); });
   $('#tRadio').addEventListener('pointerdown',e=>{ e.preventDefault(); radioPress(); });
   // a quick tap is held for a few frames, so the game always sees it
@@ -3461,7 +3492,7 @@ function updateWalk(dt,inside){
   if(hero) crTick(dt,player.speed);
   rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw;
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
-function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
+function updateDrive(dt){ drvTick(dt); const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
   if(v.type==='skate'){ updateSkate(dt); return; }
   const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker'||v.type==='v_tipper', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
