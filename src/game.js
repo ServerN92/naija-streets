@@ -695,6 +695,35 @@ GRA.drive=(x,z,pad=0)=>{ for(const k in GRA.sites){ const S=GRA.sites[k], q=GRA.
   if(WD.water) WD.water=WD.water.filter(w=>!GRA.in(w.p[0],w.p[1]));
   for(const k in WD.pois){ if(k==='place') continue; const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!GRA.in(q[0],q[1])); }
   WD.pois.place=WD.pois.place.filter(q=>!GRA.in(q[0],q[1])); WD.pois.place.push([-2150,-560,'Ikeja GRA']); }
+// ---- four gated estates like Banana Island: the 27 mansions of Pearl Haven (made in the user's Blender, lib/game_export.py)
+// on 244 x 452 m behind a wall. One stands just past the flyover by your tent, three more around town. Frame of an estate:
+// u along the road it faces, v from the road inside (the gate at v = VG). The grand gate, a boulevard with palms, three
+// streets and a back drive: 24 mansions on 52 x 48 m plots and 3 palaces on 76 x 60 m. A house costs ₦30M to ₦100M by its
+// type; the estate office at the gate sells the whole estate. The houses and streets under an estate go.
+const EST={W:244,D:452,VG:12,ROWS:[88,200,312],BACK:380,UC:[-93,-41,41,93],MC:[-82,0,82],PRICE:2.5e9,
+  STY:{S1:['Glass Modern',60e6],S2:['Grand Classic',40e6],S3:['Contemporary Wood',50e6],S4:['White and Gold Luxe',70e6],S5:['Mediterranean',45e6],
+    S6:['Dark Minimal',55e6],S7:['Courtyard Villa',35e6],S8:['Tropical Veranda Villa',30e6],S9:['Penthouse Mansion',90e6],S10:['Palace',100e6]},
+  LAY:[['S5','S6','S7','S8'],['S1','S2','S3','S4'],['S2','S4','S1','S3'],['S6','S8','S5','S7'],['S3','S1','S4','S2'],['S7','S5','S8','S6']],   // a row of four, gate side first
+  list:[{id:'A',name:'Pearl Haven Estate',gx:243,gz:-941,ry:-2.14},{id:'B',name:'Royal Palm Estate',gx:1460,gz:696,ry:-1.06},
+    {id:'C',name:'Emerald Gardens Estate',gx:-1401,gz:-1129,ry:-.08},{id:'D',name:'Diamond Court Estate',gx:-4409.7,gz:-614.7,ry:1.72}],plots:[],byId:{}};
+EST.at=(E,u,v)=>({x:E.gx+E.fx*u+E.nx*v,z:E.gz+E.fz*u+E.nz*v});
+EST.loc=(E,x,z)=>{ const dx=x-E.gx, dz=z-E.gz; return {u:dx*E.fx+dz*E.fz,v:dx*E.nx+dz*E.nz}; };
+EST.in=(x,z,pad=0)=>{ for(const E of EST.list){ const q=EST.loc(E,x,z); if(Math.abs(q.u)<EST.W/2+pad&&q.v>-pad&&q.v<EST.D+pad) return E; } return null; };
+EST.pt=(p,lx,lz)=>{ const c=Math.cos(p.ry), s=Math.sin(p.ry); return {x:p.x+lx*c+lz*s,z:p.z-lx*s+lz*c}; };   // a house's own point -> the world (its front looks down +z)
+EST.list.forEach((E,ei)=>{ E.nx=Math.sin(E.ry); E.nz=Math.cos(E.ry); E.fx=E.nz; E.fz=-E.nx; E.plots=[]; const c=EST.at(E,0,EST.D/2); E.cx=c.x; E.cz=c.z;
+  const add=(st,u,vf,face)=>{ const id=E.id+String(E.plots.length+1).padStart(2,'0'), o=EST.at(E,u,vf), ry=face>0?E.ry:E.ry+Math.PI;
+    const p={id,E,st,u,vf,face,x:o.x,z:o.z,ry,mega:st==='S9'||st==='S10',price:EST.STY[st][1],name:EST.STY[st][0]}; p.gate=EST.pt(p,0,2.6); E.plots.push(p); EST.plots.push(p); EST.byId[id]=p; };
+  EST.ROWS.forEach((Ys,r)=>[0,1].forEach(s=>{ const keys=EST.LAY[(r*2+s+ei*2)%6]; EST.UC.forEach((u,i)=>add(keys[ei%2?3-i:i],u,s?Ys+6:Ys-6,s?-1:1)); }));
+  EST.MC.forEach((u,i)=>add(i===1?'S10':'S9',u,EST.BACK+6,-1)); });
+{ const ine=(x,z,pad)=>!!EST.in(x,z,pad), nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const r=Math.max(WD.bld[i+2],WD.bld[i+3])/2; if(!ine(WD.bld[i],WD.bld[i+1],r+3)) for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb;
+  const ne=[]; for(let k=0;k<WD.edges.length;k+=7){ const a=WD.edges[k], b=WD.edges[k+1], x0=WD.nodes[a*2], z0=WD.nodes[a*2+1], x1=WD.nodes[b*2], z1=WD.nodes[b*2+1], n=Math.max(2,Math.ceil(Math.hypot(x1-x0,z1-z0)/5)); let hit=false;
+    for(let q=0;q<=n&&!hit;q++) if(ine(x0+(x1-x0)*q/n,z0+(z1-z0)*q/n,3)) hit=true; if(!hit) for(let q=0;q<7;q++) ne.push(WD.edges[k+q]); } WD.edges=ne;
+  const anyIn=(p,pad)=>{ for(let i=0;i<p.length;i+=2) if(ine(p[i],p[i+1],pad)) return true; return false; };
+  WD.areas=WD.areas.filter(a=>{ let x=0,z=0; const n=a.p.length/2; for(let i=0;i<a.p.length;i+=2){ x+=a.p[i]; z+=a.p[i+1]; } return !ine(x/n,z/n,10)&&!anyIn(a.p,2); });
+  if(WD.foot) WD.foot=WD.foot.filter(f=>{ const p=f.p||f; return !p||!p.length||!anyIn(p,2); });
+  if(WD.water) WD.water=WD.water.filter(w=>!anyIn(w.p,4));
+  for(const k in WD.pois){ const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!ine(q[0],q[1],6)); }
+  for(const E of EST.list){ const P=[[-1,0],[1,0],[1,1],[-1,1]].flatMap(([a,b])=>{ const q=EST.at(E,a*EST.W/2,b*EST.D); return [q.x,q.z]; }); WD.areas.push({k:'estate',p:P,n:E.name}); WD.pois.place.push([E.cx,E.cz,E.name]); } }
 water.visible=false; water.position.y=-40;   // no lagoon in Mushin
 // road classes: 0 expressway 1 trunk 2 primary 3 secondary 4 tertiary 5 unclassified 6 residential 7 living street 8 service lane 9 track
 const nodes=[]; for(let i=0;i<WD.nodes.length;i+=2) nodes.push({i:nodes.length,x:WD.nodes[i],z:WD.nodes[i+1],adj:[],wadj:[],out:[],ed:[],r:0,deg:0,ax:0,tl:false,tlo:0});
@@ -735,7 +764,7 @@ for(const d of DISTS){ const x0=d.x0-300, x1=-WB.x-300, z0=d.z0-300, z1=d.z1+300
 const AREAS=WD.areas.map(a=>({...a,pts:(()=>{ const o=[]; for(let i=0;i<a.p.length;i+=2) o.push([a.p[i],a.p[i+1]]); return o; })()}));
 function inPoly(pts,x,z){ let ins=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,zi]=pts[i],[xj,zj]=pts[j]; if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi+1e-12)+xi) ins=!ins; } return ins; }
 function areaAt(x,z,kinds){ for(const a of AREAS) if((!kinds||kinds.includes(a.k))&&inPoly(a.pts,x,z)) return a; return null; }
-const AREA_ACC={npcfarm:'lawn',pitch:'lawn',grassland:'lawn',scrub:'lawn',farmland:'lawn',park:'lawn',recreation_ground:'lawn',school:'sand',marketplace:'lot',retail:'lot',parking:'lot',fuel:'lot',hospital:'lawn'};
+const AREA_ACC={estate:'lawn',npcfarm:'lawn',pitch:'lawn',grassland:'lawn',scrub:'lawn',farmland:'lawn',park:'lawn',recreation_ground:'lawn',school:'sand',marketplace:'lot',retail:'lot',parking:'lot',fuel:'lot',hospital:'lawn'};
 for(const a of AREAS){ const k=AREA_ACC[a.k]; if(!k||a.pts.length<3) continue; const acc=A[k], y=.012;
   const contour=a.pts.map(([x,z])=>new THREE.Vector2(x,z)); let tris; try{ tris=THREE.ShapeUtils.triangulateShape(contour,[]); }catch(e){ continue; }
   for(const [i0,i1,i2] of tris){ let P0=a.pts[i0],P1=a.pts[i1],P2=a.pts[i2]; const cr=(P1[0]-P0[0])*(P2[1]-P0[1])-(P1[1]-P0[1])*(P2[0]-P0[0]); if(cr>0){ const t=P1; P1=P2; P2=t; }
@@ -803,6 +832,42 @@ const RAILS=WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([
   const em=ed.mesh(new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.9,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(em) scene.add(em); }
 
 const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emissive:0xffd08a,emissiveIntensity:0});
+// ---- the estates on the ground (see EST): the way in from the road, the boulevard's two carriageways round a planted median
+// with twin lamps, the streets and the back drive with walks and kerbs, the paved square at the gate, the wall all round with
+// pillars (solid where it stands), and the grand gate's solid parts (its model comes later, with the houses)
+{ const WH=new THREE.Color(1,1,1), WALC=new THREE.Color('#efe7d6'), PILC=new THREE.Color('#d8cbb2'), CAPC=new THREE.Color('#a99a80'), {VG,ROWS,BACK}=EST, HW=EST.W/2;
+  for(const E of EST.list){
+    const P=(u,v,y)=>{ const q=EST.at(E,u,v); return [q.x,y,q.z]; }, FN=[E.fx,0,E.fz], NN=[E.nx,0,E.nz], neg=a=>[-a[0],-a[1],-a[2]];
+    const q4=(acc,a,b,c,d,n,uv,col=WH)=>{ const e1=[b[0]-a[0],b[1]-a[1],b[2]-a[2]], e2=[c[0]-a[0],c[1]-a[1],c[2]-a[2]], cr=[e1[1]*e2[2]-e1[2]*e2[1],e1[2]*e2[0]-e1[0]*e2[2],e1[0]*e2[1]-e1[1]*e2[0]];
+      if(cr[0]*n[0]+cr[1]*n[1]+cr[2]*n[2]<0) acc.quad(a,d,c,b,n,[uv[0],uv[3],uv[2],uv[1]],col); else acc.quad(a,b,c,d,n,uv,col); };
+    // flat: a rectangle of ground; road: a strip of street (the picture runs along it, 11 m a repeat, across its width once)
+    const flat=(acc,u0,u1,v0,v1,y,s=4)=>q4(acc,P(u0,v0,y),P(u0,v1,y),P(u1,v1,y),P(u1,v0,y),[0,1,0],[[u0/s,v0/s],[u0/s,v1/s],[u1/s,v1/s],[u1/s,v0/s]]);
+    const roadU=(u0,u1,v0,v1)=>{ if(u1-u0<1) return; const L=(u1-u0)/11; q4(A.road2,P(u0,v0,RY),P(u0,v1,RY),P(u1,v1,RY),P(u1,v0,RY),[0,1,0],[[0,0],[0,1],[L,1],[L,0]]); };
+    const roadV=(u0,u1,v0,v1)=>{ if(v1-v0<1) return; const L=(v1-v0)/11; q4(A.road2,P(u1,v0,RY),P(u0,v0,RY),P(u0,v1,RY),P(u1,v1,RY),[0,1,0],[[0,0],[0,1],[L,1],[L,0]]); };
+    const box=(acc,u0,u1,v0,v1,y0,y1,col,s=2.5)=>{ const du=(u1-u0)/s, dv=(v1-v0)/s, dy=(y1-y0)/s;
+      q4(acc,P(u0,v0,y1),P(u0,v1,y1),P(u1,v1,y1),P(u1,v0,y1),[0,1,0],[[0,0],[0,dv],[du,dv],[du,0]],col);
+      q4(acc,P(u0,v0,y0),P(u1,v0,y0),P(u1,v0,y1),P(u0,v0,y1),neg(NN),[[0,0],[du,0],[du,dy],[0,dy]],col); q4(acc,P(u0,v1,y0),P(u1,v1,y0),P(u1,v1,y1),P(u0,v1,y1),NN,[[0,0],[du,0],[du,dy],[0,dy]],col);
+      q4(acc,P(u0,v0,y0),P(u0,v1,y0),P(u0,v1,y1),P(u0,v0,y1),neg(FN),[[0,0],[dv,0],[dv,dy],[0,dy]],col); q4(acc,P(u1,v0,y0),P(u1,v1,y0),P(u1,v1,y1),P(u1,v0,y1),FN,[[0,0],[dv,0],[dv,dy],[0,dy]],col); };
+    const solid=(u0,u1,v0,v1,h)=>{ const c=EST.at(E,(u0+u1)/2,(v0+v1)/2); addOB(c.x,c.z,(u1-u0)/2,(v1-v0)/2,-E.ry,h); };
+    const lipU=(u0,u1,v)=>box(A.curb,u0,u1,v-.1,v+.1,0,.12,WH,1), lipV=(v0,v1,u)=>box(A.curb,u-.1,u+.1,v0,v1,0,.12,WH,1);
+    // the way in and the square at the gate (plain asphalt round the gate island), then the boulevard between the junctions
+    flat(A.asph,-14.5,14.5,-9.5,34,RY+.002,8); flat(A.pave,-45,-14.5,VG,34,.028,2); flat(A.pave,14.5,45,VG,34,.028,2);
+    const cuts=[...ROWS,BACK], segs=[]; let v0=34; for(const Ys of cuts){ segs.push([v0,Ys-4]); v0=Ys+4; }
+    for(const [a,b] of segs){ const wa=a===34?34:a+2; for(const s of [-1,1]){ roadV(s<0?-12:4.5,s<0?-4.5:12,a,b); lipV(a,b,s*4.5); lipV(wa,b-2,s*12); flat(A.pave,s<0?-15:12,s<0?-12:15,wa,b-2,.028,2); } }
+    for(const Ys of cuts){ flat(A.asph,-12,12,Ys-4,Ys+4,RY+.002,8);
+      for(const s of [-1,1]){ const ua=s<0?-119:12, ub=s<0?-12:119; roadU(ua,ub,Ys-4,Ys+4);
+        for(const e of [-1,1]){ const w0=e<0?Ys-6:Ys+4, w1=e<0?Ys-4:Ys+6; flat(A.pave,s<0?-119:15,s<0?-15:119,w0,w1,.028,2); lipU(s<0?-119:12,s<0?-12:119,Ys+e*4); } } }
+    // lamps down the median
+    for(let v=46;v<BACK-8;v+=36){ if(cuts.some(Ys=>Math.abs(v-Ys)<10)) continue; const c=EST.at(E,0,v); LAMPS2.push([c.x,c.z,E.nx,E.nz]); addOB(c.x,c.z,.16,.16,0,10); }
+    // the wall all round, pillars every 6 m and a coping on top (the gate's wing walls close the front either side of the gate)
+    const runs=[[-HW,-37,VG,VG],[37,HW,VG,VG],[-HW,-HW,VG,EST.D],[HW,HW,VG,EST.D],[-HW,HW,EST.D,EST.D]];
+    for(const [u0,u1,va,vb] of runs){ const alongU=va===vb, L=alongU?u1-u0:vb-va, t=.2;
+      if(alongU){ box(A.fence,u0,u1,va-t,va+t,0,3,WALC); box(A.fence,u0-.05,u1+.05,va-t-.06,va+t+.06,3,3.12,CAPC); solid(u0,u1,va-t,va+t,3.2); }
+      else { box(A.fence,u0-t,u0+t,va,vb,0,3,WALC); box(A.fence,u0-t-.06,u0+t+.06,va-.05,vb+.05,3,3.12,CAPC); solid(u0-t,u0+t,va,vb,3.2); }
+      const n=Math.max(1,Math.round(L/6)); for(let i=0;i<=n;i++){ const k=i/n; if(alongU){ const u=u0+L*k; box(A.fence,u-.32,u+.32,va-.32,va+.32,0,3.35,PILC); } else { const v=va+L*k; box(A.fence,u0-.32,u0+.32,v-.32,v+.32,0,3.35,PILC); } } }
+    // the grand gate's solid parts: pylons, wing walls, gatehouses, the guard booth and the small pylon on the island, the urns
+    for(const s of [-1,1]){ solid(s*17-2.8,s*17+2.8,VG-2.8,VG+2.8,14); solid(Math.min(s*20,s*37),Math.max(s*20,s*37),VG-.3,VG+.3,4); solid(s*27-5.2,s*27+5.2,VG+2.8,VG+10.2,4.4); solid(s*21-1.1,s*21+1.1,VG-5.1,VG-2.9,1.8); }
+    solid(-1.4,1.4,VG+2.3,VG+5.7,3.3); solid(-.8,.8,VG-9.8,VG-8.2,4.8); } }
 // ---- like the Blender scene: open concrete gutters along the town streets (dark, damp channels between two lips) and a concrete
 // median barrier along the expressways (on the inner edge of each carriageway; a centre barrier where one road carries both ways)
 { const gc=new Acc(), lip=new Acc(), bar=new Acc(), paint=new Acc(), GC=new THREE.Color('#2a2620'), LC=new THREE.Color('#b9b2a5'), BC=new THREE.Color('#d6d2c8'), YC=new THREE.Color('#e3b21c'), WC2=new THREE.Color('#ecebe6'), up=[0,1,0];
@@ -876,7 +941,7 @@ function obWalls(acc,K,y0,y1,tw,th,u0,v0,col){ let u=u0; for(let i=0;i<4;i++){ c
 function obTop(acc,K,y,col,ts=8){ acc.quad([K[0][0],y,K[0][1]],[K[1][0],y,K[1][1]],[K[2][0],y,K[2][1]],[K[3][0],y,K[3][1]],[0,1,0],K.map(p=>[p[0]/ts,-p[1]/ts]),col); }
 // rectangles that must stay clear (your house, the hotel, the police station, the motor park, footbridge stairs)
 const KEEP=[];
-const SCAT_OFF=[];   // paved or built-over ground where no grass tufts or stones grow: {x,z,ry,hw,hd}
+const SCAT_OFF=EST.list.map(E=>({x:E.cx,z:E.cz,ry:E.ry,hw:EST.W/2,hd:EST.D/2}));   // paved or built-over ground where no grass tufts or stones grow: {x,z,ry,hw,hd} (the estates' kept lawns too)
 const scatOff=(x,z)=>SCAT_OFF.some(r=>{ const dx=x-r.x, dz=z-r.z, c=Math.cos(r.ry), s=Math.sin(r.ry); return Math.abs(dx*c-dz*s)<r.hw&&Math.abs(dx*s+dz*c)<r.hd; });
 function rectHit(b,r){ // two turned rectangles overlap? (separating axis test)
   const A1=bCorners(b), B1=obCorners(r.cx,r.cz,r.hw,r.hd,Math.cos(r.ang),Math.sin(r.ang));
@@ -964,7 +1029,7 @@ const FLYOVERS=[];
 { const near=(x,z,list,d)=>list.some(o=>Math.hypot(o.cx-x,o.cz-z)<d);
   const cands=ROADS.filter(e=>e.c<=2&&e.len>=110).sort((a,b)=>b.len-a.len);
   for(const e of cands){ if(FLYOVERS.length>=2) break; const A0=nodes[e.a], L=Math.min(130,e.len-14), t=e.len/2, cx=A0.x+e.fx*t, cz=A0.z+e.fz*t, rx=-e.fz, rz=e.fx;
-    if(near(cx,cz,FOOTB,140)||near(cx,cz,FLYOVERS,700)||(HOME&&Math.hypot(HOME.cx-cx,HOME.cz-cz)<180)) continue;
+    if(near(cx,cz,FOOTB,140)||near(cx,cz,FLYOVERS,700)||(HOME&&Math.hypot(HOME.cx-cx,HOME.cz-cz)<180)||EST.in(cx,cz,60)) continue;   // (no camp against an estate's wall)
     let l0=-e.hw, l1=e.hw; for(let sd=e.hw;sd<40;sd+=.5){ if(roadAt(cx+rx*sd,cz+rz*sd,.2)) l1=sd; else if(sd>l1+3) break; } for(let sd=e.hw;sd<40;sd+=.5){ if(roadAt(cx-rx*sd,cz-rz*sd,.2)) l0=-sd; else if(sd>-l0+3) break; }
     const V0=l0-5.5, V1=l1+5.5, ang=Math.atan2(e.fz,e.fx);
     // no crossing road may run through the camp strips
@@ -1196,7 +1261,7 @@ class CullSet{ // levels: [{geo,mat,dist,shadow}] sorted by dist ; items: {x,y,z
     for(const C of this.cells){ const cdx=C.x-cx, cdz=C.z-cz, cd=Math.sqrt(cdx*cdx+cdz*cdz); if(cd-C.r>maxD) continue;
       if(cd-C.r>sd){ _sph.center.set(C.x,C.y,C.z); _sph.radius=C.r+4; if(!_fr.intersectsSphere(_sph)) continue; }
       const inner=cd+C.r<sd;
-      for(const it of C.list){ const dx=it.wx-cx, dz=it.wz-cz, d=Math.sqrt(dx*dx+dz*dz)-it.r; if(d>maxD) continue;
+      for(const it of C.list){ if(it.off) continue; const dx=it.wx-cx, dz=it.wz-cz, d=Math.sqrt(dx*dx+dz*dz)-it.r; if(d>maxD) continue;
         if(!inner&&d>sd){ _sph.center.set(it.wx,it.cy??it.y,it.wz); _sph.radius=it.r; if(!_fr.intersectsSphere(_sph)) continue; }
         let l=0; while(l<n-1&&d>L[l].dist) l++; if(cnt[l]>=this.cap) continue;
         ms[l].instanceMatrix.array.set(it.m,cnt[l]*16); if(this.col){ const a=ms[l].instanceColor.array, j=cnt[l]*3; a[j]=it.col.r; a[j+1]=it.col.g; a[j+2]=it.col.b; } cnt[l]++; } }
@@ -1271,7 +1336,7 @@ function setMerge(root,{detail=SET_DETAIL,lift=null}={}){ root.updateMatrixWorld
       const mesh=new THREE.Mesh(geo,m); mesh.castShadow=!m.transparent; mesh.receiveShadow=true; mesh.layers.set(1); grp.add(mesh); } return grp; };
   return {far:mk(far),near:mk(near),geos:all}; }
 // walls and furniture -> collision boxes (set-local coordinates, placed at x,z turned ry)
-function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3}={}){ const bb=new THREE.Box3(); for(const g of geos){ g.computeBoundingBox(); bb.union(g.boundingBox); }
+function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3,out=null}={}){ const bb=new THREE.Box3(); for(const g of geos){ g.computeBoundingBox(); bb.union(g.boundingBox); }
   const X0=bb.min.x, Z0=bb.min.z, gw=Math.ceil((bb.max.x-X0)/cs)+1, gd=Math.ceil((bb.max.z-Z0)/cs)+1, grid=new Uint8Array(gw*gd), P=new THREE.Vector3();
   for(const g of geos){ const a=g.attributes.position, n=a.count/3; for(let t=0;t<n;t++){ let ax=1e9,bx=-1e9,ay=1e9,by=-1e9,az=1e9,bz=-1e9;
       for(let k=0;k<3;k++){ P.fromBufferAttribute(a,t*3+k); if(P.x<ax) ax=P.x; if(P.x>bx) bx=P.x; if(P.y<ay) ay=P.y; if(P.y>by) by=P.y; if(P.z<az) az=P.z; if(P.z>bz) bz=P.z; }
@@ -1282,7 +1347,7 @@ function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3}={}){ const bb=new TH
   for(let j=0;j<gd;j++) for(let i=0;i<gw;i++){ if(!grid[j*gw+i]||used[j*gw+i]) continue; let i1=i; while(i1+1<gw&&grid[j*gw+i1+1]&&!used[j*gw+i1+1]) i1++;
     let j1=j; for(;;){ const jn=j1+1; if(jn>=gd) break; let ok=true; for(let q=i;q<=i1;q++) if(!grid[jn*gw+q]||used[jn*gw+q]){ ok=false; break; } if(!ok) break; j1=jn; }
     for(let jj=j;jj<=j1;jj++) for(let q=i;q<=i1;q++) used[jj*gw+q]=1;
-    const lx=X0+(i+i1+1)/2*cs, lz=Z0+(j+j1+1)/2*cs; addOB(x+lx*c+lz*s,z-lx*s+lz*c,(i1-i+1)*cs/2,(j1-j+1)*cs/2,-ry,h); nb++; }
+    const lx=X0+(i+i1+1)/2*cs, lz=Z0+(j+j1+1)/2*cs; if(out) out.push([lx,lz,(i1-i+1)*cs/2,(j1-j+1)*cs/2]); else addOB(x+lx*c+lz*s,z-lx*s+lz*c,(i1-i+1)*cs/2,(j1-j+1)*cs/2,-ry,h); nb++; }
   return nb; }
 const SETS=[];
 // a set at (x,z) turned ry: loads when you come within `near` metres; `onLoad(set)` adds the extras (people, doors, planes)
@@ -1718,7 +1783,7 @@ function plantTrees(kind,items,dist){ const t=TREES[kind]; new CullSet([{geo:t.g
   new CullSet([{geo:TREE_SHADE.geo,mat:TREE_SHADE.mat,dist:Math.min(dist,Q.draw*.45),shadow:false}],items.map(it=>({x:it.x,y:(it.y??SLAB)+.03,z:it.z,sx:t.W*.62*it.sx,sy:1,sz:t.W*.62*it.sx})),{shadowDist:0,name:kind+'-shade'}); }
 
 // trees: along the streets wherever a house leaves room, more in schools, the hospital grounds and the parks
-{ const trees=[], palms=[]; const free=(x,z,r)=>onLand(x,z,2)&&!roadAt(x,z,.4)&&!resolveCircle({x,z},r);
+{ const trees=[], palms=[]; const free=(x,z,r)=>onLand(x,z,2)&&!roadAt(x,z,.4)&&!EST.in(x,z,10)&&!resolveCircle({x,z},r);   // (the estates keep their fronts clear)
   for(const e of ROADS){ if(e.c>6||e.c===0) continue; const A0=nodes[e.a], step0=e.c<=3?16:30;
     for(let t=A0.r+6;t<e.len-6;t+=rr(step0,step0*1.6)) for(const sd of [-1,1]){ if(R()<.45) continue; const o=e.hw+rr(1.3,2.4), x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
       if(Math.hypot(x-APT.front.x,z-APT.front.z)<6||!free(x,z,1.1)) continue; (e.c<=3&&R()<.5?palms:trees).push({x,y:0,z,ry:R()*6,sx:rr(.75,1.1),sy:rr(.8,1.15),sz:rr(.75,1.1)}); } }
@@ -2085,9 +2150,11 @@ APT.step=(()=>{ for(const k of [2.8,2.2,1.6,1.2]){ const x=APT.front.x+APT.nx*k,
 const LIFE_V=1, START_CASH=1000, FLAT_PRICE=650000, RENT_OPTS=[[1,3000],[3,8000],[7,17000]], EASE_S=40*60, DAY_S=CLOCK.DAY_MINUTES*60;   // a game day in seconds of play
 const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:10000,ankara:15000,kaftan:20000,senator:30000,suit:50000,
   joggers:5000,night:6000,jeans:7000,fitness:7500,bodycon:12000,club:15000,gown:18000,iro_buba:25000,office:40000};
-const freshLife=()=>({v:LIFE_V,home:'tent',rent:0,rented:0,flat:false,own:['rags'],ease:0,t:Date.now()});
+const freshLife=()=>({v:LIFE_V,home:'tent',rent:0,rented:0,flat:false,own:['rags'],ease:0,est:[],estAll:[],estHome:'',t:Date.now()});
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
-  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),t:+d.t||0,u:d.u}; }
+  const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
+  const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
+  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),est,estAll,estHome,t:+d.t||0,u:d.u}; }
 const lifeRead=k=>{ try{ return lifeClean(JSON.parse(localStorage.getItem(k)||'null')); }catch(e){ return null; } };
 let LIFE=lifeRead('naija-life')||freshLife();
 const homeNow=()=>LIFE.flat?'flat':LIFE.rent>0?'room':'tent';
@@ -2098,7 +2165,11 @@ const ROOMLET=(()=>{ const L=houseInst.faceme, M=MODELS.faceme; if(!L||!L.length
   const c=cand[0]; if(!c) return null; const sd=[c.f[1],-c.f[0]], w=M.W*c.h.sx/2;
   return {...c,out:{x:c.door.x,z:c.door.z,ry:c.h.ry},landlord:{x:c.door.x+sd[0]*Math.min(3,w*.4),z:c.door.z+sd[1]*Math.min(3,w*.4),ry:c.h.ry}}; })();
 // where you are when the game starts: in front of your home
-function homeSpot(h=homeNow()){ if(h==='flat'||!LIFEC||!LIFEC.tentDoor) return {x:APT.step.x,z:APT.step.z,ry:APT.ry};
+// a house of yours in an estate made your home: inside your gate, on the drive, looking at the house
+const estOwns=id=>!!id&&!!EST.byId[id]&&(LIFE.est.includes(id)||LIFE.estAll.includes(id[0]));
+function estHomeSpot(){ const p=EST.byId[LIFE.estHome]; if(!p||!estOwns(p.id)) return null; const w=EST.pt(p,0,-2.6); return {x:w.x,z:w.z,ry:p.ry+Math.PI}; }
+function homeSpot(h=homeNow()){ if(!arguments.length){ const e=estHomeSpot(); if(e) return e; }
+  if(h==='flat'||!LIFEC||!LIFEC.tentDoor) return {x:APT.step.x,z:APT.step.z,ry:APT.ry};
   if(h==='room'&&ROOMLET) return {...ROOMLET.out};
   const d=LIFEC.tentDoor; return {x:d.x,z:d.z,ry:LIFEC.tent.ry}; }
 const HOME0=homeSpot();
@@ -2954,7 +3025,7 @@ const mm=$('#mm'), mg=mm.getContext('2d');
 // the whole map as one picture for the big map (sharp detail is drawn on top when you zoom in)
 const MMB={x0:Math.min(-WB.x-20,...DISTS.map(d=>d.x0-20)),z0:AIRPORT?AIRPORT.RZ-140:-WB.z-20,x1:TMB?TMB.xBlock+260:WB.x+20,z1:Math.max(WB.z+20,...DISTS.map(d=>d.z1+20)),ppm:.45}; let mmCache=null;   // the map reaches the airport and the bridge
 const COND_COL={good:'#8d939e',bad:'#7b7468',dirt:'#9a6440'};
-const AREA_COL={gra:'#2a4630',npcfarm:'#2c4a30',pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
+const AREA_COL={gra:'#2a4630',estate:'#2d4c34',npcfarm:'#2c4a30',pitch:'#2c4a30',grassland:'#2c4a30',scrub:'#2c4a30',farmland:'#2c4a30',park:'#2c4a30',school:'#3a3550',marketplace:'#4a3a28',retail:'#4a3a28',parking:'#34383e',fuel:'#34383e',hospital:'#46303a',industrial:'#2f3134'};
 function buildMinimapCache(){ const W=Math.ceil((MMB.x1-MMB.x0)*MMB.ppm), H=Math.ceil((MMB.z1-MMB.z0)*MMB.ppm); mmCache=document.createElement('canvas'); mmCache.width=W; mmCache.height=H;
   const g=mmCache.getContext('2d',{willReadFrequently:true}); g.fillStyle='#1f2226'; g.fillRect(0,0,W,H); g.scale(MMB.ppm,MMB.ppm); g.translate(-MMB.x0,-MMB.z0); drawWorldMap(g,MMB.x0,MMB.z0,MMB.x1,MMB.z1,true); }
 // draw the city (areas, buildings, roads, railway) into a 2D canvas already set to world metres
@@ -2975,6 +3046,9 @@ function drawExtras(g){
   const rot=(r,u0,u1,v0,v1,fill)=>{ const c=Math.cos(r.ry), sn=Math.sin(r.ry), P=(u,v)=>[r.x+u*c+v*sn,r.z-u*sn+v*c]; g.fillStyle=fill; g.beginPath(); [[u0,v0],[u1,v0],[u1,v1],[u0,v1]].forEach(([u,v],i)=>{ const [x,z]=P(u,v); i?g.lineTo(x,z):g.moveTo(x,z); }); g.closePath(); g.fill(); };
   if(STADIUM){ rot(STADIUM,-60,60,-46,46,'#8d8a84'); rot(STADIUM,-54,54,-38,38,'#b5523b'); rot(STADIUM,-46,46,-30,30,'#3f8f3a'); }   // stands, track, pitch
   if(PITCH){ rot(PITCH,-35,35,-23,23,'#e8e8e0'); rot(PITCH,-33,33,-21,21,'#4c9a3f'); }
+  for(const E of EST.list){ const r={x:E.gx,z:E.gz,ry:E.ry};   // the estates: streets and the houses on their plots
+    rot(r,-12,12,-9.5,EST.BACK+4,'#b9bec6'); for(const Y of [...EST.ROWS,EST.BACK]) rot(r,-119,119,Y-4,Y+4,'#b9bec6');
+    for(const p of E.plots){ const c={x:p.x,z:p.z,ry:p.ry}; rot(c,p.mega?-14.5:-13,p.mega?14.5:13,p.mega?-39:-34,p.mega?-14:-12,'#454a52'); } }
   for(const fo of FLYOVERS){ const vm=(fo.V0+fo.V1)/2; rot({x:fo.cx+fo.rx*vm,z:fo.cz+fo.rz*vm,ry:Math.atan2(-fo.fz,fo.fx)},-fo.L/2,fo.L/2,-(fo.V1-fo.V0)/2,(fo.V1-fo.V0)/2,'rgba(150,146,140,.85)'); }
   if(TMB){ g.fillStyle='#1d3846'; g.fillRect(SHORE_X,-WB.z-400,TMB.xBlock+2000-SHORE_X,2*WB.z+800);
     g.fillStyle='#4a4d52'; g.fillRect(TMB.xEnd,TMB.z-700,900,1400);
@@ -8041,6 +8115,119 @@ PLACES.push({name:'NAIJA MOTORS',sub:'Car showroom · Ikeja GRA · brand new and
   {name:'Adunni\'s Fashion House',sub:'Boutique and tailor · Ikeja GRA',kind:'shop',x:GRA.sites.boutique.x,z:GRA.sites.boutique.z},
   {name:'Baba Sule Mechanic',sub:'Mechanic · fix your car · Ikeja GRA',kind:'service',x:GRA.sites.garage.x,z:GRA.sites.garage.z},
   {name:'Eko Grand Golf Course',sub:'Golf · Eko Grand Hotel',kind:'place',x:gp('hotel',100,30).x,z:gp('hotel',100,30).z,minor:true});
+/* ---- the estates (see EST): the mansions, their plot gates and the palms load when you come near (est_S1..S10.glb, a lighter
+   _lod1 for far away, est_gate.glb, est_styles.json: sizes, doors and palms of every house type). The palette colours become
+   vertex colours, so every house type draws with the same five materials. FOR SALE boards on the plots; the estate office in
+   the gatehouse. Buy a house (₦30M to ₦100M by its type) and its gate opens for you; buy the whole estate at the office. */
+const ESTM={st:0,J:null,mat:null,styles:{},palms:[]}, EST_KINDS=['solid','gloss','metal','water','glow'];
+function estMats(){ if(ESTM.mat) return ESTM.mat; const sm=o=>new THREE.MeshStandardMaterial({vertexColors:true,...o});
+  return ESTM.mat={solid:sm({roughness:.82,metalness:0}),gloss:sm({roughness:.3,metalness:.05}),metal:sm({roughness:.24,metalness:.85,envMapIntensity:1.3}),
+    water:sm({roughness:.04,metalness:.1,transparent:true,opacity:.66,depthWrite:false}),glow:sm({roughness:.5,emissive:0xffe2b8,emissiveIntensity:0})}; }
+const _estPal=new Map();
+function estPal(tex){ if(!tex||!tex.image) return null; if(_estPal.has(tex)) return _estPal.get(tex); let f=null;
+  try{ const im=tex.image, w=im.width, h=im.height, [,g]=cv(w,h); g.drawImage(im,0,0); const d=g.getImageData(0,0,w,h).data, C=new THREE.Color();
+    f=(u,v,o)=>{ u-=Math.floor(u); v-=Math.floor(v); const i=(Math.min(h-1,(v*h)|0)*w+Math.min(w-1,(u*w)|0))*4; C.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255,THREE.SRGBColorSpace); o[0]=C.r; o[1]=C.g; o[2]=C.b; }; }
+  catch(e){ console.warn('estate palette',e); } _estPal.set(tex,f); return f; }
+const estKind=m=>{ const e=m.emissive; if(e&&e.r+e.g+e.b>.3) return 'glow'; if(m.transparent||m.opacity<.9) return 'water'; if(m.metalness>=.5) return 'metal'; if(m.roughness<.4) return 'gloss'; return 'solid'; };
+// a model -> {GR,GD,GT}: per material kind, the pieces in the model's own frame with their colours on the corners
+function estGeo(root){ root.updateMatrixWorld(true); const out={GR:{},GD:{},GT:{}}, o3=[0,0,0];
+  root.traverse(o=>{ if(!o.isMesh) return; let top=o; while(top.parent&&top.parent!==root) top=top.parent; const nm=top.name||o.name, B=out[/^GT_/.test(nm)?'GT':/^GD_/.test(nm)?'GD':'GR'];
+    const ms=[].concat(o.material), g=o.geometry, groups=g.groups.length?g.groups:[{start:0,count:g.index?g.index.count:g.attributes.position.count,materialIndex:0}];
+    for(const gr of groups){ const m=ms[gr.materialIndex]||ms[0]; let sub=g; if(groups.length>1){ sub=g.clone(); sub.clearGroups(); if(g.index) sub.setIndex(Array.from(g.index.array.slice(gr.start,gr.start+gr.count))); }
+      const w=floatGeo(sub.index?sub.toNonIndexed():sub.clone()); w.applyMatrix4(o.matrixWorld); if(!w.attributes.normal) w.computeVertexNormals();
+      const n=w.attributes.position.count, col=new Float32Array(n*3), k=estKind(m), pal=k==='glow'?null:estPal(m.map), uv=w.attributes.uv, c=k==='glow'?m.emissive:m.color;
+      for(let i=0;i<n;i++){ if(pal&&uv) pal(uv.getX(i),uv.getY(i),o3); else { o3[0]=o3[1]=o3[2]=1; } col[i*3]=o3[0]*c.r; col[i*3+1]=o3[1]*c.g; col[i*3+2]=o3[2]*c.b; }
+      for(const a of Object.keys(w.attributes)) if(a!=='position'&&a!=='normal') w.deleteAttribute(a); w.setAttribute('color',new THREE.BufferAttribute(col,3));
+      (B[k]||(B[k]=[])).push(w); } });
+  return out; }
+// pieces -> one geometry with a group per material kind (a CullSet level)
+function estMerge(parts){ const M=estMats(), geos=[], mats=[]; for(const k of EST_KINDS){ const L=parts.flatMap(p=>p[k]||[]); if(!L.length) continue; const g=mergeGeometries(L,false); if(g){ geos.push(g); mats.push(M[k]); } }
+  if(!geos.length) return null; let geo; if(geos.length>1) geo=mergeGeometries(geos,true); else { geo=geos[0]; geo.clearGroups(); geo.addGroup(0,geo.attributes.position.count,0); }
+  geo.computeBoundingSphere(); return {geo,mat:mats}; }
+function estStyle(k,g0,g1){ const P=estGeo(g0.scene), P1=g1?estGeo(g1.scene):null, L0=estMerge([P.GR,P.GD]), L1=estMerge([P.GR]), L2=P1&&estMerge([P1.GR]), GT=estMerge([P.GT]);
+  const plots=EST.plots.filter(p=>p.st===k); if(!L0||!plots.length) return; const items=()=>plots.map(p=>({x:p.x,y:0,z:p.z,ry:p.ry,sc:1,plot:p}));
+  const lv=[{...L0,dist:Math.min(150,Q.lod0*1.5),shadow:true},{...L1,dist:Q.draw*.8,shadow:false}]; if(L2) lv.push({...L2,dist:Q.draw*1.3,shadow:false});
+  new CullSet(lv,items(),{shadowDist:Q.shR,name:'est_'+k});
+  const S=ESTM.styles[k]={k,boxes:[],gboxes:[]}; setColliders(EST_KINDS.flatMap(q=>P.GR[q]||[]),0,0,0,{cs:.35,out:S.boxes});
+  if(GT){ const C=new CullSet([{...GT,dist:Q.draw*.7,shadow:true}],items(),{shadowDist:Q.shR,name:'est_gt_'+k}); for(const it of C.items) it.plot.gateIt=it;
+    setColliders(EST_KINDS.flatMap(q=>P.GT[q]||[]),0,0,0,{cs:.35,out:S.gboxes}); } }
+function estGateModel(g){ const P=estGeo(g.scene), L=estMerge([P.GR,P.GD,P.GT]); if(!L) return;
+  new CullSet([{...L,dist:Q.draw*1.4,shadow:true}],EST.list.map(E=>{ const o=EST.at(E,0,EST.VG); return {x:o.x,y:0,z:o.z,ry:E.ry+Math.PI,sc:1}; }),{shadowDist:Q.shR,name:'est_gate'}); }
+// palms: in the gardens of every house, down the median, along the green belts between the plots, outside the wall, by the gate
+function estPalms(){ const J=ESTM.J, R=mulberry32(5150);
+  for(const E of EST.list){ const L=E.palms=[], add=(x,z,y,sc)=>L.push({x,y:y||0,z,ry:R()*6.28,sc:sc*(.9+R()*.2)}), at=(u,v,sc=1)=>{ const q=EST.at(E,u,v); add(q.x,q.z,0,sc); }, cuts=[...EST.ROWS,EST.BACK];
+    for(const p of E.plots){ const S=J&&J.styles[p.st]; if(S) for(const [,lx,lz,y,,sc] of S.palms){ const w=EST.pt(p,lx,lz); add(w.x,w.z,y,sc||1); } }
+    for(let v=40,i=0;v<EST.BACK-8;v+=12,i++){ if(!cuts.some(Y=>Math.abs(v-Y)<9)) at(i%2?1.9:-1.9,v,1.05); }
+    for(const v of [144,256,370]) for(let u=20;u<EST.W/2-4;u+=14){ at(u,v); at(-u,v); }
+    for(let u=44;u<EST.W/2-5;u+=13){ at(u,5,.95); at(-u,5,.95); }
+    for(const q of (J&&J.gate&&J.gate.palms)||[]){ const w=EST.at(E,-q[1],EST.VG-q[2]); add(w.x,w.z,q[3],q[5]||.6); } }
+  const all=EST.list.flatMap(E=>E.palms); if(all.length) palmLevels().then(L=>new CullSet(L,all,{shadowDist:Q.shR,name:'est_palms'})).catch(e=>console.warn('estate palms',e)); }
+// what you bump into (only for an estate you come near): the houses' walls, the plot gates (open when the house is yours), the palms
+function estSolid(E){ E.cols=true;
+  for(const p of E.plots){ const S=ESTM.styles[p.st]; if(!S) continue; const c=Math.cos(p.ry), s=Math.sin(p.ry), put=([lx,lz,hx,hz],h)=>addOB(p.x+lx*c+lz*s,p.z-lx*s+lz*c,hx,hz,-p.ry,h);
+    for(const b of S.boxes) put(b,3); p.gcols=S.gboxes.map(b=>put(b,2.6)); }
+  for(const q of E.palms||[]) addOB(q.x,q.z,.24,.24,0,8); estOwned(); }
+function estLoad(){ ESTM.st=1; const ju='assets/models/est_styles.json', jv=AV[ju]||MANIFEST[ju];
+  const glb=n=>{ const u=murl(n); DL.exp[u]=MANIFEST[`assets/models/${n}.glb`]||1.2e5; return fetchBuf(u).then(b=>GLL.parseAsync(b,'')); };
+  fetch(jv?ju+'?v='+jv:ju).then(r=>{ if(!r.ok) throw new Error('est_styles '+r.status); return r.json(); }).then(J=>{ ESTM.J=J;
+    return Promise.all([...Object.keys(EST.STY).map(k=>Promise.all([glb('est_'+k),glb('est_'+k+'_lod1').catch(()=>null)]).then(([a,b])=>estStyle(k,a,b)).catch(e=>console.warn('estate house',k,e))),
+      glb('est_gate').then(estGateModel).catch(e=>console.warn('estate gate',e))]); })
+    .then(()=>{ ESTM.st=2; estPalms(); estDoors(); estOwned(); }).catch(e=>{ console.warn('estates',e); ESTM.st=3; }); }
+// the boards in front of the plots: FOR SALE and the price, or YOUR HOUSE (redrawn when you buy)
+const EST_BOARD=new Map(), EST_POST=new THREE.MeshStandardMaterial({color:0x2b2d31,roughness:.6,metalness:.3});
+const estShort=n=>n>=1e9?'₦'+(n/1e9).toFixed(n%1e9?1:0)+'B':'₦'+Math.round(n/1e6)+'M';
+function estBoards(E){ if(E.board){ scene.remove(E.board); E.board.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
+  const g=new THREE.Group(), by=new Map(), posts=[];
+  for(const p of E.plots){ const own=estOwns(p.id), key=own?'own':'sale'+p.price; if(!EST_BOARD.has(key)) EST_BOARD.set(key,new THREE.MeshBasicMaterial({map:own?texSign('YOUR HOUSE\nWELCOME HOME','#1f5130','#f2c94c',2.8,1.4):texSign('FOR SALE\n'+estShort(p.price),'#b3261e','#ffffff',2.8,1.4),toneMapped:false}));
+    const c=EST.pt(p,-7.5,.7), b=new THREE.PlaneGeometry(2.8,1.4); b.rotateY(p.ry); b.translate(c.x,2.15,c.z); (by.get(key)||by.set(key,[]).get(key)).push(b);
+    const back=new THREE.BoxGeometry(2.86,1.46,.05); back.rotateY(p.ry); const cb=EST.pt(p,-7.5,.67); back.translate(cb.x,2.15,cb.z); posts.push(back);
+    for(const dx of [-1.25,1.25]){ const q=EST.pt(p,-7.5+dx,.64), pg=new THREE.BoxGeometry(.09,2.2,.09); pg.rotateY(p.ry); pg.translate(q.x,1.1,q.z); posts.push(pg); } }
+  for(const [k,L] of by){ const m=new THREE.Mesh(mergeGeometries(L),EST_BOARD.get(k)); m.layers.set(1); g.add(m); }
+  const pm=new THREE.Mesh(mergeGeometries(posts),EST_POST); pm.castShadow=true; pm.layers.set(1); g.add(pm); g.visible=false; scene.add(g); E.board=g; }
+const estPaid=E=>E.plots.filter(p=>LIFE.est.includes(p.id)).reduce((a,p)=>a+p.price,0);
+const estWhole=E=>Math.max(EST.PRICE*.2,EST.PRICE-estPaid(E));
+const estWhat=p=>{ const S=ESTM.J&&ESTM.J.styles[p.st]; return `${S?S.floors>1?S.floors+'-storey mansion':'bungalow mansion':'Mansion'} on a ${p.mega?'76 × 60':'52 × 48'} m plot · ${S&&S.walled===false?'open lawn':'walled compound with gatehouse'} · pool · boys' quarters`; };
+// ownership shows: the plot gates open, the boards change, the map knows your houses
+function estOwned(){ for(const p of EST.plots){ const own=estOwns(p.id); if(p.gateIt) p.gateIt.off=own; if(p.gcols) for(const c of p.gcols) c.h=own?-1:2.6; }
+  for(const E of EST.list){ const n=E.plots.filter(p=>estOwns(p.id)).length, all=LIFE.estAll.includes(E.id), vis=E.board&&E.board.visible; if(E.boardN!==n+(all?100:0)){ E.boardN=n+(all?100:0); estBoards(E); E.board.visible=!!vis; }
+    if(E.place){ E.place.kind=n?'home':'place'; E.place.sub=all?'Your estate · all 27 houses':n?`You own ${n} house${n>1?'s':''} here · houses ${estShort(30e6)}–${estShort(100e6)}`:`Gated estate · 27 houses ${estShort(30e6)}–${estShort(100e6)}`; }
+    for(const m of E.marks||[]) doorMarkText(m,all?'YOUR ESTATE · OFFICE':'ESTATE OFFICE · HOUSES FOR SALE'); }
+  const h=EST.byId[LIFE.estHome]; if(h&&estOwns(h.id)){ Object.assign(EST.homePl,{x:h.gate.x,z:h.gate.z,sub:`${h.name} · house ${h.id} · ${h.E.name}`}); if(!PLACES.includes(EST.homePl)) PLACES.push(EST.homePl); }
+  else { const i=PLACES.indexOf(EST.homePl); if(i>=0) PLACES.splice(i,1); } }
+EST.homePl={name:'Your mansion',sub:'',kind:'home',x:0,z:0};
+function estBuy(p){ if(!LIFE.est.includes(p.id)) LIFE.est.push(p.id); const first=!LIFE.estHome; if(first) LIFE.estHome=p.id; lifeSave(true); estOwned(); closeMenu();
+  toast(`House ${p.id} is yours! ${p.name}, ${p.E.name}. The gate opens for you${first?' and this is now your home':''}. Welcome!`,5); }
+function estBuyAll(E){ if(!LIFE.estAll.includes(E.id)) LIFE.estAll.push(E.id); LIFE.est=LIFE.est.filter(id=>id[0]!==E.id); if(!LIFE.estHome) LIFE.estHome=E.plots[E.plots.length-2].id;
+  lifeSave(true); estOwned(); toast(`${E.name} is yours! All 27 houses, the gate and the streets. Security salutes you, Chairman.`,5.5); }
+function plotMenu(p){ const E=p.E;
+  openMenu(p.name.toUpperCase(),`House ${p.id} · ${E.name}`,()=>{ if(estOwns(p.id)){ const home=LIFE.estHome===p.id; return [
+      {name:home?'This is your home':'Make this your home',sub:home?'You wake up here when you come back.':'Wake up here when you come back to the game.',btn:home?'Home':'Move in',off:home,act:()=>{ LIFE.estHome=p.id; lifeSave(true); estOwned(); toast(`House ${p.id} is your home now.`,3); }},
+      {name:'Your gate',sub:'It opens for you and your car. Security knows you.',btn:'OK',act:closeMenu}]; }
+    return [{name:'Buy this house',sub:estWhat(p),price:p.price,act:()=>estBuy(p)},
+      {name:'The estate office',sub:`At the gate: every house for sale here, or the whole estate for ${naira(estWhole(E))}`,btn:'OK',act:closeMenu}]; }); }
+function officeMenu(E){ openMenu('ESTATE OFFICE',`${E.name} · Agent: "Welcome, sir. The best address in Lagos."`,()=>{ const all=LIFE.estAll.includes(E.id), rows=[];
+    rows.push({name:all?'The whole estate is yours':'Buy the whole estate',sub:all?'27 houses, the gate, the streets and the palms. Every gate opens for you.':`All 27 houses with the gate, the streets and the palms${estPaid(E)?' (what you paid for your houses here comes off)':''}. Every gate opens for you.`,
+      price:all?0:estWhole(E),btn:all?'Yours':undefined,off:all,act:()=>estBuyAll(E)});
+    for(const k of Object.keys(EST.STY).sort((a,b)=>EST.STY[a][1]-EST.STY[b][1])){ const free=E.plots.filter(p=>p.st===k&&!estOwns(p.id)); if(!free.length) continue; const p=free[0];
+      rows.push({name:`${EST.STY[k][0]} · ${free.length} for sale`,sub:`House ${p.id} · ${estWhat(p)}`,price:EST.STY[k][1],act:()=>estBuy(p)}); }
+    return rows; }); }
+// the doors: each plot's gate (and the house's own door once its size is known), the estate office in both gatehouses
+for(const p of EST.plots) DOORS.push({x:p.gate.x,z:p.gate.z,r:3.2,label:()=>estOwns(p.id)?`Your house · ${p.name} (${p.id})`:`${p.name} for sale · ${naira(p.price)}`,act:()=>plotMenu(p)});
+function estDoors(){ for(const p of EST.plots){ const S=ESTM.J.styles[p.st]; if(!S||!S.door) continue; const w=EST.pt(p,S.door[0],S.door[1]+2.2);
+  DOORS.push({x:w.x,z:w.z,r:3,label:()=>estOwns(p.id)?`Your house · ${p.name}`:`${p.name} · for sale ${naira(p.price)}`,act:()=>plotMenu(p)}); } }
+for(const E of EST.list){ E.marks=[]; for(const s of [-1,1]){ const o=EST.at(E,s*27,EST.VG+12.4); DOORS.push({x:o.x,z:o.z,r:3,label:()=>`Estate office · ${E.name}`,act:()=>officeMenu(E)}); E.marks.push(doorMark(o.x,o.z,'#d4af37','ESTATE OFFICE · HOUSES FOR SALE')); }
+  const g=EST.at(E,0,EST.VG-14); PLACES.push(E.place={name:E.name,sub:'',kind:'place',x:g.x,z:g.z});
+  // the name on the gate beam (both faces) and on the wing walls
+  for(const [v,yaw] of [[EST.VG-1.36,E.ry+Math.PI],[EST.VG+1.36,E.ry]]){ const q=EST.at(E,0,v); signAt(scene,{x:q.x,y:12.3,z:q.z,yaw,w:26,h:1.5},E.name.toUpperCase(),'#22201c','#e8c46a'); }
+  for(const s of [-1,1]){ const q=EST.at(E,s*28.5,EST.VG-.34); signAt(scene,{x:q.x,y:2.3,z:q.z,yaw:E.ry+Math.PI,w:12,h:1.1},s<0?E.name.toUpperCase():'PRIVATE ESTATE · VISITORS REPORT AT THE GATE','#22201c','#e8c46a'); }
+  // security at the gate, the estate agent at the office
+  worldGroup(g.x,g.z,G=>{ const P=(u,v,yaw)=>({...EST.at(E,u,v),yaw}); folk(scene,'police_m',{...P(0,EST.VG-6,E.ry+Math.PI),y:.25},['idle_1'],G.list); folk(scene,'police_m',{...P(0,EST.VG+9,E.ry),y:.25},['idle_1','phone'],G.list);
+    folk(scene,'suit_lady',P(27,EST.VG+11.2,E.ry),['idle_suit','f_talk'],G.list); });
+  estBoards(E); }
+estOwned();
+function estTick(dt){ if((EST.tk=(EST.tk||0)-dt)>0) return; EST.tk=.4; const px=mode==='drive'&&drive.v?drive.v.x:player.x, pz=mode==='drive'&&drive.v?drive.v.z:player.z;
+  if(ESTM.mat) ESTM.mat.glow.emissiveIntensity=ENV.lamp*1.3;
+  for(const E of EST.list){ const d=Math.hypot(px-E.cx,pz-E.cz); if(!ESTM.st&&d<1300) estLoad(); if(ESTM.st===2&&!E.cols&&d<600) estSolid(E); if(E.board) E.board.visible=d<520&&mode!=='interior'; } }
 // tokunbo cars for sale on the NAIJA MOTORS forecourt
 [-16.5,-13.8,-11.1,-8.4,-5.7,5.7,8.4,11.1,13.8,16.5].forEach((lx,i)=>{ const spec=NM_LOT[i%NM_LOT.length]; if(!spec) return; const m=gp('motors',lx,5.9,Math.PI), v=newVehicle(spec.type,spec.color,true);
   Object.assign(v,{x:m.x,z:m.z,y:0,h:carYaw(m.yaw),keep:1,parked:true,forSale:spec});
@@ -8092,7 +8279,7 @@ function lifePlaces(){ FLAT_PLACE.name=LIFE.flat?'Your house':'Flat for sale'; F
   if(LIFE_PL.tent) LIFE_PL.tent.name=homeNow()==='tent'?'Your tent':'Your old tent';
   if(LIFE_PL.room){ LIFE_PL.room.name=LIFE.rent>0?'Your room':'Room to let'; LIFE_PL.room.kind=LIFE.rent>0&&!LIFE.flat?'home':'place'; }
   if(LIFE_MK.room) doorMarkText(LIFE_MK.room,LIFE.rent>0?'YOUR ROOM · RENT '+rentLeft().toUpperCase():'ROOM TO LET');
-  if(LIFE_MK.tent) doorMarkText(LIFE_MK.tent,homeNow()==='tent'?'YOUR TENT':'YOUR OLD TENT'); }
+  if(LIFE_MK.tent) doorMarkText(LIFE_MK.tent,homeNow()==='tent'?'YOUR TENT':'YOUR OLD TENT'); estOwned(); }
 lifePlaces();
 // people at their posts: the toilet attendant, the boutique seller, the landlord
 const lifeSpot=(cast,at,acts)=>{ if(!at) return; SPOTS.push({type:'life',x:at.x,z:at.z,m:[{cast,acts,dx:0,dz:0,ry:at.yaw??at.ry??0}],on:false,peds:[],boarding:0,hailV:null}); };
@@ -8466,7 +8653,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt);
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -8751,6 +8938,14 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     bolas:()=>BOLAS.map(b=>[Math.round(b.x),Math.round(b.z),b.m]),
     phone:w=>{ if(!PHONE.open) openPhone(); return w?PH.test(w):(PHONE.open?1:0); }, guide:w=>GD.test(w), farm:w=>FARM?FARM.test(w):-1,
     tp(x,z){ player.x=x; player.z=z; rig.root.position.set(x,0,z); return true; },
+    // test helper: the estates (state, buying a house / a whole estate with test money, points in an estate's frame)
+    est(w={}){ if(w.buy){ const p=EST.byId[w.buy]; CASH.n=Math.max(CASH.n,p.price); addCash(-p.price); estBuy(p); } if(w.all){ const E=EST.list.find(q=>q.id===w.all), n=estWhole(E); CASH.n=Math.max(CASH.n,n); addCash(-n); estBuyAll(E); }
+      if(w.stand){ const P=EST.byId[w.stand.id], q=EST.pt(P,w.stand.lx,w.stand.lz); Object.assign(player,{x:q.x,z:q.z,yaw:P.ry+Math.PI,speed:0}); camState.yaw=player.yaw; }
+      if(w.boxes){ const P=EST.byId[w.boxes], S=ESTM.styles[P.st]; return {st:P.st,b:S.boxes.filter(([x,z])=>Math.abs(x)<6&&z>-4&&z<4).map(q=>q.map(v=>+v.toFixed(2))),g:S.gboxes.map(q=>q.map(v=>+v.toFixed(2))),own:estOwns(P.id),gc:(P.gcols||[]).map(c=>c.h)}; }
+      if(w.menu) plotMenu(EST.byId[w.menu]); if(w.office) officeMenu(EST.list.find(q=>q.id===w.office));
+      return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
+        own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
+    estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
     sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);

@@ -204,7 +204,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   }
   const lastPay = new Map();   // account -> the last money message taken {e: that page's id, s: its number}, so a resend after a lost line is not counted twice
   function cash(C, m) {
-    if (!Number.isInteger(m.d) || Math.abs(m.d) > 5e6 || !m.d) return;
+    if (!Number.isInteger(m.d) || m.d > 5e6 || m.d < -1e10 || !m.d) return;   // spending may be big (a house in an estate, a whole estate)
     const seq = Number.isInteger(m.s) ? m.s : 0, ep = typeof m.e === 'string' ? m.e.slice(0, 16) : '';
     const L0 = lastPay.get(C.user.id);
     if (ep && L0 && L0.e === ep && seq <= L0.s) return send(C, { t: '$', n: C.cash, s: L0.s });

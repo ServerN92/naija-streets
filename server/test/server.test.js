@@ -118,6 +118,16 @@ test('money: spending works, earning is capped by time, the server number is the
   assert.equal(me2.cash, n4); d.close();
 });
 
+test('money: a big spend (an estate house, a whole estate) counts; a big gain does not', async () => {
+  const [c] = await account('Big_Spender');
+  c.send({ t: '$', d: 200000, s: 1 }); const n1 = (await c.next('$')).n; assert.ok(n1 > 0);
+  c.send({ t: '$', d: -30000000, s: 2 }); assert.equal((await c.next('$')).n, 0, 'a ₦30M house takes all of it');
+  c.send({ t: '$', d: -2500000000, s: 3 }); assert.equal((await c.next('$')).n, 0, 'a whole estate is not refused');
+  c.send({ t: '$', d: 6000000, s: 4 }); c.send({ t: '$', d: -2e10, s: 5 });
+  await new Promise(r => setTimeout(r, 200)); assert.ok(!c.got.some(m => m.t === '$'), 'out of range is ignored');
+  c.close();
+});
+
 test('chat flood is slowed down; broken messages are ignored', async () => {
   const [c] = await account('Talker'); c.send({ t: 'p', x: 0, y: 0, z: 0, r: 0, a: 'i', s: 0, v: '', q: 0 });
   c.ws.send('not json'); c.ws.send('{"t":5}'); c.send({ t: 'p', x: 'a' }); c.send({ t: 'p', x: 1e9, y: 0, z: 0, r: 0, s: 0 });
