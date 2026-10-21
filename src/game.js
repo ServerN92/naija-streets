@@ -13,21 +13,21 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=57955d0a78';
-import * as C2 from './char2.js?v=57955d0a78';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=57955d0a78';
-import { createPhone } from './phone.js?v=57955d0a78';
-import { createGuide } from './guide.js?v=57955d0a78';
+import * as CLOCK from './clock.js?v=010039c2b6';
+import * as C2 from './char2.js?v=010039c2b6';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=010039c2b6';
+import { createPhone } from './phone.js?v=010039c2b6';
+import { createGuide } from './guide.js?v=010039c2b6';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=57955d0a78';
-import { createBusiness } from './business.js?v=57955d0a78';
-import { createOnline } from './online.js?v=57955d0a78';
-import { createPolice } from './police.js?v=57955d0a78';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=57955d0a78';
-import { MapView, GPS_RED } from './mapview.js?v=57955d0a78';
+import { createFarm } from './farm.js?v=010039c2b6';
+import { createBusiness } from './business.js?v=010039c2b6';
+import { createOnline } from './online.js?v=010039c2b6';
+import { createPolice } from './police.js?v=010039c2b6';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=010039c2b6';
+import { MapView, GPS_RED } from './mapview.js?v=010039c2b6';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='57955d0a78';
+const BUILD='010039c2b6';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -8094,8 +8094,8 @@ const wearId=()=>{ const id=WARD.cur, C=V2.casts&&V2.casts[id]; const o=C&&C.met
 const luxOut=()=>leaveRoom(LUX.cur&&LUX.cur.door);
 const luxSay=(t,s=3.2)=>toast(t,s);
 function luxServe(title,note,rows,done){ openMenu(title,note,rows.map(([name,sub,price,line])=>({name,sub,price,act:()=>{ closeMenu(); fadeSwap(()=>{}); setTimeout(()=>{ luxSay(line,3.6); if(done) done(name); },420); }}))); }
-async function enterLux(P){ if(busy) return; const K=P.K;
-  if(!K.street&&wearId()==='rags'){ luxSay(mpick([`Gateman: "Ah ah! ${isF()?'Madam':'Oga'}, this place no be for rags. Go change your cloth first."`,'Gateman: "Who you be? Dress well before you enter here, abeg."','Gateman: "With this torn cloth? Security no go gree. Go wear better thing."']),4); return; }
+async function enterLux(P,force){ if(busy) return; const K=P.K;
+  if(!K.street&&!force&&wearId()==='rags'){ luxSay(mpick([`Gateman: "Ah ah! ${isF()?'Madam':'Oga'}, this place no be for rags. Go change your cloth first."`,'Gateman: "Who you be? Dress well before you enter here, abeg."','Gateman: "With this torn cloth? Security no go gree. Go wear better thing."']),4); return; }
   const R=await intGet(K.int,`Opening ${P.title}…`); if(!R) return; LUX.cur=P; luxSetup(P.k,R); R.label=P.title;
   goRoom(R,'spawn',K.street?`${P.name}. "Welcome! Sit down, we go attend to you now now."`:P.k==='glow'?`${P.title}. "Welcome, darling! Hair, nails, lashes: we dey here for you."`:P.k==='kings'?`${P.title}. "Welcome, boss! Fresh cut, cold drink, game of pool."`:P.k==='iroko'?`${P.title}. "Good evening. Table for you?"`:`${P.title}. "Welcome to Maison Adunni. Couture, made to your measure."`); }
 function luxSetup(k,R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks, at=n=>M[n]; R.camDist=k==='street'?2.6:3.0;
@@ -9116,7 +9116,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     act(){ action(); return {mode,label:ROOM&&ROOM.label,prompt:$('#promptTxt').textContent,busy}; },
     here:()=>({mode,label:mode==='interior'?ROOM.label:null,x:player.x,z:player.z,yaw:player.yaw,prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,cash:CASH.n,stay:STAY,menu:MENU.open}),
     spots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>({l:spotLabel(s),x:s.x,z:s.z})):[],
-    lux:()=>LUXP.map(P=>({t:P.title,x:P.x,z:P.z,s:P.S&&P.S.state,door:P.door,gate:P.gateAt||null})), luxGo(i){ enterLux(LUXP[i]); return 1; },
+    lux:()=>LUXP.map(P=>({t:P.title,x:P.x,z:P.z,s:P.S&&P.S.state,door:P.door,gate:P.gateAt||null})), luxGo(i,force){ enterLux(LUXP[i],force); return 1; }, shotURL(w=1280,h=720){ renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); const up=usePost; usePost=false; updateCamera(0); renderFrame(0); usePost=up; return renderer.domElement.toDataURL('image/jpeg',.85); },
     graGo(k){ const f={eko:enterEko,motors:enterMotors,adunni:enterAdunni,cellar:enterCellar,velvet:enterVelvet}[k]; if(f) f(); return !!f; },
     gra:()=>({sets:Object.fromEntries(Object.entries(GRA.sites).map(([k,G])=>[k,G.S&&G.S.state])),villas:GRA.villas.length,eko:EKO,doors:GRA_DOOR}),
     at(x,z,yaw){ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } return true; },
