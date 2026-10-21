@@ -266,6 +266,28 @@ Blender is never touched, writes each outside piece as faces with a colour per c
 and bakes the room's light with `rooms_all.py`. `python3 tools/life_pack.py <that folder>` packs the pieces into
 `assets/models/ns_*.glb`.
 
+## Gated estates (Banana Island style)
+Four walled estates of 27 mansions each, on ground cleared of the old houses and streets: **Pearl Haven Estate** just
+past the flyover by your tent (Agege Motor Road), **Royal Palm Estate** (Agege Motor Road, east), **Emerald Gardens
+Estate** (Bello Street) and **Diamond Court Estate** (Oba Akran Avenue, Ikeja). Each is 244 × 452 m: the grand gate with
+its name on the beam, security on the island and gatehouses, a boulevard with palms and twin lamps, three streets and a
+back drive. 24 mansions stand on 52 × 48 m plots, 3 palaces on 76 × 60 m at the back.
+- **Prices by house type:** Tropical Veranda Villa ₦30M, Courtyard Villa ₦35M, Grand Classic ₦40M, Mediterranean ₦45M,
+  Contemporary Wood ₦50M, Dark Minimal ₦55M, Glass Modern ₦60M, White and Gold Luxe ₦70M, Penthouse Mansion ₦90M,
+  Palace ₦100M.
+- **Buy a house** at its gate (red FOR SALE board) or at the **estate office** (gold ring by the gatehouses). Its gate
+  opens for you (a closed plot gate is solid), the board turns green (YOUR HOUSE) and the first house you buy becomes
+  home: you start the game inside your gate. "Make this your home" moves you to another house you own.
+- **Buy the whole estate** at the office: ₦2,500,000,000, less what you already paid for houses there. Every gate opens.
+
+The mansions were made in the user's Blender (the Pearl Haven kit, `lib/game_export.py` in `Documents/naija_homes`):
+`assets/models/est_S1..S10.glb` (walls and roofs `GR_`, small things `GD_`, plot gates `GT_`), a `_lod1` for far away,
+`est_gate.glb` and `est_styles.json` (sizes, doors, gates and palms of every type). The palette colours become vertex
+colours, so all ten types draw with five shared materials; houses, gates and palms load when you come within 1.3 km,
+walls you bump into are made only for an estate you come near. Bought houses are kept in the life record (`est`,
+`estAll`, `estHome`; checked by `server/src/life.js`); the server takes spends of any size (a house is more than one
+₦5M message).
+
 ## Money
 Cash is at the top left (kept on the device; a new life starts with ₦1,000). People you floor or kill drop their money: walk
 over it to take it. With a weapon in your hand, G next to someone is a robbery: hands up, money on the floor, then they

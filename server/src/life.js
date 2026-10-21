@@ -1,14 +1,19 @@
 // A player's life in the game: where they sleep (a tent under the bridge, a rented room, their own flat), how much rent
-// is left, the clothes they own. The game sends the whole record when it changes; the server checks its shape and keeps it.
+// is left, the clothes they own, the estate houses they bought. The game sends the whole record when it changes; the server checks its shape and keeps it.
 const HOMES = new Set(['tent', 'room', 'flat']);
 const OUTFIT = /^[a-z_]{2,12}$/;
 const DAY_MS = 864e5;
+const ESTATES = /^[A-D]$/;                       // the four gated estates
+const HOUSE = /^[A-D](0[1-9]|1\d|2[0-7])$/;       // a house in one: A01..D27
 
 export function lifeOk(d, now = Date.now()) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
   const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo);
   const own = Array.isArray(d.own) ? [...new Set(d.own.filter(k => typeof k === 'string' && OUTFIT.test(k)))].slice(0, 40) : [];
   if (!own.includes('rags')) own.unshift('rags');
+  const est = Array.isArray(d.est) ? [...new Set(d.est.filter(k => typeof k === 'string' && HOUSE.test(k)))].slice(0, 108) : [];
+  const estAll = Array.isArray(d.estAll) ? [...new Set(d.estAll.filter(k => typeof k === 'string' && ESTATES.test(k)))] : [];
+  const estHome = typeof d.estHome === 'string' && (est.includes(d.estHome) || (HOUSE.test(d.estHome) && estAll.includes(d.estHome[0]))) ? d.estHome : '';
   return {
     v: num(d.v, 1, 99) | 0,
     home: HOMES.has(d.home) ? d.home : 'tent',
@@ -17,6 +22,9 @@ export function lifeOk(d, now = Date.now()) {
     flat: d.flat === true,
     own,
     ease: Math.round(num(d.ease, 0, 1) * 1000) / 1000,
+    est,                                                  // houses bought in the estates
+    estAll,                                               // whole estates bought
+    estHome,                                              // the estate house you live in ('' = none)
     t: Math.round(num(d.t, 0, now + DAY_MS)),
   };
 }

@@ -44,3 +44,11 @@ test('a life record is cleaned: unknown homes, bad clothes, numbers out of range
   assert.equal(L.home, 'tent'); assert.equal(L.rent, 0); assert.equal(L.rented, 2); assert.equal(L.flat, false);
   assert.deepEqual(L.own, ['rags', 'senator']); assert.equal(L.ease, 0); assert.ok(L.t <= 1000 + 864e5);
 });
+
+test('estate houses in the life record: good ids kept, bad ones dropped, home only where you own', () => {
+  const L = lifeOk({ est: ['A07', 'A07', 'B27', 'E01', 'A28', 'A00', 5], estAll: ['C', 'Z', 'CC'], estHome: 'C14' });
+  assert.deepEqual(L.est, ['A07', 'B27']); assert.deepEqual(L.estAll, ['C']); assert.equal(L.estHome, 'C14');
+  assert.equal(lifeOk({ est: ['A07'], estHome: 'B01' }).estHome, '');
+  assert.equal(lifeOk({ est: ['A07'], estHome: 'A07' }).estHome, 'A07');
+  const N = lifeOk({}); assert.deepEqual(N.est, []); assert.deepEqual(N.estAll, []); assert.equal(N.estHome, '');
+});
