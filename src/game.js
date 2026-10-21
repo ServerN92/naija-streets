@@ -13,21 +13,21 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=781abf0061';
-import * as C2 from './char2.js?v=781abf0061';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=781abf0061';
-import { createPhone } from './phone.js?v=781abf0061';
-import { createGuide } from './guide.js?v=781abf0061';
+import * as CLOCK from './clock.js?v=abf6c7c8f0';
+import * as C2 from './char2.js?v=abf6c7c8f0';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=abf6c7c8f0';
+import { createPhone } from './phone.js?v=abf6c7c8f0';
+import { createGuide } from './guide.js?v=abf6c7c8f0';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=781abf0061';
-import { createBusiness } from './business.js?v=781abf0061';
-import { createOnline } from './online.js?v=781abf0061';
-import { createPolice } from './police.js?v=781abf0061';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=781abf0061';
-import { MapView, GPS_RED } from './mapview.js?v=781abf0061';
+import { createFarm } from './farm.js?v=abf6c7c8f0';
+import { createBusiness } from './business.js?v=abf6c7c8f0';
+import { createOnline } from './online.js?v=abf6c7c8f0';
+import { createPolice } from './police.js?v=abf6c7c8f0';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=abf6c7c8f0';
+import { MapView, GPS_RED } from './mapview.js?v=abf6c7c8f0';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='781abf0061';
+const BUILD='abf6c7c8f0';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -787,11 +787,19 @@ function groundY(){ return 0; }
 
 // ---- the ground, then parks, school fields, market yards and filling stations
 const SHORE_X=WB.x+34;   // east of Mushin the land ends at the Lagos Lagoon (the Third Mainland Bridge crosses it)
-{ const x0=-WB.x-300, W2=SHORE_X-x0, D2=2*WB.z+600, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2); g.translate((x0+SHORE_X)/2,0,0);
-  const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*W2/16,uv.getY(i)*D2/16);
+// the hotel grounds bring their own ground (lawns, pools sunk below it), so the town's ground has a hole there
+const GROUND_HOLES=[(()=>{ const H=GRA.sites.hotel, c=Math.cos(H.ry), s=Math.sin(H.ry), P=(lx,lz)=>[H.x+lx*c+lz*s,H.z-lx*s+lz*c];
+  return [P(-159.4,-127.4),P(159.4,-127.4),P(159.4,126.4),P(-159.4,126.4)]; })()];
+function groundPlane(x0,x1,z0,z1){ const hs=GROUND_HOLES.filter(h=>h.some(([x,z])=>x>x0&&x<x1&&z>z0&&z<z1));
+  if(!hs.length){ const W2=x1-x0, D2=z1-z0, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2); g.translate((x0+x1)/2,0,(z0+z1)/2);
+    const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*W2/16,uv.getY(i)*D2/16); return g; }
+  const C=[[x0,z0],[x1,z0],[x1,z1],[x0,z1]], all=[...C,...hs.flat()], tris=THREE.ShapeUtils.triangulateShape(C.map(([x,z])=>new THREE.Vector2(x,z)),hs.map(h=>h.map(([x,z])=>new THREE.Vector2(x,z))));
+  const P=[], N=[], U=[]; for(const t of tris){ let [a,b,c]=t.map(i=>all[i]); if((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])>0){ const q=b; b=c; c=q; }
+    for(const q of [a,b,c]){ P.push(q[0],0,q[1]); N.push(0,1,0); U.push((q[0]-x0)/16,(z1-q[1])/16); } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(U,2)); g.computeBoundingSphere(); return g; }
+{ const x0=-WB.x-300, g=groundPlane(x0,SHORE_X,-WB.z-300,WB.z+300);
   const m=new THREE.Mesh(g,MAT.ground); m.receiveShadow=true; scene.add(m); }
-for(const d of DISTS){ const x0=d.x0-300, x1=-WB.x-300, z0=d.z0-300, z1=d.z1+300, W2=x1-x0, D2=z1-z0, g=new THREE.PlaneGeometry(W2,D2); g.rotateX(-Math.PI/2); g.translate((x0+x1)/2,0,(z0+z1)/2);   // the district's own ground, up to Mushin's
-  const uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*W2/16,uv.getY(i)*D2/16);
+for(const d of DISTS){ const g=groundPlane(d.x0-300,-WB.x-300,d.z0-300,d.z1+300);   // the district's own ground, up to Mushin's
   const m=new THREE.Mesh(g,MAT.ground); m.receiveShadow=true; scene.add(m); }
 const AREAS=WD.areas.map(a=>({...a,pts:(()=>{ const o=[]; for(let i=0;i<a.p.length;i+=2) o.push([a.p[i],a.p[i+1]]); return o; })()}));
 function inPoly(pts,x,z){ let ins=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,zi]=pts[i],[xj,zj]=pts[j]; if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi+1e-12)+xi) ins=!ins; } return ins; }
@@ -2688,6 +2696,7 @@ function buildMyRoom(g,texs){ const S=new THREE.Scene(); S.background=new THREE.
 /* ================= your character (Mixamo) ================= */
 await step('Loading your character…', 91);
 let WALK_V=2.6, RUN_V=6.2, hero=null, HERO_RUN=null, HERO_CAR=null;
+const SWIM={zones:[],on:false,p:0,told:false,heal:0};   // the hotel pools (see hotelWater)
 try{
   const src=await heroBufsJob; let cObj, CL;
   if(src.gltf){ cObj=src.gltf.scene; const byName=n=>src.gltf.animations.find(a=>a.name===n); CL=[byName('idle'),byName('walk'),byName('run'),byName('enter_car')]; }
@@ -3434,6 +3443,7 @@ function updateWalk(dt,inside){
   if(CR.on&&!CR.sp) target=Math.min(target,CR_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len));   // crouched: you creep (at the speed the move was made for)
   if(CR.pr) target=CR.pr===2?Math.min(target,PRONE_V*Math.min(1,jl>0?Math.max(.45,jl/.8):len)):0;   // lying down you crawl, slowly
   if(CR.sp){ target=crSlide(dt,run,len,mx,mz); player.speed=target; }
+  if(SWIM.on&&!inside) target=Math.min(target,run?2.3:1.5);   // swimming: slower than walking, a sprint is a fast crawl
   if(CR.on&&(FIGHT.ko||CARRY.p||inside&&false)) crReset();
   const ov=hero&&hero.ov, held=FIGHT.ko||(ov&&ov.lock);
   if(held){ target=0; if(ov&&ov.lunge){ const [a0,a1,v]=ov.lunge, k=ov.t/ov.dur; if(k>a0&&k<a1){ target=v; player.speed=v; } }
@@ -3454,12 +3464,14 @@ function updateWalk(dt,inside){
       if(ex>0&&ey>0){ if(ey<ex){ const g=Math.sign(lat)||1; player.x+=-hz*g*ey; player.z+=hx*g*ey; } else { const g=Math.sign(al)||1; player.x+=hx*g*ex; player.z+=hz*g*ex; }
         if(Math.abs(v.speed)>5&&FIGHT.carT<=0&&!FIGHT.dead&&v!==drive.v) carHitPlayer(v,Math.abs(v.speed)); } }
     if(player.y<1.2){ playerPeds(dt); const c2={x:player.x,z:player.z}; if(resolveCircle(c2,.34,null,player.y)){ player.x=c2.x; player.z=c2.z; } }   // people push you, but never into a wall
-    const gy=Math.max(walkY(player.x,player.z,player.y),topY(player.x,player.z,player.y));   // the ground, or the top of what you climbed
-    if(player.y>gy+.45){ player.vy=(player.vy||0)-9.8*dt; player.y=Math.max(gy,player.y+player.vy*dt); if(player.y<=gy) player.vy=0; }   // stepped off: you fall
+    const gy=Math.max(walkY(player.x,player.z,player.y),topY(player.x,player.z,player.y)), SWZ=SWIM.zones.length?swimZone(player.x,player.z):null;   // the ground, or the top of what you climbed
+    if(SWZ) swimTick(dt,SWZ,player.speed>.35);
+    else if(SWIM.on||SWIM.p>0){ SWIM.on=false; SWIM.p=Math.max(0,SWIM.p-dt*4); player.y+=(gy-player.y)*Math.min(1,dt*6); }   // climbing out
+    else if(player.y>gy+.45){ player.vy=(player.vy||0)-9.8*dt; player.y=Math.max(gy,player.y+player.vy*dt); if(player.y<=gy) player.vy=0; }   // stepped off: you fall
     else { player.vy=0; player.y+=(gy-player.y)*Math.min(1,dt*14); } }
   player.ph+=dt*(player.speed<3?player.speed*4.3:10+(player.speed-3)*.3);
   if(hero) crTick(dt,player.speed);
-  rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw;
+  rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw; if(SWIM.on||SWIM.p>0||rig.root.rotation.x) swimPose();
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
 function updateDrive(dt){ const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
@@ -8319,7 +8331,10 @@ DOORS.push({x:GRA_DOOR.boutique.x,z:GRA_DOOR.boutique.z,r:2,label:'Enter Adunni\
 { const m=gp('garage',-3,1); DOORS.push({x:m.x,z:m.z,r:3.4,label:()=>garageCar()?'Talk to the mechanic · fix your car':'Talk to the mechanic',act:garageMenu}); doorMark(m.x,m.z,'#f28c28','MECHANIC · FIX YOUR CAR'); }
 DOORS.push({x:EKO.back.x,z:EKO.back.z,r:2,label:'Go into the hotel lobby',act:()=>enterEko('pool')});
 { const m=gp('hotel',28,-61.6); DOORS.push({x:m.x,z:m.z,r:2.2,label:'Pool bar · buy a drink',act:()=>openMenu('POOL BAR · EKO GRAND','Cold drinks by the water',[['Chapman',3000,'With ice and cucumber'],['Coconut water',2000,'Fresh from the tree'],['Cocktail',6000,'Pina colada'],['Chilled beer',2500,'Very cold'],['Club sandwich',6000,'With chips']].map(([n,p,sub])=>({name:n,sub,price:p,act:()=>{ closeMenu(); toast(mpick([`${n} by the pool. Soft life!`,`${n}. The sun, the water, the music. Enjoy!`]),3); }})))}); }
-{ const m=gp('hotel',-4,-36.6); DOORS.push({x:m.x,z:m.z,r:2.6,label:'Swim in the pool',act:()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+15); }); toast(mpick(['You dive in. The water cool well well!','Ten laps of the pool. Your body don fresh.']),3); }}); }
+{ const dive=(lx,lz)=>()=>{ const w=gp('hotel',lx,lz); fadeSwap(()=>{ player.x=w.x; player.z=w.z; player.y=-1.2; }); };   // in you go: then swim about (move to swim, stop to float)
+  const m=gp('hotel',-4,-36.6); DOORS.push({x:m.x,z:m.z,r:2.6,label:'Jump into the pool',act:dive(-4,-48)});
+  const m2=gp('hotel',-95,13.6); DOORS.push({x:m2.x,z:m2.z,r:3,label:'Jump into the long pool',act:dive(-95,21)});
+  PLACES.push({name:'Eko Grand swimming pool',sub:'70 m pool · swim for free',kind:'place',x:m2.x,z:m2.z,minor:true}); }
 { const m=gp('hotel',70,39.6); DOORS.push({x:m.x,z:m.z,r:2.4,label:'Golf club · play 6 holes (₦15,000)',act:()=>{ if(CASH.n<15000){ toast('"Green fee na ₦15,000. Come back."',2.8); return; } addCash(-15000); cashHUD(); golfRound(); }}); }
 doorMark(GRA_DOOR.motors.x,GRA_DOOR.motors.z,'#2fbf71','ENTER · NAIJA MOTORS'); doorMark(GRA_DOOR.boutique.x,GRA_DOOR.boutique.z,'#e85d9b','ENTER · ADUNNI\'S FASHION HOUSE');
 // the new places on the map, their doors, and the gatemen at the luxury gates (they greet you, and turn back rags)
@@ -8462,9 +8477,35 @@ function estTick(dt){ if((EST.tk=(EST.tk||0)-dt)>0) return; EST.tk=.4; const px=
 worldGroup(GRA.sites.motors.x,GRA.sites.motors.z,G=>{ folk(scene,'baba',gp('motors',-6,8.5,Math.PI),['talk','idle_baba'],G.list); folk(scene,'police_m',gp('motors',-24,20.6),['idle_1','phone'],G.list); });
 worldGroup(GRA.sites.garage.x,GRA.sites.garage.z,G=>{ folk(scene,'areaboy',gp('garage',-8.6,-3.2,Math.PI),['idle_1','talk'],G.list); folk(scene,'p_tunde',gp('garage',.8,-2.2,.6),['idle_2','idle_1'],G.list); folk(scene,'baba',gp('garage',9.8,-1.2,-2.6),['idle_baba','talk'],G.list); });
 // when a set has loaded: cars parked at the hotel, the new cars seen through the showroom glass
+// ---- the hotel's pools: water that moves, and you can get in and swim (set-local swim boxes from the Blender job)
+function hotelWater(S,J){
+  for(const [x0,x1,z0,z1,wy,fy] of J.swim||[]) SWIM.zones.push({S,x0,x1,z0,z1,wy,fy});
+  const nm=texWaterNormals(); nm.wrapS=nm.wrapT=THREE.RepeatWrapping; const nm2=nm.clone(); nm2.wrapS=nm2.wrapT=THREE.RepeatWrapping; nm2.needsUpdate=true;
+  const top=new THREE.MeshStandardMaterial({color:0x2fb3d6,transparent:true,opacity:.6,roughness:.03,metalness:.12,normalMap:nm,normalScale:new THREE.Vector2(.55,.55),envMapIntensity:1.6,depthWrite:false});
+  const low=new THREE.MeshStandardMaterial({color:0x48d0ea,transparent:true,opacity:.22,roughness:.1,normalMap:nm2,normalScale:new THREE.Vector2(.9,.9),depthWrite:false});
+  const rgb=[];
+  for(const grp of [S.far,S.near_]) if(grp) grp.traverse(o=>{ if(!o.isMesh) return; const n=(o.material&&o.material.name)||'';
+    if(/SwimWater|PoolWater|LagoonWater/.test(n)){ const g=o.geometry, P=g.attributes.position, U=new Float32Array(P.count*2);
+      for(let i=0;i<P.count;i++){ U[i*2]=P.getX(i)/3.5; U[i*2+1]=P.getZ(i)/3.5; } g.setAttribute('uv',new THREE.BufferAttribute(U,2));
+      o.material=top; o.renderOrder=2; o.castShadow=false; const o2=new THREE.Mesh(g,low); o2.position.y=-.12; o2.renderOrder=1; o2.layers.set(1); o.parent.add(o2); }
+    else if(/GateRGB/.test(n)&&!rgb.includes(o.material)){ o.material=o.material.clone(); o.material.emissive=new THREE.Color(1,1,1); rgb.push(o.material); o.material.userData.k=/RGB2/.test(n)?.5:0; } });
+  const prev=S.tick; let T=0;
+  S.tick=(dt,d)=>{ if(prev) prev.call(S,dt,d); T+=dt; if(d>400) return;
+    nm.offset.set(T*.021,T*.013); nm2.offset.set(-T*.017,T*.024);   // two ripple layers drifting across each other
+    const n=ENV.lamp>0?1:0; for(const m of rgb){ m.emissive.setHSL((T*.045+m.userData.k)%1,1,.5); m.emissiveIntensity=n?5.5:2.2; } }; }
+function swimZone(x,z){ for(const Z of SWIM.zones){ const S=Z.S, c=Math.cos(S.ry), s=Math.sin(S.ry), dx=x-S.x, dz=z-S.z, lx=dx*c-dz*s, lz=dx*s+dz*c;
+    if(lx>Z.x0+.35&&lx<Z.x1-.35&&lz>Z.z0+.35&&lz<Z.z1-.35) return Z; } return null; }
+// in the water: you float upright, and when you move you lie forward and swim (the body pitched round the hips)
+function swimTick(dt,Z,moving){ if(!SWIM.on){ SWIM.on=true; if(CR.on) crReset(); if(!SWIM.told){ SWIM.told=true; toast('You dey swim! Move to swim, stop to float. Walk to the edge to climb out.',4); } }
+  const want=moving?1:0; SWIM.p+=(want-SWIM.p)*Math.min(1,dt*3.2);
+  const y=Z.wy-1.45+SWIM.p*1.0; player.vy=0; player.y+=(Math.max(Z.fy+.05,y)-player.y)*Math.min(1,dt*(player.y>y+.4?5:8));
+  SWIM.heal+=dt; if(SWIM.heal>1){ SWIM.heal=0; if(FIGHT.hp<100) FIGHT.hp=Math.min(100,FIGHT.hp+2); } }
+function swimPose(){ const r=rig.root; if(SWIM.p<.002&&!SWIM.on){ if(r.rotation.x){ r.rotation.x=0; } SWIM.p=0; return; }
+  r.rotation.order='YXZ'; r.rotation.x=SWIM.p*1.32; const back=SWIM.p*.85; r.position.x-=Math.sin(player.yaw)*back; r.position.z-=Math.cos(player.yaw)*back; }
 function graLoaded(k,S){ const J=S.json||{};
   if(k==='hotel'){ const rnd=mulberry32(808), B=(J.bays||[]).slice(); const cols=['#101114','#e9e7e2','#6b6e72','#1b2a44','#8c1d1d','#c9ccd1','#2f3f5a'];
-    for(let i=0;i<16&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(['v_gwagon','v_rangerover','v_sclass','v_landcruiser','v_camry','v_accord','v_rolls','v_hilux'][(rnd()*8)|0],cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:0,h:carYaw(S.ry+yw),keep:1,parked:true}); } }
+    for(let i=0;i<16&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(['v_gwagon','v_rangerover','v_sclass','v_landcruiser','v_camry','v_accord','v_rolls','v_hilux'][(rnd()*8)|0],cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:.1,h:carYaw(S.ry+yw),keep:1,parked:true}); }
+    hotelWater(S,J); }
   if(k==='motors'){ const M=J.marks||{}; [['inside_1',0],['inside_2',1],['inside_3',2]].forEach(([n,i])=>{ const m=M[n]; if(!m) return; const s=NM_CARS[i]; if(!s) return; const c=makeCar(nmShape(s.type),s.color,true), w=setPt(S,m[0],m[1]); c.g.position.set(w.x,.15,w.z); c.g.rotation.set(0,carYaw(S.ry+(m[2]||0)),0); scene.add(c.g); }); } }
 /* ---- a new life (see "a new life: from under the bridge" above): saving it, your tent, the boutique, the rooming
    house, the flat for sale, the public toilet and its line, the toilet bar */
