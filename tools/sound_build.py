@@ -58,6 +58,10 @@ SRC = {
     'own_danfo': ('Danfo conductor calling, with the bus', 'the game\'s maker', 'own'),
     'own_ticket': ('Conductor and agbero: the oga\'s ticket', 'the game\'s maker', 'own'),
     'own_market': ('Lagos market', 'the game\'s maker', 'own'),
+    'own_argue': ('Boys arguing by the roadside', 'the game\'s maker', 'own'),
+    'own_oncall': ('A man passing, on the phone', 'the game\'s maker', 'own'),
+    'own_cultfight': ('Cult boys and agberos fighting under the bridge', 'the game\'s maker', 'own'),
+    'own_abeg': ('A man begging the boys robbing him: "Senior man, abeg"', 'the game\'s maker', 'own'),
 }
 
 # name: dict(src, a=start s, d=length s, kind='bed'|'loop'|'shot'|'song', level, extra json fields)
@@ -125,6 +129,7 @@ def build(folder, only=None):
         else:
             y = x[a:a + d].copy()
             if R.get('hp'): y = hpf(y, R['hp'])
+            if R.get('af'): y = afilter(y, R['af'])
             if R.get('level') is not None: y *= 10 ** ((R['level'] - rms_db(y)) / 20)
             else: y *= 10 ** (-3 / 20) / max(1e-6, float(np.max(np.abs(y))))
             y = fade(y, R.get('fi', .01), R.get('fo', .06))
@@ -157,6 +162,14 @@ def build(folder, only=None):
             for n, m in sorted(songs, key=lambda q: q[1]['m']['genre']):
                 f.write(f'- "{m["m"]["title"]}" by {m["m"]["artist"]} ({m["m"]["genre"]}), {MUSIC_URL.get(n, "pixabay.com")}\n')
     print(len(old), 'sounds,', round(sum(os.path.getsize(os.path.join(OUT, n + '.mp3')) for n in old) / 1e6, 2), 'MB')
+
+
+def afilter(x, af):
+    """any ffmpeg audio filter over a cut"""
+    ch = x.shape[1]
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-f', 'f32le', '-ar', str(SR), '-ac', str(ch), '-i', '-', '-af', af, '-f', 'f32le', '-'],
+                         input=x.astype(np.float32).tobytes(), capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.float32).reshape(-1, ch).copy()
 
 
 def hpf(x, hz):

@@ -348,6 +348,14 @@ money goes straight to the farmer (even offline, with a message). Cooking with f
 plates (tomatoes for jollof, yams for amala and pounded yam, cassava for eba), 15% of the plate price instead of 40%.
 The market is on the server (`server/src/biz.js`, saved in SQLite); the farm store is on your phone (`src/farm.js`).
 
+## Agberos robbing a man
+About every 5 minutes, somewhere in front of you (a corner off a side street, by day and evening, never near the police
+station), three or four agberos surround a man and rob him; he begs them ("Senior man, abeg…"). Walk on, or step in: they
+all fight you (no police stars for beating robbers off a man). Beat them and his money (₦1,500 to ₦3,000) is there: talk to
+him (E) and keep it, or give it back: then he finds your house, room or tent later and pays you ₦5,000, and the area
+respects you (people greet you in the street; with enough respect the next robbers may run when they see you coming, and
+the man gives you ₦1,000). Lose and they rob you too: 30% of your pocket, ₦5,000 at most.
+
 ## Agberos on the road: the danfo's ticket for the day
 At 18 bus stops and main-road spots (AGBERO POST on the map) two union boys in orange vests wait. A danfo comes: one runs
 after it and bangs the side, the driver stops and the conductor pays ₦200, once a game day (2 real hours) for each danfo,
@@ -488,7 +496,9 @@ linked from Settings). Most of the street is Nigerian field recordings by SFXAFR
 - **Our own Lagos recordings** (made by the game's maker): walk or drive into any market and the market recording fades
   in, and fades out again as you leave (over the last 18 m); danfo conductors call their routes from the door when a
   danfo stops at a bus stop or passes near you (right beside you when you ride in one); the agbero and the conductor
-  argue over the ticket when the boys stop a danfo.
+  argue over the ticket when the boys stop a danfo; a man begs the agberos robbing him; the boys at the corners argue
+  (and in any small fight); a real fight near you (three or more fighting: cult boys, agberos, the park brawl) has the
+  crowd's roar; now and then a man walks past you talking on the phone.
 - **Talking:** people greet you, complain when you bump them, quarrel and ask why you are staring, out loud, once the
   recorded Pidgin lines are in (`say_greet`, `say_bump`, `say_angry`, `say_stare`; women's lines end in `_f`).
 

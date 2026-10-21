@@ -37,7 +37,7 @@ CC0 needs no credit (listed anyway, with thanks); CC BY sounds are used under th
 
 ## Our own recordings
 
-Recorded in Lagos by the game's maker: Danfo conductor calling, with the bus; Lagos market; Conductor and agbero: the oga's ticket.
+Recorded in Lagos by the game's maker: A man begging the boys robbing him: "Senior man, abeg"; Boys arguing by the roadside; Cult boys and agberos fighting under the bridge; Danfo conductor calling, with the bus; Lagos market; A man passing, on the phone; Conductor and agbero: the oga's ticket.
 
 ## Music
 

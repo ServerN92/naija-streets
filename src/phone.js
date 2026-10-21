@@ -243,6 +243,7 @@ const POSTS = {
 };
 const EVENTS = {
   police: [['lagos_traffic', 'Police van dey rush go {place} 🚨 Wetin happen?'], ['mushin_gist', 'Siren full {area} now now 🚔']],
+  hero: [['mushin_gist', 'Somebody chase agberos wey dey rob one Baba for {place} 💪 Na real hero be that!'], ['tunde_wey_dey', 'Omo! One guy fight 4 agberos for {place} and give Baba him money back 🙌'], ['ada_lagos_babe', 'Good people still dey Lagos o. {place} today 🙏']],
   fight: [['mushin_gist', 'Fight don start for {place}! People dey gather 😳'], ['tunde_wey_dey', 'Who be this guy wey dey fight for {place}? 😂']],
   shots: [['mushin_gist', 'Gunshot for {place}!! Everybody take cover 😱'], ['ada_lagos_babe', 'I hear gbosa gbosa for {area} just now. Una dey alright?']],
   explosion: [['lagos_traffic', 'Motor don burst for {place}!! 🔥🔥 Avoid that road', '🔥', 'FIRE!'], ['mushin_gist', 'Fire for {place}! Call fire service! 🚒']],
