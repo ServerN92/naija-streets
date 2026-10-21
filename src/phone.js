@@ -124,7 +124,23 @@ const CSS = `
 .px-view img{width:100%;border-radius:2cqw;display:block;margin-bottom:2cqw}
 /* wallet / weather */
 .wx-card{border-radius:5cqw;padding:5cqw;margin:0 0 4cqw;background:linear-gradient(135deg,#0f9b58,#0b5e3c);box-shadow:0 2cqw 6cqw rgba(0,0,0,.35)}
-.wx-card small{opacity:.8;font-size:3.3cqw}.wx-card .ph-big{font-size:10cqw;font-weight:700;margin:1cqw 0}
+.wx-card small{opacity:.8;font-size:3.3cqw}
+.bk-top{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:4cqw;letter-spacing:.02em}
+.bk-top i{font-style:normal;font-size:3cqw;font-weight:600;opacity:.8}
+.bk-acct{display:flex;align-items:center;gap:2cqw;margin:2.4cqw 0 0;font-size:4.6cqw;font-weight:700;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.bk-acct button{font-size:3cqw;font-weight:700;padding:1cqw 2.4cqw;border-radius:3cqw;background:rgba(255,255,255,.22);letter-spacing:0}
+.bk-row{display:flex;gap:2.4cqw}.bk-row .iph-btn{flex:1}
+.bk-banks{display:flex;gap:1.8cqw;margin:0 0 2.4cqw}
+.bk-banks button{flex:1;padding:2.4cqw 1cqw;border-radius:3cqw;font-size:3.2cqw;font-weight:700;background:rgba(118,118,128,.24);border:2px solid transparent;line-height:1.15}
+.bk-banks button.on{color:#fff;border-color:#fff}
+.bk-name{font-size:3.6cqw;font-weight:700;margin:-1cqw 1cqw 2.4cqw;min-height:4.4cqw}
+.bk-name.ok{color:#30d158}.bk-name.bad{color:#ff6b5e}
+.bk-fee{font-size:3.4cqw;opacity:.7;margin:0 1cqw 2cqw}
+.bk-rc{background:rgba(255,255,255,.07);border-radius:4cqw;padding:4cqw;margin:0 0 3cqw}
+.bk-rc div{display:flex;justify-content:space-between;gap:3cqw;font-size:3.6cqw;padding:1.2cqw 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.bk-rc div:last-child{border-bottom:none}.bk-rc div span{opacity:.6}.bk-rc div b{text-align:right}
+.bk-ok{text-align:center;font-size:12cqw;margin:2cqw 0 0}.bk-big{text-align:center;font-size:7.5cqw;font-weight:800;margin:0 0 3cqw}
+.bk-err{color:#ff6b5e;font-size:3.5cqw;font-weight:600;margin:0 1cqw 2cqw}.wx-card .ph-big{font-size:10cqw;font-weight:700;margin:1cqw 0}
 .wt{text-align:center;padding-top:4cqw}.wt .t{font-size:22cqw;font-weight:200;line-height:1}.wt .c{font-size:5cqw;font-weight:600;margin:1cqw 0}
 .wt-hours{display:flex;justify-content:space-between;background:rgba(255,255,255,.12);border-radius:4cqw;padding:3cqw;margin:5cqw 0}.wt-hours div{text-align:center;font-size:3.3cqw}.wt-hours i{display:block;font-style:normal;font-size:5.4cqw;margin:1cqw 0}
 /* the camera: the game itself is the viewfinder */
@@ -295,19 +311,19 @@ export function createPhone(api) {
 
   const APPS = [
     ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
-    ['wallet', 'Wallet', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')],
+    ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
   const badges = {};
   function appIcon([k, label, fn]) { const b = btn('iph-ic', [icon(k), h('span', null, label)], e => { const r = b.getBoundingClientRect(), s = scr.getBoundingClientRect(); R.origin = `${r.left - s.left + r.width / 2}px ${r.top - s.top + r.height / 3}px`; api.click && api.click(); fn(); }, label); b.dataset.g = k;
     if (k === 'gist' || k === 'msg') { const bd = h('div', 'iph-badge'); bd.hidden = true; b.append(bd); (badges[k] = badges[k] || []).push(bd); } return b; }
-  let widT, widW, widC, widWi;
+  let widT, widW, widC, widWi, widB, w2s = () => { };
   function buildHome() {
     home.textContent = '';
     const wid = h('div', 'iph-wid');
     const w1 = h('div', 'iph-w'); widT = h('div', 'ph-big'); widW = h('div', 'mid'); w1.append(h('small', null, 'Mushin, Lagos'), widT, widW);
-    const w2 = btn('iph-w', [], () => openApp('wallet'), 'Wallet'); widC = h('div', 'mid'); widWi = h('small'); widC.style.fontSize = '6.4cqw'; w2.append(h('small', null, 'Eko Bank'), widC, widWi);
-    w2.style.background = 'linear-gradient(135deg,rgba(15,155,88,.75),rgba(11,94,60,.75))';
+    const w2 = btn('iph-w', [], () => openApp('wallet'), 'Wallet'); widC = h('div', 'mid'); widWi = h('small'); widC.style.fontSize = '6.4cqw'; widB = h('small', null, 'Wallet'); w2.append(widB, widC, widWi);
+    w2s = () => { const b = BK.me && bankOf(BK.me.bank); w2.style.background = b ? `linear-gradient(135deg,${b.c}cc,${b.c2}cc)` : 'linear-gradient(135deg,rgba(15,155,88,.75),rgba(11,94,60,.75))'; }; w2s();
     wid.append(w1, w2); home.append(wid);
     const grid = h('div', 'iph-grid'); grid.dataset.g = 'apps'; APPS.forEach(a => grid.append(appIcon(a))); home.append(grid);
     const dots = h('div', 'iph-dots'); dots.append(h('i', 'on'), h('i')); home.append(dots);
@@ -315,7 +331,7 @@ export function createPhone(api) {
     refreshHome(); setBadges();
   }
   function refreshHome() {
-    const t = api.clock(); timeEl.textContent = t; if (widT) { widT.textContent = t; widW.textContent = `${wxIcon()} ${api.weather()} · ${temp()}°`; widC.textContent = api.naira(api.cash()); widWi.textContent = 'Balance'; }
+    const t = api.clock(); timeEl.textContent = t; if (widT) { widT.textContent = t; widW.textContent = `${wxIcon()} ${api.weather()} · ${temp()}°`; widC.textContent = api.naira(api.cash()); widWi.textContent = BK.me ? '••' + BK.me.acct.slice(-4) + ' · Balance' : 'Balance'; widB.textContent = BK.me ? bankOf(BK.me.bank).name : 'Wallet'; w2s(); }
     const lvl = Math.max(.12, 1 - ((Date.now() / 60000) % 240) / 300); batI.style.width = Math.round(lvl * 100) + '%'; batI.style.background = lvl < .2 ? '#ff3b30' : '#fff';
   }
   const temp = () => { const hr = api.hour(), base = 27 + 5 * Math.cos((hr - 14) / 24 * 6.283); return Math.round(base - api.rain() * 4); };
@@ -433,12 +449,12 @@ export function createPhone(api) {
   const TH0 = () => [
     { id: 'mama', n: 'Mama', c: '#e91e63', e: '👩🏾', m: [{ t: Date.now() - 3600e3, x: 'Where you dey? Buy bread come house when you dey come.' }, { t: Date.now() - 3500e3, x: 'And no follow bad friends for that Mushin o!' }], unread: 2, rep: ['Ok Mama', 'I dey come now', 'I don chop'], ans: ['God bless you my pikin', 'Ehen, make you hurry', 'Ok o. Take care'] },
     { id: 'chidi', n: 'Chidi (Paddy)', c: '#27ae60', e: '🧑🏾', m: [{ t: Date.now() - 7200e3, x: 'Bros, you go come club tonight? 🎉' }], unread: 1, rep: ['I dey come', 'I no fit today', 'Which club?'], ans: ['Correct! 🔥', 'Ah you dey whine me 😂', 'The one wey dey Mushin na. Na there we dey'] },
-    { id: 'bank', n: 'EkoBank', c: '#0f9b58', e: '🏦', m: [{ t: Date.now() - 86400e3, x: 'Welcome to EkoBank mobile. Your money dey safe with us.' }], unread: 0, rep: [] },
+    { id: 'bank', n: 'Bank', c: '#0f9b58', e: '🏦', m: [{ t: Date.now() - 86400e3, x: 'Welcome to mobile banking. Your money dey safe with us.' }], unread: 0, rep: [] },
     { id: 'oyaride', n: 'Oya Ride', c: '#f2b705', e: '🚕', m: [{ t: Date.now() - 86400e3 * 2, x: 'Thanks for joining Oya Ride! Book car or okada anytime from the app.' }], unread: 0, rep: [] },
   ];
   if (!S.threads) S.threads = TH0();
   R.badge.msg = S.threads.reduce((a, t) => a + (t.unread || 0), 0);
-  function thread(id, n, c, e) { let t = S.threads.find(x => x.id === id); if (!t) { t = { id, n, c, e, m: [], unread: 0, rep: [] }; S.threads.unshift(t); } return t; }
+  function thread(id, n, c, e) { let t = S.threads.find(x => x.id === id); if (!t) { t = { id, n, c, e, m: [], unread: 0, rep: [] }; S.threads.unshift(t); } else if (id === 'bank') { t.n = n; t.c = c; } return t; }
   function sms(id, n, c, e, x) { const t = thread(id, n, c, e); t.m.push({ t: Date.now(), x }); if (t.m.length > 40) t.m.shift(); S.threads = [t, ...S.threads.filter(q => q !== t)];
     if (R.app === 'msg' && R.thread === id) openApp('msg', id); else { t.unread = (t.unread || 0) + 1; R.badge.msg++; notify('msg', n, x); } save(); }
   function msgApp(id) {
@@ -524,11 +540,98 @@ export function createPhone(api) {
   }
 
   // ---------------------------------------------------------------- Wallet, Weather, Settings
-  function walletApp() { const b = frameApp('Wallet'), card = h('div', 'wx-card'); card.append(h('small', null, 'EkoBank · Savings ••4521'), h('div', 'ph-big', api.naira(api.cash())), h('small', null, 'Available balance')); b.append(card);
-    b.append(btn('iph-btn gray', ['💼 Find work (Oya Work)'], () => openApp('work')));
-    b.append(h('div', 'iph-h', 'Recent')); if (!S.tx.length) b.append(h('div', 'iph-note', 'No transaction yet.')); const L = h('div', 'iph-list');
+  // ---------------------------------------------------------------- Bank: your account (a bank, a 10-digit number), send money to other players
+  // (online: the server keeps the accounts; as a guest it is only the cash you carry)
+  const BK = { me: null, banks: {}, hist: [], rules: null, view: 'home', f: null, rc: null, want: false };
+  const BANKS0 = { gidi: { name: 'Gidi Bank', c: '#0f8a4a', c2: '#06512b' }, zobo: { name: 'Zobo Bank', c: '#9b1f4f', c2: '#560c2a' }, agege: { name: 'Agege Trust Bank', c: '#c77d0a', c2: '#6e4204' } };
+  const bankOf = k => BK.banks[k] || BANKS0[k] || { name: 'Bank', c: '#0f9b58', c2: '#0b5e3c' };
+  const acctFmt = a => a ? a.slice(0, 3) + ' ' + a.slice(3, 6) + ' ' + a.slice(6) : '';
+  const feeOf = (n, same) => same ? 0 : n <= 5000 ? 10 : n <= 50000 ? 25 : 50;
+  const bkAlert = (x, msg) => { const b = BK.me ? bankOf(BK.me.bank) : null; sms('bank', b ? b.name : 'Bank', b ? b.c : '#0f9b58', '🏦', msg); };
+  const rcRows = (rows) => { const d = h('div', 'bk-rc'); for (const [k, v] of rows) { if (v == null || v === '') continue; const r = h('div'); r.append(h('span', null, k), h('b', null, v)); d.append(r); } return d; };
+  function bankMsg(m) {   // what the server says about your account
+    if (m.t === 'bkout') { BK.me = null; BK.hist = []; BK.view = 'home'; BK.f = null; if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
+    if (m.t === 'bk') { BK.me = m.me; BK.banks = m.banks || BK.banks; BK.hist = m.hist || []; BK.rules = m.rules || BK.rules;
+      // money that came while you were away: the alerts now
+      const seen = (S.bkSeen = S.bkSeen || {}), last = seen[m.me.acct]; const inc = BK.hist.filter(x => x.d > 0 && (last == null ? Date.now() - x.t < 864e5 : x.id > last)).slice(0, 3);
+      for (const x of inc.reverse()) bkAlert(x, `Credit Alert!\nAcct: ••${m.me.acct.slice(-4)}\nAmt: ${api.naira(x.d)}\nFrom: ${x.who} (${bankOf(x.bank).name})${x.note ? `\nDesc: ${x.note}` : ''}`);
+      seen[m.me.acct] = BK.hist.reduce((a, x) => Math.max(a, x.id), last || 0); save();
+      if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
+    if (m.t === 'bkname') { const f = BK.f; if (!f || f.acct !== m.acct || f.bank !== m.bank) return; f.name = m.name; f.self = !!m.me; f.nmsg = m.name ? '' : m.m || 'Account not found.'; f.asking = false; if (R.app === 'wallet' && BK.view === 'send') openApp('wallet'); return; }
+    if (m.t === 'bksent') { const x = m.tx; if (x && !BK.hist.some(y => y.id === x.id)) BK.hist.unshift(x); BK.rc = x; BK.f = null; BK.view = 'done';
+      if (x && !m.again) { bkAlert(x, `Debit Alert!\nAcct: ••${BK.me ? BK.me.acct.slice(-4) : ''}\nAmt: ${api.naira(-x.d)}${x.fee ? `\nFee: ${api.naira(x.fee)}` : ''}\nTo: ${x.who} (${bankOf(x.bank).name})${x.note ? `\nDesc: ${x.note}` : ''}\nBal: ${api.naira(api.cash())}`); S.bkSeen = S.bkSeen || {}; }
+      if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
+    if (m.t === 'bktx') { const x = m.tx; if (!x || BK.hist.some(y => y.id === x.id)) return; BK.hist.unshift(x); if (BK.me) { (S.bkSeen = S.bkSeen || {})[BK.me.acct] = Math.max(S.bkSeen[BK.me.acct] || 0, x.id); save(); }
+      setTimeout(() => bkAlert(x, `Credit Alert!\nAcct: ••${BK.me ? BK.me.acct.slice(-4) : ''}\nAmt: ${api.naira(x.d)}\nFrom: ${x.who} (${bankOf(x.bank).name})${x.note ? `\nDesc: ${x.note}` : ''}\nBal: ${api.naira(api.cash())}`), 300);
+      if (R.app === 'wallet' && BK.view === 'home') openApp('wallet'); refreshHome(); return; }
+    if (m.t === 'err') { if (BK.f) { BK.f.err = m.m; BK.f.busy = false; BK.f.asking = false; if (BK.view === 'confirm') BK.view = 'send'; } if (R.app === 'wallet') openApp('wallet'); else api.toast(m.m, 3); return; }
+  }
+  function walletApp() {
+    const online = api.online && api.online();
+    if (!online || !BK.me) { BK.view = 'home';
+      const b = frameApp('Bank'), card = h('div', 'wx-card'); card.append(h('div', 'bk-top', 'Wallet', h('i', null, 'cash')), h('div', 'ph-big', api.naira(api.cash())), h('small', null, 'The money you carry')); b.append(card);
+      if (online) { b.append(h('div', 'iph-note', 'Opening your bank account…')); if (!BK.want) { BK.want = true; api.bankSend && api.bankSend({ a: 'me' }); setTimeout(() => { BK.want = false; }, 5000); } }
+      else { b.append(h('div', 'iph-note', 'Sign in online to get your own bank account: a bank, a 10-digit account number, and send money to other players.')); if (api.openOnline) b.append(btn('iph-btn', ['Go online'], () => api.openOnline())); }
+      b.append(btn('iph-btn gray', ['💼 Find work (Oya Work)'], () => openApp('work'))); localTx(b); return; }
+    const me = BK.me, bk = bankOf(me.bank);
+    if (BK.view === 'send' || BK.view === 'confirm') return sendView(BK.view === 'confirm');
+    if (BK.view === 'done' && BK.rc) { const x = BK.rc, b = frameApp('Transfer', { back: ['Bank', () => { BK.view = 'home'; BK.rc = null; openApp('wallet'); }] });
+      b.append(h('div', 'bk-ok', '✅'), h('div', 'bk-big', api.naira(-x.d)), h('div', 'iph-note', 'Transfer successful'));
+      b.append(rcRows([['To', x.who], ['Bank', bankOf(x.bank).name], ['Account', acctFmt(x.acct)], ['Fee', x.fee ? api.naira(x.fee) : 'Free (same bank)'], ['Narration', x.note], ['Ref', 'TRF' + String(x.id).padStart(8, '0')], ['Time', new Date(x.t).toLocaleString('en-NG', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })]]));
+      b.append(btn('iph-btn', ['Done'], () => { BK.view = 'home'; BK.rc = null; openApp('wallet'); }), btn('iph-btn gray', ['Send again'], () => { BK.f = { acct: x.acct, bank: x.bank, name: x.who, n: '', note: '' }; BK.view = 'send'; openApp('wallet'); })); return; }
+    if (BK.view === 'receive') { const b = frameApp('Receive money', { back: ['Bank', () => { BK.view = 'home'; openApp('wallet'); }] });
+      b.append(h('div', 'iph-note', 'Give these to the person who wants to send you money:'), rcRows([['Account name', me.name], ['Account number', acctFmt(me.acct)], ['Bank', bk.name]]));
+      b.append(btn('iph-btn', ['Copy my details'], () => copy(`${me.name}\n${me.acct}\n${bk.name}`, 'Your details don copy ✓'))); return; }
+    const b = frameApp('Bank'), card = h('div', 'wx-card'); card.style.background = `linear-gradient(135deg,${bk.c},${bk.c2})`;
+    const ac = h('div', 'bk-acct', acctFmt(me.acct)); ac.append(btn('', ['Copy'], () => copy(me.acct, 'Account number don copy ✓'), 'Copy account number'));
+    card.append(h('div', 'bk-top', bk.name, h('i', null, 'Savings')), h('div', 'ph-big', api.naira(api.cash())), h('small', null, me.name + ' · Available balance'), ac); b.append(card);
+    const row = h('div', 'bk-row'); row.append(btn('iph-btn', ['↗ Send money'], () => { BK.f = { acct: '', bank: '', name: null, n: '', note: '' }; BK.view = 'send'; openApp('wallet'); }), btn('iph-btn gray', ['↙ Receive'], () => { BK.view = 'receive'; openApp('wallet'); })); b.append(row);
+    b.append(h('div', 'iph-h', 'Transfers')); if (!BK.hist.length) b.append(h('div', 'iph-note', 'No transfer yet. Send your account number to your guys!'));
+    const L = h('div', 'iph-list');
+    for (const x of BK.hist.slice(0, 25)) { const r = h('div', 'iph-li'), tx = h('div', 'tx'), inn = x.d > 0; tx.append(h('b', null, (inn ? 'From ' : 'To ') + x.who), h('small', null, `${bankOf(x.bank).name}${x.note ? ' · ' + x.note : ''} · ${ago(x.t)}`));
+      const amt = h('span', 'rt', (inn ? '+' : '−') + api.naira(Math.abs(x.d))); amt.style.opacity = 1; amt.style.color = inn ? '#30d158' : '#ff6b5e'; r.append(h('div', 'iph-av', inn ? '⬇' : '⬆'), tx, amt); r.firstChild.style.background = inn ? '#14532d' : '#4a1d1a'; L.append(r); }
+    if (L.children.length) b.append(L);
+    localTx(b);
+  }
+  function localTx(b) { b.append(h('div', 'iph-h', 'Recent')); if (!S.tx.length) b.append(h('div', 'iph-note', 'No transaction yet.')); const L = h('div', 'iph-list');
     for (const t of S.tx.slice(0, 30)) { const r = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, t.d > 0 ? 'Credit' : 'Debit'), h('small', null, t.w || '')); const amt = h('span', 'rt', (t.d > 0 ? '+' : '−') + api.naira(Math.abs(t.d))); amt.style.opacity = 1; amt.style.color = t.d > 0 ? '#30d158' : '#ff6b5e'; r.append(h('div', 'iph-av', t.d > 0 ? '⬇' : '⬆'), tx, amt); r.firstChild.style.background = t.d > 0 ? '#14532d' : '#4a1d1a'; L.append(r); }
     if (L.children.length) b.append(L); }
+  function copy(text, msg) { try { navigator.clipboard.writeText(text).then(() => phToast(msg), () => phToast(text)); } catch (e) { phToast(text); } }
+  function sendView(confirm) {
+    const f = BK.f || (BK.f = { acct: '', bank: '', name: null, n: '', note: '' }), me = BK.me;
+    const n = parseInt(String(f.n).replace(/\D/g, ''), 10) || 0, fee = f.bank ? feeOf(n, f.bank === me.bank) : 0;
+    if (confirm) { const b = frameApp('Confirm', { back: ['Edit', () => { BK.view = 'send'; openApp('wallet'); }] });
+      b.append(h('div', 'bk-big', api.naira(n)), rcRows([['To', f.name], ['Bank', bankOf(f.bank).name], ['Account', acctFmt(f.acct)], ['Fee', fee ? api.naira(fee) : 'Free (same bank)'], ['Total', api.naira(n + fee)], ['Narration', f.note]]));
+      if (f.err) b.append(h('div', 'bk-err', f.err));
+      b.append(btn('iph-btn', [f.busy ? 'Sending…' : 'Send ' + api.naira(n)], () => { if (f.busy) return; f.busy = true; f.err = ''; f.q = f.q || ('t' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7));
+        if (!api.bankSend({ a: 'send', acct: f.acct, bank: f.bank, n, note: f.note, q: f.q })) { f.busy = false; f.err = 'No network. Check that you are online.'; } openApp('wallet');
+        setTimeout(() => { if (BK.f === f && f.busy) { f.busy = false; f.err = 'No answer from the bank. Check your history before you send again.'; if (R.app === 'wallet') openApp('wallet'); } }, 9000); }),
+        btn('iph-btn gray', ['Cancel'], () => { BK.view = 'home'; BK.f = null; openApp('wallet'); })); return; }
+    const b = frameApp('Send money', { back: ['Bank', () => { BK.view = 'home'; BK.f = null; openApp('wallet'); }] });
+    // people you sent to before
+    const ben = []; for (const x of BK.hist) if (x.d < 0 && x.acct && !ben.some(y => y.acct === x.acct)) ben.push(x);
+    if (ben.length) { b.append(h('div', 'iph-h', 'Send again')); const ch = h('div', 'iph-chips'); ben.slice(0, 6).forEach(x => ch.append(btn('', [x.who], () => { f.acct = x.acct; f.bank = x.bank; f.name = x.who; f.nmsg = ''; f.err = ''; openApp('wallet'); }))); b.append(ch); }
+    b.append(h('div', 'iph-h', 'Account number'));
+    const ai = h('input', 'iph-in'); ai.inputMode = 'numeric'; ai.maxLength = 10; ai.placeholder = '10 digits'; ai.value = f.acct; ai.autocomplete = 'off';
+    const nm = h('div', 'bk-name' + (f.name ? ' ok' : f.nmsg ? ' bad' : ''), f.asking ? 'Checking…' : f.name ? '✓ ' + f.name + (f.self ? ' (you)' : '') : f.nmsg || '');
+    const ask = () => { f.name = null; f.nmsg = ''; if (f.acct.length === 10 && f.bank) { f.asking = true; nm.className = 'bk-name'; nm.textContent = 'Checking…'; api.bankSend({ a: 'name', acct: f.acct, bank: f.bank }); } else { nm.textContent = ''; } };
+    ai.addEventListener('keydown', e => e.stopPropagation()); ai.addEventListener('input', () => { const v = ai.value.replace(/\D/g, '').slice(0, 10); if (v !== ai.value) ai.value = v; if (v !== f.acct) { f.acct = v; f.err = ''; ask(); } });
+    b.append(ai, h('div', 'iph-h', 'Bank'));
+    const bs = h('div', 'bk-banks'); for (const k of Object.keys(BK.banks).length ? Object.keys(BK.banks) : Object.keys(BANKS0)) { const B = bankOf(k), x = btn(f.bank === k ? 'on' : '', [B.name], () => { if (f.bank === k) return; f.bank = k; f.err = ''; ask(); openApp('wallet'); }); if (f.bank === k) x.style.background = B.c; bs.append(x); }
+    b.append(bs, nm, h('div', 'iph-h', 'Amount'));
+    const mi = h('input', 'iph-in'); mi.inputMode = 'numeric'; mi.placeholder = '₦ how much'; mi.value = n ? n.toLocaleString('en-NG') : ''; mi.addEventListener('keydown', e => e.stopPropagation());
+    const feeL = h('div', 'bk-fee', f.bank ? (fee ? `Fee ${api.naira(fee)} (another bank)` : 'No fee (same bank)') : 'Same bank: no fee. Another bank: ₦10 to ₦50.');
+    mi.addEventListener('input', () => { const v = parseInt(mi.value.replace(/\D/g, ''), 10) || 0; f.n = v ? String(v) : ''; f.err = ''; const fe = f.bank ? feeOf(v, f.bank === me.bank) : 0; feeL.textContent = f.bank ? (fe ? `Fee ${api.naira(fe)} (another bank)` : 'No fee (same bank)') : feeL.textContent; });
+    mi.addEventListener('change', () => { const v = parseInt(mi.value.replace(/\D/g, ''), 10) || 0; mi.value = v ? v.toLocaleString('en-NG') : ''; });
+    const qk = h('div', 'iph-chips'); [1000, 5000, 10000, 50000].forEach(v => qk.append(btn('', [api.naira(v)], () => { f.n = String(v); f.err = ''; openApp('wallet'); })));
+    b.append(mi, qk, feeL, h('div', 'iph-h', 'Narration (optional)'));
+    const ni = h('input', 'iph-in'); ni.maxLength = 40; ni.placeholder = 'e.g. for food'; ni.value = f.note || ''; ni.addEventListener('keydown', e => e.stopPropagation()); ni.addEventListener('input', () => { f.note = ni.value; });
+    b.append(ni);
+    if (f.err) b.append(h('div', 'bk-err', f.err));
+    b.append(btn('iph-btn', ['Continue'], () => { const v = parseInt(String(f.n).replace(/\D/g, ''), 10) || 0, Rl = BK.rules || { least: 100, most: 200000 };
+      const e = f.acct.length !== 10 ? 'Put the 10-digit account number.' : !f.bank ? 'Pick their bank.' : f.asking ? 'Wait, checking the account…' : !f.name ? (f.nmsg || 'Account not found.') : f.self ? 'That one is your own account.' : v < Rl.least || v > Rl.most ? `Send between ${api.naira(Rl.least)} and ${api.naira(Rl.most)}.` : v + feeOf(v, f.bank === me.bank) > api.cash() ? 'Insufficient funds.' : '';
+      if (e) { f.err = e; openApp('wallet'); return; } f.n = String(v); f.q = null; BK.view = 'confirm'; openApp('wallet'); }));
+  }
   function weatherApp() { const b = frameApp('Weather'); R.view.style.background = 'linear-gradient(180deg,#3a7bd5,#1c3f7a)'; const w = h('div', 'wt'); w.append(h('div', 'c', 'Mushin, Lagos'), h('div', 't', temp() + '°'), h('div', 'c', `${wxIcon()} ${api.weather()}`), h('small', null, `${api.clock()} · Feels like ${temp() + 3}°`));
     const hrs = h('div', 'wt-hours'), h0 = api.hour(); for (let i = 0; i < 6; i++) { const hr = (Math.floor(h0) + i * 2) % 24, d = h('div'); const tt = Math.round(27 + 5 * Math.cos((hr - 14) / 24 * 6.283) - api.rain() * 4 * (i < 2 ? 1 : .5)); d.append(h('span', null, i ? `${hr}:00` : 'Now'), h('i', null, (hr < 7 || hr > 18) ? '🌙' : i < 2 ? wxIcon() : '⛅'), h('span', null, tt + '°')); hrs.append(d); }
     w.append(hrs, h('div', 'iph-note', api.rain() > .2 ? 'Rain dey fall. Carry umbrella and drive slow.' : 'Normal Lagos weather. Drink water, the sun no dey play.')); b.append(w); }
@@ -548,7 +651,8 @@ export function createPhone(api) {
   let cashQ = 0, cashT = null, cashW = '';
   function event(kind, d = {}) {
     if (kind === 'cash') { const t = { d: d.d, t: Date.now(), w: d.why || api.where() }; S.tx.unshift(t); if (S.tx.length > 40) S.tx.length = 40; save(); cashQ += d.d; cashW = t.w; clearTimeout(cashT);
-      cashT = setTimeout(() => { if (Math.abs(cashQ) >= 100) sms('bank', 'EkoBank', '#0f9b58', '🏦', `${cashQ > 0 ? 'Credit' : 'Debit'} Alert! Acct: ••4521\nAmt: ${api.naira(Math.abs(cashQ))}\nDesc: ${cashW}\nBal: ${api.naira(api.cash())}`); cashQ = 0; }, 2500); if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
+      cashT = setTimeout(() => { if (Math.abs(cashQ) >= 100) bkAlert(null, `${cashQ > 0 ? 'Credit' : 'Debit'} Alert! Acct: ••${BK.me ? BK.me.acct.slice(-4) : '4521'}\nAmt: ${api.naira(Math.abs(cashQ))}\nDesc: ${cashW}\nBal: ${api.naira(api.cash())}`); cashQ = 0; }, 2500); if (R.app === 'wallet' && (BK.view === 'home' || !BK.me)) openApp('wallet'); refreshHome(); return; }
+    if (kind === 'bank') { bankMsg(d); return; }
     if (kind === 'sms') { sms(d.id, d.n, d.c, d.e, d.x); return; }
     if (kind === 'ride') { sms('oyaride', 'Oya Ride', '#f2b705', '🚕', `Your ${d.bike ? 'okada' : 'car'} to ${d.name} don book. Driver: ${d.who}. Fare: ${api.naira(d.fare)}, pay cash. Safe journey!`); return; }
     gistEvent(kind, d);
@@ -569,5 +673,5 @@ export function createPhone(api) {
   const cam = () => R.cam;
   function test(what) { if (what === 'dispatch') return JSON.stringify(api.callPolice(api.nearPlaces(1)[0], 'Fight')); if (what === 'camera') { if (!R.open) api.reopen(); openCamera(); return 1; } if (what === 'shoot') { shoot(); return 1; } if (what === 'selfie') { setSelfie(true); return 1; } if (what === 'closecam') { closeCamera(); return 1; } if (what === 'home') { toHome(); return 1; } if (what === 'back') { goBack(); return 1; } if (what === 'badge') return pbN.hidden ? 0 : pbN.textContent; if (what.startsWith && what.startsWith('sms:')) { sms('mama', 'Mama', '#e91e63', '👩🏾', what.slice(4)); return 1; } if (what === 'gistev') { R.badge.gist++; setBadges(); return 1; } if (what === 'police') { openApp('phone'); startCall(CONTACTS.find(c => c.police)); return 1; } if (what && what.startsWith('call:')) { openApp('phone'); startCall(CONTACTS.find(c => c.id === what.slice(5))); return 1; } if (what && what.startsWith('tap:')) { const b = [...scr.querySelectorAll('button')].find(x => x.textContent.includes(what.slice(4))); if (b) { b.click(); return 1; } return 0; } openApp(what); return 1; }
   setBadges();
-  return { open, close, event, tick, camHook, cam, closeCamera, test, back: goBack, home: toHome, isOpen: () => R.open, app: () => R.app };
+  return { open, close, event, tick, camHook, cam, closeCamera, test, back: goBack, home: toHome, isOpen: () => R.open, app: () => R.app, bank: () => ({ me: BK.me, view: BK.view, f: BK.f, hist: BK.hist.length, rc: BK.rc }) };
 }

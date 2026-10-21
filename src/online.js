@@ -63,9 +63,10 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'err': if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showErr(m.w, m.m); break;
       case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzlost': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
+      case 'bk': case 'bkname': case 'bksent': case 'bktx': api.bank && api.bank(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
@@ -76,8 +77,8 @@ export function createOnline(api) {
       case 'w': world(m); break;
       case 'say': heard(m); break;
       case '$': money(m); break;
-      case 'kick': S.kicked = true; S.me = null; dropAll(); api.bizOut && api.bizOut(); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
-      case 'out': S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
+      case 'kick': S.kicked = true; S.me = null; dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
+      case 'out': S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
       case 'old': S.old = true; api.toast(m.m, 6); try { S.ws && S.ws.close(); } catch (e) { /* gone */ } ui(); break;
     }
   }

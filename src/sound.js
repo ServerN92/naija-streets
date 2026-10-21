@@ -17,7 +17,23 @@ export function createSound({ AC, out, url, files, els = [] }) {
   const bus = {};
   const muffle = AC.createBiquadFilter(); muffle.type = 'lowpass'; muffle.frequency.value = 20000; muffle.connect(out);   // indoors: the street is behind walls
   for (const k of VOL_KEYS) { bus[k] = AC.createGain(); bus[k].gain.value = vol[k]; bus[k].connect(k === 'sfx' || k === 'music' ? out : muffle); }
-  function setVol(k, v) { vol[k] = clamp(+v || 0, 0, 1.5); bus[k].gain.setTargetAtTime(vol[k], t(), .05); try { localStorage.setItem('naija-vol', JSON.stringify(vol)); } catch (e) { } }
+  // your own vehicle (engine, tyres, horn): never behind the walls or the windows
+  bus.own = AC.createGain(); bus.own.gain.value = vol.veh; bus.own.connect(out);
+  // music from out there (a street speaker, the club through its walls): heard less from inside a car
+  const musOutF = AC.createBiquadFilter(); musOutF.type = 'lowpass'; musOutF.frequency.value = 20000; musOutF.connect(bus.music);
+  const musOut = AC.createGain(); musOut.connect(musOutF);
+  // in a closed car, windows up: the street goes quiet and dull, no honking; your engine and the radio stay
+  const CAB = { amb: .07, voice: .06, veh: .22 };   // what is left of each, windows up
+  let cab = 0, mufOn = false;
+  const level = k => vol[k] * (CAB[k] !== undefined ? 1 - (1 - CAB[k]) * cab : 1);
+  function mix(tc = .05) {
+    for (const k of VOL_KEYS) bus[k].gain.setTargetAtTime(level(k), t(), tc);
+    bus.own.gain.setTargetAtTime(vol.veh * (1 - .3 * cab), t(), tc);
+    musOut.gain.setTargetAtTime(1 - .85 * cab, t(), tc); musOutF.frequency.setTargetAtTime(cab > .01 ? 20000 * Math.pow(500 / 20000, cab) : 20000, t(), tc);
+    const f = Math.min(mufOn ? 700 : 20000, cab > .01 ? 20000 * Math.pow(380 / 20000, cab) : 20000); muffle.frequency.setTargetAtTime(f, t(), .3);
+  }
+  function cabin(k) { k = clamp(+k || 0, 0, 1); if (Math.abs(k - cab) < .01) return; cab = k; mix(.35); }
+  function setVol(k, v) { vol[k] = clamp(+v || 0, 0, 1.5); mix(); try { localStorage.setItem('naija-vol', JSON.stringify(vol)); } catch (e) { } }
   // ---------------------------------------------------------------- loading (each file once, when first asked for)
   const BUF = new Map(), LOADING = new Map();
   function need(name) {
@@ -116,7 +132,7 @@ export function createSound({ AC, out, url, files, els = [] }) {
     const n = on ? engOf(type) : null;
     if (MINE && MINE.name !== n) { MINE.stop(); MINE = null; }
     if (!n) return;
-    if (!MINE) { MINE = loop(n, { b: 'veh' }); if (!MINE) return; }
+    if (!MINE) { MINE = loop(n, { b: 'own' }); if (!MINE) return; }
     const f = files[n], k = clamp(Math.abs(speed) / (maxV || 14), 0, 1.25);
     MINE.s.playbackRate.setTargetAtTime((f.r0 || .85) + k * (f.r1 || .6) + (gas ? .05 : 0), t(), .12);
     MINE.g.gain.setTargetAtTime(MINE.k * (.55 + .35 * k + (gas ? .15 : 0)) * .8, t(), .12);
@@ -124,7 +140,7 @@ export function createSound({ AC, out, url, files, els = [] }) {
   // tyres screeching while you brake hard or slide
   let SKID = null;
   function skid(k) {
-    if (k > .05 && !SKID && files.skid) SKID = loop('skid', { b: 'veh', offset: 0 });
+    if (k > .05 && !SKID && files.skid) SKID = loop('skid', { b: 'own', offset: 0 });
     if (SKID) { SKID.g.gain.setTargetAtTime(SKID.k * clamp(k, 0, 1) * .8, t(), .05); if (k <= .05) { SKID.idle += 1; if (SKID.idle > 40) { SKID.stop(); SKID = null; } } else SKID.idle = 0; }
   }
   // the police siren, where the police are
@@ -136,7 +152,9 @@ export function createSound({ AC, out, url, files, els = [] }) {
     if (!on) { SIREN.idle += 1; if (SIREN.idle > 120) { SIREN.stop(); SIREN = null; } } else SIREN.idle = 0;
   }
   let hornT = 0;
-  function horn(type, x, z, gain = 1) { if (t() - hornT < .25 && x !== undefined) return; hornT = t(); const n = HORN[type] && files[HORN[type]] ? HORN[type] : 'horn_car'; return play(n, { x, z, y: 1, b: 'veh', gain, ref: 10, max: 400, rate: .96 + R() * .08 }); }
+  function horn(type, x, z, gain = 1) { if (t() - hornT < .25 && x !== undefined) return; hornT = t(); const n = HORN[type] && files[HORN[type]] ? HORN[type] : 'horn_car';
+    if (x === undefined) return play(n, { b: 'own', gain: gain * (1 - .45 * cab), rate: .98 });   // yours: in front of you, softer from inside
+    return play(n, { x, z, y: 1, b: 'veh', gain, ref: 10, max: 400, rate: .96 + R() * .08 }); }
   function stopAll() { for (const n of Object.keys(BEDS)) { BEDS[n].stop(); delete BEDS[n]; } for (const [id, S] of SPOTS) { S.L.stop(); SPOTS.delete(id); } for (const [v, L] of VOICES) { L.stop(); VOICES.delete(v); } if (MINE) { MINE.stop(); MINE = null; } }
   // ---------------------------------------------------------------- music: songs stream from <audio> elements (a song is too long to
   // hold decoded), each on its own channel: 0 the radio (your car, the danfo you ride, your room), 1 the club, 2-3 street speakers.
@@ -151,7 +169,7 @@ export function createSound({ AC, out, url, files, els = [] }) {
     p.panningModel = 'equalpower'; p.distanceModel = 'inverse'; p.refDistance = 6; p.maxDistance = 400; p.rolloffFactor = 1.3;
     src.connect(f); f.connect(g);
     const C = { i, el, f, g, p, song: null, pos: false, want: 0, onEnd: null };
-    const route = pos => { if (C.pos === pos && C.routed) return; try { g.disconnect(); } catch (e) { } if (pos) { g.connect(p); p.connect(bus.music); } else g.connect(bus.music); C.pos = pos; C.routed = true; };
+    const route = pos => { if (C.pos === pos && C.routed) return; try { g.disconnect(); } catch (e) { } try { p.disconnect(); } catch (e) { } if (pos) { g.connect(p); p.connect(musOut); } else g.connect(bus.music); C.pos = pos; C.routed = true; };
     C.route = route; route(false);
     el.addEventListener('ended', () => { C.song = null; if (C.onEnd) C.onEnd(C); });
     el.addEventListener('error', () => { const s = C.song; C.song = null; if (C.onEnd && s) setTimeout(() => C.onEnd && C.onEnd(C), 3000); });
@@ -176,6 +194,6 @@ export function createSound({ AC, out, url, files, els = [] }) {
   const songInfo = n => files[n] && files[n].m;
   return { AC, bus, vol, setVol, need, preload, play, loop, beds, spots, engines, myEngine, skid, siren, horn, listen, place, stopAll, has: n => !!files[n] || !!fam[n],
     unlock, song, songSet, songStop, songsOf, songInfo, SONGS, channelOf: i => CH[i],
-    muffle(on) { muffle.frequency.setTargetAtTime(on ? 700 : 20000, t(), .3); }, files,
-    debug() { return { beds: Object.keys(BEDS).map(n => [n, +BEDS[n].g.gain.value.toFixed(3)]), spots: [...SPOTS.keys()], engines: [...VOICES.values()].map(L => L.name), mine: MINE && MINE.name, loaded: [...BUF.keys()], state: AC.state }; } };
+    muffle(on) { on = !!on; if (on !== mufOn) { mufOn = on; mix(.3); } }, cabin, get cab() { return cab; }, files,
+    debug() { return { beds: Object.keys(BEDS).map(n => [n, +BEDS[n].g.gain.value.toFixed(3)]), spots: [...SPOTS.keys()], engines: [...VOICES.values()].map(L => L.name), mine: MINE && MINE.name, cab, buses: Object.fromEntries(Object.keys(bus).map(k => [k, +bus[k].gain.value.toFixed(3)])), muffle: Math.round(muffle.frequency.value), loaded: [...BUF.keys()], state: AC.state }; } };
 }

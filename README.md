@@ -348,6 +348,17 @@ money goes straight to the farmer (even offline, with a message). Cooking with f
 plates (tomatoes for jollof, yams for amala and pounded yam, cassava for eba), 15% of the plate price instead of 40%.
 The market is on the server (`server/src/biz.js`, saved in SQLite); the farm store is on your phone (`src/farm.js`).
 
+## Online: banks and transfers
+Every player has a bank account: one of three Lagos banks (**Gidi Bank**, **Zobo Bank**, **Agege Trust Bank**; made-up
+names, set in `server/src/bank.js`) and a 10-digit account number nobody else has (with a check digit like a real
+NUBAN, so a typo or the wrong bank is caught). Players who were already playing got theirs when the server started; new
+ones get theirs at sign-up. The phone's **Bank** app shows your bank, number (Copy), balance and transfers.
+**Send money:** put the account number, pick the bank, and the app shows whose account it is (name enquiry) before you
+send; amount (₦100 to ₦200,000 at a time, ₦1,000,000 a day, 20 sends an hour) and a narration. Same bank: free; another
+bank: ₦10 (up to ₦5,000), ₦25 (up to ₦50,000), ₦50 (more). It arrives at once, even when they are offline; they get a
+credit alert (on screen and as a text from their bank), you get a debit alert and a receipt. **Receive** shows your
+details to give out. A send that is resent after the line drops is not paid twice. As a guest the app is only your cash.
+
 ## Online: the motor park union (agbero to chairman)
 Mushin Motor Park has a union office in the yard (built in Blender: `tools/blender_park.py`, the office, its boards
 and the chairman's aso-oke fila). Signed in online, join the union at the secretary's table (₦5,000) and you wear the
@@ -451,6 +462,9 @@ linked from Settings). Most of the street is Nigerian field recordings by SFXAFR
 - **Vehicles:** the nearest vehicles run their own engines in 3-D (okada, keke, danfo and BRT, cars, tankers), rising
   with their speed; they honk, more when traffic is stuck. Your own engine follows your speed and the gas; hard braking
   screeches; crashes, car doors, the police siren where the police van is, the jet taking off at the airport.
+- **In a car:** windows up. In a closed car (yours, a taxi or a danfo you ride in) the street outside goes nearly quiet
+  and dull, nobody's horn blares in, the area boys' speakers fade: you hear your engine and the radio. Step out and the
+  city comes back. On an okada you hear everything; in a keke a little less.
 - **Settings:** volume sliders for the city, vehicles, voices, effects and music (kept on the phone). Files load only
   when first needed and are kept on the phone after (songs stream).
 - **Music** (free Afrobeats, amapiano, highlife and street songs from Pixabay, credited in `CREDITS.md`): the car radio

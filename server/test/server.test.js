@@ -251,3 +251,17 @@ test('a life over the line: kept with the account, checked for sense, back at th
   assert.equal(me2.life.home, 'flat'); assert.equal(me2.life.flat, true); assert.equal(me2.life.rented, 3); assert.deepEqual(me2.life.own, ['rags', 'suit']); assert.equal(me2.life.ease, 1);
   d.close();
 });
+
+test('the bank over the line: an account at sign-in, whose account, a transfer arrives with a credit alert', async () => {
+  const [a] = await account('Bank_Ada'); const [b] = await account('Bank_Tunde');
+  a.send({ t: 'bk', a: 'me' }); const A = (await a.next('bk')).me; b.send({ t: 'bk', a: 'me' }); const B = (await b.next('bk')).me;
+  assert.match(A.acct, /^\d{10}$/); assert.notEqual(A.acct, B.acct); assert.equal(B.name, 'Bank_Tunde');
+  a.send({ t: '$', d: 20000, s: 1 }); await a.next(m => m.t === '$' && m.n === 20000);
+  a.send({ t: 'bk', a: 'name', acct: B.acct, bank: B.bank }); assert.equal((await a.next('bkname')).name, 'Bank_Tunde');
+  a.send({ t: 'bk', a: 'send', acct: B.acct, bank: B.bank, n: 5000, note: 'chop money', q: 'test-0001' });
+  const s = await a.next('bksent'); const fee = A.bank === B.bank ? 0 : 10; assert.equal(s.tx.d, -5000); assert.equal(s.tx.fee, fee);
+  assert.equal((await a.next(m => m.t === '$' && m.n === 15000 - fee)).n, 15000 - fee);
+  assert.equal((await b.next(m => m.t === '$' && m.n === 5000)).n, 5000);
+  assert.match((await b.next('note')).m, /Credit alert! ₦5,000 from Bank_Ada/); assert.equal((await b.next('bktx')).tx.note, 'chop money');
+  a.close(); b.close();
+});
