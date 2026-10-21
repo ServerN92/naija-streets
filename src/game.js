@@ -4768,7 +4768,15 @@ function deathBanner(how,v){
   if(how==='car'){ const t=v&&v.type, n=t==='danfo'?'DANFO':t==='bus'?'BUS':t==='tanker'?'TRAILER':/^(okada|bike2|sbike)$/.test(t||'')?'OKADA':t==='keke'?'KEKE':t==='police'?'OLOPA':t==='benz'?'BENZ':'MOTOR';
     return [n+' DON\nJAM YOU!','jam',mpick(JAM_LINES)]; }
   if(how==='crash') return ['WHO GIVE YOU\nLICENCE?!','jam',mpick(LICENCE_LINES)];
-  return ['WASTED','wasted']; }
+  if(how==='shot') return ['BULLET NO\nGET EYE!','jam red',mpick(SHOT_LINES)];
+  if(how==='blast') return ['YOU DON\nSCATTER!','jam',mpick(BLAST_LINES)];
+  if(how==='fire') return ['FIRE DON\nRAZE YOU!','jam red',mpick(FIRE_LINES)];
+  return ['DEM DON BEAT\nYOU FINISH!','jam',mpick(BEAT_LINES)]; }   // beaten, kicked, stoned
+const BEAT_LINES=['Na your mouth cause am.','Area boys no dey joke o.','Next time, run first, ask question later.','You think say na Nollywood?','Who send you message?','Your strength no reach.'];
+const SHOT_LINES=['Olopa no dey play o.','Next time, hands up quick quick.','Run na better option.','Your village people don hire shooter.'];
+const BLAST_LINES=['Abeg, who bring gas cylinder?','Transformer no do pass this one.','Dem hear am reach Ikorodu.','Bomb no get uncle.'];
+const FIRE_LINES=['Na suya you wan turn?','Fire service go reach tomorrow.','Next time, waka comot quick.','E hot pass Lagos sun.'];
+const BUST_LINES=['Na station you dey go.','Wetin you carry for pocket?','You go explain for station.','Oga, abeg… e no work.'];
 // jumping: the real Mixamo jumps fitted to your body. Standing still you spring straight up; moving you leap forward and
 // land running. A fence or wall in front of you that you can reach, you climb instead. Crouched, JUMP stands you up
 // (like CODM); lying down it brings you up to a crouch; sliding, it jumps you out of the slide.
@@ -6526,7 +6534,7 @@ function updatePicks(dt){ for(let i=PICKS.length-1;i>=0;i--){ const k=PICKS[i]; 
 function copPullOut(){ if(mode!=='drive'||!drive.v||busy||COPS.bust) return; const v=drive.v; drive.speed=0; v.speed=0;
   toast(mpick(['Police: "Come down! Come down from that motor!"','Police: "Oya, comot for the motor now!"']),2.4); exitCar(); if(mode==='walk') busted(); }
 // busted: the cuffs go on
-function busted(){ if(COPS.bust||FIGHT.dead||busy) return; const down=FIGHT.ko; COPS.bust=true; arrestFine(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){} FIGHT.ko=true; player.speed=0; ARMS.aim=false; ARMS.trig=false; carryDrop(true); bigMsg('BUSTED','busted');
+function busted(){ if(COPS.bust||FIGHT.dead||busy) return; const down=FIGHT.ko; COPS.bust=true; arrestFine(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){} FIGHT.ko=true; player.speed=0; ARMS.aim=false; ARMS.trig=false; carryDrop(true); bigMsg('OLOPA DON\nCATCH YOU!','jam cop',mpick(BUST_LINES));
   if(!down&&hero&&hero.act.hands_up&&mode==='walk') heroDo('hands_up',{force:true,pause:true});
   toast(mpick(['Police: "You don finish! Enter motor!"','Police: "Oya, hands for back! You dey under arrest."']),2.6);
   setTimeout(()=>{ COPS.bust=false; arrest(); },2200); }
