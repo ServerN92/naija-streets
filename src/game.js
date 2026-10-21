@@ -471,6 +471,7 @@ for(const N of NEWV) LATE_FILES[N.k]=[N.k,'+x',0,1];   // size 0: they come at t
 LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
 const NEWV_K=Object.fromEntries(NEWV.map(N=>[N.k,N]));
 // run f(model) as soon as a late model is in (now, if it already is)
+var CB={bed:null,act:null,clips:null,job:null,ui:null};   // the carton bed (see 'the carton bed' below)
 let FDET=null;   // the farm detail texture (declared early: the police checkpoint asks for it before the farm code runs)
 const MODEL_WAIT={}; function whenModel(k,f){ if(MODELS[k]) f(MODELS[k]); else (MODEL_WAIT[k]=MODEL_WAIT[k]||[]).push(f); }
 function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker'].includes(k))) return;
@@ -3146,7 +3147,7 @@ let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
 function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
   if(mode==='drive'){ const v=drive.v, sk=v.type==='skate'; _t.set(v.x,v.y+(sk?1.3+(v.lift||0)*.5:1.5),v.z); dist=sk?4.4+Math.abs(drive.speed)*.1:7.8+Math.abs(drive.speed)*.04;   // on the board the camera stays close, like on foot
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
-  else { camFollow(dt); _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:1.55-.42*CR.w-.5*CR.pw),player.z+FIGHT.cz); dist=WARD.open?2.3:mode==='interior'?ROOM.camDist:gunOut()&&ARMS.aim?2.1:4.3; }
+  else { camFollow(dt); _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:CB.act&&CB.act.camH?CB.act.camH:1.55-.42*CR.w-.5*CR.pw),player.z+FIGHT.cz); dist=WARD.open?2.3:mode==='interior'?ROOM.camDist:gunOut()&&ARMS.aim?2.1:4.3; }
   const sims=mode==='interior'&&ROOM.sims&&!WARD.open; if(sims){ _t.y=player.y+.9; camState.pitch=clamp(camState.pitch,.55,1.2); }   // the Sims view: high, looking down; the walls in the way drop
   dist*=camState.zoom; const cp=Math.cos(camState.pitch); _d.set(-Math.sin(camState.yaw)*cp,Math.sin(camState.pitch),-Math.cos(camState.yaw)*cp);
   if(mode!=='drive'&&!sims){ let side=gunOut()&&ARMS.aim?.6:.35;   // over the shoulder; with the wardrobe open, you stand in the clear part of the screen
@@ -3306,7 +3307,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
-  if(mode==='walk'){ if(DEALER.open) return closeShop(); if(WARD.open) return closeWard(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } { const rb=robNear(); if(rb) return robChoose(rb); } { const av=agbCollectNear(); if(av) return agbCollect(av); } if(nearDoor()) return LIFE.flat?enterApt():flatMenu(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v&&v.impounded){ toast(`Impounded. Pay ${naira(LT.fee)} at the impound office (by the gate) to collect it.`,3); return; } if(v) return v.ai?carjack(v):enterCar(v); }
+  if(mode==='walk'){ if(CB.act) return cbPress(); if(DEALER.open) return closeShop(); if(WARD.open) return closeWard(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } { const rb=robNear(); if(rb) return robChoose(rb); } { const av=agbCollectNear(); if(av) return agbCollect(av); } if(nearDoor()) return LIFE.flat?enterApt():flatMenu(); if(nearHotel()) return enterLobby(0); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v&&v.impounded){ toast(`Impounded. Pay ${naira(LT.fee)} at the impound office (by the gate) to collect it.`,3); return; } if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(landPayNear()) return landPay(); if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(rbNear()) return void rbTalk(); if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } { const ag=!drive.ride&&agbPayNear(); if(ag) return agbPay(ag); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
@@ -6034,7 +6035,7 @@ function holdOf(id){ const H=HOLD[id]; if(H.q) return H; const X=new THREE.Vecto
 function boneOf(root,re,cache,key){ if(cache&&cache[key]&&cache[key].parent) return cache[key]; let b=null; root.traverse(o=>{ if(!b&&o.isBone&&re.test(o.name)) b=o; }); if(cache) cache[key]=b; return b; }
 const _wv=new THREE.Vector3(), _wv2=new THREE.Vector3(), _wq=new THREE.Quaternion(), _ws=new THREE.Vector3();
 // the hero's weapon: in the right hand (blades, baton), on the back (AK), or in both hands while aiming (placed each frame)
-function heroWeapon(){ if(!hero) return; const id=ARMS.cur==='board'?'fists':ARMS.cur, want=(mode==='walk'||mode==='interior')&&!HL.act&&!HL.broom?id:'fists';
+function heroWeapon(){ if(!hero) return; const id=ARMS.cur==='board'?'fists':ARMS.cur, want=(mode==='walk'||mode==='interior')&&!HL.act&&!HL.broom&&!CB.act?id:'fists';
   boardHand(ARMS.cur==='board'&&mode==='walk'&&!HL.act&&!CARRY.p);
   if(ARMS.heldId!==want||ARMS.heldOn!==hero.cObj||!ARMS.held){ if(ARMS.held&&ARMS.held.parent) ARMS.held.parent.remove(ARMS.held); ARMS.held=null; ARMS.heldId=want; ARMS.heldOn=hero.cObj; ARMS.bones={};
     if(want!=='fists'){ if(!ARMS.lib[want]){ loadWeapon(want).then(()=>{ ARMS.heldId=null; }); return; } ARMS.held=cloneWeapon(want); } }
@@ -8292,6 +8293,103 @@ function lifeSleep(where){ fadeSwap(()=>{ FIGHT.hp=Math.max(FIGHT.hp,where==='te
 function tentMenu(){ openMenu('YOUR TENT','Under the '+(LIFEC?LIFEC.fo.name:'flyover'),[
   {name:'Sleep',sub:'Rest your body (the mosquitoes come too)',btn:'Sleep',act:()=>{ closeMenu(); lifeSleep('tent'); }},
   {name:'Change clothes',sub:'What you have in your bag',btn:'Open',act:()=>{ closeMenu(); openWard(player.yaw); }}]); }
+/* ================= the carton bed: your street bed on the ground beside your tent =================
+   Flattened cartons, a folded wrapper for a pillow, slippers and your nylon bag (made in Blender: tools/blender_carton.py).
+   Press E by it and you lie down (the Mixamo get-up move played backwards), sleep on your back breathing slowly (made in
+   Blender: tools/blender_sleep.py -> moves5.glb), the night passes, then you sit up, get up (the get-up move forwards), stretch
+   and yawn (Blender too), and talk to yourself. Every change of move is a smooth cross-fade on the hero's own mixer. */
+const CB_LINE='Omo, no food for lazy man! Make I find work or go thief watin belong to Caesar.';
+const CB_UP=3.95;                                     // the moment of the get-up move where you stand tall
+const CB_PILLOW=-.78;                                 // the pillow's middle along the bed (the head end is -x)
+const sstep=x=>{ x=clamp(x,0,1); return x*x*(3-2*x); };
+// where the bed goes: beside the tent, on clear flat ground, off the road, along the tent
+if(LIFEC&&LIFEC.tent){ const T=LIFEC.tent, ux={x:Math.cos(T.ry),z:-Math.sin(T.ry)}, uz={x:Math.sin(T.ry),z:Math.cos(T.ry)};
+  const clear=(cx,cz,b)=>{ const ax={x:Math.cos(b),z:-Math.sin(b)}, az={x:Math.sin(b),z:Math.cos(b)};
+    for(let i=-1;i<=1;i+=.25) for(let j=-1;j<=1;j+=.5){ const x=cx+ax.x*i*1.15+az.x*j*.55, z=cz+ax.z*i*1.15+az.z*j*.55;
+      if(!onLand(x,z,.5)||roadAt(x,z,.9)||resolveCircle({x,z},.28)) return false; } return true; };
+  for(const [s,a] of [[1,0],[-1,0],[1,.7],[-1,.7],[1,-.7],[-1,-.7],[1.4,0],[-1.4,0]]){ const o=1.02+.62+.12*Math.abs(s), cx=T.x+ux.x*o*Math.sign(s)+uz.x*a, cz=T.z+ux.z*o*Math.sign(s)+uz.z*a, b=T.ry-Math.PI/2;
+    if(clear(cx,cz,b)){ CB.bed={x:cx,z:cz,b,y:groundY(cx,cz)}; break; } }
+  if(CB.bed){ const B=CB.bed; SCAT_OFF.push({x:B.x,z:B.z,ry:B.b,hw:1.2,hd:.65});
+    DOORS.push({x:B.x,z:B.z,r:1.55,label:()=>CB.act?'':'Sleep on your carton',act:()=>cbStart()});
+    const u=murl('ns_carton'); DL.exp[u]=MANIFEST['assets/models/ns_carton.glb']||3e5;
+    fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(g=>{ const root=g.scene; root.traverse(o=>{ if(!o.isMesh) return; o.castShadow=false; o.receiveShadow=true;
+        const m=o.material; if(m){ m.roughness=.95; m.metalness=0; if(m.map){ m.map.anisotropy=Math.min(8,maxAniso); m.map.colorSpace=THREE.SRGBColorSpace; } } });
+      root.position.set(B.x,B.y+.005,B.z); root.rotation.y=B.b; scene.add(root); B.mesh=root; }).catch(e=>console.warn('carton',e)); } }
+// the bed's frame: a point along it (u, + toward the feet) and across it (v) -> the world
+const cbAt=(u,v)=>{ const B=CB.bed, c=Math.cos(B.b), s=Math.sin(B.b); return {x:B.x+u*c+v*s,z:B.z-u*s+v*c}; };
+// the moves: the get-up (the hero has it, fitted to their body), the sleep and the stretch (moves5.glb, fitted the same way)
+function cbClips(){ if(CB.clips&&CB.clips.for===hero.cObj) return Promise.resolve(CB.clips);
+  if(!CB.job) CB.job=fetchBuf(purl('moves5')).then(b=>GLL.parseAsync(b,'')).then(g=>{ const S=C2.skeletonInfo(g.scene); return {g,S,H:S.lp.get('Hips')?S.lp.get('Hips').y:1}; });
+  return CB.job.then(M=>{ const C=homeClips(), D=C.info, fit=n=>{ const a=M.g.animations.find(x=>x.name===n); const k=a?C2.retargetClip(a,M.S,D,{hipsH:M.H}):null; if(k) k.name='cb_'+n; return k; };
+    const up=hero.act.stand_up?hero.act.stand_up.getClip():null, sleep=fit('sleep'), stretch=fit('stretch');
+    if(!up||!sleep||!stretch) throw new Error('carton moves missing');
+    const head=homeMeasure(sleep,0).head, hips0=homeMeasure(up,CB_UP).hips;
+    CB.clips={for:hero.cObj,up,sleep,stretch,head,hips0}; return CB.clips; }); }
+// the screen while you sleep: it goes dark, the Zzz float up, the night passes
+function cbUI(){ if(CB.ui) return CB.ui; const d=document.createElement('div'); d.id='cbNight';
+  d.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;transition:opacity 1.4s ease;background:radial-gradient(ellipse at 50% 60%,rgba(8,12,30,.78),rgba(2,3,10,.97));display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Bungee,Impact,sans-serif;color:#cfd8ff';
+  d.innerHTML='<div class="cbz" style="font-size:44px;letter-spacing:6px;text-shadow:0 0 18px rgba(140,160,255,.6)">Z<span style="font-size:.7em">z</span><span style="font-size:.5em">z</span></div><div style="margin-top:10px;font-size:15px;letter-spacing:2px;opacity:.8;font-family:var(--fb,sans-serif)">Night dey pass… mosquito dey sing</div>';
+  const st=document.createElement('style'); st.textContent='@keyframes cbz{0%{transform:translateY(8px);opacity:.3}50%{transform:translateY(-8px);opacity:1}100%{transform:translateY(8px);opacity:.3}} #cbNight .cbz{animation:cbz 2.4s ease-in-out infinite}'
+    +'#cbSay{position:fixed;z-index:39;pointer-events:none;transform:translate(-50%,-100%);max-width:min(78vw,420px);background:#fffaf0;color:#17181c;border:3px solid #17181c;border-radius:18px;padding:10px 14px;font:700 16px/1.32 var(--fb,sans-serif);box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transition:opacity .35s ease}'
+    +'#cbSay:after{content:"";position:absolute;left:50%;bottom:-14px;margin-left:-10px;border:10px solid transparent;border-top:14px solid #17181c;border-bottom:0}'
+    +'#cbSay:before{content:"";position:absolute;left:50%;bottom:-9px;margin-left:-7px;border:7px solid transparent;border-top:10px solid #fffaf0;border-bottom:0;z-index:1}';
+  document.head.appendChild(st); document.body.appendChild(d);
+  const say=document.createElement('div'); say.id='cbSay'; document.body.appendChild(say); CB.ui={night:d,say}; return CB.ui; }
+// the line you say, typed out in a speech bubble over your head (and spoken, when the phone has a Nigerian voice)
+function cbSay(text){ const U=cbUI(), s=U.say; s.textContent=''; s.style.opacity='1'; CB.sayT=0; CB.sayText=text; CB.sayN=0; CB.sayOn=true;
+  try{ if(soundOn&&window.speechSynthesis){ const vs=speechSynthesis.getVoices(), v=vs.find(x=>/en[-_]NG/i.test(x.lang)); if(v){ const u=new SpeechSynthesisUtterance(text); u.voice=v; u.rate=.95; speechSynthesis.cancel(); speechSynthesis.speak(u); } } }catch(e){} }
+const _cbV=new THREE.Vector3();
+function cbSayTick(dt){ if(!CB.sayOn) return; const s=CB.ui.say; CB.sayT+=dt; const n=Math.min(CB.sayText.length,Math.floor(CB.sayT*34)); if(n!==CB.sayN){ CB.sayN=n; s.textContent=CB.sayText.slice(0,n); }
+  const hd=hero&&hero.cObj?(()=>{ let h=null; hero.cObj.traverse(o=>{ if(!h&&o.isBone&&/Head$/.test(o.name)) h=o; }); return h; })():null;
+  if(hd){ hd.getWorldPosition(_cbV); _cbV.y+=.42; } else _cbV.set(player.x,player.y+2.1,player.z); _cbV.project(camera);
+  const vis=_cbV.z<1; s.style.left=((_cbV.x*.5+.5)*innerWidth)+'px'; s.style.top=((-_cbV.y*.5+.5)*innerHeight)+'px';
+  if(CB.sayT>CB.sayText.length/34+4.2||!vis||mode!=='walk'){ s.style.opacity='0'; if(CB.sayT>CB.sayText.length/34+4.6||mode!=='walk') CB.sayOn=false; } }
+// press E by the bed
+function cbStart(){ if(CB.act||!CB.bed||!hero||busy) return; if(CARRY.p){ toast('Put am down first.',1.6); return; } if(PHONE.open) closePhone();
+  const A={ph:'load',t:0}; CB.act=A; heroQuiet();
+  cbClips().then(C=>{ if(CB.act!==A) return;
+    const B=CB.bed, yaw=Math.atan2(Math.cos(B.b),-Math.sin(B.b));   // you face the feet end; lying, your head goes back onto the pillow
+    // the root, so your head lands on the pillow: the pillow's spot minus where the sleep puts the head (turned by yaw)
+    const pw=cbAt(CB_PILLOW+.06,0), c=Math.cos(yaw), s=Math.sin(yaw), hx=C.head.x*c+C.head.z*s, hz=-C.head.x*s+C.head.z*c;
+    Object.assign(A,{ph:'go',t:0,C,yaw,y0:player.yaw,p0:new THREE.Vector3(player.x,rig.root.position.y,player.z),p1:new THREE.Vector3(pw.x-hx,(B.y||0)+.012,pw.z-hz),camH:1.45,
+      up:hero.mixer.clipAction(C.up),sleep:hero.mixer.clipAction(C.sleep),stretch:hero.mixer.clipAction(C.stretch),yawCam:camState.yaw});
+    for(const a of [A.up,A.sleep,A.stretch]){ a.reset(); a.play(); a.paused=true; a.setEffectiveWeight(0); }
+    A.up.time=CB_UP; })
+  .catch(e=>{ console.warn('carton sleep',e); if(CB.act===A) CB.act=null; hero.act.idle.setEffectiveWeight(1); hero.w.idle=1; lifeSleep('tent'); setTimeout(()=>cbSay(CB_LINE),1500); }); }
+// E while lying: wake up now
+function cbPress(){ const A=CB.act; if(A&&A.ph==='sleep'&&A.t>1.2) cbWake(A); }
+function cbWake(A){ if(A.ph!=='sleep') return; A.ph='wake'; A.t=0; if(CB.ui) CB.ui.night.style.opacity='0'; }
+function cbWeights(A,w){ const a=hero.act; for(const k of ['idle','walk','walk2','run','text','phone','fight_idle']) if(a[k]) a[k].setEffectiveWeight(0);
+  a.idle.setEffectiveWeight(w.idle||0); if(w.walk&&a.walk){ a.walk.setEffectiveWeight(w.walk); a.walk.timeScale=1; }
+  A.up.setEffectiveWeight(w.up||0); A.sleep.setEffectiveWeight(w.sleep||0); A.stretch.setEffectiveWeight(w.stretch||0); }
+// every frame of it
+function cbUpdate(dt){ const A=CB.act; if(!A) return;
+  if(A.ph==='load'){ hero.mixer.update(dt); return; }
+  A.t+=dt; const C=A.C, r=rig.root; let camYaw=A.yaw+Math.PI*.78, camPitch=.3, camH=1.45;
+  if(A.ph==='go'){ const k=sstep(A.t/.75); r.position.lerpVectors(A.p0,A.p1,k); r.rotation.y=lerpA(A.y0,A.yaw,k);
+    cbWeights(A,{idle:1-k,up:k*(1-.6*Math.sin(Math.PI*k)),walk:.6*Math.sin(Math.PI*k)}); A.up.time=CB_UP; if(A.t>=.75){ A.ph='down'; A.t=0; } }
+  else if(A.ph==='down'){ const D=3.7, k=A.t/D; A.up.time=CB_UP*(1-sstep(k)*.96-.04*k); cbWeights(A,{up:1}); camPitch=.3+.12*sstep(k); camH=1.45-.75*sstep(k);   // sitting down, then lying back
+    if(A.t>=D){ A.ph='settle'; A.t=0; } }
+  else if(A.ph==='settle'){ const D=1.6, k=sstep(A.t/D); A.up.time=0; A.sleep.time=(A.sleep.time+dt)%C.sleep.duration; cbWeights(A,{up:1-k,sleep:k}); camPitch=.42+.1*k; camH=.7-.2*k;
+    if(A.t>=D){ A.ph='sleep'; A.t=0; } }
+  else if(A.ph==='sleep'){ A.sleep.time=(A.sleep.time+dt)%C.sleep.duration; cbWeights(A,{sleep:1}); camPitch=.52; camH=.5; camYaw=A.yaw+Math.PI*.78+A.t*.03;   // the camera drifts slowly round you
+    const U=cbUI(); if(A.t>1.8&&!A.dark){ A.dark=1; U.night.style.opacity='1'; }
+    if(A.t>3.4&&!A.rested){ A.rested=1; FIGHT.hp=Math.max(FIGHT.hp,80); }
+    if(A.t>6.4) cbWake(A); }
+  else if(A.ph==='wake'){ const D=1.5, k=sstep(A.t/D); A.sleep.time=(A.sleep.time+dt)%C.sleep.duration; A.up.time=0; cbWeights(A,{sleep:1-k,up:k}); camPitch=.52-.1*k; camH=.5+.2*k;   // eyes open, sitting up
+    if(A.t>=D){ A.ph='up'; A.t=0; if(!A.told){ A.told=1; toast(mpick(['Morning don reach. Body dey pain small, but you don rest.','You wake up for your carton. Mosquito don chop your leg well well.']),3.2); } } }
+  else if(A.ph==='up'){ const D=CB_UP/1.05, k=A.t/D; A.up.time=Math.min(CB_UP,CB_UP*(k<.9?k:.9+(1-Math.pow(1-(k-.9)/.1,2))*.1)); cbWeights(A,{up:1}); camPitch=.42-.12*sstep(k); camH=.7+.75*sstep(k);   // getting up
+    if(A.t>=D){ A.ph='stretch'; A.t=0; } }
+  else if(A.ph==='stretch'){ const x=sstep(A.t/.4); A.stretch.time=Math.min(A.t,C.stretch.duration-.001); A.up.time=CB_UP; cbWeights(A,{up:1-x,stretch:x}); camYaw=A.yaw+Math.PI*.9; camPitch=.22;
+    if(A.t>=C.stretch.duration-.05){ A.ph='end'; A.t=0; cbSay(CB_LINE); } }
+  else if(A.ph==='end'){ const k=sstep(A.t/.6); A.stretch.time=C.stretch.duration-.001; cbWeights(A,{stretch:1-k,idle:k}); camYaw=A.yaw+Math.PI*.9; camPitch=.22;
+    if(A.t>=.6){ for(const a of [A.up,A.sleep,A.stretch]){ a.setEffectiveWeight(0); a.stop(); } hero.w.idle=1; hero.act.idle.setEffectiveWeight(1); player.yaw=A.yaw; CB.act=null; } }
+  if(A.ph!=='go'){ r.position.copy(A.p1); r.rotation.y=A.yaw; }
+  if(hero.look) hero.cObj.position.y=hero.look.y0;
+  player.x=r.position.x; player.z=r.position.z; player.speed=0; player.yaw=r.rotation.y;
+  // the camera: beside and in front of you, lower as you lie down, drifting slowly
+  camState.last=T0; const kc=1-Math.exp(-1.6*dt); camState.yaw=lerpA(camState.yaw,camYaw,kc); camState.pitch+=(camPitch-camState.pitch)*kc; A.camH=(A.camH||1.45)+(camH-(A.camH||1.45))*kc;
+  hero.mixer.update(dt); phoneInHand(); heroWeapon(); }
 // the bend-down boutique: your person's outfits, new ones for a price (rags you have, the police uniform comes with the job)
 function boutiqueMenu(opt={}){ const id=WARD.cur, C=isV2(id)&&V2.casts[id]; if(!C||!C.meta||!C.meta.outfits){ toast('"Come back small time, I still dey arrange the clothes."',2.5); return; }
   const outs0=C.meta.outfits.filter(o=>o.id!=='police'&&o.id!=='rags'&&(!opt.only||opt.only(o.id)));
@@ -8648,9 +8746,9 @@ let warm=0, perfAcc=0, perfN=0, prCool=3, errShown=0;
 function applyPR(){ renderer.setPixelRatio(PR); renderer.setSize(innerWidth,innerHeight); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } }
 function reportErr(e){ console.error(e); if(errShown++<1&&started) toast('Small hitch. The game kept running.'); }
 function simulate(dt){
-  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk') updateWalk(dt,false); else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
+  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
-  updateEnv(dt); updateStorm(dt);
+  updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt);
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
@@ -8832,6 +8930,9 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       B.ai.pt=B.ai.po=-2*(B.ai.seg.off||1.5); player.x=nodes[e.a].x+30; player.z=nodes[e.a].z+30; window.__fo=[A,B]; return {edge:e.i,c:e.c,hw:e.hw,len:Math.round(e.len),off:A.ai.seg.off}; },
     faceInfo(){ const [A,B]=window.__fo||[]; if(!A) return null; const fx=Math.cos(A.h), fz=-Math.sin(A.h), dx=B.x-A.x, dz=B.z-A.z;
       return {ah:+(dx*fx+dz*fz).toFixed(1),lat:+(-dx*fz+dz*fx).toFixed(2),sa:+A.speed.toFixed(1),sb:+B.speed.toFixed(1),stA:+A.ai.stuck.toFixed(1),stB:+B.ai.stuck.toFixed(1),ptA:+(A.ai.pt||0).toFixed(2),ptB:+(B.ai.pt||0).toFixed(2),slip:[A.ai.slip>0,B.ai.slip>0]}; },
+    cb:()=>CB.bed?{x:CB.bed.x,z:CB.bed.z,b:CB.bed.b,y:CB.bed.y,mesh:!!CB.bed.mesh,ph:CB.act?CB.act.ph:null,t:CB.act?+CB.act.t.toFixed(2):null,say:!!CB.sayOn,ground:+groundY(CB.bed.x,CB.bed.z).toFixed(3),py:+rig.root.position.y.toFixed(3)}:null,
+    cbGo(){ if(!CB.bed) return 'no bed'; const p=cbAt(.2,1.3); player.x=p.x; player.z=p.z; cbStart(); return 'ok'; },
+    draw(){ updateCamera(0); renderFrame(0); return 1; },
     newv:()=>({loaded:NEWV.map(N=>N.k).filter(k=>MODELS[k]),special:['policevan','policehilux','tanker'].filter(k=>MODELS[k]&&WHEEL[k]),
       traffic:vehicles.reduce((a,v)=>{ const k=v.c.skin||v.type; a[k]=(a[k]||0)+1; return a; },{})}),
     showCars(list,gap=7){ const out=[]; list.forEach((k,i)=>{ const v=newVehicle(k,'#ffffff',true); Object.assign(v,{x:player.x+8,z:player.z-((list.length-1)/2-i)*gap,h:Math.PI/2,parked:true}); v.c.g.position.set(v.x,0,v.z); v.c.g.rotation.y=v.h; out.push(v.c.skin||v.type); }); return out; },
