@@ -78,7 +78,7 @@ export function createOnline(api) {
       case 'say': heard(m); break;
       case '$': money(m); break;
       case 'kick': S.kicked = true; S.me = null; dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
-      case 'out': S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
+      case 'out': if (m.gone) api.toast('Your account has been deleted.', 4); S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
       case 'old': S.old = true; api.toast(m.m, 6); try { S.ws && S.ws.close(); } catch (e) { /* gone */ } ui(); break;
     }
   }
@@ -415,6 +415,7 @@ export function createOnline(api) {
     $('#olResetF').addEventListener('submit', e => { e.preventDefault(); if (S.busy) return; S.busy = true; buttons(); send({ t: 'reset', u: $('#olFUser').value.trim(), code: $('#olCode').value.trim(), p: $('#olRPass').value }); });
     $('#olMailForm').addEventListener('submit', e => { e.preventDefault(); send({ t: 'email', e: $('#olMail2').value.trim() }); });
     $('#olPwForm').addEventListener('submit', e => { e.preventDefault(); if (S.busy) return; const p = $('#olNew').value; if (p.length < 6) return showErr('pw', 'New password: at least 6 characters.'); S.busy = true; buttons(); send({ t: 'pw', old: $('#olOld').value, p }); });
+    $('#olDelForm').addEventListener('submit', e => { e.preventDefault(); if (S.busy) return; const p = $('#olDelPw').value; if (!p) return showErr('del', 'Type your password to delete the account.'); if (!confirm('Delete your Naija Streets account for good? There is no way back.')) return; S.busy = true; buttons(); send({ t: 'del', p }); $('#olDelPw').value = ''; });
     $('#olOut').addEventListener('click', () => { if (!send({ t: 'out' })) { save(null); S.me = null; dropAll(); restoreGuest(); ui(); } });
     $('#olKickGo').addEventListener('click', () => { S.kicked = false; S.tries = 0; if (S.ws) send({ t: 'hi', v: PROTO, tok: saved && saved.tok }); else connect(); });
     // chat

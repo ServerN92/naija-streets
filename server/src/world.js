@@ -178,6 +178,16 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     send(C, { t: 'tok', tok }); ok(C, 'pw', 'New password saved. Other phones are signed out.');
   }
 
+  async function deleteAccount(C, m) {
+    const u = db.userById(C.user.id); if (!u) return;
+    if (!L.nameLogin.take(u.name.toLowerCase())) return err(C, 'del', 'Too many tries. Wait a few minutes.');
+    if (!await checkPass(String(m.p || '').slice(0, 200), u.salt, u.hash)) return err(C, 'del', 'Your password is not right.');
+    flushCash(C); if (biz.flush) biz.flush(); if (park.flush) park.flush();
+    leaveWorld(C); C.tok = C.th = null;
+    db.deleteUser(u.id); log('account deleted', u.name);
+    send(C, { t: 'out', gone: 1 });
+  }
+
   // ---- in the world
   function move(C, m) {
     const P = C.p;
@@ -253,8 +263,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function hit(C, m) { C.hitLim = C.hitLim || new Bucket(8, 4); if (!C.hitLim.take()) return; pvp.hit(C, m); }
   function lawMsg(C, m) { C.lawLim = C.lawLim || new Bucket(10, 2); if (!C.lawLim.take()) return; if (typeof m.a === 'string') law.handle(C, m); }
   function bk(C, m) { C.bkLim = C.bkLim || new Bucket(10, 2); if (!C.bkLim.take()) return; if (typeof m.a === 'string') bank.handle(C, m); }
-  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit, law: lawMsg, bk };
-  const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw']);   // these wait on password hashing: one at a time
+  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, del: deleteAccount, out: logout, bz, mk, pk, hit, law: lawMsg, bk };
+  const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw', 'del']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };
     conns.add(C);

@@ -2,6 +2,7 @@
 //   PORT (8080), DB_PATH (/data/naija.db), ORIGINS (pages allowed to connect, comma separated),
 //   TRUST_PROXY=1 behind Fly (the player's address comes from Fly-Client-IP), RESEND_API_KEY + MAIL_FROM for reset emails.
 import http from 'node:http';
+import path from 'node:path';
 import { accept } from './ws.js';
 import { openDb } from './db.js';
 import { createWorld, PROTO } from './world.js';
@@ -52,6 +53,10 @@ server.on('upgrade', (req, socket, head) => {
 server.on('clientError', (e, socket) => { try { socket.end('HTTP/1.1 400 Bad Request\r\n\r\n'); } catch (_) { /* gone */ } });
 
 world.start();
+// a clean copy of the database every day (kept a week) next to it, on top of Fly's own volume snapshots
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(path.dirname(DB_PATH), 'backups');
+function backup() { try { const f = db.backup(BACKUP_DIR); if (f) log('backup', f); } catch (e) { log('backup failed', e && e.message); } }
+if (DB_PATH !== ':memory:') { setTimeout(backup, 60e3).unref(); setInterval(backup, 24 * 3600e3).unref(); }
 server.listen(PORT, () => log(`listening on ${PORT}; db ${DB_PATH}; ${db.users()} accounts; email reset ${mail.on ? 'on' : 'off'}`));
 
 let stopping = false;

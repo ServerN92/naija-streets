@@ -154,6 +154,29 @@ export function openDb(file) {
     pmPut: (uid, park, data) => S.pmPut.run(uid, park, data),
     bankTx: (t, src, dst, n, note, q) => S.bankTx.run(t, src, dst, n, note || null, q || null),   // a line on both bank histories (money the server moved itself)
     tx(fn) { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } },
+    // a clean copy of the whole database (safe while the game runs); yesterday's copies past `keep` are removed
+    backup(dir, keep = 7) {
+      if (file === ':memory:') return null;
+      fs.mkdirSync(dir, { recursive: true });
+      const name = 'naija-' + new Date().toISOString().slice(0, 10) + '.db', out = path.join(dir, name);
+      try { fs.unlinkSync(out); } catch (e) { /* none yet today */ }
+      db.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);
+      const old = fs.readdirSync(dir).filter(f => /^naija-\d{4}-\d{2}-\d{2}\.db$/.test(f)).sort().slice(0, -keep);
+      for (const f of old) { try { fs.unlinkSync(path.join(dir, f)); } catch (e) { /* ignore */ } }
+      return out;
+    },
+    // the player asked to go: the account and everything that is only theirs; businesses go back on sale
+    deleteUser(uid) {
+      db.exec('BEGIN');
+      try {
+        for (const t of ['ledger', 'before6', 'mkback', 'park_m', 'law', 'life', 'bank', 'sessions', 'resets']) db.prepare(`DELETE FROM ${t} WHERE uid=?`).run(uid);
+        db.prepare('DELETE FROM market WHERE seller=?').run(uid);
+        db.prepare('DELETE FROM before7 WHERE owner=?').run(uid);
+        db.prepare('UPDATE biz SET owner=NULL, name=NULL, till=0, bought=NULL WHERE owner=?').run(uid);
+        db.prepare('DELETE FROM users WHERE id=?').run(uid);
+        db.exec('COMMIT');
+      } catch (e) { db.exec('ROLLBACK'); throw e; }
+    },
     close: () => db.close(),
   };
 }

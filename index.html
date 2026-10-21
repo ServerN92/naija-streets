@@ -297,6 +297,7 @@ body.touchui .toast{max-width:min(520px,calc(100vw - 330px));font-size:13.5px;pa
 .obox input{font:inherit;font-size:17px;color:var(--cream);background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 12px;min-height:46px;box-sizing:border-box;width:100%;-webkit-user-select:text;user-select:text}
 .obox input:focus{outline:2px solid var(--danfo);outline-offset:1px}
 .ogo{font-family:var(--fd);font-size:17px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:12px 18px;min-height:50px}
+.ogo.danger{background:var(--rust);color:#fff;width:100%;margin-top:8px}.odel{margin-top:18px;color:var(--muted);font-size:14px}.odel summary{cursor:pointer}.odel p{margin:8px 0}
 .ogo:disabled{opacity:.5}.ogo.ghost{background:rgba(255,255,255,.1);color:var(--cream);width:100%;margin-top:16px}
 .oinline{display:flex;gap:8px}.oinline input{flex:1;min-width:0}.oinline button{flex:none;min-height:46px;border-radius:10px;border:none;background:var(--danfo);color:var(--ink);font-weight:700;padding:0 14px}
 .olink{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:14px;padding:10px 0 0;min-height:40px}
@@ -536,6 +537,10 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <h3>Change password</h3>
       <form id="olPwForm"><input id="olOld" type="password" autocomplete="current-password" maxlength="72" placeholder="Old password" aria-label="Old password"><input id="olNew" type="password" autocomplete="new-password" maxlength="72" placeholder="New password" aria-label="New password"><button type="submit" class="ogo">CHANGE PASSWORD</button></form>
       <button type="button" class="ogo ghost" id="olOut">SIGN OUT</button>
+      <details class="odel"><summary>Delete my account</summary>
+        <p>This removes your account, money, businesses and history for good. It cannot be undone.</p>
+        <form id="olDelForm"><input id="olDelPw" type="password" autocomplete="current-password" maxlength="72" placeholder="Your password" aria-label="Your password"><button type="submit" class="ogo danger">DELETE FOR GOOD</button></form>
+      </details>
     </div>
   </div>
 </div>
