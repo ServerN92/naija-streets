@@ -35,6 +35,10 @@ CC0 needs no credit (listed anyway, with thanks); CC BY sounds are used under th
 - "Record Scratch #6" by musicvision31 (https://freesound.org/s/431779/), CC0
 - "Radio tuning-static-interference" by quantumriver (https://freesound.org/s/552160/), CC0
 
+## Our own recordings
+
+Recorded in Lagos by the game's maker: Danfo conductor calling, with the bus; Lagos market; Conductor and agbero: the oga's ticket.
+
 ## Music
 
 Songs from [Pixabay](https://pixabay.com/music/), used under the Pixabay Content License (free for use in a game; thank you to the artists):

@@ -308,5 +308,80 @@
 "gain": 1.0,
 "dur": 3.43,
 "src": "fx_jingle"
+},
+"amb_mkt_own": {
+"gain": 1.0,
+"dur": 13.6,
+"src": "own_market"
+},
+"cond_call_1": {
+"gain": 1.0,
+"dur": 4.1,
+"src": "own_danfo"
+},
+"cond_call_2": {
+"gain": 1.0,
+"dur": 3.4,
+"src": "own_danfo"
+},
+"cond_call_3": {
+"gain": 1.0,
+"dur": 5.7,
+"src": "own_danfo"
+},
+"cond_call_4": {
+"gain": 1.0,
+"dur": 4.4,
+"src": "own_danfo"
+},
+"cond_call_5": {
+"gain": 1.0,
+"dur": 4.0,
+"src": "own_danfo"
+},
+"cond_call_6": {
+"gain": 1.0,
+"dur": 2.7,
+"src": "own_danfo"
+},
+"agb_tk_1": {
+"gain": 1.0,
+"dur": 5.9,
+"src": "own_ticket"
+},
+"agb_tk_2": {
+"gain": 1.0,
+"dur": 4.6,
+"src": "own_ticket"
+},
+"agb_tk_3": {
+"gain": 1.0,
+"dur": 5.8,
+"src": "own_ticket"
+},
+"agb_tk_4": {
+"gain": 1.0,
+"dur": 7.2,
+"src": "own_ticket"
+},
+"agb_tk_5": {
+"gain": 1.0,
+"dur": 4.8,
+"src": "own_ticket"
+},
+"agb_tk_6": {
+"gain": 1.0,
+"dur": 3.7,
+"src": "own_ticket"
+},
+"agb_tk_7": {
+"gain": 1.0,
+"dur": 3.45,
+"src": "own_ticket"
+},
+"agb_tk_8": {
+"gain": 1.0,
+"dur": 7.4,
+"src": "own_ticket"
 }
 }

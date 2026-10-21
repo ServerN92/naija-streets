@@ -58,7 +58,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   // (on duty, the police uniform: 'p'; else the union's vest: 'a', or the chairman's: 'c')
   const badgeOf = uid => { const C = online.get(uid); return C && law.onDuty(C) ? 'p' : park.badge(uid); };
   const badge = uid => { const C = online.get(uid); if (!C || !C.p) return; const b = badgeOf(uid); if (C.p.bd !== b) { C.p.bd = b; C.p.lv++; C.p.ver++; } };
-  const park = createPark({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give, credit, note, badge } });
+  const park = createPark({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, give, credit, note, badge,
+    bankTx: (src, dst, n, why, q) => db.bankTx(now(), src, dst, n, why, q), bankRefresh: uid => { const C = online.get(uid); if (C && C.user) bank.hello(C); } } });
   // players fighting players: the server decides the blows and the knock-outs
   // the police: stars, the force, arrests
   const law = createLaw({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, spend, badge } });

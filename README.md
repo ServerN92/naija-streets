@@ -348,6 +348,18 @@ money goes straight to the farmer (even offline, with a message). Cooking with f
 plates (tomatoes for jollof, yams for amala and pounded yam, cassava for eba), 15% of the plate price instead of 40%.
 The market is on the server (`server/src/biz.js`, saved in SQLite); the farm store is on your phone (`src/farm.js`).
 
+## Agberos on the road: the danfo's ticket for the day
+At 18 bus stops and main-road spots (AGBERO POST on the map) two union boys in orange vests wait. A danfo comes: one runs
+after it and bangs the side, the driver stops and the conductor pays ₦200, once a game day (2 real hours) for each danfo,
+by its plate number. Drive a danfo yourself and they step into the road and wave you down: pay (E) and no other post
+stops you that day; drive on (or run one down) and they chase you throwing stones, and the next post that day wants ₦400.
+**Online, in the park union:** you collect yourself. Stand by a danfo that has stopped (at a bus stop, in traffic) and press
+E: the server gives you half (₦100) at once and keeps the oga's half aside; at the end of the game day it all goes to the
+chairman's bank account in one credit alert, with a line from each boy on both bank histories ("Street tickets ×12,
+oga's half"). Each paid crew boy of the chairman brings ₦1,000 a day from the bus stops too. 40 danfos a day per boy at
+most (the street danfos live on each player's phone, so the server caps it); in the park itself the bays' tickets count.
+With Chairman Kasali in the seat, the old man takes the oga's half. The chairman sees the day's road money at the office.
+
 ## Online: banks and transfers
 Every player has a bank account: one of three Lagos banks (**Gidi Bank**, **Zobo Bank**, **Agege Trust Bank**; made-up
 names, set in `server/src/bank.js`) and a 10-digit account number nobody else has (with a check digit like a real
@@ -473,6 +485,10 @@ linked from Settings). Most of the street is Nigerian field recordings by SFXAFR
   The night clubs play their DJ inside (airhorn, scratches between songs) and you hear the bass through the walls outside
   at night. About one street corner in eight has the area boys' speaker box playing loud, by day and into the night.
   Real artists' songs can only go in with their (or their label's) permission.
+- **Our own Lagos recordings** (made by the game's maker): walk or drive into any market and the market recording fades
+  in, and fades out again as you leave (over the last 18 m); danfo conductors call their routes from the door when a
+  danfo stops at a bus stop or passes near you (right beside you when you ride in one); the agbero and the conductor
+  argue over the ticket when the boys stop a danfo.
 - **Talking:** people greet you, complain when you bump them, quarrel and ask why you are staring, out loud, once the
   recorded Pidgin lines are in (`say_greet`, `say_bump`, `say_angry`, `say_stare`; women's lines end in `_f`).
 

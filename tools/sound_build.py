@@ -54,6 +54,10 @@ SRC = {
     237375: ('Car Crash', 'squareal', 'CC0'),
     556689: ('Car Door open and close', 'NachtmahrTV', 'CC0'),
     70936: ('police.wav', 'guitarguy1985', 'CC0'),
+    # the game's maker's own recordings (Lagos: a danfo conductor calling, the conductor and an agbero over the oga's ticket, a market)
+    'own_danfo': ('Danfo conductor calling, with the bus', 'the game\'s maker', 'own'),
+    'own_ticket': ('Conductor and agbero: the oga\'s ticket', 'the game\'s maker', 'own'),
+    'own_market': ('Lagos market', 'the game\'s maker', 'own'),
 }
 
 # name: dict(src, a=start s, d=length s, kind='bed'|'loop'|'shot'|'song', level, extra json fields)
@@ -142,9 +146,11 @@ def build(folder, only=None):
         f.write('# Sound credits\n\nRecordings from [Freesound](https://freesound.org), cut, levelled and looped for the game.\n'
                 'CC0 needs no credit (listed anyway, with thanks); CC BY sounds are used under their licence.\n\n')
         for i in srcs:
-            if i not in SRC: continue
+            if i not in SRC or SRC[i][2] == 'own': continue
             t, a, l = SRC[i]
             f.write(f'- "{t}" by {a} (https://freesound.org/s/{FX_ID.get(i, i)}/), {l}\n')
+        own = [SRC[i][0] for i in srcs if i in SRC and SRC[i][2] == 'own']
+        if own: f.write('\n## Our own recordings\n\nRecorded in Lagos by the game\'s maker: ' + '; '.join(own) + '.\n')
         songs = [(n, m) for n, m in old.items() if m.get('m')]
         if songs:
             f.write('\n## Music\n\nSongs from [Pixabay](https://pixabay.com/music/), used under the Pixabay Content License (free for use in a game; thank you to the artists):\n\n')
