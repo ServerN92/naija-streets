@@ -13,21 +13,21 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=9ea317ee2a';
-import * as C2 from './char2.js?v=9ea317ee2a';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=9ea317ee2a';
-import { createPhone } from './phone.js?v=9ea317ee2a';
-import { createGuide } from './guide.js?v=9ea317ee2a';
+import * as CLOCK from './clock.js?v=079c03f840';
+import * as C2 from './char2.js?v=079c03f840';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=079c03f840';
+import { createPhone } from './phone.js?v=079c03f840';
+import { createGuide } from './guide.js?v=079c03f840';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=9ea317ee2a';
-import { createBusiness } from './business.js?v=9ea317ee2a';
-import { createOnline } from './online.js?v=9ea317ee2a';
-import { createPolice } from './police.js?v=9ea317ee2a';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=9ea317ee2a';
-import { MapView, GPS_RED } from './mapview.js?v=9ea317ee2a';
+import { createFarm } from './farm.js?v=079c03f840';
+import { createBusiness } from './business.js?v=079c03f840';
+import { createOnline } from './online.js?v=079c03f840';
+import { createPolice } from './police.js?v=079c03f840';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=079c03f840';
+import { MapView, GPS_RED } from './mapview.js?v=079c03f840';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='9ea317ee2a';
+const BUILD='079c03f840';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
