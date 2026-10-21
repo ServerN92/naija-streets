@@ -2677,7 +2677,7 @@ function heroAnim(dt,speed){ const a=hero.act; let ti=0,tw=0,tr=0;
   a.walk.setEffectiveWeight(w.walk*(1-k2)*base); if(a.walk2) a.walk2.setEffectiveWeight(w.walk*k2*base); a.run.setEffectiveWeight(w.run*base);
   if(LK&&LK.wv){ a.walk.timeScale=clamp(Math.max(speed,.5)/LK.wv,.6,CARRY.p?2.5:1.6); if(a.walk2) a.walk2.timeScale=clamp(Math.max(speed,.4)/LK.w2v,.6,1.3); a.run.timeScale=clamp(Math.max(speed,2.5)/LK.rv,.7,1.5); }   // each move at the speed it was made for
   else { a.walk.timeScale=clamp(Math.max(speed,1)/1.1,.9,CARRY.p?2.5:1.8); a.run.timeScale=clamp(Math.max(speed,3)/2.4,1.3,2.2); }
-  if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+((O.walk||0)*(1-k2)+(O.walk2||0)*k2)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(O[ov.name]||0)*ow;   // keep this body's feet on the floor
+  if(hero.look){ const L=hero.look, O=L.off, ov=hero.ov; let y=((O[L.idle]||0)*idleW*(1-fw)+(O.fight_idle||0)*idleW*fw+((O.walk||0)*(1-k2)+(O.walk2||0)*k2)*w.walk+(O.run||0)*w.run)*base; if(ov) y+=(ov.mix?ov.yo:(O[ov.name]||0))*ow;   // keep this body's feet on the floor
     hero.cObj.position.y=L.y0+y; }
   hero.mixer.update(hd); phoneInHand(); heroWeapon(); carryArms(); heroCarried(); }
 const HERO_RIDE={okada:{x:0,y:.08,z:0,ry:0},bike2:{x:0,y:.08,z:0,ry:0},sbike:{x:0,y:.1,z:0,ry:0},car2:{x:0,y:.02,z:0,ry:0},benz:{x:0,y:.04,z:0,ry:0},tanker:{x:0,y:.04,z:0,ry:0},keke:{x:0,y:.08,z:0,ry:0},danfo:{x:0,y:.04,z:0,ry:0},bus:{x:0,y:.04,z:0,ry:0},police:{x:0,y:.04,z:0,ry:0},sedan:{x:0,y:.02,z:0,ry:0}};
@@ -3373,6 +3373,7 @@ function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thu
 
 /* ================= simulation ================= */
 function updateWalk(dt,inside){
+  if(THR.o&&THR.o.move&&!inside&&thrMove(dt)){ if(hero) crTick(dt,0); rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw; if(hero) heroAnim(dt,0); return; }   // thrown: the throw carries you
   if(CLIMB.on&&!inside){ climbTick(dt); if(hero) crTick(dt,0); rig.root.position.set(player.x,player.y+CLIMB.yo+(hero?CR.yo+(CR.off.climb||0):0),player.z); rig.root.rotation.y=player.yaw; if(hero) heroAnim(dt,0); return; }   // climbing: the move carries you
   const [f,s]=inputVec(), cy=camState.yaw, fx=Math.sin(cy), fz=Math.cos(cy), rx=-Math.cos(cy), rz=Math.sin(cy);
   let mx=fx*f+rx*s, mz=fz*f+rz*s, jd=0;
@@ -4623,7 +4624,7 @@ function heroDo(name,o={}){ if(!hero) return false; const a=hero.act[name]; if(!
 function heroEnd(){ const o=hero.ov; if(!o) return; hero.ov=null;
   if(o.root){ const p=hero.hips.getWorldPosition(_fv); player.x=p.x; player.z=p.z; FIGHT.cx=FIGHT.cz=0; }   // the move travelled: keep where it ended
   if(o.root) o.a.stop(); else o.a.fadeOut(.2); if(o.onEnd) o.onEnd(); }
-function heroOverlay(dt){ const o=hero.ov; if(!o) return 0; o.t+=dt;
+function heroOverlay(dt){ const o=hero.ov; if(!o) return 0; o.t+=dt; if(o.mix) return o.mix(o,dt);
   if(o.root){ const p=hero.hips.getWorldPosition(_fv); FIGHT.cx=p.x-player.x; FIGHT.cz=p.z-player.z; }
   if(o.pause){ const w=Math.min(1,o.t/.35); o.a.setEffectiveWeight(w); return w; }
   for(const h of o.hits) if(!h.done&&o.t>=h.at*o.dur){ h.done=true; h.fn(); }
@@ -4677,7 +4678,7 @@ function pvpMsg(m){
   if(m.t==='hurt'){ if(mode!=='walk'||FIGHT.dead) return; hitPlayer(m.d*1.1,{x:m.x,z:m.z},m.k==='kick'||m.k==='heavy'||m.k==='drop_kick'?'kick':'punch');
     if(!PVPS.warned[m.i]||T0-PVPS.warned[m.i]>40){ PVPS.warned[m.i]=T0; toast(`${m.n} dey fight you! Fight back (punch, kick) or run.`,2.6); } }
   else if(m.t==='hitok'){ if(m.p>=60&&!(PVPS[m.i]>=60)) toast(mpick(['"E don dey weak!"','"Finish am!"','"Ehen! E don tire!"']),1.6); PVPS[m.i]=m.p; }
-  else if(m.t==='pko'){ if(!FIGHT.dead&&!FIGHT.ko&&hero&&mode==='walk'){ FIGHT.ko=true; FIGHT.koT=0; player.speed=0; carryDrop(true); heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})}); thud(); camState.shake=Math.min(1.2,camState.shake+.6); }
+  else if(m.t==='pko'){ if(!FIGHT.dead&&!FIGHT.ko&&hero&&mode==='walk'){ if(!heroThrow(-Math.sin(player.yaw),-Math.cos(player.yaw),0,true)){ FIGHT.ko=true; FIGHT.koT=0; player.speed=0; carryDrop(true); heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})}); } thud(); camState.shake=Math.min(1.2,camState.shake+.6); }
     toast(`${m.n} knocked you out${m.took?` and took ${naira(m.took)} from your pocket`:''}! Nobody can touch you for two minutes.`,3.6); }
   else if(m.t==='pkowin'){ PVPS[m.i]=0; toast(`You knocked out ${m.n}!${m.took?` +${naira(m.took)} from the pocket.`:''}`,3.2); }
   else if(m.t==='pvno') toast(m.m,2.2); }
@@ -4706,12 +4707,68 @@ function aiDodge(p){ if(p.state!=='fight'||p.atk||!p.body||p.dodgeT>0||MR()>.2) 
 // who you are fighting: the nearest attacker, or the last person you hit
 function lockFoe(){ let best=null, bd=5; for(const p of FIGHT.attackers||[]){ const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } }
   if(!best&&FIGHT.foe&&FIGHT.foeT>0&&FIGHT.foe.state!=='off'&&FIGHT.foe.state!=='dead'&&Math.hypot(FIGHT.foe.x-player.x,FIGHT.foe.z-player.z)<4) best=FIGHT.foe; return best; }
-// a car runs into you: thrown down (and up again), or killed if it was fast
-function carHitPlayer(v,sp){ FIGHT.carT=1.5; const fx=Math.cos(v.h), fz=-Math.sin(v.h); player.x+=fx*Math.min(3,sp*.18); player.z+=fz*Math.min(3,sp*.18);
-  if(v.ai){ v.ai.wait=Math.max(v.ai.wait,3); setTimeout(horn,200); } v.speed*=.4;
-  hitPlayer((sp-4)*9,v,'car'); if(FIGHT.dead) return;
-  FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})});
-  if(sayT<=0){ sayT=5; toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"']),2.4); } }
+// a car runs into you: the blow snaps you back and throws you (higher and further the faster it came), you turn in the air,
+// land on your back, bounce and slide, lie there small, push up on your elbows and get up. Fast enough, you stay down.
+function carHitPlayer(v,sp){ if(thrOn()) return; FIGHT.carT=1.5; const sg=Math.sign(v.speed)||1, fx=Math.cos(v.h)*sg, fz=-Math.sin(v.h)*sg;
+  if(v.ai){ v.ai.wait=Math.max(v.ai.wait,3); setTimeout(horn,450); } v.speed*=.35; skid(.9); if(sp>11&&SND&&SND.has('crash')) SND.play('crash',{x:v.x,z:v.z,b:'veh',gain:clamp((sp-9)/30,.15,.4),rate:1.25,ref:6});
+  const g=Math.sign(-(player.x-v.x)*fz+(player.z-v.z)*fx)||1; let dx=fx-fz*g*.45, dz=fz+fx*g*.45; const l=Math.hypot(dx,dz); dx/=l; dz/=l;   // on along the road, and a little off to your side of the bonnet
+  THR.v=v; THR.pre=canThrow(); hitPlayer((sp-4)*9,v,'car'); THR.pre=false; THR.v=null;
+  if(!heroThrow(dx,dz,clamp((sp-5)/14,0,1))){ player.x+=dx*Math.min(3,sp*.18); player.z+=dz*Math.min(3,sp*.18);   // (no moves on this body yet: the old way)
+    if(FIGHT.dead) return; FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1.3,onEnd:()=>heroDo('lie',{force:true,pause:true})}); }
+  if(v.ai&&THR.o) v.ai.wait=Math.max(v.ai.wait,THR.o.end+1.5);   // the driver waits till you are up (or gone)
+  if(!FIGHT.dead&&sayT<=0){ sayT=5; setTimeout(()=>{ if(!FIGHT.dead) toast(mpick(['"Driver! You wan kill person?!"','"Ah! Watch where you dey drive!"','"Na me you wan use do sacrifice?!"','"Oga driver, you no get eye?!"']),2.4); },THR.o?THR.o.TA*1000+500:0); } }
+const THR={o:null,pre:false,v:null,msg:null};
+const thrOn=()=>!!(THR.o&&hero&&hero.ov&&hero.ov.T===THR.o);   // in the air, or down after it
+const canThrow=()=>!!(hero&&hero.act.stand_up&&mode==='walk'&&!CLIMB.on&&!thrOn());
+// the moves the fall is made of, each its own copy (so nothing else playing them gets in the way)
+function thrActs(){ const A=hero.act; if(hero.thr&&hero.thr.key===A.stand_up) return hero.thr;
+  const mk=(src,n)=>{ const a=A[src]; if(!a) return null; const k=a.getClip().clone(); k.name=n; const x=hero.mixer.clipAction(k); x.setLoop(THREE.LoopOnce,1); x.clampWhenFinished=true; x.src=src; return x; };
+  return hero.thr={key:A.stand_up,snap:mk(A.uppercut?'uppercut':'hit_body','thr_snap'),flat:mk(A.kip_up?'kip_up':'stand_up','thr_flat'),prop:mk('stand_up','thr_prop'),up:mk('stand_up','thr_up')}; }
+// thrown the way (dx,dz) with power k (0..1): soft is a knock-out punch, you just go over backwards
+function heroThrow(dx,dz,k,soft){ if(!canThrow()) return false; const P=thrActs(); if(!P.flat||!P.prop||!P.up) return false;
+  const cur=hero.ov; if(cur&&cur.a) cur.a.fadeOut(.1); if(CR.on) crReset(); if(CARRY.p) carryDrop(true); JACK.go=null; FIGHT.dash=null; FIGHT.buf=null;
+  const acts=[P.snap,P.flat,P.prop,P.up].filter(Boolean); for(const a of acts){ a.stop(); a.reset(); a.timeScale=1; a.setEffectiveWeight(0); }
+  P.flat.play(); P.flat.time=0; P.flat.paused=true; P.prop.play(); P.prop.time=0; P.prop.paused=true;
+  if(P.snap){ P.snap.play(); P.snap.time=P.snap.getClip().duration*.05; P.snap.timeScale=1.5; }
+  const TA=soft?.42:.36+.34*k, D=soft?.45:(1.2+5.6*k)*(.85+MR()*.3), v0=D*.72/TA, TS=soft?.15:.25+.35*k;
+  const T={dx,dz,k,TA,H:soft?.03:.1+.9*k,v0,v1:v0*.55,TS,BT:.2+.06*k,BH:soft?.02:.03+.09*k,yaw:Math.atan2(-dx,-dz),mt:0,move:true,landed:false,dead:FIGHT.dead};
+  T.tProp=TA+TS+(soft?1.4:.9+.6*k)+MR()*.3; T.tUp=T.tProp+1.05; T.end=T.tUp+P.up.getClip().duration*.68/1.5;
+  hero.ov={name:'thrown',a:{fadeOut:t=>{ for(const x of acts) x.fadeOut(t); },stop:()=>{ for(const x of acts) x.stop(); }},t:0,dur:1e9,hits:[],lock:true,pause:false,lunge:null,root:false,onEnd:null,
+    atk:null,cancel:1,heavy:false,inW:.08,foe:null,stand:1,until:0,mix:thrMix,T,P,yo:0};
+  THR.o=T; FIGHT.ko=true; FIGHT.koT=0; player.speed=0; player.vy=0; return true; }
+// the body: the snap back fading into lying flat while you fly; then flat; up on the elbows; and the getting up, into standing
+function thrMix(o,dt){ const T=o.T, P=o.P, t=o.t, O=hero.look?hero.look.off||{}:{}; let ws=0,wf=0,wp=0,wu=0,W=1;
+  if(t<T.TA){ const b=smooth(.12,.9,t/T.TA); if(P.snap){ ws=1-b; wf=b; W=Math.min(1,t/.07); } else { wf=1; W=b; } }
+  else if(T.dead||t<T.tProp) wf=1;
+  else if(t<T.tUp){ wp=smooth(T.tProp,T.tProp+.7,t); wf=1-wp; }
+  else { if(!T.up){ T.up=true; P.up.reset(); P.up.timeScale=1.5; P.up.play(); } wu=smooth(T.tUp,T.tUp+.25,t); wp=1-wu; W=clamp((T.end-t)/.4,0,1); }
+  if(P.snap) P.snap.setEffectiveWeight(ws*W); P.flat.setEffectiveWeight(wf*W); P.prop.setEffectiveWeight(wp*W); P.up.setEffectiveWeight(wu*W);
+  o.yo=(O[P.snap?P.snap.src:'']||0)*ws+(O[P.flat.src]||0)*wf+(O.stand_up||0)*(wp+wu);
+  if(!T.dead&&t>=T.end){ hero.ov=null; for(const a of [P.snap,P.flat,P.prop,P.up]) if(a) a.stop(); if(THR.o===T) THR.o=null; FIGHT.ko=false; FIGHT.calmT=0; return 0; }
+  return W; }
+// where the throw carries you: the arc through the air (turning to face the way it came), the bump and the slide
+function thrMove(dt){ const T=THR.o; if(!hero||!hero.ov||hero.ov.T!==T){ THR.o=null; return false; } T.mt+=dt; const t=T.mt;
+  const hs=t<T.TA?T.v0:Math.max(0,T.v1*(1-(t-T.TA)/T.TS));
+  if(hs>0){ const nx=player.x+T.dx*hs*dt, nz=player.z+T.dz*hs*dt;
+    if(!onLand(nx,nz)) T.v0=T.v1=0;
+    else { const c={x:nx,z:nz}; resolveCircle(c,.3,null,player.y+.2); if(Math.hypot(c.x-nx,c.z-nz)>.015){ T.v0=T.v1=0; if(!T.bonk){ T.bonk=1; thud(); camState.shake=Math.min(1.4,camState.shake+.3); } } player.x=c.x; player.z=c.z; } }   // a wall stops you where you are
+  const gy=Math.max(walkY(player.x,player.z,player.y),topY(player.x,player.z,player.y));
+  let arc=0; if(t<T.TA){ const u=t/T.TA; arc=4*T.H*u*(1-u); } else if(t-T.TA<T.BT) arc=T.BH*Math.sin(Math.PI*(t-T.TA)/T.BT);
+  player.y=gy+arc; player.speed=0;
+  if(t<T.TA) player.yaw=lerpA(player.yaw,T.yaw,1-Math.exp(-12*dt));
+  if(!T.landed&&t>=T.TA){ T.landed=true; thud(); camState.shake=Math.min(1.4,camState.shake+.3+.6*T.k); puff({x:player.x,y:gy,z:player.z},6+Math.round(10*T.k));
+    if(T.dead) bloodPool(player.x-T.dx*.5,player.z-T.dz*.5,1.4,4); thrBanner(); }
+  if(t>=T.TA+Math.max(T.TS,T.BT)) T.move=false;
+  return true; }
+function thrBanner(){ const m=THR.msg; if(!m) return; THR.msg=null; bigMsg(...m); }
+// what the screen says when you die: a vehicle gets the Lagos version
+const JAM_LINES=['Lagos road no be your mate.','Na zebra crossing you no see?','Pedestrian bridge dey there o!','Look left, look right… you look phone.','Your village people don collect this round.','Who send you to cross express?','E don cast. Na LUTH we dey go.','Driver say na you jump enter road.'];
+const LICENCE_LINES=['Na for roadside you buy am abi?','Brake na for decoration?','VIO go hear this one.','Motor don scatter. You join am.','Na so dem teach you for driving school?'];
+function deathBanner(how,v){
+  if(how==='car'){ const t=v&&v.type, n=t==='danfo'?'DANFO':t==='bus'?'BUS':t==='tanker'?'TRAILER':/^(okada|bike2|sbike)$/.test(t||'')?'OKADA':t==='keke'?'KEKE':t==='police'?'OLOPA':t==='benz'?'BENZ':'MOTOR';
+    return [n+' DON\nJAM YOU!','jam',mpick(JAM_LINES)]; }
+  if(how==='crash') return ['WHO GIVE YOU\nLICENCE?!','jam',mpick(LICENCE_LINES)];
+  return ['WASTED','wasted']; }
 // jumping: the real Mixamo jumps fitted to your body. Standing still you spring straight up; moving you leap forward and
 // land running. A fence or wall in front of you that you can reach, you climb instead. Crouched, JUMP stands you up
 // (like CODM); lying down it brings you up to a crouch; sliding, it jumps you out of the slide.
@@ -4923,13 +4980,15 @@ function hitPlayer(dmg,from,how){ if(FIGHT.ko||FIGHT.dead||busy||mode==='interio
 // dead: you fall, the screen goes dark, and you wake up at LUTH with your stars gone
 function playerDie(how){ if(FIGHT.dead) return; if(UNION&&UNION.fightHere()) UNION.downed(); FIGHT.hp=0; FIGHT.ko=true; FIGHT.dead=true; FIGHT.koT=0; player.speed=0; carryDrop(true);
   if(mode==='drive'&&drive.v){ drive.speed=0; drive.v.speed=0; }
-  else heroDo('uppercut',{force:true,ts:1.2,onEnd:()=>heroDo('lie',{force:true,pause:true})});
-  bloodPool(player.x,player.z,1.4,4); for(const p of FIGHT.attackers) calmPed(p); bigMsg('WASTED','wasted');
+  else if(thrOn()) THR.o.dead=true;   // already flying: you stay down where you land
+  else if(!THR.pre&&!heroThrow(-Math.sin(player.yaw),-Math.cos(player.yaw),0,true)) heroDo('uppercut',{force:true,ts:1.2,onEnd:()=>heroDo('lie',{force:true,pause:true})});   // beaten, shot: you go over backwards
+  for(const p of FIGHT.attackers) calmPed(p); const ban=deathBanner(how,THR.v);
+  if(THR.pre) THR.msg=ban; else { bloodPool(player.x,player.z,1.4,4); bigMsg(...ban); }   // thrown: the blood and the words when you land
   toast(how==='car'?'You were hit by a car. You don die!':how==='crash'?'You crashed. You don die!':how==='shot'?'Police bullets got you. You don die!':how==='blast'?'The blast got you. You don die!':how==='fire'?'The fire got you. You don die!':'The area boys beat you finish. You don die!',3.2);
   setTimeout(()=>{ fadeSwap(()=>{ if(mode==='drive') exitCar(); if(hero&&hero.ov){ hero.ov.a.stop(); hero.ov=null; } releaseCop(); clearCops(); CASE.on=false; if(RAID.v) leaveRaid(true); FIGHT.heat=0; FIGHT.ko=false; FIGHT.dead=false; FIGHT.hp=100; FIGHT.calmT=99;
     Object.assign(player,{x:LUTH.x,z:LUTH.z,yaw:LUTH.ry,speed:0}); player.y=0; camState.yaw=LUTH.ry; camState.pitch=.26;
     const bill=Math.min(CASH.n,Math.round(Math.max(1500,CASH.n*.1)/50)*50); addCash(-bill); ARMS.aim=false; ARMS.trig=false;
-    toast(`You woke up at LUTH, Idi-Araba. The doctors don patch you up (bill ${naira(bill)}). Take am easy o!`,5); }); },3600); }
+    toast(`You woke up at LUTH, Idi-Araba. The doctors don patch you up (bill ${naira(bill)}). Take am easy o!`,5); }); },THR.pre?4400:3600); }
 // ---- the police
 function crime(p,k=1){ const civ=p.cast!=='areaboy'&&!p.cop; addHeat((civ?.15:.05)*k);
   if(COPS.near<35||FIGHT.cop&&Math.hypot(FIGHT.cop.x-player.x,FIGHT.cop.z-player.z)<35) addHeat(.25*k); }   // the police saw it
@@ -5109,7 +5168,8 @@ function updateFight(dt){ FIGHT.attackers=peds.filter(p=>p.state==='fight').sort
   if(FIGHT.foeT>0) FIGHT.foeT-=dt; if(FIGHT.carT>0) FIGHT.carT-=dt;
   // health comes back when you stop fighting
   FIGHT.calmT+=dt; if(!FIGHT.ko&&FIGHT.calmT>5&&FIGHT.hp<100) FIGHT.hp=Math.min(100,FIGHT.hp+dt*5);
-  if(FIGHT.ko){ FIGHT.koT+=dt; if(!FIGHT.dead&&FIGHT.koT>3.2&&hero&&hero.ov&&hero.ov.name==='lie'){ heroDo('stand_up',{force:true,ts:1.8,onEnd:()=>{ FIGHT.ko=false; FIGHT.calmT=0; }}); } }
+  if(FIGHT.ko){ FIGHT.koT+=dt; if(!FIGHT.dead&&FIGHT.koT>3.2&&hero&&hero.ov&&hero.ov.name==='lie'){ heroDo('stand_up',{force:true,ts:1.8,onEnd:()=>{ FIGHT.ko=false; FIGHT.calmT=0; }}); }
+    else if(!FIGHT.dead&&FIGHT.koT>14&&!(hero&&hero.ov)&&!busy) FIGHT.ko=false; }   // (whatever took over from the fall, you are not left on the floor for ever)
   // stars fade when nobody is chasing you
   FIGHT.crimeT+=dt; const cop=FIGHT.cop, cd=cop?Math.hypot(cop.x-player.x,cop.z-player.z):1e9;
   if(FIGHT.crimeT>20&&Math.min(cd,COPS.near)>150&&!CASE.on) FIGHT.heat=Math.max(0,FIGHT.heat-dt*.03);   // about half a minute per star, once the police lose you
@@ -6216,7 +6276,9 @@ function explode(x,y,z,power=1,byMe=true){ const R=6.2*power; if(PH) PH.event('e
     if(p.state==='dead'){ p.vx+=ux*3; p.vz+=uz*3; continue; }
     if(d<R*.45||p.hp!=null&&p.hp<35) killPed(p,ux,uz,7*(1-d/R)+2,byMe?'blast':'shot'); else { if(p.hp==null) p.hp=HP0(p.cast); p.hp-=60*(1-d/R); if(p.state==='down') continue; koPed(p,ux,uz,5*(1-d/R)+1.5); } }
   if(mode==='walk'&&!FIGHT.dead){ const d=Math.hypot(player.x-x,player.z-z); if(d<R){ const k=Math.pow(1-d/R,1.3); FIGHT.hp-=k*150; FIGHT.calmT=0; bleed(player.x,1.2,player.z,(player.x-x)/(d||1),(player.z-z)/(d||1),8,2);
-      if(FIGHT.hp<=0) playerDie('blast'); else if(k>.25&&!FIGHT.ko&&hero){ FIGHT.ko=true; FIGHT.koT=0; carryDrop(true); heroDo('uppercut',{force:true,ts:1.2,onEnd:()=>heroDo('lie',{force:true,pause:true})}); } } }
+      const ux=(player.x-x)/(d||1), uz=(player.z-z)/(d||1), die=FIGHT.hp<=0;
+      if(die||k>.25&&!FIGHT.ko&&!thrOn()){ THR.pre=canThrow(); if(die) playerDie('blast'); const th=THR.pre&&heroThrow(ux,uz,clamp(k*1.3,.2,1)); THR.pre=false;   // the blast throws you
+        if(!die&&!th&&hero){ FIGHT.ko=true; FIGHT.koT=0; carryDrop(true); heroDo('uppercut',{force:true,ts:1.2,onEnd:()=>heroDo('lie',{force:true,pause:true})}); } } } }
   for(const v of vehicles){ const d=Math.hypot(v.x-x,v.z-z); if(d>R*1.3||v.wreck) continue; carDamage(v,140*(1-d/(R*1.3)),byMe); if(v.ai){ v.ai.wait=Math.max(v.ai.wait,2); }
     if(v===drive.v&&!FIGHT.dead){ FIGHT.hp-=60*(1-d/(R*1.3)); camState.shake=1.6; if(FIGHT.hp<=0) playerDie('blast'); } }
   shotsFired(x,z,byMe); if(byMe) addHeat(.5); }
@@ -6468,7 +6530,7 @@ function busted(){ if(COPS.bust||FIGHT.dead||busy) return; const down=FIGHT.ko; 
   if(!down&&hero&&hero.act.hands_up&&mode==='walk') heroDo('hands_up',{force:true,pause:true});
   toast(mpick(['Police: "You don finish! Enter motor!"','Police: "Oya, hands for back! You dey under arrest."']),2.6);
   setTimeout(()=>{ COPS.bust=false; arrest(); },2200); }
-function bigMsg(t,cls){ const e=$('#big'); e.textContent=t; e.className='big '+cls; e.hidden=false; clearTimeout(bigMsg.t); bigMsg.t=setTimeout(()=>{ e.hidden=true; },3600); }
+function bigMsg(t,cls,sub){ const e=$('#big'), b=document.createElement('b'); b.textContent=t; e.replaceChildren(b); if(sub){ const m=document.createElement('small'); m.textContent=sub; e.append(m); } e.className='big '+cls; e.hidden=false; clearTimeout(bigMsg.t); bigMsg.t=setTimeout(()=>{ e.hidden=true; },3600); }
 // a roadblock: a van across the road ahead of you, officers behind it with rifles
 function roadblock(){ const v0=drive.v; if(!v0||COPS.block) return; const fx=Math.cos(v0.h), fz=-Math.sin(v0.h); let best=null, bc=.93;
   for(const n of nodes){ const dx=n.x-v0.x, dz=n.z-v0.z, d=Math.hypot(dx,dz); if(d<90||d>170||!n.out.length) continue; const c=(dx*fx+dz*fz)/d; if(c>bc){ bc=c; best=n; } }
