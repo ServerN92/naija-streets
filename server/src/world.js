@@ -5,6 +5,7 @@ import { createBiz } from './biz.js';
 import { createPark } from './park.js';
 import { createPvp } from './pvp.js';
 import { createLaw } from './law.js';
+import { createBank } from './bank.js';
 import { lifeOk } from './life.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
@@ -61,6 +62,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   // players fighting players: the server decides the blows and the knock-outs
   // the police: stars, the force, arrests
   const law = createLaw({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, spend, badge } });
+  // the banks: an account number for everyone, transfers between players
+  const bank = createBank({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, credit, clean: cleanChat } });
   const pvp = createPvp({ now, log, ctx: { online, send: (C, o) => send(C, o), spend, give, onKo: (A, D) => { park.pvpKo(A, D); law.ko(A, D); }, onHit: (A, D) => law.hit(A, D), noRob: A => law.noRob(A) } });
 
   const send = (C, o) => { if (C.ws.open) C.ws.send(JSON.stringify(o)); };
@@ -94,7 +97,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     db.seen(u.id, t);
     const life = db.lifeGet(u.id);
     send(C, { t: 'me', tok, id: C.p.id, uid: u.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, life, n: online.size });
-    biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C);
+    biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C); bank.hello(C);
     log('in', u.name, online.size);
   }
   function leaveWorld(C) {
@@ -248,7 +251,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function pk(C, m) { C.pkLim = C.pkLim || new Bucket(10, 2); if (!C.pkLim.take()) return; if (typeof m.a === 'string') park.handle(C, m); }
   function hit(C, m) { C.hitLim = C.hitLim || new Bucket(8, 4); if (!C.hitLim.take()) return; pvp.hit(C, m); }
   function lawMsg(C, m) { C.lawLim = C.lawLim || new Bucket(10, 2); if (!C.lawLim.take()) return; if (typeof m.a === 'string') law.handle(C, m); }
-  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit, law: lawMsg };
+  function bk(C, m) { C.bkLim = C.bkLim || new Bucket(10, 2); if (!C.bkLim.take()) return; if (typeof m.a === 'string') bank.handle(C, m); }
+  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, out: logout, bz, mk, pk, hit, law: lawMsg, bk };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };

@@ -45,6 +45,13 @@ const SCHEMA = [
    INSERT INTO before7(id, kind, owner, name, data, till, bought, t)
      SELECT id, kind, owner, name, data, till, bought, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM biz WHERE owner IS NOT NULL;
    UPDATE biz SET owner = NULL, name = NULL, till = 0, bought = NULL;`,
+  // v8: the banks: each player's account (which bank, a 10-digit number) and the transfers between players
+  `CREATE TABLE bank(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, bank TEXT NOT NULL, acct TEXT NOT NULL UNIQUE, t INTEGER NOT NULL);
+   CREATE TABLE bank_tx(id INTEGER PRIMARY KEY, t INTEGER NOT NULL, src INTEGER NOT NULL, dst INTEGER NOT NULL, n INTEGER NOT NULL,
+     fee INTEGER NOT NULL DEFAULT 0, note TEXT, q TEXT);
+   CREATE INDEX bank_tx_src ON bank_tx(src, t);
+   CREATE INDEX bank_tx_dst ON bank_tx(dst, t);
+   CREATE UNIQUE INDEX bank_tx_q ON bank_tx(src, q);`,
 ];
 
 export function openDb(file) {

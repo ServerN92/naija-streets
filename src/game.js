@@ -319,7 +319,11 @@ const GATES=[];  // house fronts and compound gates facing the street (people st
 const placeKind=sub=>/AMALA|BUKA|JOLLOF|SUYA|PEPPER|KITCHEN|RICE|DRINKS/.test(sub)?'food':/BARB|SALON|HAIR|PHARMACY|POS|BUREAU|LAUNDRY|PRINT|VULCAN|GENERATOR|REPAIR/.test(sub)?'service':'shop';
 let WB={x:1650,z:1650};   // half size of the map (set when the map loads)
 const LAND_EXTRA=[];   // walkable strips outside the map square: the Third Mainland Bridge deck {x0,x1,z0,z1}
-function onLand(x,z,bm=.6){ if(Math.abs(x)<WB.x-bm&&Math.abs(z)<WB.z-bm) return true; for(const r of LAND_EXTRA) if(x>r.x0&&x<r.x1-bm&&z>r.z0+bm&&z<r.z1-bm) return true; return false; }
+const inLand0=(x,z)=>{ if(Math.abs(x)<WB.x&&Math.abs(z)<WB.z) return true; for(const r of LAND_EXTRA) if(x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1) return true; return false; };
+// on the land, at least bm from its edge: the map square and the strips outside it (Under Bridge, the airport land, the bridge) count as one land,
+// so where two meet there is no edge in between (a car used to stop dead where the map square meets Under Bridge)
+function onLand(x,z,bm=.6){ if(Math.abs(x)<WB.x-bm&&Math.abs(z)<WB.z-bm) return true;
+  return inLand0(x,z)&&inLand0(x-bm,z)&&inLand0(x+bm,z)&&inLand0(x,z-bm)&&inLand0(x,z+bm); }
 /* ================= collision hash =================
    Boxes can be turned (ob: centre, axis cos/sin, half sizes) and can float (y0: bottom, h: top), e.g. footbridge rails. */
 const colliders=[], CELL=40, hash=new Map();
@@ -806,7 +810,7 @@ const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emis
   const wall=(acc,x0,z0,x1,z1,rx,rz,o,y0,y1,col,s)=>acc.quad([x0+rx*o,y0,z0+rz*o],[x1+rx*o,y0,z1+rz*o],[x1+rx*o,y1,z1+rz*o],[x0+rx*o,y1,z0+rz*o],[rx*s,0,rz*s],[[0,0],[Math.hypot(x1-x0,z1-z0)/2,0],[Math.hypot(x1-x0,z1-z0)/2,1],[0,1]],col);
   const lipBox=(x0,z0,x1,z1,rx,rz,a,b,h)=>{ strip(lip,x0,z0,x1,z1,rx,rz,a,b,h,LC); wall(lip,x0,z0,x1,z1,rx,rz,a,0,h,LC,-1); wall(lip,x1,z1,x0,z0,rx,rz,b,0,h,LC,1); };
   // the median barrier must never stand on another road's lanes (the other carriageway, a BRT lane, a slip road): there it would be a wall in the traffic
-  const onOther=(e,x,z,pad=.45)=>roadsNear(x,z).some(o=>o!==e&&!o.br&&segD(o,x,z)<o.hw+pad);
+  const onOther=(e,x,z,pad=.45)=>roadsNear(x,z).some(o=>o!==e&&(!o.br||o.drive)&&segD(o,x,z)<o.hw+pad);   // (a "bridge" road you can drive is at street level in the game: no barrier across it)
   for(const e of ROADS){ const A0=nodes[e.a], B0=nodes[e.b], ra=(A0.deg>=3?A0.r:0)+1.5, rb=(B0.deg>=3?B0.r:0)+1.5; if(e.len-ra-rb<4||e.br) continue;
     const rx=-e.fz, rz=e.fx, seg=6;
     if(e.c>=4&&e.c<=7&&e.cond!=='dirt'){   // gutters, both sides
@@ -2799,6 +2803,7 @@ function sndCell(x,z){ const i=Math.floor(x/SGC), j=Math.floor(z/SGC), k=i*10000
 const smooth=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
 const RESI=['bungalow','storey','house','dup1','dup2','dup3','dup4','dup5','faceme','zinc','wood','flats3','flats4'];
 let SNDT={z:0,horn:2,gen:null,genT:0,adhan:'',sp:0,skid:0};
+const CABIN={sedan:1,suv:1,car2:1,benz:1,police:1,amb:1,tanker:1,tipper:1,danfo:.8,bus:.8,keke:.3};   // how closed each vehicle is
 function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.position, h=CLOCK.gameHour(), inside=mode==='interior';
   camera.getWorldDirection(_sv); SND.listen(cam.x,cam.y,cam.z,_sv.x,_sv.z);
   const me=mode==='drive'&&drive.v?drive.v:player, x=me.x, z=me.z;
@@ -2809,6 +2814,8 @@ function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.positi
   if(SND.has('eng_car')&&eng) eng.g.gain.setTargetAtTime(0,AC.currentTime,.05);
   if(SND.has('amb_rain')&&rainG) rainG.gain.setTargetAtTime(0,AC.currentTime,.3);
   SND.muffle(inside);
+  // in a closed car (yours, or the cab or danfo you ride in) the windows are up: the street outside goes quiet so you hear the radio
+  const cv=mode==='drive'&&drive.v?drive.v:null, cab=cv?CABIN[cv.type]||0:0; SND.cabin(cab);
   if((S.z-=dt)>0) return; S.z=.3; const st=.3;
   // beds
   const c=inside?{main:.3,side:0,stop:0,mk:0}:sndCell(x,z), night=Math.max(smooth(18.6,20,h),1-smooth(4.6,5.8,h)), dawn=smooth(5,6,h)*(1-smooth(7.5,9,h)), day=1-night;
@@ -2832,7 +2839,7 @@ function sndTick(dt){ if(!SND||!started) return; const S=SNDT, cam=camera.positi
   // the nearest vehicles run their engines; some honk (more when traffic is stuck)
   const vs=[]; for(const v of vehicles){ if(v===dv||!v.c||v.type==='skate'||v.impounded) continue; const d=Math.hypot(v.x-x,v.z-z); if(d>70) continue; if(v.parked&&!v.ai&&Math.abs(v.speed||0)<.2) continue; vs.push({v,x:v.x,z:v.z,type:v.type,speed:Math.abs(v.speed||0),maxV:VT[v.type]?VT[v.type].maxV[1]:12,d}); }
   vs.sort((a,b)=>a.d-b.d); SND.engines(vs,st,Q.npc>=24?6:4);
-  if((S.horn-=st)<=0&&!inside){ S.horn=.6; for(const e of vs){ if(e.d>45||!e.v.ai) continue; const stuck=e.speed<1.2, p=stuck?.05:.012; if(Math.random()<p*(night?.4:1)){ SND.horn(e.type,e.x,e.z,.8); S.horn=1.6; break; } } }
+  if((S.horn-=st)<=0&&!inside&&cab<.5){ S.horn=.6; for(const e of vs){ if(e.d>45||!e.v.ai) continue; const stuck=e.speed<1.2, p=stuck?.05:.012; if(Math.random()<p*(night?.4:1)){ SND.horn(e.type,e.x,e.z,.8); S.horn=1.6; break; } } }
   // voices: the conductors at the bus stops and the motor park, the hawkers in the markets (real Lagos recordings, in 3-D)
   if(!inside&&!air){ const vl=1-.75*night;
     const ss=SND_STOPS().map((p,i)=>({p,i,d:Math.hypot(p.x-x,p.z-z)})).filter(o=>o.d<110).sort((a,b)=>a.d-b.d).slice(0,2);
@@ -2867,7 +2874,7 @@ function musTick(x,z,h,inside){ if(!SND||!SND.SONGS.length) return;
   let ctx=null;
   if(inside&&MUS.home) ctx={lp:16000,gain:.75,home:true};
   else if(dv&&drive.ride&&RADIO_V[ty]) ctx={lp:3200,gain:.45};
-  else if(dv&&!drive.ride&&RADIO_V[ty]&&MUS.on) ctx={lp:ty==='danfo'||ty==='keke'||ty==='bus'?3800:9000,gain:.6};
+  else if(dv&&!drive.ride&&RADIO_V[ty]&&MUS.on) ctx={lp:ty==='danfo'||ty==='keke'||ty==='bus'?3800:12000,gain:CABIN[ty]>=1?.75:.6};
   if(!inside) MUS.home=false;
   if(!ctx){ if(MUS.r0){ SND.songStop(0,.6); MUS.r0=null; } }
   else { const C=SND.channelOf(0);
@@ -5671,7 +5678,8 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
   setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); if(!PHONE.open) toast(`Your map don show the way to ${pl.name}.`,2.6); },
-  denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone() });
+  denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone(),
+  online:()=>!!(ON&&ON.signedIn), bankSend:o=>!!(ON&&ON.send({t:'bk',...o})), openOnline:()=>{ closePhone(); if(ON) ON.openPanel(); } });
 // the guide: what is happening now, so it knows when a first-time tip is due
 GD=createGuide({ touch:()=>touchUI, click:()=>phoneBeep(1500,.02,.12), closeSettings:()=>{ $('#settings').hidden=true; },
   unlock:()=>{ if(document.pointerLockElement) document.exitPointerLock(); }, calm:()=>{ for(const kk in K) K[kk]=false; joy.x=joy.y=0; },
@@ -6117,7 +6125,7 @@ const WRECK_MATS=new Map();
 function wreckMat(m){ let w=WRECK_MATS.get(m); if(!w){ w=new THREE.MeshStandardMaterial({map:m.map||null,color:0x2a2522,roughness:1,metalness:.05}); WRECK_MATS.set(m,w); } return w; }
 // how much a vehicle can take in crashes (bullets, bombs and fire still finish it the old way)
 const VHP={okada:220,bike2:240,sbike:240,keke:260,sedan:380,suv:400,car2:380,benz:450,danfo:480,police:500,bus:650,tanker:800};
-function crashDamage(v,sp){ if(!v||v.type==='skate'||sp<10) return; if(SND&&SND.has('crash')) SND.play('crash',v===drive.v?{b:'veh',gain:clamp((sp-8)/18,.35,1)}:{x:v.x,z:v.z,b:'veh',gain:clamp((sp-8)/18,.35,1),ref:8}); carDamage(v,Math.pow(sp-10,1.25)*2*100/(VHP[v.type]||380)); }   // a hard knock at 70 km/h costs a car about 9%, at 110 km/h about 22%
+function crashDamage(v,sp){ if(!v||v.type==='skate'||sp<10) return; if(SND&&SND.has('crash')) SND.play('crash',v===drive.v?{b:'sfx',gain:clamp((sp-8)/18,.35,1)}:{x:v.x,z:v.z,b:'veh',gain:clamp((sp-8)/18,.35,1),ref:8}); carDamage(v,Math.pow(sp-10,1.25)*2*100/(VHP[v.type]||380)); }   // a hard knock at 70 km/h costs a car about 9%, at 110 km/h about 22%
 function carDamage(v,amt,byMe=true){ if(!v||v.wreck||amt<=0) return; v.dmg=(v.dmg||0)+amt; if(byMe) v.byMe=true;
   if(v.dmg>=100&&!v.fire){ v.fire=T0; v.fireT=v===drive.v?mrr(5,7):mrr(3.5,6);   // it catches fire: everybody out
     if(v.ai&&v!==drive.v){ v.ai=null; v.speed=0; v.jacked=true; jackOut(v); }
@@ -8363,7 +8371,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
   pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); },
-  biz:m=>{ if(BIZ) BIZ.on(m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
+  biz:m=>{ if(BIZ) BIZ.on(m); }, bank:m=>{ if(PH) PH.event('bank',m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
 // the bukas players own (src/business.js): the model from Blender (tools/blender_buka.py) with the farm's photo detail
