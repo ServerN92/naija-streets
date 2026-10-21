@@ -8348,8 +8348,13 @@ function cbSayTick(dt){ if(!CB.sayOn) return; const s=CB.ui.say; CB.sayT+=dt; co
   if(hd){ hd.getWorldPosition(_cbV); _cbV.y+=.42; } else _cbV.set(player.x,player.y+2.1,player.z); _cbV.project(camera);
   const vis=_cbV.z<1; s.style.left=((_cbV.x*.5+.5)*innerWidth)+'px'; s.style.top=((-_cbV.y*.5+.5)*innerHeight)+'px';
   if(CB.sayT>CB.sayText.length/34+4.2||!vis||mode!=='walk'){ s.style.opacity='0'; if(CB.sayT>CB.sayText.length/34+4.6||mode!=='walk') CB.sayOn=false; } }
+// no car parked on your bed (your own car or okada waits by the road, some get left near the tent): ease it off to the side
+function cbKeepClear(){ const B=CB.bed; if(!B) return; const c=Math.cos(B.b), s=Math.sin(B.b);
+  for(const v of vehicles){ if(v===drive.v||(v.ai&&!v.parked)||v.wreck) continue; const dx=v.x-B.x, dz=v.z-B.z, u=dx*c-dz*s, w=dx*s+dz*c, L=(v.c.def.L||4)/2, W=(v.c.def.W||1.8)/2;
+    if(Math.abs(u)>1.3+L+.4||Math.abs(w)>.75+L+.4) continue;   // (a car can stand at any turn: its long half covers it)
+    const sd=w>=0?1:-1, need=.75+L+.6; for(const k of [1,1.6,2.4]){ const nw=sd*need*k, nx=B.x+u*c+nw*s, nz=B.z-u*s+nw*c; if(onLand(nx,nz,1)&&!roadAt(nx,nz,.3)&&!resolveCircle({x:nx,z:nz},W)){ v.x=nx; v.z=nz; if(v.c&&v.c.g) v.c.g.position.set(nx,v.y||0,nz); break; } } } }
 // press E by the bed
-function cbStart(){ if(CB.act||!CB.bed||!hero||busy) return; if(CARRY.p){ toast('Put am down first.',1.6); return; } if(PHONE.open) closePhone();
+function cbStart(){ cbKeepClear(); if(CB.act||!CB.bed||!hero||busy) return; if(CARRY.p){ toast('Put am down first.',1.6); return; } if(PHONE.open) closePhone();
   const A={ph:'load',t:0}; CB.act=A; heroQuiet();
   cbClips().then(C=>{ if(CB.act!==A) return;
     const B=CB.bed, yaw=Math.atan2(Math.cos(B.b),-Math.sin(B.b));   // you face the feet end; lying, your head goes back onto the pillow
@@ -8752,7 +8757,7 @@ function reportErr(e){ console.error(e); if(errShown++<1&&started) toast('Small 
 function simulate(dt){
   if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
-  updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt);
+  updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
