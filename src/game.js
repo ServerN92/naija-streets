@@ -72,6 +72,7 @@ const GPU=(()=>{ try{ const c=document.createElement('canvas'), gl=c.getContext(
 const GPU_TIER=/SwiftShader|llvmpipe|Microsoft Basic|Mali-[T4]|Mali-G(31|51|52|57|68|72|76)\b|Adreno.{0,12}\b([3-5]\d\d|6[0-3]\d)\b|PowerVR|Intel.{0,40}\b(HD|UHD) Graphics|Apple A(9|10|11|12)\b/i.test(GPU)?'low':
   /NVIDIA|GeForce|RTX|Quadro|Radeon (RX|Pro)|Apple M\d|Adreno.{0,12}\b(7[3-9]\d|8\d\d)\b|Immortalis/i.test(GPU)?'high':'medium';
 let qKey=null; try{ qKey=localStorage.getItem('naija-quality'); }catch(e){}
+const LITE={step:0,slow:0,told:false};   // how far the game has lightened itself on a struggling phone (see tuneResolution)
 // the player's profile: a name, and man or woman, chosen once on this device (it cannot be changed afterwards)
 let PROFILE=null; try{ PROFILE=JSON.parse(localStorage.getItem('naija-profile')||'null'); }catch(e){} if(!PROFILE||!(PROFILE.g==='m'||PROFILE.g==='f')) PROFILE=null;
 const isF=()=>!!PROFILE&&PROFILE.g==='f';
@@ -82,9 +83,19 @@ const LIFE_NEW=(()=>{ try{ if(localStorage.getItem('naija-life')!==null) return 
   for(const k of ['naija-cars','naija-hotel','naija-arms','naija-fit','naija-look2']) localStorage.removeItem(k); return true; }catch(e){ return false; } })();
 // the start over takes back the farm too (once): it goes back to the farm officer, to collect again (the online businesses go back on sale on the server)
 const FARM_BACK=(()=>{ try{ if(localStorage.getItem('naija-start2')) return false; localStorage.setItem('naija-start2','1'); const f=JSON.parse(localStorage.getItem('naija-farm')||'null'); localStorage.removeItem('naija-farm'); return !!(f&&f.got); }catch(e){ return false; } })();
-if(!QUAL[qKey]) qKey=GPU_TIER==='high'&&isTouch?'medium':GPU_TIER; const Q=QUAL[qKey];
+if(!QUAL[qKey]) qKey=isTouch?(GPU_TIER==='high'?'medium':'low'):GPU_TIER; const Q=QUAL[qKey];   // a phone starts on Low (Medium on the strongest chips): heat and battery come first
+if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
 Q.prTop=Q.pr; const fitPR=()=>Math.max(Q.prMin,Math.min(Q.prTop,Math.sqrt(Q.px/Math.max(1,innerWidth*innerHeight)))); Q.pr=fitPR();
+// most of the city never moves, but three.js rebuilds every object's matrices every frame (thousands of them): skip it when
+// position, rotation and scale are the same as last time (the world matrix then stays valid unless a parent moved)
+{ const P=THREE.Object3D.prototype;
+  P.updateMatrix=function(){ const p=this.position, q=this.quaternion, s=this.scale; let c=this._mc;
+    if(c&&c[0]===p.x&&c[1]===p.y&&c[2]===p.z&&c[3]===q._x&&c[4]===q._y&&c[5]===q._z&&c[6]===q._w&&c[7]===s.x&&c[8]===s.y&&c[9]===s.z&&c[10]===1) return;
+    if(!c) c=this._mc=new Float64Array(11); c[0]=p.x; c[1]=p.y; c[2]=p.z; c[3]=q._x; c[4]=q._y; c[5]=q._z; c[6]=q._w; c[7]=s.x; c[8]=s.y; c[9]=s.z; c[10]=1;
+    this.matrix.compose(p,q,s); this.matrixWorldNeedsUpdate=true; };
+  const lk=P.lookAt; P.lookAt=function(...a){ lk.apply(this,a); if(this._mc) this._mc[10]=0; };   // (lookAt turns the object behind our back)
+  const ap=P.applyMatrix4; P.applyMatrix4=function(m){ ap.call(this,m); if(this._mc) this._mc[10]=0; return this; }; }
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias:Q.aa, powerPreference:'high-performance', stencil:false }); }
 catch(e){ window.__nsFail('Your browser could not start 3D graphics (WebGL). Update your browser or try Chrome.'); throw e; }
@@ -373,7 +384,19 @@ class Acc{ constructor(){ this.p=[]; this.n=[]; this.u=[]; this.c=[]; }
     g.setAttribute('position',new THREE.Float32BufferAttribute(this.p,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(this.n,3));
     g.setAttribute('uv',new THREE.Float32BufferAttribute(this.u,2)); g.setAttribute('color',new THREE.Float32BufferAttribute(this.c,3));
     this.p=this.n=this.u=this.c=null;   // the plain arrays are big: let them go
-    g.computeBoundingSphere(); freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; return m; } }
+    g.computeBoundingSphere(); freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; return m; }
+  // the same, cut into square tiles of the city (by each triangle's middle): only the tiles in front of the camera, and not
+  // too far, are drawn, instead of the whole city's walls and roads every frame
+  tiles(mat,shadow=true,receive=true,T=384){ if(!this.p||!this.p.length){ this.p=this.n=this.u=this.c=null; return null; } const P=this.p, N=this.n, U=this.u, C=this.c, buckets=new Map();
+    for(let t=0;t<P.length;t+=9){ const x=(P[t]+P[t+3]+P[t+6])/3, z=(P[t+2]+P[t+5]+P[t+8])/3, k=Math.floor(x/T)*100000+Math.floor(z/T); let b=buckets.get(k); if(!b) buckets.set(k,b=[]); b.push(t/9); }
+    const grp=new THREE.Group();
+    for(const list of buckets.values()){ const n=list.length*3, p=new Float32Array(n*3), nn=new Float32Array(n*3), u=new Float32Array(n*2), c=new Float32Array(n*3);
+      for(let i=0;i<list.length;i++){ const tri=list[i]; for(let v=0;v<3;v++){ const sv=tri*3+v, d=i*3+v, s3=sv*3, d3=d*3; p[d3]=P[s3]; p[d3+1]=P[s3+1]; p[d3+2]=P[s3+2]; nn[d3]=N[s3]; nn[d3+1]=N[s3+1]; nn[d3+2]=N[s3+2]; u[d*2]=U[sv*2]; u[d*2+1]=U[sv*2+1]; c[d3]=C[s3]; c[d3+1]=C[s3+1]; c[d3+2]=C[s3+2]; } }
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(p,3)); g.setAttribute('normal',new THREE.BufferAttribute(nn,3)); g.setAttribute('uv',new THREE.BufferAttribute(u,2)); g.setAttribute('color',new THREE.BufferAttribute(c,3));
+      g.computeBoundingSphere(); freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; grp.add(m); TILES.push(m); }
+    this.p=this.n=this.u=this.c=null; return grp; } }
+const TILES=[];   // (the city's tiles: hidden past the far distance, see updateCulls)
+function stillTiles(acc,mat,shadow=false,receive=true){ const g=acc.tiles(mat,shadow,receive); if(!g) return null; g.traverse(o=>{ o.matrixAutoUpdate=false; o.matrixWorldAutoUpdate=false; o.updateMatrix(); }); g.updateMatrixWorld(true); scene.add(g); return g; }   // a city-wide piece, cut into tiles, that never moves
 // static city geometry is needed only on the graphics card: once uploaded, drop the copy in memory (phones have little)
 function freeAfterUpload(g){ for(const k in g.attributes) g.attributes[k].onUpload(function(){ this.array=new this.array.constructor(1); }); if(g.index) g.index.onUpload(function(){ this.array=new this.array.constructor(1); }); }
 const WHITE=new THREE.Color(1,1,1);
@@ -852,16 +875,16 @@ const RAILS=WD.rail.map(r=>{ const o=[]; for(let i=0;i<r.p.length;i+=2) o.push([
     for(const o of [-.72,.72]){ const a=[x0+rx*o,z0+rz*o], b=[x1+rx*o,z1+rz*o], w=.04, y1=.22;
       steel.quad([a[0]-rx*w,y1,a[1]-rz*w],[a[0]+rx*w,y1,a[1]+rz*w],[b[0]+rx*w,y1,b[1]+rz*w],[b[0]-rx*w,y1,b[1]-rz*w],[0,1,0],[[0,0],[1,0],[1,1],[0,1]],SC);
       for(const s of [-1,1]) steel.quad([a[0]+rx*w*s,.05,a[1]+rz*w*s],[b[0]+rx*w*s,.05,b[1]+rz*w*s],[b[0]+rx*w*s,y1,b[1]+rz*w*s],[a[0]+rx*w*s,y1,a[1]+rz*w*s],[rx*s,0,rz*s],[[0,0],[1,0],[1,1],[0,1]],SC); } }
-  const bm=bal.mesh(new THREE.MeshStandardMaterial({map:T_SL,roughness:1,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),false,true); if(bm) scene.add(bm);
-  const sm2=steel.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,metalness:.8,roughness:.35,side:THREE.DoubleSide}),false,true); if(sm2) scene.add(sm2); }
+  stillTiles(bal,new THREE.MeshStandardMaterial({map:T_SL,roughness:1,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  stillTiles(steel,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,metalness:.8,roughness:.35,side:THREE.DoubleSide})); }
 // open drains and streams: dark water between concrete edges
 { const wa=new Acc(), ed=new Acc(), WC=new THREE.Color('#2c2a22'), EC=new THREE.Color('#9a958c');
   for(const wv of WD.water){ const p=wv.p, hw=wv.k==='stream'?2.2:1.1; for(let i=0;i+3<p.length;i+=2){ const x0=p[i],z0=p[i+1],x1=p[i+2],z1=p[i+3], L=Math.hypot(x1-x0,z1-z0); if(L<.1) continue; const fx=(x1-x0)/L, fz=(z1-z0)/L, rx=-fz, rz=fx, y=.02;
     if(roadAt((x0+x1)/2,(z0+z1)/2)) continue;
     wa.quad([x0-rx*hw,y,z0-rz*hw],[x0+rx*hw,y,z0+rz*hw],[x1+rx*hw,y,z1+rz*hw],[x1-rx*hw,y,z1-rz*hw],[0,1,0],[[0,0],[1,0],[1,L/4],[0,L/4]],WC);
     for(const [qa,qb] of [[-hw-.3,-hw],[hw,hw+.3]]) ed.quad([x0+rx*qa,.06,z0+rz*qa],[x0+rx*qb,.06,z0+rz*qb],[x1+rx*qb,.06,z1+rz*qb],[x1+rx*qa,.06,z1+rz*qa],[0,1,0],[[0,0],[1,0],[1,1],[0,1]],EC); } }
-  const wm=wa.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.15,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}),false,true); if(wm) scene.add(wm);
-  const em=ed.mesh(new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.9,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(em) scene.add(em); }
+  stillTiles(wa,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.15,metalness:.2,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+  stillTiles(ed,new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.9,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3})); }
 
 const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emissive:0xffd08a,emissiveIntensity:0});
 // ---- the estates on the ground (see EST): the way in from the road, the boulevard's two carriageways round a planted median
@@ -928,10 +951,10 @@ const LAMPS2=[], EXPWAY_HEAD=new THREE.MeshStandardMaterial({color:0xfff4dc,emis
         for(let i=0;i+1<P.length;i++){ const [a0,y0]=P[i],[a1,y1]=P[i+1], nx=-(y1-y0), ny=a1-a0, nl=Math.hypot(nx,ny)||1;
           bar.quad([x0+rx*(o+a0),y0,z0+rz*(o+a0)],[x0+rx*(o+a1),y1,z0+rz*(o+a1)],[x1+rx*(o+a1),y1,z1+rz*(o+a1)],[x1+rx*(o+a0),y0,z1+rz*(o+a0)],[rx*nx/nl,ny/nl,rz*nx/nl],[[0,y0],[0,y1],[(t1-t)/2,y1],[(t1-t)/2,y0]],BC); } }
     } }
-  const gm=gc.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.3,metalness:.1,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),false,true); if(gm) scene.add(gm);
+  stillTiles(gc,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.3,metalness:.1,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}));
   const cm=new THREE.MeshStandardMaterial({map:T.conc,vertexColors:true,roughness:.92,side:THREE.DoubleSide}); RDTEX.conc.then(t=>{ if(t){ cm.map=t; cm.needsUpdate=true; } });
-  const lm=lip.mesh(cm,false,true); if(lm){ lm.castShadow=false; scene.add(lm); } const bm=bar.mesh(cm,false,true); if(bm){ bm.castShadow=Q.shadows; scene.add(bm); } 
-  const pm=paint.mesh(new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.7,polygonOffset:true,polygonOffsetFactor:-5,polygonOffsetUnits:-5}),false,true); if(pm) scene.add(pm);
+  stillTiles(lip,cm,false,true); stillTiles(bar,cm,Q.shadows,true); 
+  stillTiles(paint,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.7,polygonOffset:true,polygonOffsetFactor:-5,polygonOffsetUnits:-5}));
   // twin-arm lamp poles standing on the median barrier (they light up at night)
   if(LAMPS2.length){ const pole=mergeGeometries([new THREE.CylinderGeometry(.09,.13,10,8).translate(0,5.8,0),new THREE.BoxGeometry(3.6,.12,.14).translate(0,10.7,0),new THREE.BoxGeometry(.12,.5,.12).translate(-1.8,10.5,0),new THREE.BoxGeometry(.12,.5,.12).translate(1.8,10.5,0)]),
       head=new THREE.BoxGeometry(.7,.16,.36).translate(0,10.3,0), hl=[], pl=[];
@@ -1284,7 +1307,7 @@ class CullSet{ // levels: [{geo,mat,dist,shadow}] sorted by dist ; items: {x,y,z
     for(const it of items){ _e.set(it.rx||0,it.ry||0,it.rz||0,'YXZ'); _q.setFromEuler(_e); _p.set(it.x,it.y??SLAB,it.z); if(it.sc!==undefined) _s.setScalar(it.sc); else _s.set(it.sx??1,it.sy??1,it.sz??1); _m.compose(_p,_q,_s); it.m=_m.toArray(new Float32Array(16)); it.lv=-1;
       if(!it.r){ const g=levels[0].geo; if(!g.boundingSphere) g.computeBoundingSphere(); const c=g.boundingSphere.center, ry=it.ry||0; it.r=g.boundingSphere.radius*Math.max(_s.x,_s.y,_s.z); it.cy=(it.y??SLAB)+c.y*_s.y;
         it.wx=it.x+(c.x*Math.cos(ry)+c.z*Math.sin(ry))*_s.x; it.wz=it.z+(-c.x*Math.sin(ry)+c.z*Math.cos(ry))*_s.z; } }
-    this.cap=Math.min(items.length,3500); this.col=items.length&&items[0].col; this.meshes=levels.map(L=>{ const im=new THREE.InstancedMesh(L.geo,L.mat,this.cap); im.count=0; if(this.col) im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(this.cap*3),3); im.frustumCulled=false; im.castShadow=!!L.shadow; im.receiveShadow=true; im.layers.set(layer); scene.add(im); return im; });
+    this.cap=Math.min(items.length,3500); this.col=items.length&&items[0].col; this.meshes=levels.map(L=>{ const im=new THREE.InstancedMesh(L.geo,L.mat,this.cap); im.count=0; if(this.col) im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(this.cap*3),3); im.frustumCulled=false; im.castShadow=!!L.shadow; im.receiveShadow=true; im.layers.set(layer); im.matrixAutoUpdate=false; im.matrixWorldAutoUpdate=false; scene.add(im); return im; });   // (they never move: the frame skips them)
     this.maxD=levels[levels.length-1].dist; CULLS.push(this);
     // bucket items into 48 m cells so whole groups can be skipped at once
     for(const it of items){ if(it.wx===undefined){ it.wx=it.x; it.wz=it.z; } }
@@ -1300,7 +1323,13 @@ class CullSet{ // levels: [{geo,mat,dist,shadow}] sorted by dist ; items: {x,y,z
         ms[l].instanceMatrix.array.set(it.m,cnt[l]*16); if(this.col){ const a=ms[l].instanceColor.array, j=cnt[l]*3; a[j]=it.col.r; a[j+1]=it.col.g; a[j+2]=it.col.b; } cnt[l]++; } }
     for(let l=0;l<n;l++){ const im=ms[l]; if(im.count!==cnt[l]||cnt[l]) { im.count=cnt[l]; im.instanceMatrix.clearUpdateRanges(); im.instanceMatrix.addUpdateRange(0,cnt[l]*16); im.instanceMatrix.needsUpdate=true; if(this.col) im.instanceColor.needsUpdate=true; } im.visible=cnt[l]>0; } } }
 for(const [g,m,l] of PH_SETS) new CullSet([{geo:g,mat:m,dist:Math.min(140,Q.draw*.6),shadow:false}],l,{shadowDist:0,layer:0,name:'potholes'});
-function updateCulls(){ camera.updateMatrixWorld(); _pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm); const cx=camera.position.x, cz=camera.position.z; for(const c of CULLS) c.update(cx,cz);
+const CULLW={x:1e9,z:1e9,y:0,fx:0,fy:0,fz:0,t:-9,n:0};
+function updateCulls(){ camera.updateMatrixWorld(); const cx=camera.position.x, cz=camera.position.z, e=camera.matrixWorld.elements, fx=-e[8], fy=-e[9], fz=-e[10], W=CULLW;
+  // the same view as a moment ago: what was drawn is still right (this saves sorting thousands of trees and houses every frame)
+  if(Math.hypot(cx-W.x,cz-W.z)<.3&&Math.abs(camera.position.y-W.y)<.3&&fx*W.fx+fy*W.fy+fz*W.fz>.9995&&T0-W.t<.4&&W.n===CULLS.length) return;
+  Object.assign(W,{x:cx,z:cz,y:camera.position.y,fx,fy,fz,t:T0,n:CULLS.length});
+  _pm.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm); for(const c of CULLS) c.update(cx,cz);
+  { const far=Math.max(380,Q.draw*2.6); for(const m of TILES){ const b=m.geometry.boundingSphere; m.visible=Math.hypot(b.center.x-cx,b.center.z-cz)-b.radius<far; } }   // the city past the far distance is left out (the haze is there)
   if(typeof WIRES!=='undefined') for(const w of WIRES){ const sp=w.geometry.boundingSphere; w.visible=Math.hypot(sp.center.x-cx,sp.center.z-cz)-sp.radius<Math.min(170,Q.draw*.6); } }
 function modelLevels(M,near,far,shadowNear=true){ return M.geo1?[{geo:M.geo,mat:M.mat,dist:near,shadow:shadowNear},{geo:M.geo1,mat:M.mat1,dist:far,shadow:false}]:[{geo:M.geo,mat:M.mat,dist:far,shadow:shadowNear}]; }
 // ---- a new life: your corner of the camp under the flyover nearest your old house (tools/blender_life.py): your tent, a
@@ -1643,14 +1672,16 @@ for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B
 // gets its own painted signboard (name and colours) over the one from Blender
 const LUX_PAL=[['#f9d43a','#d0202c','#1b3fa0','#1b3fa0'],['#fbe7ef','#c2185b','#4a148c','#c2185b'],['#e6f4ea','#1b7a3a','#7a3b12','#1b7a3a'],['#fff3d6','#7a3b12','#b8860b','#7a3b12'],
   ['#e3f2fd','#0d47a1','#c62828','#0d47a1'],['#fce4ec','#880e4f','#1a237e','#880e4f'],['#fffde7','#e65100','#33691e','#e65100'],['#ede7f6','#4527a0','#c2185b','#4527a0']];
-function texStreetSign(name,sub,pal){ const [bg,t1,t2,band]=pal, W=2048, H=480, [c,g]=cv(W,H);
+const SIGN_TEX=new Map();
+function texStreetSign(name,sub,pal){ const key=name+'|'+sub+'|'+pal.join(); if(SIGN_TEX.has(key)) return SIGN_TEX.get(key); const t=texStreetSign0(name,sub,pal); SIGN_TEX.set(key,t); return t; }
+function texStreetSign0(name,sub,pal){ const [bg,t1,t2,band]=pal, W=2048, H=480, [c,g]=cv(W,H);
   g.fillStyle=bg; g.fillRect(0,0,W,H); g.lineWidth=22; g.strokeStyle=band; g.strokeRect(11,11,W-22,H-22); g.lineWidth=6; g.strokeStyle=t1; g.strokeRect(40,40,W-80,H-80);
   g.textAlign='center'; g.textBaseline='middle'; const words=name.split(' '), cut=Math.max(1,Math.ceil(words.length/2)), l1=words.slice(0,cut).join(' '), l2=words.slice(cut).join(' ');
   g.lineJoin='round'; for(const [t,y,col,sz] of [[l1,130,t1,150],[l2,262,t2,118]]){ if(!t) continue; fitFont(g,t,W-780,sz,'Bungee'); g.strokeStyle='#ffffff'; g.lineWidth=14; g.strokeText(t,W/2,y); g.fillStyle=col; g.fillText(t,W/2,y); }
   g.fillStyle=band; g.fillRect(330,350,W-660,74); g.fillStyle='#ffffff'; fitFont(g,sub,W-760,44,'"Barlow Semi Condensed"','700'); g.fillText(sub,W/2,388);
   for(const [x,hair] of [[190,'#1a120c'],[W-190,'#3a1a0c']]){ g.fillStyle=hair; g.beginPath(); g.ellipse(x,215,108,130,0,0,7); g.fill(); g.fillStyle='#7a4a2e'; g.beginPath(); g.ellipse(x,240,64,82,0,0,7); g.fill();
     g.fillStyle='#120c08'; g.beginPath(); g.arc(x-22,228,7,0,7); g.arc(x+22,228,7,0,7); g.fill(); g.strokeStyle='#b0303a'; g.lineWidth=5; g.beginPath(); g.arc(x,262,20,.3,2.8); g.stroke(); }
-  const n=g.getImageData(0,0,W,H); for(let i=0;i<n.data.length;i+=4){ const k=(Math.random()-.5)*14; n.data[i]+=k; n.data[i+1]+=k; n.data[i+2]+=k; } g.putImageData(n,0,0);
+  g.globalAlpha=.05; for(let i=0;i<900;i++){ g.fillStyle=i&1?'#000':'#fff'; g.fillRect(Math.random()*W,Math.random()*H,3+Math.random()*9,2+Math.random()*5); } g.globalAlpha=1;   // a little grain (painted, not pixel by pixel)
   return tx(c,true,false,2048); }
 for(const P of LUXP){ const K=LUXK[P.k], S=addSet(K.set,P.x,P.z,P.ry,{near:K.street?420:650,detailDist:K.street?110:160}); P.S=S; P.K=K;
   P.title=K.street?P.name:`${K.name} · ${P.area}`; const c=setPt(P,0,(K.hz0+K.hz1)/2); SCAT_OFF.push({x:c.x,z:c.z,ry:P.ry,hw:K.hx+1,hd:(K.hz1-K.hz0)/2+1});
@@ -1993,8 +2024,9 @@ for(const [x,z,n] of WD.pois.clinic) PLACES.push({name:n,sub:'Clinic',kind:'serv
 if(SHED_POSTS.length){ const pg=new THREE.CylinderGeometry(.07,.07,1,6); pg.translate(0,.5,0); new CullSet([{geo:pg,mat:new THREE.MeshStandardMaterial({color:0x6b5a48,roughness:.8}),dist:Q.draw*.6,shadow:false}],SHED_POSTS,{shadowDist:0,name:'sheds'}); }
 /* ================= finalize static meshes ================= */
 await step('Painting windows and shop signs…', 66);
-for(const k of [...FAC_KEYS,'roof','zinc','fence']){ const m=A[k].mesh(MAT[k]); if(m) scene.add(m); }
-for(const k of ['curb','pave','plaza','grass','road2','road4','cross','sign','roadBad2','roadBad4','dirt','asph','sand','lot','lawn']){ const m=A[k].mesh(MAT[k],false,true); if(m) scene.add(m); }
+const still=m=>{ m.traverse(o=>{ o.matrixAutoUpdate=false; o.matrixWorldAutoUpdate=false; o.updateMatrix(); }); m.updateMatrixWorld(true); return m; };   // the city's walls, roofs and roads never move
+for(const k of [...FAC_KEYS,'roof','zinc','fence']){ const m=A[k].tiles(MAT[k]); if(m) scene.add(still(m)); }
+for(const k of ['curb','pave','plaza','grass','road2','road4','cross','sign','roadBad2','roadBad4','dirt','asph','sand','lot','lawn']){ const m=A[k].tiles(MAT[k],false,true); if(m) scene.add(still(m)); }
 // street lamps on the big roads, and the overhead wires between them
 const poles=[], heads=[], pools=[], WIRES=[];
 { const wp=[]; const wire=(a,b,sag)=>{ let px=a.x,py=a.y,pz=a.z; for(let i=1;i<=8;i++){ const t=i/8, x=a.x+(b.x-a.x)*t, z=a.z+(b.z-a.z)*t, y=a.y+(b.y-a.y)*t-sag*4*t*(1-t); wp.push(px,py,pz,x,y,z); px=x; py=y; pz=z; } };
@@ -2009,7 +2041,7 @@ const poles=[], heads=[], pools=[], WIRES=[];
       wpoles.push({x,y:0,z,ry:Math.atan2(e.fx,e.fz)}); addCol({x0:x-.13,x1:x+.13,z0:z-.13,z1:z+.13,h:7}); const cur={x,y:6.4,z}; if(prev){ wire(prev,cur,rr(.5,.9)); wire({x:prev.x,y:6.05,z:prev.z},{x,y:6.05,z},rr(.6,1)); } prev=cur; } }
   if(wpoles.length){ const wpg=mergeList([(()=>{ const g=new THREE.CylinderGeometry(.09,.13,6.8,6); g.translate(0,3.4,0); return g; })(),box(1.3,.09,.09,0,6.35,0)]); new CullSet([{geo:wpg,mat:new THREE.MeshStandardMaterial({color:0x5a4634,roughness:.9}),dist:Q.draw*.6,shadow:true}],wpoles,{shadowDist:30,name:'wpoles'}); }
   const WT=new Map(), wm=new THREE.LineBasicMaterial({color:0x14110f}); for(let i=0;i<wp.length;i+=6){ const k=rgk(Math.floor(wp[i]/160),Math.floor(wp[i+2]/160)); let L=WT.get(k); if(!L) WT.set(k,L=[]); L.push(wp[i],wp[i+1],wp[i+2],wp[i+3],wp[i+4],wp[i+5]); }
-  for(const L of WT.values()){ const wg=new THREE.BufferGeometry(); wg.setAttribute('position',new THREE.Float32BufferAttribute(L,3)); wg.computeBoundingSphere(); const wl=new THREE.LineSegments(wg,wm); scene.add(wl); WIRES.push(wl); } }
+  for(const L of WT.values()){ const wg=new THREE.BufferGeometry(); wg.setAttribute('position',new THREE.Float32BufferAttribute(L,3)); wg.computeBoundingSphere(); const wl=new THREE.LineSegments(wg,wm); wl.matrixAutoUpdate=false; wl.matrixWorldAutoUpdate=false; scene.add(wl); WIRES.push(wl); } }
 const poleG=mergeList([(()=>{ const g=new THREE.CylinderGeometry(.08,.13,8,8); g.translate(0,4,0); return g; })(),box(1.85,.1,.1,.92,7.92,0)]);
 new CullSet([{geo:poleG,mat:new THREE.MeshStandardMaterial({color:0x50555b,metalness:.7,roughness:.45}),dist:Q.draw*.7,shadow:true}],poles,{shadowDist:30});
 const lampHeadMat=new THREE.MeshStandardMaterial({color:0xfff4dc,emissive:0xffbe6a,emissiveIntensity:0});
@@ -3862,13 +3894,16 @@ function updateBlood(dt){ const D=BLOOD.d, a=BLOOD.drops.instanceMatrix.array; l
    The ground is cut into 3 m cells; each cell always gets the same stones and tufts (seeded by its position), never on a
    road, a building or a market yard, thicker grass on lawns and school fields. Only the cells near the camera are drawn,
    as two instanced meshes (two draw calls). The tufts sway in the wind on the GPU. */
-const SCAT=(()=>{ const CELL=3, RAD=Q===QUAL.low?20:Q===QUAL.medium?28:38, NG=Q===QUAL.low?500:Q===QUAL.medium?1100:2200, NS=Q===QUAL.low?220:Q===QUAL.medium?420:800;
+const SCAT=(()=>{ const CELL=3, PH=isTouch?.6:1, RAD=Math.round((Q===QUAL.low?20:Q===QUAL.medium?28:38)*(isTouch?.8:1)), NG=Math.round((Q===QUAL.low?500:Q===QUAL.medium?1100:2200)*PH), NS=Math.round((Q===QUAL.low?220:Q===QUAL.medium?420:800)*PH);   // (a phone draws fewer, closer in)
   const offs=[]; const rc=Math.ceil(RAD/CELL); for(let i=-rc;i<=rc;i++) for(let j=-rc;j<=rc;j++){ const d=Math.hypot(i,j)*CELL; if(d<=RAD+CELL) offs.push([i,j,d]); } offs.sort((a,b)=>a[2]-b[2]);
   // grass tuft: three crossed cards with a painted clump of blades
   const [c,g]=cv(128,128); for(let k=0;k<46;k++){ const x0=rr(18,110), h=rr(55,122), lean=rr(-26,26), w=rr(2.2,4.6), dry=R()<.35;
     g.strokeStyle=dry?`hsl(${ri(38,52)},${ri(28,42)}%,${ri(38,54)}%)`:`hsl(${ri(68,95)},${ri(26,42)}%,${ri(20,34)}%)`; g.lineWidth=w; g.lineCap='round';
     g.beginPath(); g.moveTo(x0,128); g.quadraticCurveTo(x0+lean*.3,128-h*.6,x0+lean,128-h); g.stroke(); }
-  const gt=tx(c,true,false,128); gt.wrapS=gt.wrapT=THREE.ClampToEdgeWrapping;
+  // the clear parts get the blades' own green (not black): far away, the small picture mixes them in, and the tufts went black
+  const gt=(()=>{ const W=128, src=g.getImageData(0,0,W,W).data, d=new Uint8Array(W*W*4); let r=0,gg=0,b=0,n=0; for(let i=0;i<src.length;i+=4) if(src[i+3]>160){ r+=src[i]; gg+=src[i+1]; b+=src[i+2]; n++; }
+    r=n?r/n:70; gg=n?gg/n:85; b=n?b/n:45; for(let y=0;y<W;y++) for(let x=0;x<W;x++){ const i=(y*W+x)*4, o=((W-1-y)*W+x)*4, a=src[i+3]; d[o+3]=a; if(a>8){ const k=255/a; d[o]=Math.min(255,src[i]); d[o+1]=Math.min(255,src[i+1]); d[o+2]=Math.min(255,src[i+2]); void k; } else { d[o]=r; d[o+1]=gg; d[o+2]=b; } }
+    const t=new THREE.DataTexture(d,W,W); t.colorSpace=THREE.SRGBColorSpace; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; t.needsUpdate=true; return t; })();
   const parts=[]; for(let k=0;k<3;k++){ const p=new THREE.PlaneGeometry(.62,.42); p.translate(0,.21,0); p.rotateY(k*Math.PI/3); parts.push(p); }
   const tg=mergeGeometries(parts); const nrm=tg.attributes.normal; for(let i=0;i<nrm.count;i++) nrm.setXYZ(i,0,1,0);   // lit like the ground it grows from
   const wind={value:0};
@@ -3900,7 +3935,7 @@ const SCAT=(()=>{ const CELL=3, RAD=Q===QUAL.low?20:Q===QUAL.medium?28:38, NG=Q=
     for(let k=0;k<nS;k++){ const x=cx+(rnd()-.5)*CELL, z=cz+(rnd()-.5)*CELL; if(roadAt(x,z,.5)||inBld(x,z)||(SCAT_OFF.length&&scatOff(x,z))) continue; const big=rnd()<.15; it.s.push(x,z,rnd()*6.28,big?.12+rnd()*.16:.04+rnd()*.07,.45+rnd()*.5,Math.floor(rnd()*SCOL.length)); }
     if(cache.size>30000) cache.clear(); cache.set(key,it); return it; }
   const _M=new THREE.Matrix4(), _P=new THREE.Vector3(), _Q=new THREE.Quaternion(), _S=new THREE.Vector3(), _Y=new THREE.Vector3(0,1,0);
-  function update(dt){ wind.value=(wind.value+dt*(1+ENV.storm*2.5+ENV.rain))%1000; const on=mode!=='interior'; tufts.visible=stones.visible=on; if(!on) return;
+  function update(dt){ wind.value=(wind.value+dt*(1+ENV.storm*2.5+ENV.rain))%1000; const on=mode!=='interior'&&LITE.step<1; tufts.visible=stones.visible=on; if(!on) return;
     const ci=Math.floor(camera.position.x/CELL), cj=Math.floor(camera.position.z/CELL), k=ci+','+cj; if(k===lastK&&T0-lastT<1.5) return; lastK=k; lastT=T0;
     let ng=0, ns=0; const ta=tufts.instanceMatrix.array, sa=stones.instanceMatrix.array, scol=stones.instanceColor.array;
     for(const [di,dj] of offs){ if(ng>=NG&&ns>=NS) break; const it=cellItems(ci+di,cj+dj);
@@ -9216,9 +9251,17 @@ function simulate(dt){
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
+const FPS={cap:isTouch?30:60}; try{ const f=localStorage.getItem('naija-fps'); if(f==='30'||f==='60') FPS.cap=+f; }catch(e){}
+function fpsSettings(){ document.querySelectorAll('#fpsSeg button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.f===FPS.cap))); }
+document.querySelectorAll('#fpsSeg button').forEach(b=>b.addEventListener('click',()=>{ FPS.cap=+b.dataset.f; try{ localStorage.setItem('naija-fps',String(FPS.cap)); }catch(e){} slowN=0; fpsSettings(); })); fpsSettings();
 let SHARP=false, slowN=0; try{ SHARP=localStorage.getItem('naija-sharp')==='1'; }catch(e){}
 const prFloor=()=>Math.max(Q.prMin,Q.pr*.75);   // never softer than three quarters of the full picture
-function tuneResolution(avg,ivs){ const goal=capped30?33.4:16.7;
+function tuneResolution(avg,ivs){ const goal=capped30||FPS.cap===30?33.4:16.7;
+  // still slow at the softest picture (or kept sharp): lighten the scene a step at a time (grass and stones, fewer people up close, a shorter view)
+  if(avg>goal*1.32&&(SHARP||PR<=prFloor()+.01)){ if(++LITE.slow>=3&&LITE.step<3){ LITE.slow=0; LITE.step++;
+      if(LITE.step===2) Q.npc=Math.max(3,Q.npc-2); if(LITE.step===3) Q.draw=Math.max(140,Math.round(Q.draw*.8));
+      if(!LITE.told){ LITE.told=true; toast('Your phone dey work hard: we don make the picture lighter so the game go run smooth.',4); } } }
+  else LITE.slow=0;
   if(SHARP){ if(PR!==Q.pr){ PR=Q.pr; applyPR(); } return; }
   if(capped30&&avg<20) capped30=false;   // Low Power Mode was switched off
   if(probe){ const gained=avg<probe.avg*.9; if(!gained&&probe.avg>28&&probe.avg<38){ capped30=true; PR=probe.pr; applyPR(); } probe=null; prCool=6; return; }
@@ -9231,7 +9274,7 @@ document.querySelectorAll('#sharp button').forEach(b=>{ const on=()=>document.qu
   b.addEventListener('click',()=>{ SHARP=b.dataset.p==='sharp'; try{ localStorage.setItem('naija-sharp',SHARP?'1':'0'); }catch(e){} if(SHARP&&PR!==Q.pr){ PR=Q.pr; applyPR(); } on(); toast(SHARP?'The picture stays sharp.':'The picture softens a little when the phone is busy.',2.4); }); });
 const perfIv=[];
 function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-lastT;
-  if(raw<10.5) return;   // 120 Hz+ screens: draw at ~60 fps to save battery and heat
+  if(raw<(FPS.cap===30?29:10.5)) return;   // phones: 30 fps (cool and steady); 60 if you choose it (120 Hz+ screens never go past ~60)
   lastT=t; const dt=Math.min(raw/1000,.05);
   if(!started&&warm>8){ warm++; return; }   // nothing to draw behind the title screen
   T0+=dt; warm++;

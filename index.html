@@ -427,6 +427,11 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" data-q="high" aria-pressed="false">High</button>
     </div>
     <p class="note" id="qualNote">Low is smoothest on older phones. The game restarts to apply a change.</p>
+    <div class="seg" id="fpsSeg" role="group" aria-label="Frame rate">
+      <button type="button" data-f="30" aria-pressed="false">30 fps · cooler phone</button>
+      <button type="button" data-f="60" aria-pressed="false">60 fps · smoother</button>
+    </div>
+    <p class="note">30 fps keeps the phone cool and the battery longer, and stays steady. 60 fps is smoother if your phone can take it.</p>
     <div class="seg" id="sharp" role="group" aria-label="Picture when the phone is busy">
       <button type="button" data-p="auto" aria-pressed="true">Keep it smooth</button>
       <button type="button" data-p="sharp" aria-pressed="false">Always sharp</button>
