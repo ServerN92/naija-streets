@@ -5474,6 +5474,57 @@ function homeAction(){ if(HL.act){ if(HL.act.stop!==false) homeStop(); return tr
 // the clothes, so for the bath they get a body made from ours (Tunde for men, Amaka for women) in their own skin colour, with
 // their own head on it. A soft mosaic covers the private parts, and a woman's chest, like in The Sims.
 const SKIN_OF={...W_SKIN,...M_SKIN,p_lin:'#deb197'};
+// ---- skin tone: any of our people in any skin colour, deep to fair. The skin picture keeps all its detail: each colour channel
+// is scaled from the person's own skin (measured from their picture) to the tone chosen. On the profile; other players see it.
+const TONES=[['Deep','#4a2e20'],['Dark','#6a4332'],['Brown','#8b5a3e'],['Caramel','#ad7650'],['Tan','#c38a60'],['Light','#d6a47f'],['Fair','#e6bd9c']];   // as they look in the sun
+const toneTex=k=>{ const c=new THREE.Color(TONES[k][1]); return c.setRGB(c.r*.64,c.g*.55,c.b*.45); };   // the skin picture's own average for that look (the sun and sky add the rest)
+const toneOf=()=>PROFILE&&Number.isInteger(PROFILE.k)&&PROFILE.k>=0&&PROFILE.k<TONES.length?PROFILE.k:-1;
+const isSkinMat=m=>/_(body|head)_\d+$/.test((m&&m.name)||'');
+// the average colour of the skin in a picture (linear), from the texels that look like skin
+function skinMean(map){ if(map.skinMean) return map.skinMean; let r=0,g=0,b=0,n=0; try{ const {data}=texPixels(map,128);
+  for(let i=0;i<data.length;i+=4){ const R=data[i]/255,G=data[i+1]/255,B=data[i+2]/255, sr=Math.pow(R,1/2.2),sg=Math.pow(G,1/2.2),sb=Math.pow(B,1/2.2), mx=Math.max(sr,sg,sb), mn=Math.min(sr,sg,sb), sat=mx>0?(mx-mn)/mx:0;
+    if(sr>=sg&&sg>=sb*.95&&sr-sb>.05&&sat>.15&&sat<.8&&mx>.1&&mx<.95){ r+=R; g+=G; b+=B; n++; } } }catch(e){}
+  return map.skinMean=n>50?new THREE.Color(r/n,g/n,b/n):null; }
+const TONE_MATS=new Map();
+function toneBody(root,id,k){ if(!root) return;
+  root.traverse(o=>{ if(!o.isMesh||!o.material||Array.isArray(o.material)) return; const m0=o.material.toneOf||o.material; if(!isSkinMat(m0)) return;
+    if(k<0||k>=TONES.length){ if(o.material!==m0) o.material=m0; return; }
+    const key=m0.uuid+':'+k; let m=TONE_MATS.get(key);
+    if(!m){ const want=toneTex(k), have=(m0.map&&skinMean(m0.map))||new THREE.Color(SKIN_OF[id]||'#473224'), hl=Math.max(.002,.2126*have.r+.7152*have.g+.0722*have.b);
+      // the picture's brightness carries the detail, coloured by the new tone; only a little of its own colour shifts come along
+      // (so stubble and shadows stay brown, not green, on light skin; lips stay a touch redder)
+      const U={tTone:{value:want},tBaseN:{value:new THREE.Vector3(have.r/hl,have.g/hl,have.b/hl)},tBaseL:{value:hl}};
+      m=m0.clone(); m.toneOf=m0; m.color.set(0xffffff);
+      m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U); sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform vec3 tTone; uniform vec3 tBaseN; uniform float tBaseL;')
+        .replace('#include <map_fragment>',`#include <map_fragment>
+          { vec3 c=diffuseColor.rgb; float l=dot(c,vec3(.2126,.7152,.0722)); vec3 cn=c/max(l,1e-4); vec3 hue=clamp(cn/tBaseN,vec3(.6),vec3(1.6));
+            diffuseColor.rgb=max(tTone*(l/tBaseL)*(vec3(1.)+.35*(hue-vec3(1.))),vec3(0.)); }`)
+        .replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+          totalEmissiveRadiance=tTone*(dot(totalEmissiveRadiance,vec3(.2126,.7152,.0722))/tBaseL);`); };
+      m.customProgramCacheKey=()=>'skintone';
+      TONE_MATS.set(key,m); HERO_MATS.push(m); }
+    o.material=m; }); }
+// your face as the game will show it, in the tone you picked (for the menus): the person drawn once in a small picture of its own
+let PORTRAIT=null;
+async function portrait(id,k){ let C=null; try{ C=await loadV2(id); }catch(e){} if(!C) return null;
+  try{ if(!PORTRAIT){ const cv=document.createElement('canvas'); cv.width=240; cv.height=300; const R=new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true,powerPreference:'low-power'});
+      R.outputColorSpace=THREE.SRGBColorSpace; R.toneMapping=renderer.toneMapping; R.toneMappingExposure=.95;
+      const sc=new THREE.Scene(); sc.background=new THREE.Color(0x77797f); const hemi=new THREE.HemisphereLight(0xfff4ea,0x3a3028,1.5), key=new THREE.DirectionalLight(0xffffff,2.4), rim=new THREE.DirectionalLight(0xbfd4ff,.8);
+      key.position.set(-.6,.5,1); rim.position.set(.8,.3,-.6); sc.add(hemi,key,rim); const cam=new THREE.PerspectiveCamera(20,240/300,.05,20); cam.layers.enableAll(); PORTRAIT={R,sc,cam,cv,body:null}; }
+    const P=PORTRAIT; if(P.body){ P.sc.remove(P.body); P.body=null; }
+    const inner=SkeletonUtils.clone(C.tpl); C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,k); P.sc.add(inner); P.body=inner;
+    const cl=C.clips&&C.clips[C.idle0]; if(cl){ const mx=new THREE.AnimationMixer(inner); mx.clipAction(cl).play(); mx.update(.4); }
+    inner.updateMatrixWorld(true); let head=null; inner.traverse(o=>{ if(!head&&o.isBone&&/Head$/.test(o.name)) head=o; }); if(!head) return null;
+    const hp=head.getWorldPosition(new THREE.Vector3()), q=head.getWorldQuaternion(new THREE.Quaternion()), fwd=new THREE.Vector3(0,0,1).applyQuaternion(q); fwd.y=0; if(fwd.lengthSq()<1e-4) fwd.set(0,0,1); fwd.normalize();
+    hp.y+=.02; P.cam.position.copy(hp).addScaledVector(fwd,1.3).add(new THREE.Vector3(0,.03,0)); P.cam.lookAt(hp.x,hp.y-.1,hp.z);
+    P.R.render(P.sc,P.cam); return P.cv.toDataURL('image/jpeg',.9); }catch(e){ console.warn('portrait',e); return null; } }
+function portraitDone(){ const P=PORTRAIT; if(!P) return; PORTRAIT=null; if(P.body) P.sc.remove(P.body); try{ P.R.dispose(); P.R.forceContextLoss(); }catch(e){} }
+// a row of skin swatches (the person's own colour first)
+function toneRow(box,cur,id,onPick){ box.textContent=''; const l=document.createElement('span'); l.textContent='Skin'; box.appendChild(l);
+  for(let k=-1;k<TONES.length;k++){ const b=document.createElement('button'); b.type='button'; b.className='pskb'; const col=k<0?(SKIN_OF[id]||'#473224'):TONES[k][1]; b.style.setProperty('--sk',col);
+    b.title=k<0?'Their own':TONES[k][0]; b.setAttribute('aria-label',(k<0?'Their own skin':TONES[k][0]+' skin')); b.setAttribute('aria-pressed',k===cur?'true':'false'); if(k<0) b.classList.add('own');
+    b.addEventListener('click',()=>{ for(const c of box.querySelectorAll('button')) c.setAttribute('aria-pressed',c===b?'true':'false'); onPick(k); }); box.appendChild(b); } }
+function setTone(k){ if(!PROFILE) return; PROFILE.k=k; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} if(hero&&hero.look&&hero.look.v2) toneBody(hero.cObj,hero.look.v2,k); }
 const HEADW=n=>/(Head|HeadTop_End|LeftEye|RightEye)(_\d+)?$/.test(n), nmOf=o=>{ for(let q=o;q;q=q.parent) if(q.name&&!/^mesh_\d+(_\d+)?$/.test(q.name)) return q.name; return ''; };
 function headCut(m,keep,thr){ const g=m.geometry, I=g.index; if(!I) return g; const w=skinW(m,HEADW), out=[], groups=[];
   const ranges=g.groups.length?g.groups:[{start:0,count:I.count,materialIndex:0}];
@@ -5795,7 +5846,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,rest:B.rest,look:null}); }
   else { const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(); wrap.scale.setScalar(C.sc); inner.position.y=C.y0; wrap.add(inner); hero.root.add(wrap); WARD.body=wrap;
     let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
-    if(v2) C2.setOutfit(inner,fitOf(id));   // the outfit you chose last time
+    if(v2){ C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,toneOf()); }   // the outfit you chose last time, in your skin tone
     else if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
     const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())}; if(cl.walk2) act.walk2=mixer.clipAction(cl.walk2);
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
@@ -5829,6 +5880,7 @@ function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0,
       toast(done?`You are ${P.name}.`:'Not ready yet. Try again soon.'); wardUI(); });
     box.appendChild(b); }
   const P0=v2Of(cur), mx=!!(P0&&P0.mx);
+  if(mine&&!mx){ h('Skin'); const r=document.createElement('div'); r.className='pshape pskin'; toneRow(r,toneOf(),cur,k=>{ setTone(k); wardUI(); }); box.appendChild(r); }
   if(mine&&P0.shape){ h('Body shape'); const r=document.createElement('div'); r.className='swatches';
     for(const [k,name] of SHAPES){ const b=document.createElement('button'); b.type='button'; b.className='lookb'; b.style.width='auto'; b.style.flex='1'; b.textContent=name; b.setAttribute('aria-pressed',(V2.shape[cur]||'curvy')===k?'true':'false');
       b.addEventListener('click',()=>{ setShape(cur,k); wardUI(); }); r.appendChild(b); } box.appendChild(r); }
@@ -9133,7 +9185,7 @@ function onlineMe(){ if(mode==='interior') return {h:1};
   return {x:player.x,y:player.y+(hero?CR.yo:0),z:player.z,r:player.yaw,a,s:sp,v:'',q:ONME.q}; }
 try{ ON=createOnline({ THREE, scene, camera,
   started:()=>started, inside:()=>mode==='interior', me:onlineMe, profile:()=>PROFILE,
-  look:()=>{ if(!PROFILE) return null; const id=isV2(WARD.cur)?WARD.cur:myPerson(); return {c:id,f:fitOf(id),g:PROFILE.g==='f'?'f':'m'}; },
+  look:()=>{ if(!PROFILE) return null; const id=isV2(WARD.cur)?WARD.cur:myPerson(); return {c:id,f:fitOf(id),g:PROFILE.g==='f'?'f':'m',k:toneOf()}; }, tone:(o,id,k)=>toneBody(o,id,k),
   loadCast:id=>loadV2(isV2(id)&&v2Of(id)?id:'p_dayo'), moves:onlineMoves, clone:o=>SkeletonUtils.clone(o), setOutfit:(o,i)=>C2.setOutfit(o,i),
   makeCar:(type,color)=>{ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; try{ return makeCar(type,color,true); }catch(e){ return null; } },
   seats:t=>SEATS[t], ride:t=>HERO_RIDE[t], maxBodies:()=>Q===QUAL.low?6:Q===QUAL.medium?10:16,
@@ -9351,7 +9403,7 @@ setTimeout(loadPeople,200);   // the real people arrive while the title screen s
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
 const eb=$('#enterBtn');
 // ---- profile: the first time, you choose a name and man or woman (kept on this device; it cannot be changed later)
-{ const PF=$('#prof'), PN=$('#profName'), PW=$('#pwho'); let pickG=null, pickC=null;
+{ const PF=$('#prof'), PN=$('#profName'), PW=$('#pwho'); let pickG=null, pickC=null, pickK=-1;
   const who=()=>{ PW.textContent=`${PROFILE.name} · ${(v2Of(myPerson())||{}).name||(PROFILE.g==='f'?'Woman':'Man')}`; PW.hidden=false; PF.hidden=true; };
   const ok=()=>{ eb.disabled=!(pickG&&pickC&&PN.value.trim().length>=2); };
   if(PROFILE) who();
@@ -9361,20 +9413,24 @@ const eb=$('#enterBtn');
     const shapes=P=>{ PS.textContent=''; PS.hidden=!P.shape; if(!P.shape) return; const l=document.createElement('span'); l.textContent='Body'; PS.appendChild(l);
       for(const [k,name] of SHAPES){ const b=document.createElement('button'); b.type='button'; b.className='psb'; b.textContent=name; b.setAttribute('aria-pressed',(V2.shape[P.id]||'curvy')===k?'true':'false');
         b.addEventListener('click',()=>{ setShape(P.id,k); for(const c of PS.querySelectorAll('button')) c.setAttribute('aria-pressed',c===b?'true':'false'); }); PS.appendChild(b); } };
-    const people=()=>{ PL.textContent=''; PS.hidden=true;
+    // the skin colour: the faces above change with it
+    let pseq=0; const PK=$('#pskin'), face=()=>{ const b=PL.querySelector('.ppc[aria-pressed="true"]'); for(const c of PL.querySelectorAll('.ppc')){ const im=c.querySelector('img'); if(c!==b&&im.dataset.src) im.src=im.dataset.src; } if(!b||!pickC) return;
+        const im=b.querySelector('img'), my=++pseq, id=pickC; im.dataset.src=im.dataset.src||im.src; b.classList.add('busy'); portrait(id,pickK).then(u=>{ if(my!==pseq) return; b.classList.remove('busy'); if(u) im.src=u; }); };   // the one you picked, drawn in your skin
+    const skins=P=>{ PK.hidden=false; toneRow(PK,pickK,P.id,k=>{ pickK=k; face(); }); };
+    const people=()=>{ PL.textContent=''; PS.hidden=true; PK.hidden=true;
       for(const P of pickable(pickG==='f'?1:0)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-pressed','false');
         const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; const sp=document.createElement('span'); sp.textContent=P.name; b.append(im,sp);
-        b.addEventListener('click',()=>{ pickC=P.id; for(const c of PL.children) c.setAttribute('aria-pressed',c===b?'true':'false'); shapes(P); ok(); loadV2(P.id); });   // start bringing them in
+        b.addEventListener('click',()=>{ pickC=P.id; for(const c of PL.children) c.setAttribute('aria-pressed',c===b?'true':'false'); shapes(P); skins(P); ok(); loadV2(P.id); if(pickK>=0) face(); });   // start bringing them in
         PL.appendChild(b); }
       PL.hidden=false; };
     for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ if(pickG===b.dataset.g) return; pickG=b.dataset.g; pickC=null; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); people(); ok(); });
     PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!eb.disabled) eb.click(); }); }
-  eb.makeProfile=()=>{ if(PROFILE) return; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
+  eb.makeProfile=()=>{ if(PROFILE) return; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,k:pickK,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
     if(CAST[pickC]) CAST[pickC].w=0;   // no copies of you on the street
   }; }
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
-eb.addEventListener('click',()=>{ if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
+eb.addEventListener('click',()=>{ portraitDone(); if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
   if(touchUI) goFull(); started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);   // the new vehicles come in the background

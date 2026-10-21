@@ -76,7 +76,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function lookOk(o) {
     if (!o || typeof o !== 'object') return null;
     const c = LOOK_IDS.test(o.c) ? o.c : null, f = Number.isInteger(o.f) && o.f >= -1 && o.f < 16 ? o.f : 0, g = o.g === 'f' ? 'f' : 'm';
-    return c ? { c, f, g } : null;
+    const k = Number.isInteger(o.k) && o.k >= 0 && o.k < 7 ? o.k : -1;   // skin tone (-1: the person's own)
+    return c ? { c, f, g, k } : null;
   }
 
   // ---- signing in
@@ -294,7 +295,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       const S = C.seen, ids = new Set(), j = [], p = [], l = [];
       for (const [, Q] of near) {
         ids.add(Q.id); let s = S.get(Q.id);
-        if (!s || s.lv !== Q.lv) { j.push({ i: Q.id, n: Q.name, c: Q.look && Q.look.c, f: Q.look ? Q.look.f : 0, g: Q.look ? Q.look.g : 'm', b: Q.bd || '', w: Q.ws || 0 }); if (!s) S.set(Q.id, s = { v: -1, lv: Q.lv }); s.lv = Q.lv; }
+        if (!s || s.lv !== Q.lv) { j.push({ i: Q.id, n: Q.name, c: Q.look && Q.look.c, f: Q.look ? Q.look.f : 0, g: Q.look ? Q.look.g : 'm', k: Q.look && Number.isInteger(Q.look.k) ? Q.look.k : -1, b: Q.bd || '', w: Q.ws || 0 }); if (!s) S.set(Q.id, s = { v: -1, lv: Q.lv }); s.lv = Q.lv; }
         if (s.v !== Q.ver) { p.push([Q.id, Q.x, Q.y, Q.z, Q.r, Q.a, Q.s, Q.v, Q.vc, Q.q]); s.v = Q.ver; }
       }
       for (const id of S.keys()) if (!ids.has(id)) { l.push(id); S.delete(id); }

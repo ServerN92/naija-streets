@@ -58,7 +58,7 @@ test('make an account, bad names and passwords refused, sign in again with the t
   // the same name in other letters is taken
   const [d, e] = await account('tunde_1'); assert.equal(e.t, 'err'); assert.match(e.m, /taken/); d.close();
   // back with the token
-  const t = client(); await t.open; t.send({ t: 'hi', v: PROTO, tok: me.tok }); const me2 = await t.next('me'); assert.equal(me2.name, 'Tunde_1'); assert.equal(me2.cash, 50000); assert.deepEqual(me2.look, { c: 'p_dayo', f: 2, g: 'm' });
+  const t = client(); await t.open; t.send({ t: 'hi', v: PROTO, tok: me.tok }); const me2 = await t.next('me'); assert.equal(me2.name, 'Tunde_1'); assert.equal(me2.cash, 50000); assert.deepEqual(me2.look, { c: 'p_dayo', f: 2, g: 'm', k: -1 });
   // signing in again elsewhere kicks the first one
   const w = client(); await w.open; w.send({ t: 'login', u: 'TUNDE_1', p: 'wrong-one' }); assert.equal((await w.next('err')).m, 'Wrong username or password.');
   w.send({ t: 'login', u: 'TUNDE_1', p: 'mushin2026' }); const wm = await w.next('me'); assert.equal(wm.name, 'Tunde_1');
@@ -76,12 +76,12 @@ test('old game version is told to reload', async () => {
 
 test('two players near each other see each other move, far ones do not; chat near and to all', async () => {
   const [a] = await account('Amaka'), [b] = await account('Bayo'), [f] = await account('Farfar');
-  a.send({ t: 'look', c: 'p_amaka', f: 1, g: 'f' });
+  a.send({ t: 'look', c: 'p_amaka', f: 1, g: 'f', k: 5 });
   a.send({ t: 'p', x: 10, y: 0, z: 10, r: 1.5, a: 'w', s: 1.6, v: '', q: 0 });
   b.send({ t: 'p', x: 30, y: 0, z: 20, r: 0, a: 'i', s: 0, v: '', q: 0 });
   f.send({ t: 'p', x: 2000, y: 0, z: 2000, r: 0, a: 'i', s: 0, v: '', q: 0 });
   const w = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'Amaka'));
-  const ja = w.j.find(j => j.n === 'Amaka'); assert.equal(ja.c, 'p_amaka'); assert.equal(ja.g, 'f');
+  const ja = w.j.find(j => j.n === 'Amaka'); assert.equal(ja.c, 'p_amaka'); assert.equal(ja.g, 'f'); assert.equal(ja.k, 5);   // her skin tone too
   const st = w.p.find(p => p[0] === ja.i); assert.deepEqual(st.slice(1, 8), [10, 0, 10, 1.5, 'w', 1.6, '']);
   // she drives off in a car
   a.send({ t: 'p', x: 12.345, y: 0.2, z: 11, r: 2, a: 'd', s: 8, v: 'sedan', vc: '#c0102c', q: 1 });

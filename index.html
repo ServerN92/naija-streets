@@ -67,10 +67,13 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .ppl{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .ppc{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);border-radius:12px;cursor:pointer;font-weight:700;font-size:14px}
 .ppc img{width:68px;height:85px;border-radius:8px;object-fit:cover;background:#2a2420}
-.ppc[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
+.ppc[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}.ppc.busy img{opacity:.55}
 .pshape{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:14px;font-weight:600}
 .psb{min-height:40px;padding:6px 16px;border-radius:20px;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);font-weight:700;cursor:pointer}
 .psb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
+.pskb{width:34px;height:34px;flex:none;border-radius:50%;background:var(--sk);border:3px solid rgba(255,255,255,.28);cursor:pointer;padding:0;box-shadow:inset 0 -6px 10px rgba(0,0,0,.25)}
+.pskb.own{position:relative}.pskb.own::after{content:'★';position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:rgba(255,255,255,.85)}
+.pskb[aria-pressed="true"]{border-color:var(--danfo);transform:scale(1.12)}
 .lookb.who img{flex:none;width:30px;height:38px;border-radius:7px;object-fit:cover;background:#2a2420}
 .pnote{color:var(--muted);font-size:13px}
 .pwho{color:var(--cream);font-weight:700;font-size:17px}
@@ -578,6 +581,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       </div>
       <div class="ppl" id="ppl" role="group" aria-label="Who you are" hidden></div>
       <div class="pshape" id="pshape" role="group" aria-label="Body shape" hidden></div>
+      <div class="pshape pskin" id="pskin" role="group" aria-label="Skin colour" hidden></div>
       <div class="pnote">Man or woman stays. Change person, clothes and colours in the wardrobe at home.</div>
     </div>
     <div class="pwho" id="pwho" hidden></div>
