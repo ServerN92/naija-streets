@@ -68,3 +68,13 @@ for i, (a, b) in enumerate([(0.0, 4.1), (5.1, 8.5), (8.5, 14.2), (14.2, 18.6), (
     RECIPES[f'cond_call_{i}'] = dict(src='own_danfo', a=a, d=b - a, kind='shot', level=-19, hp=90, fi=.05, fo=.25)
 for i, (a, b) in enumerate([(1.4, 7.3), (7.6, 12.2), (13.6, 19.4), (19.4, 26.6), (26.6, 31.4), (31.8, 35.5), (35.5, 38.95), (39.5, 46.9)], 1):   # the agbero and the conductor over the ticket
     RECIPES[f'agb_tk_{i}'] = dict(src='own_ticket', a=a, d=b - a, kind='shot', level=-19, hp=90, fi=.05, fo=.3)
+# the man the agberos are robbing begs them (cut at his breaths); the long one is the whole plea, the first time you come near
+for i, (a, b) in enumerate([(3.2, 6.45), (6.7, 8.95), (9.5, 12.55), (12.6, 14.05)], 1):
+    RECIPES[f'say_abeg_{i}'] = dict(src='own_abeg', a=a, d=b - a, kind='shot', level=-18, hp=100, fi=.04, fo=.2)
+RECIPES['say_abeg_long'] = dict(src='own_abeg', a=3.2, d=10.85, kind='shot', level=-18, hp=100, fi=.04, fo=.3)
+# boys arguing by the roadside (corners, small fights); a man passing on the phone (now and then); cult boys and agberos in a real fight
+RECIPES.update({
+    'say_argue_1':   dict(src='own_argue', a=0, d=6.29, kind='shot', level=-19, hp=90, fi=.03, fo=.3, af='bandreject=f=1366:width_type=h:w=30,bandreject=f=2191:width_type=h:w=30'),
+    'say_oncall':    dict(src='own_oncall', a=0, d=5.04, kind='shot', level=-20, hp=100, fi=.05, fo=.3),
+    'fight_crowd_1': dict(src='own_cultfight', a=0, d=10.39, kind='shot', level=-18, hp=70, fi=.3, fo=.6),
+})

@@ -383,5 +383,45 @@
 "gain": 1.0,
 "dur": 7.4,
 "src": "own_ticket"
+},
+"say_abeg_1": {
+"gain": 1.0,
+"dur": 3.25,
+"src": "own_abeg"
+},
+"say_abeg_2": {
+"gain": 1.0,
+"dur": 2.25,
+"src": "own_abeg"
+},
+"say_abeg_3": {
+"gain": 1.0,
+"dur": 3.05,
+"src": "own_abeg"
+},
+"say_abeg_4": {
+"gain": 1.0,
+"dur": 1.42,
+"src": "own_abeg"
+},
+"say_abeg_long": {
+"gain": 1.0,
+"dur": 10.82,
+"src": "own_abeg"
+},
+"say_argue_1": {
+"gain": 1.0,
+"dur": 6.26,
+"src": "own_argue"
+},
+"say_oncall": {
+"gain": 1.0,
+"dur": 5.0,
+"src": "own_oncall"
+},
+"fight_crowd_1": {
+"gain": 1.0,
+"dur": 10.35,
+"src": "own_cultfight"
 }
 }
