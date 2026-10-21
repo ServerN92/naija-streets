@@ -13,21 +13,21 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=54520fa3d5';
-import * as C2 from './char2.js?v=54520fa3d5';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=54520fa3d5';
-import { createPhone } from './phone.js?v=54520fa3d5';
-import { createGuide } from './guide.js?v=54520fa3d5';
+import * as CLOCK from './clock.js?v=ebed597ffb';
+import * as C2 from './char2.js?v=ebed597ffb';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=ebed597ffb';
+import { createPhone } from './phone.js?v=ebed597ffb';
+import { createGuide } from './guide.js?v=ebed597ffb';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=54520fa3d5';
-import { createBusiness } from './business.js?v=54520fa3d5';
-import { createOnline } from './online.js?v=54520fa3d5';
-import { createPolice } from './police.js?v=54520fa3d5';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=54520fa3d5';
-import { MapView, GPS_RED } from './mapview.js?v=54520fa3d5';
+import { createFarm } from './farm.js?v=ebed597ffb';
+import { createBusiness } from './business.js?v=ebed597ffb';
+import { createOnline } from './online.js?v=ebed597ffb';
+import { createPolice } from './police.js?v=ebed597ffb';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=ebed597ffb';
+import { MapView, GPS_RED } from './mapview.js?v=ebed597ffb';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='54520fa3d5';
+const BUILD='ebed597ffb';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2219,13 +2219,70 @@ APT.step=(()=>{ for(const k of [2.8,2.2,1.6,1.2]){ const x=APT.front.x+APT.nx*k,
 const LIFE_V=1, START_CASH=1000, FLAT_PRICE=650000, RENT_OPTS=[[1,3000],[3,8000],[7,17000]], EASE_S=80*60, EAT_S=60*60, SLEEP_S=CLOCK.DAY_MINUTES*60, DAY_S=CLOCK.DAY_MINUTES*60;   // the care bars fill over that much play: toilet, food, sleep   // a game day in seconds of play
 const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:10000,ankara:15000,kaftan:20000,senator:30000,suit:50000,
   joggers:5000,night:6000,jeans:7000,fitness:7500,bodycon:12000,club:15000,gown:18000,iro_buba:25000,office:40000};
-const freshLife=()=>({v:LIFE_V,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',t:Date.now()});
+// street cred (the rank you earn by playing): cr points, cd the day it is counting (yyyymmdd), ca active seconds counted that day,
+// cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
+function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
+  return {cr:clamp(Math.floor(+(d&&d.cr)||0),0,1e7),cd:clamp((d&&d.cd)|0,0,99991231),ca:clamp(+(d&&d.ca)||0,0,86400),cx,cs:clamp((d&&d.cs)|0,0,3650),cl:clamp((d&&d.cl)|0,0,99991231)}; }
+const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',t:Date.now()});
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
   const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
   const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
-  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,t:+d.t||0,u:d.u}; }
+  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),t:+d.t||0,u:d.u}; }
 const lifeRead=k=>{ try{ return lifeClean(JSON.parse(localStorage.getItem(k)||'null')); }catch(e){ return null; } };
 let LIFE=lifeRead('naija-life')||freshLife();
+// ---- street cred and ranks (like 2go: from JJC up to Eko Legend). You earn cred by playing actively (standing still
+// does not count), by doing your hustle's tasks, earning money, buying and owning things, and a bonus for every day you come
+// back. Each kind of deed pays less the more you repeat it in a day, so the climb takes time and variety. Higher ranks open
+// the luxury places, houses, cars and clothes; below the rank you see the lock and what you need.
+const RANKS=[['JJC','🔰','#9aa3ad',0],['Learner','🌱','#7ccf7a',120],['Hustler','💪','#4fc3f7',600],['Correct Guy','😎','#26c6a0',2000,'Correct Babe'],
+  ['Big Boy','💼','#c77dff',5000,'Big Girl'],['Oga','👔','#ff9f43',11000,'Madam'],['Odogwu','🦁','#ff5d5d',22000],['Chairman','🎩','#e2b84a',40000,'Chairwoman'],
+  ['Baba Nla','👑','#ffd54a',70000,'Iya Nla'],['Eko Legend','💎','#7fe3ff',120000]];
+const RANK_OPEN=['Your first steps on the street','Keep going: every hour on the street counts',
+  'Buy a buka, salon or POS · Glow Luxe, Kings Court, Iroko Room · ankara, kaftan, club outfits · a Hilux',
+  'Buy back your flat · Maison Adunni, Adunni\'s, The Cellar, the spa · senator, office wear, gowns',
+  'Eko Grand rooms, VELVET club, golf · suits · Land Cruiser, Range Rover','GRA estate houses · Eko Grand big rooms · G-Wagon, S-Class',
+  'Respect: your rank shines gold-orange · more of the city opens to you','Eko Grand suites, helicopter tour · Royal Ghost',
+  'Buy a whole estate · Eko Bull','Every car, the Lekki Flash · the top title in Lagos'];
+const rankName=i=>(isF()&&RANKS[i][4])||RANKS[i][0];
+const rankAt=cr=>{ let i=0; while(i<RANKS.length-1&&cr>=RANKS[i+1][3]) i++; return i; };
+const myRank=()=>rankAt(LIFE.cr|0);
+const rankTag=i=>`${RANKS[i][1]} ${rankName(i)}`;
+const CLOTH_RANK={hoodie:1,polo:1,ankara:2,kaftan:2,club:2,bodycon:2,senator:3,office:3,gown:3,iro_buba:3,suit:4};
+const carRank=price=>price<=300000?0:price<=700000?2:price<=2500000?4:price<=5000000?5:price<=15000000?7:price<=18000000?8:9;
+const RANK={act:0,acc:0,cash:0,saveT:0,pend:false,last:0};
+const ymd=d=>d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+function credDay(){ const t=ymd(new Date()); if(LIFE.cd===t) return; const y=new Date(); y.setDate(y.getDate()-1);
+  LIFE.cs=LIFE.cl===ymd(y)?Math.min(3650,(LIFE.cs|0)+1):1; LIFE.cl=t; LIFE.cd=t; LIFE.ca=0; LIFE.cx={}; RANK.pend=true; }
+// add cred for a deed of kind k (raw: no daily fall-off); returns what it paid
+function credAdd(k,pts,raw,why){ credDay(); let g=pts;
+  if(!raw){ const n=LIFE.cx[k]|0; g=pts*Math.max(.15,1-n*.12); LIFE.cx[k]=n+1; }
+  g=Math.round(g); if(!(g>0)) return 0; LIFE.cr=Math.min(1e7,(LIFE.cr|0)+g); const after=myRank();
+  if(after>RANK.last) rankUp(after); else if(why&&started) toast(`+${g} street cred · ${why}`,2.6);
+  rankHUD(); if(T0-RANK.saveT>20){ RANK.saveT=T0; lifeSave(); } return g; }
+// money you earn: 1 cred for every ₦2,000, up to 250 a day
+function credCash(d){ if(!(d>0)) return; RANK.cash+=d; while(RANK.cash>=2000){ RANK.cash-=2000; credDay(); if((LIFE.cx.cash|0)>=250){ RANK.cash=0; break; } LIFE.cx.cash=(LIFE.cx.cash|0)+1; LIFE.cr=(LIFE.cr|0)+1; const r=myRank(); if(r>RANK.last) rankUp(r); } rankHUD(); }
+function rankUp(i){ RANK.last=i; lifeSave(true); if(!started) return;
+  bigMsg(`RANK UP: ${rankTag(i)}`,'rankup',RANK_OPEN[i]); try{ if(SND) SND.play('dj_horn',{b:'ui',gain:.7}); }catch(e){}
+  setTimeout(()=>toast(`${rankTag(i)}! Now open to you: ${RANK_OPEN[i]}.`,6),3800); }
+// play time counts only while you are doing something: walking, driving, inside a place moving, a menu open
+function rankTick(dt){ if(!started) return; credDay(); if(!(T0-RANK.hud<2)){ RANK.hud=T0; rankHUD(); }
+  if(RANK.pend){ RANK.pend=false; const b=25+Math.min(6,(LIFE.cs|0)-1)*10; credAdd('daily',b,true,LIFE.cs>1?`${LIFE.cs} days in a row!`:'welcome back'); }
+  const busyNow=(mode==='walk'||mode==='interior')&&player.speed>.3||mode==='drive'&&Math.abs(drive.speed)>1||MENU.open||(typeof HL!=='undefined'&&HL.act);
+  RANK.act=busyNow?25:RANK.act-dt;
+  if(RANK.act>0&&LIFE.ca<4*3600){ LIFE.ca+=dt; RANK.acc+=dt; if(RANK.acc>=60){ RANK.acc-=60; credAdd('play',6,true); } } }
+// a door, a car or a thing that needs a rank: true if you have it, else you are told what you need
+function rankGate(need,what){ const r=myRank(); if(r>=need) return true;
+  toast(`🔒 ${what} na for ${rankTag(need)} and above. You be ${rankTag(r)} now (${Math.max(0,RANKS[need][3]-(LIFE.cr|0)).toLocaleString()} street cred to go). Keep hustling!`,5);
+  return false; }
+function rankHUD(){ const e=document.getElementById('rank'); if(!e) return; const r=myRank(), cr=LIFE.cr|0, nx=RANKS[r+1];
+  const f=nx?(cr-RANKS[r][3])/(nx[3]-RANKS[r][3]):1; if(RANK.shownR!==r){ RANK.shownR=r; e.style.setProperty('--rk',RANKS[r][2]); e.querySelector('b').textContent=rankTag(r); }
+  e.querySelector('i').style.width=(Math.max(0,Math.min(1,f))*100).toFixed(1)+'%'; }
+RANK.last=myRank();
+{ const e=document.getElementById('rank'); if(e) e.addEventListener('click',()=>rankMenu()); }
+function rankMenu(){ const r=myRank(), cr=LIFE.cr|0;
+  openMenu('YOUR RANK · '+rankTag(r),`${cr.toLocaleString()} street cred${RANKS[r+1]?` · ${(RANKS[r+1][3]-cr).toLocaleString()} to ${rankName(r+1)}`:' · the top!'}`,[
+    {name:'How to rank up',sub:'Play and move about (standing still does not count), finish your hustle tasks, earn money, buy things, come back every day. Doing the same thing again and again pays less.',btn:'OK',act:closeMenu},
+    ...RANKS.map((R,i)=>({name:`${R[1]} ${rankName(i)}`,sub:`${R[3].toLocaleString()} cred · ${RANK_OPEN[i]}`,btn:i<=r?(i===r?'You':'✓'):'🔒',off:true,act:()=>{}}))]); }
 const roomOn=()=>LIFE.rent>0||LIFE.ntc>0;   // your room: rent paid, or the landlord's notice still running
 const homeNow=()=>LIFE.flat?'flat':roomOn()?'room':'tent';
 // the rooming house: the face-me-I-face-you nearest your tent (its landlord stands in front)
@@ -6197,7 +6254,7 @@ function workUI(b,el,btn){ b.append(el('h3','ph-h','OYA WORK'));
    G next to someone with a weapon in your hand robs them (shop and market sellers carry more). Jobs on the phone pay too. */
 const CASH={n:5000,shown:null,drops:[],geo:null,mat:null,flashT:0,flash:0};
 try{ const c=localStorage.getItem('naija-cash'); if(c!==null&&isFinite(+c)) CASH.n=+c; }catch(e){}
-function addCash(d){ d=Math.round(d); if(!d) return; CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
+function addCash(d){ d=Math.round(d); if(!d) return; if(d>0) credCash(d); CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
 const CASH_OF={areaboy:[300,3500],mama:[500,4500],baba:[800,6000],suit_lady:[3000,15000],lady_red:[500,5000],lady_black:[500,5000],hawker:[200,2500],schoolboy:[50,600],girl:[500,4000],police_m:[2000,9000],police_f:[2000,9000]};
 const cashOf=(c,k=1)=>{ const r=CASH_OF[c]||[300,3000]; return Math.max(50,Math.round(mrr(r[0],r[1])*k/50)*50); };
 function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
@@ -7979,8 +8036,8 @@ function openMenu(title,note,rows){ MENU.open=true; closePhone(); if(document.po
 function closeMenu(){ if(!MENU.open) return; MENU.open=false; $('#menu').hidden=true; lastPrompt=null; }
 function menuUI(){ const b=$('#menuBody'); b.textContent=''; $('#menuTitle').textContent=MENU.title; $('#menuNote').textContent=(MENU.note?MENU.note+' · ':'')+'You have '+naira(CASH.n);
   const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
-  for(const r of (typeof MENU.rows==='function'?MENU.rows():MENU.rows)){ const row=el('div','sh-row'), t=el('span'); t.append(el('b',null,r.name),el('small',null,r.sub||'')); const btn=el('button','sh-buy',r.btn||naira(r.price)); btn.type='button';
-    btn.disabled=!!r.off||(r.price>0&&CASH.n<r.price); btn.addEventListener('click',()=>{ if(btn.disabled) return; if(r.price>0){ if(CASH.n<r.price) return; addCash(-r.price); cashHUD(); } r.act(); if(MENU.open) menuUI(); }); row.append(t,btn); b.append(row); } }
+  for(const r of (typeof MENU.rows==='function'?MENU.rows():MENU.rows)){ const row=el('div','sh-row'), t=el('span'); t.append(el('b',null,r.name),el('small',null,r.sub||'')); const lk=r.rank>0&&myRank()<r.rank, btn=el('button','sh-buy'+(lk?' locked':''),lk?`🔒 ${rankName(r.rank)}`:(r.btn||naira(r.price))); btn.type='button';
+    btn.disabled=!lk&&(!!r.off||(r.price>0&&CASH.n<r.price)); btn.addEventListener('click',()=>{ if(lk){ rankGate(r.rank,r.name); return; } if(btn.disabled) return; if(r.price>0){ if(CASH.n<r.price) return; addCash(-r.price); cashHUD(); } r.act(); if(MENU.open) menuUI(); }); row.append(t,btn); b.append(row); } }
 
 /* ---- hotels: the lobby with the receptionist, the lift, the corridor upstairs with numbered doors, and the rooms.
    Book at reception, take the lift to your floor, open your door. The booking lasts a day (saved on this phone). */
@@ -8018,7 +8075,7 @@ const doorsOn=f=>HOTELS[H.cur]&&HOTELS[H.cur].grand?5:f===5?2:8;   // the top fl
 const roomNo=(f,n)=>f*100+n;
 function freeDoor(h,f){ const day=Math.floor(Date.now()/864e5), n=doorsOn(f); return 1+Math.floor(Math.abs(Math.sin((h*7+f*13+day)*12.9898)*43758.5453)%1*n); }
 function hotelRows(){ const h=H.cur, G=HOTELS[h].grand; return tiers(h).map((t,ti)=>{ const mine=STAY&&STAY.h===h&&STAY.t===ti, n=G?t.n:mine?STAY.n:freeDoor(h,t.f);
-  return {name:`${t.name} · ${roomNo(t.f,n)}`,sub:t.what+` · floor ${t.f}`,price:mine?0:t.price,btn:mine?'Your room':naira(t.price),off:mine,
+  return {name:`${t.name} · ${roomNo(t.f,n)}`,sub:t.what+` · floor ${t.f}`,price:mine?0:t.price,btn:mine?'Your room':naira(t.price),off:mine,rank:G&&!mine?(ti<2?4:ti<4?5:7):0,
     act:()=>{ const was=STAY; STAY={h,t:ti,n,until:Date.now()+864e5}; try{ localStorage.setItem('naija-hotel',JSON.stringify(STAY)); }catch(e){}
       closeMenu(); toast(`${was?'You don change room. ':''}Here is your key card for Room ${roomNo(t.f,n)}. Take the lift to floor ${t.f}.`,4); } }; }); }
 function hotelMenu(){ const G=HOTELS[H.cur].grand; openMenu(HOTELS[H.cur].name.toUpperCase()+' · RECEPTION',G?'Five stars · a night in Ikeja GRA':'A night in Lagos',hotelRows); toast(mpick(['"Welcome! Which room would you like?"','"Good evening sir/ma. We have rooms available."','"Welcome to our hotel. How many nights?"']),2.6); }
@@ -8122,8 +8179,8 @@ function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x
 
 /* ---- the car stand: tokunbo cars on the lot outside, brand new ones in the showroom. Cars you buy are yours: they
    wait for you near your house every time you come back. */
-function buyLotCar(v){ const s=v.forSale; if(!s) return; if(CASH.n<s.price){ toast(`Salesman: "This one na ${naira(s.price)}. Go hustle come back!"`,3); return; }
-  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
+function buyLotCar(v){ const s=v.forSale; if(!s) return; if(!rankGate(carRank(s.price),'This car')) return; if(CASH.n<s.price){ toast(`Salesman: "This one na ${naira(s.price)}. Go hustle come back!"`,3); return; }
+  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); credAdd('car',120,false,'new car'); v.forSale=null; v.mine=true; if(v.tag) v.tag.visible=false; OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned();
   toast(`${s.name} na your own now! Press E to drive. Congrats!`,3.5); }
 async function enterShowroom(){ if(busy) return; const R=await intGet('int_showroom','Opening the showroom…'); if(!R) return; setupShowroom(R); R.label='Oluwaseun Motors showroom'; goRoom(R,'spawn','Welcome to Oluwaseun Motors. Brand new cars!'); }
 function setupShowroom(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4;
@@ -8135,8 +8192,8 @@ function setupShowroom(R){ fillRoom(R); if(R.ready) return; R.ready=true; const 
   R.spot(M.exit,'Go back outside',()=>leaveRoom(VENUES.carstand.door),1.8);
   R.spot(M.desk,'Talk to the sales lady',()=>toast(mpick(['"All our cars get papers and full warranty."','"Tokunbo dey outside, brand new dey inside. Cash or transfer."','"We fit register the plate for you today."']),3),1.6);
   setSign(R.signs.sign_name,'OLUWASEUN MOTORS','#0f3d2a','#ffd54a'); }
-function buyShowCar(s){ if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)}. Come back when you ready."`,3); return; }
-  addCash(-s.price); cashHUD(); OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned(); const v=spawnOwned(OWNED[OWNED.length-1],VENUES.carstand.door);
+function buyShowCar(s){ if(!rankGate(carRank(s.price),'This car')) return; if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)}. Come back when you ready."`,3); return; }
+  addCash(-s.price); cashHUD(); credAdd('car',120,false,'new car'); OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned(); const v=spawnOwned(OWNED[OWNED.length-1],VENUES.carstand.door);
   toast(`Congrats! Your ${s.name.replace(' (brand new)','')} dey wait for you outside${v?'':' your house'}.`,4); }
 function spawnOwned(o,near){ const k=kerbSpot(near.x,near.z,2.2)||{x:near.x+3,z:near.z,h:0}; const v=newVehicle(o.type,o.color,true); Object.assign(v,{x:k.x,z:k.z,h:k.h||0,y:0,keep:1,mine:true,parked:true}); return v; }
 
@@ -8175,8 +8232,8 @@ function setupEkoLobby(R){ fillRoom(R); if(R.ready) return; R.ready=true; const 
 function ekoConcierge(){ toast(mpick(['"Good day. How may I help you today?"','"Welcome. Anything you need, just ask."']),2.2);
   openMenu('CONCIERGE · EKO GRAND','Golf, spa, cars and the helipad',[
     {name:'Round of golf (6 holes)',sub:'Clubs, caddie and cart. Course behind the hotel',price:15000,act:()=>{ closeMenu(); golfRound(); }},
-    {name:'Spa and massage',sub:'One hour. You come out brand new',price:25000,act:()=>{ closeMenu(); fadeSwap(()=>{ FIGHT.hp=100; }); toast('Hot stones, palm oil and soft music. Your body don rest well well.',3.5); }},
-    {name:'Helicopter tour of Lagos',sub:'From the rooftop helipad: Lekki, Eko Atlantic, Third Mainland',price:500000,act:()=>{ closeMenu(); fadeSwap(()=>{}); toast(mpick(['You fly over Eko Atlantic and Lekki bridge. Lagos fine from up!','Third Mainland Bridge, the lagoon, VI: the pilot show you everything. Big man life!']),4.5); }},
+    {rank:3,name:'Spa and massage',sub:'One hour. You come out brand new',price:25000,act:()=>{ closeMenu(); fadeSwap(()=>{ FIGHT.hp=100; }); toast('Hot stones, palm oil and soft music. Your body don rest well well.',3.5); }},
+    {rank:7,name:'Helicopter tour of Lagos',sub:'From the rooftop helipad: Lekki, Eko Atlantic, Third Mainland',price:500000,act:()=>{ closeMenu(); fadeSwap(()=>{}); toast(mpick(['You fly over Eko Atlantic and Lekki bridge. Lagos fine from up!','Third Mainland Bridge, the lagoon, VI: the pilot show you everything. Big man life!']),4.5); }},
     {name:'Valet: bring my car',sub:'Your cars wait in the hotel car park',price:0,btn:'Ask',act:()=>{ closeMenu(); toast(OWNED.length?'"Your car dey the car park, sir/ma. The valet don wash am."':'"You no get car for here. NAIJA MOTORS dey down the road."',3); }}]); }
 function golfRound(){ fadeSwap(()=>{}); const sc=Math.round(18+Math.random()*14), par=24; toast(sc<par?`Birdies everywhere! You finish ${sc} for 6 holes (par ${par}). Tiger Woods who?`:sc===par?`Par ${par} for 6 holes. Correct golfer!`:`You finish ${sc} for 6 holes (par ${par}). The caddie dey laugh small.`,4.2); }
 
@@ -8196,7 +8253,7 @@ function roomService(){ openMenu('ROOM SERVICE','Eko Grand kitchen · 24 hours',
   act:()=>{ closeMenu(); fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+25); }); toast(mpick([`The waiter bring ${n.toLowerCase()} on a silver tray. Enjoy!`,`Knock knock: room service! ${n}.`]),3); }}))); }
 
 // ---- The Cellar: wine bar off the lobby
-async function enterCellar(){ if(busy) return; ekoDrop('int_eko_cellar'); const R=await intGet('int_eko_cellar','Opening The Cellar…'); if(!R) return; setupCellar(R); R.label='The Cellar · Eko Grand Hotel'; goRoom(R,'spawn','The Cellar. Fine wine and soft music.'); }
+async function enterCellar(){ if(busy) return; if(!rankGate(3,'The Cellar')) return; ekoDrop('int_eko_cellar'); const R=await intGet('int_eko_cellar','Opening The Cellar…'); if(!R) return; setupCellar(R); R.label='The Cellar · Eko Grand Hotel'; goRoom(R,'spawn','The Cellar. Fine wine and soft music.'); }
 function setupCellar(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.0;
   R.fill=R=>{ folk(R.scene,'p_tunde',M.bartender,['idle_1','talk'],R.folk); folk(R.scene,'suit_lady',M.sommelier,['idle_suit','f_talk'],R.folk);
     roomGuests(R,8,[-33,-17,-17,15],57,TALK,[M.spawn,M.bar,M.bar_2,M.wine]); };
@@ -8208,7 +8265,7 @@ function cellarMenu(){ openMenu('THE CELLAR · WINE BAR','Eko Grand Hotel',[['Gl
   act:()=>{ closeMenu(); toast(p>=100000?'The sommelier open am with style. Everybody dey look your table!':mpick([`${n}. E sweet well well.`,`${n} don land. Cheers!`]),3); }}))); }
 
 // ---- VELVET: the hotel's dance club (hotel guests go in free)
-async function enterVelvet(){ if(busy) return; const free=STAY&&STAY.h===EKO.i; if(!free&&CLUB.paid!=='velvet'&&CASH.n<EKO.fee){ toast(`Bouncer: "VELVET na ${naira(EKO.fee)} at the door. Hotel guests enter free."`,3); return; }
+async function enterVelvet(){ if(busy) return; if(!rankGate(4,'VELVET')) return; const free=STAY&&STAY.h===EKO.i; if(!free&&CLUB.paid!=='velvet'&&CASH.n<EKO.fee){ toast(`Bouncer: "VELVET na ${naira(EKO.fee)} at the door. Hotel guests enter free."`,3); return; }
   ekoDrop('int_eko_velvet'); const R=await intGet('int_eko_velvet','Opening VELVET…'); if(!R) return; if(!free&&CLUB.paid!=='velvet'){ addCash(-EKO.fee); cashHUD(); CLUB.paid='velvet'; }
   setupVelvet(R); R.label='VELVET · Eko Grand Hotel'; goRoom(R,'spawn',mpick(['VELVET! Lights, smoke and gbedu.','Welcome to VELVET. The DJ don start!'])); }
 function setupVelvet(R){ R.isClub=true; fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.2; R.scene.background=new THREE.Color(0x050407);
@@ -8247,13 +8304,13 @@ function setupMotors(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=
   for(const k of ['desk_1','desk_2']) R.spot(M[k],'Talk to the salesman',()=>toast(mpick(['"All our cars get full papers, plate and 3 years warranty."','"Cash, transfer or we arrange finance. Which one you like?"','"Test drive? Buy am first, oga!"']),3.2),1.5);
   R.spot(M.lounge,'Sit in the customer lounge',()=>toast('Leather sofa, cold air, Super Eagles on the TV. You fit wait here all day.',3),1.6);
   R.spot(M.service,'Service department',()=>toast('"Bring your car for service. We dey here Monday to Saturday."',3),1.6); }
-function buyNmCar(s){ if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)}. Come back when you ready."`,3); return; }
-  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned(); spawnOwned(OWNED[OWNED.length-1],gp('motors',-12,12));
+function buyNmCar(s){ if(!rankGate(carRank(s.price),'This car')) return; if(CASH.n<s.price){ toast(`"This one na ${naira(s.price)}. Come back when you ready."`,3); return; }
+  addCash(-s.price); cashHUD(); if(PH) PH.event('carbuy',{}); credAdd('car',120,false,'new car'); OWNED.push({type:s.type,color:s.color,name:s.name}); saveOwned(); spawnOwned(OWNED[OWNED.length-1],gp('motors',-12,12));
   toast(`Congrats! Your ${s.name.replace(' (brand new)','')} dey wait for you outside. Press E to drive.`,4); }
 
 // ---- Adunni's Fashion House: designer clothes on the rails, the tailor sews native wear to measure
 const NATIVE=new Set(['ankara','kaftan','senator','iro_buba','gown','agbada','buba']);
-async function enterAdunni(){ if(busy) return; const R=await intGet('int_adunni','Opening Adunni\'s Fashion House…'); if(!R) return; setupAdunni(R); R.label='Adunni\'s Fashion House'; goRoom(R,'spawn','Adunni\'s Fashion House. Designer clothes and native wear.'); }
+async function enterAdunni(){ if(busy) return; if(!rankGate(3,'Adunni\'s Fashion House')) return; const R=await intGet('int_adunni','Opening Adunni\'s Fashion House…'); if(!R) return; setupAdunni(R); R.label='Adunni\'s Fashion House'; goRoom(R,'spawn','Adunni\'s Fashion House. Designer clothes and native wear.'); }
 function setupAdunni(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=2.8;
   R.fill=R=>{ folk(R.scene,'p_amaka',M.owner,['f_talk','idle_3'],R.folk); folk(R.scene,'suit_lady',M.sales,['idle_suit','f_talk'],R.folk); folk(R.scene,'baba',M.tailor,['idle_baba','talk'],R.folk);
     roomGuests(R,3,[-6.5,-2,6.5,3],91,[['lady_red',['phone','idle_3']],['lady_black',['idle_3','text']],['p_ada',['talk','idle_2']]],[M.spawn,M.sales,M.tailor,M.counter]); };
@@ -8271,7 +8328,7 @@ const wearId=()=>{ const id=WARD.cur, C=V2.casts&&V2.casts[id]; const o=C&&C.met
 const luxOut=()=>leaveRoom(LUX.cur&&LUX.cur.door);
 const luxSay=(t,s=3.2)=>toast(t,s);
 function luxServe(title,note,rows,done){ openMenu(title,note,rows.map(([name,sub,price,line])=>({name,sub,price,act:()=>{ closeMenu(); fadeSwap(()=>{}); setTimeout(()=>{ luxSay(line,3.6); if(done) done(name); },420); }}))); }
-async function enterLux(P,force){ if(busy) return; const K=P.K;
+async function enterLux(P,force){ if(busy) return; const K=P.K; { const need={glow:2,kings:2,iroko:2,maison:3}[P.k]||0; if(need&&!rankGate(need,K.name||'This place')) return; }
   if(!K.street&&!force&&wearId()==='rags'){ luxSay(mpick([`Gateman: "Ah ah! ${isF()?'Madam':'Oga'}, this place no be for rags. Go change your cloth first."`,'Gateman: "Who you be? Dress well before you enter here, abeg."','Gateman: "With this torn cloth? Security no go gree. Go wear better thing."']),4); return; }
   const R=await intGet(K.int,`Opening ${P.title}…`); if(!R) return; LUX.cur=P; luxSetup(P.k,R); R.label=P.title;
   goRoom(R,'spawn',K.street?`${P.name}. "Welcome! Sit down, we go attend to you now now."`:P.k==='glow'?`${P.title}. "Welcome, darling! Hair, nails, lashes: we dey here for you."`:P.k==='kings'?`${P.title}. "Welcome, boss! Fresh cut, cold drink, game of pool."`:P.k==='iroko'?`${P.title}. "Good evening. Table for you?"`:`${P.title}. "Welcome to Maison Adunni. Couture, made to your measure."`); }
@@ -8389,10 +8446,10 @@ if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x,z:V.door.z,
   PLACES.push({name:'Oluwaseun Motors',sub:'Car stand · tokunbo and brand new cars',kind:'cars',x:V.x,z:V.z}); }
 // ---- the car catalogue at the car stand: every new car class by class, delivered to the kerb outside
 function buyNewCar(N){ // the menu takes the money before calling this
-  if(PH) PH.event('carbuy',{}); OWNED.push({type:N.k,color:'#ffffff',name:N.n}); saveOwned(); closeMenu();
+  if(PH) PH.event('carbuy',{}); credAdd('car',120,false,'new car'); OWNED.push({type:N.k,color:'#ffffff',name:N.n}); saveOwned(); closeMenu();
   const at=VENUES.carstand?VENUES.carstand.door:player; spawnOwned(OWNED[OWNED.length-1],at); toast(`Congrats! Your ${N.n} dey wait for you outside. Press E to drive.`,4); }
 function openCarCatalog(){ const rows=[]; for(const c of ['Everyday','Mid','SUV','Luxury','Super-luxury']) for(const N of NEWV) if(N.c===c&&N.price)
-    rows.push({name:N.n,sub:`${N.c} · top speed ${Math.round(N.v[1]*3.6*1.25)} km/h`,price:N.price,btn:naira(N.price),act:()=>buyNewCar(N)});
+    rows.push({name:N.n,sub:`${N.c} · top speed ${Math.round(N.v[1]*3.6*1.25)} km/h`,price:N.price,btn:naira(N.price),rank:carRank(N.price),act:()=>buyNewCar(N)});
   openMenu('NAIJA MOTORS CATALOGUE','Brand new, any class. Delivered to the kerb outside',rows); }
 if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x+2.6,z:V.door.z,r:1.8,label:'Car catalogue: buy any car',act:openCarCatalog}); }
 // ---- where to go in: a pulsing ring and a bobbing arrow at every door you can walk into (hotels, clubs, police, car stand)
@@ -8429,7 +8486,7 @@ DOORS.push({x:EKO.back.x,z:EKO.back.z,r:2,label:'Go into the hotel lobby',act:()
   const m=gp('hotel',-4,-36.6); DOORS.push({x:m.x,z:m.z,r:2.6,label:'Jump into the pool',act:dive(-4,-48)});
   const m2=gp('hotel',-95,13.6); DOORS.push({x:m2.x,z:m2.z,r:3,label:'Jump into the long pool',act:dive(-95,21)});
   PLACES.push({name:'Eko Grand swimming pool',sub:'70 m pool · swim for free',kind:'place',x:m2.x,z:m2.z,minor:true}); }
-{ const m=gp('hotel',70,39.6); DOORS.push({x:m.x,z:m.z,r:2.4,label:'Golf club · play 6 holes (₦15,000)',act:()=>{ if(CASH.n<15000){ toast('"Green fee na ₦15,000. Come back."',2.8); return; } addCash(-15000); cashHUD(); golfRound(); }}); }
+{ const m=gp('hotel',70,39.6); DOORS.push({x:m.x,z:m.z,r:2.4,label:'Golf club · play 6 holes (₦15,000)',act:()=>{ if(!rankGate(4,'The golf club')) return; if(CASH.n<15000){ toast('"Green fee na ₦15,000. Come back."',2.8); return; } addCash(-15000); cashHUD(); golfRound(); }}); }
 doorMark(GRA_DOOR.motors.x,GRA_DOOR.motors.z,'#2fbf71','ENTER · NAIJA MOTORS'); doorMark(GRA_DOOR.boutique.x,GRA_DOOR.boutique.z,'#e85d9b','ENTER · ADUNNI\'S FASHION HOUSE');
 // the new places on the map, their doors, and the gatemen at the luxury gates (they greet you, and turn back rags)
 for(const P of LUXP){ const K=P.K;
@@ -8523,7 +8580,7 @@ function estOwned(){ for(const p of EST.plots){ const own=estOwns(p.id); if(p.ga
   const h=EST.byId[LIFE.estHome]; if(h&&estOwns(h.id)){ Object.assign(EST.homePl,{x:h.gate.x,z:h.gate.z,sub:`${h.name} · house ${h.id} · ${h.E.name}`}); if(!PLACES.includes(EST.homePl)) PLACES.push(EST.homePl); }
   else { const i=PLACES.indexOf(EST.homePl); if(i>=0) PLACES.splice(i,1); } }
 EST.homePl={name:'Your mansion',sub:'',kind:'home',x:0,z:0};
-function estBuy(p){ if(!LIFE.est.includes(p.id)) LIFE.est.push(p.id); const first=!LIFE.estHome; if(first) LIFE.estHome=p.id; lifeSave(true); estOwned(); closeMenu();
+function estBuy(p){ credAdd('house',150,false,'new house'); if(!LIFE.est.includes(p.id)) LIFE.est.push(p.id); const first=!LIFE.estHome; if(first) LIFE.estHome=p.id; lifeSave(true); estOwned(); closeMenu();
   toast(`House ${p.id} is yours! ${p.name}, ${p.E.name}. The gate opens for you${first?' and this is now your home':''}. Welcome!`,5); }
 function estBuyAll(E){ if(!LIFE.estAll.includes(E.id)) LIFE.estAll.push(E.id); LIFE.est=LIFE.est.filter(id=>id[0]!==E.id); if(!LIFE.estHome) LIFE.estHome=E.plots[E.plots.length-2].id;
   lifeSave(true); estOwned(); toast(`${E.name} is yours! All 27 houses, the gate and the streets. Security salutes you, Chairman.`,5.5); }
@@ -8531,13 +8588,13 @@ function plotMenu(p){ const E=p.E;
   openMenu(p.name.toUpperCase(),`House ${p.id} · ${E.name}`,()=>{ if(estOwns(p.id)){ const home=LIFE.estHome===p.id; return [
       {name:home?'This is your home':'Make this your home',sub:home?'You wake up here when you come back.':'Wake up here when you come back to the game.',btn:home?'Home':'Move in',off:home,act:()=>{ LIFE.estHome=p.id; lifeSave(true); estOwned(); toast(`House ${p.id} is your home now.`,3); }},
       {name:'Your gate',sub:'It opens for you and your car. Security knows you.',btn:'OK',act:closeMenu}]; }
-    return [{name:'Buy this house',sub:estWhat(p),price:p.price,act:()=>estBuy(p)},
+    return [{name:'Buy this house',sub:estWhat(p),price:p.price,rank:5,act:()=>estBuy(p)},
       {name:'The estate office',sub:`At the gate: every house for sale here, or the whole estate for ${naira(estWhole(E))}`,btn:'OK',act:closeMenu}]; }); }
 function officeMenu(E){ openMenu('ESTATE OFFICE',`${E.name} · Agent: "Welcome, sir. The best address in Lagos."`,()=>{ const all=LIFE.estAll.includes(E.id), rows=[];
     rows.push({name:all?'The whole estate is yours':'Buy the whole estate',sub:all?'27 houses, the gate, the streets and the palms. Every gate opens for you.':`All 27 houses with the gate, the streets and the palms${estPaid(E)?' (what you paid for your houses here comes off)':''}. Every gate opens for you.`,
-      price:all?0:estWhole(E),btn:all?'Yours':undefined,off:all,act:()=>estBuyAll(E)});
+      price:all?0:estWhole(E),btn:all?'Yours':undefined,off:all,rank:all?0:8,act:()=>{ credAdd('house',600,true,'a whole estate'); estBuyAll(E); }});
     for(const k of Object.keys(EST.STY).sort((a,b)=>EST.STY[a][1]-EST.STY[b][1])){ const free=E.plots.filter(p=>p.st===k&&!estOwns(p.id)); if(!free.length) continue; const p=free[0];
-      rows.push({name:`${EST.STY[k][0]} · ${free.length} for sale`,sub:`House ${p.id} · ${estWhat(p)}`,price:EST.STY[k][1],act:()=>estBuy(p)}); }
+      rows.push({name:`${EST.STY[k][0]} · ${free.length} for sale`,sub:`House ${p.id} · ${estWhat(p)}`,price:EST.STY[k][1],rank:5,act:()=>estBuy(p)}); }
     return rows; }); }
 // the doors: each plot's gate (and the house's own door once its size is known), the estate office in both gatehouses
 for(const p of EST.plots) DOORS.push({x:p.gate.x,z:p.gate.z,r:3.2,label:()=>estOwns(p.id)?`Your house · ${p.name} (${p.id})`:`${p.name} for sale · ${naira(p.price)}`,act:()=>plotMenu(p)});
@@ -8613,7 +8670,7 @@ if(LIFE_NEW) lifeSave();
 function lifeIn(srv,uid){ let L=lifeClean(srv); const loc=lifeRead('naija-life-u'); if(loc&&loc.u===uid&&loc.t>((L&&L.t)||0)) L=loc;
   if(!L) L=freshLife(); L.u=uid; LIFE=L; lifeApplied(); lifeSave(true); }
 function lifeOut(){ LIFE=lifeRead('naija-life')||freshLife(); delete LIFE.u; lifeApplied(); }
-function lifeApplied(){ lifePlaces(); LIFE_SYNC.ensureT=0; if(!started){ const h=homeSpot(); Object.assign(player,{x:h.x,z:h.z,y:groundY(h.x,h.z),yaw:h.ry,speed:0}); camState.yaw=clearYaw(player.x,player.y,player.z,h.ry); } }
+function lifeApplied(){ RANK.last=myRank(); RANK.shownR=-1; rankHUD(); lifePlaces(); LIFE_SYNC.ensureT=0; if(!started){ const h=homeSpot(); Object.assign(player,{x:h.x,z:h.z,y:groundY(h.x,h.z),yaw:h.ry,speed:0}); camState.yaw=clearYaw(player.x,player.y,player.z,h.ry); } }
 // how long the rent still runs, in game days and hours
 // the landlord: when the rent you paid runs out he gives you notice (two game days of play); pay before it ends or he throws
 // your load out and you sleep under the bridge. (Rent and notice only run while you play.)
@@ -8776,7 +8833,7 @@ function boutiqueMenu(opt={}){ const id=WARD.cur, C=isV2(id)&&V2.casts[id]; if(!
   openMenu(opt.title||'BEND-DOWN BOUTIQUE',opt.note||'Mama Bose: "Fine clothes, correct price!"',()=>{ const outs=C.meta.outfits, cur=fitOf(id);
     return outs.map((o,i)=>({o,i})).filter(({o})=>o.id!=='police'&&(!opt.only||(o.id!=='rags'&&opt.only(o.id)))).map(({o,i})=>{ const own=owns(o.id), p=Math.round((CLOTH_PRICE[o.id]||8000)*(opt.mult||1)/500)*500;
       return {name:o.name,sub:o.id==='rags'?'Your old torn clothes':own?'Yours · wear it again':opt.sewn?'Sewn to your measure':opt.mult>1?'Designer piece':'New in the market',price:own?0:p,btn:i===cur?'Wearing':own?'Wear':naira(p),off:i===cur,
-        act:()=>{ if(!own){ LIFE.own.push(o.id); lifeSave(true); } wearFit(i);
+        rank:own?0:(CLOTH_RANK[o.id]||0),act:()=>{ if(!own){ LIFE.own.push(o.id); lifeSave(true); credAdd('buy',20,false); } wearFit(i);
           toast(own?'You don change.':mpick([`${o.name}! You don dey look like somebody now.`,'"E fit you well well! Go and shine."','New clothes, new life. Lagos go notice.']),3); }}; }); }); }
 // the rooming house: the landlord rents you a room by the day; once you have paid, you go in through the house
 function roomMenu(){ const rows=[];
@@ -8789,7 +8846,7 @@ function roomMenu(){ const rows=[];
 // the flat you lost: an agent sells it, but only to somebody the landlords know (rent a room first)
 function flatMenu(){ const can=LIFE.rented>0;
   openMenu('FLAT FOR SALE','Agent: "Your old flat. Pay, and the key is yours."',[{name:'Buy the flat',sub:can?'Parlour, kitchen, bathroom, bedroom and your wardrobe. Yours for life.':'First rent a room and pay your rent. Landlords must know you before I sell you a flat.',
-    price:FLAT_PRICE,off:!can,act:()=>{ LIFE.flat=true; LIFE.home='flat'; lifeSave(true); lifePlaces(); closeMenu(); toast('The flat is yours! Here are your keys. Welcome home.',4.5); }}]); }
+    price:FLAT_PRICE,off:!can,rank:can?3:0,act:()=>{ credAdd('house',200,true,'your own flat'); LIFE.flat=true; LIFE.home='flat'; lifeSave(true); lifePlaces(); closeMenu(); toast('The flat is yours! Here are your keys. Welcome home.',4.5); }}]); }
 // inside your rented room (tools/blender_life.py int_faceme)
 async function enterFaceRoom(){ if(busy||!ROOMLET) return; if(!roomOn()){ toast('Your rent don finish. Pay the landlord first.',3); return; }
   const R=await intGet('int_faceme','Opening your room…'); if(!R) return; setupFaceRoom(R); R.label='Your room · face-me-I-face-you';
@@ -9177,7 +9234,7 @@ const myJob=()=>jobOf(LIFE.job);
 const stepOf=()=>{ const J=myJob(); return J&&LIFE.tk<J.steps.length?J.steps[LIFE.tk]:null; };
 function JOBEV(k,n=1){ const S=stepOf(); if(!S||S.ev!==k) return; LIFE.tkn=Math.min(1e5,(LIFE.tkn|0)+(n|0||1)); hustleCheck(); }
 function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const done=S.ok?S.ok():(LIFE.tkn|0)>=S.n; if(!done) return;
-  LIFE.tk++; LIFE.tkn=0; lifeSave(true); const N=stepOf();
+  LIFE.tk++; LIFE.tkn=0; lifeSave(true); const N=stepOf(); if(N) credAdd('task',40,false); else credAdd('jobdone',150,true);
   if(N){ toast(`✅ Task done! Next: ${N.t}`,4.5); hustleGo(N,false); }
   else toast(mpick([`🎉 You don settle as ${J.n.toLowerCase()}! Keep the money coming: rent a better place, then buy back your flat.`,`🎉 Correct ${J.n.toLowerCase()}! Lagos dey see you now. Save, rent a room, buy back your flat.`]),7);
   hustleHUD(true); }
@@ -9253,7 +9310,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); lifeTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -9389,7 +9446,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
 // the bukas players own (src/business.js): the model from Blender (tools/blender_buka.py) with the farm's photo detail
-BIZ=createBusiness({ ev:(k,n)=>JOBEV(k,n), THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGlb,
+BIZ=createBusiness({ ev:(k,n)=>JOBEV(k,n), bizRank:()=>2, THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGlb,
   mapPlace:p=>{ if(!PLACES.some(q=>q.id&&q.id===p.id)) PLACES.push(p); },
   player:()=>({x:player.x,z:player.z}), mode:()=>mode, toast, openMenu, menuOpen:()=>MENU.open, cash:()=>CASH.n,
   heal:n=>{ FIGHT.hp=Math.min(100,FIGHT.hp+n); }, eat:k=>careEat(k), glow:()=>ENV.sign||0,

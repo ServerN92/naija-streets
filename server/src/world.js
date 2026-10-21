@@ -6,7 +6,7 @@ import { createPark } from './park.js';
 import { createPvp } from './pvp.js';
 import { createLaw } from './law.js';
 import { createBank } from './bank.js';
-import { lifeOk } from './life.js';
+import { lifeOk, credCap } from './life.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
 export const PROTO = 1;
@@ -117,7 +117,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (db.user(name)) return err(C, 'reg', 'That username is taken. Try another one.');
     const { salt, hash } = await hashPass(m.p);
     if (db.user(name)) return err(C, 'reg', 'That username is taken. Try another one.');
-    const life = lifeOk(m.life, now());   // the life you lived as a guest comes with you (and the money, up to a limit)
+    const life = credCap(lifeOk(m.life, now()), null, now());   // the life you lived as a guest comes with you (and the money, up to a limit)
     const cash = life ? Math.max(0, Math.min(START_MAX, Math.floor(+m.cash || 0))) : START_CASH;
     const look = lookOk(m.look);
     const id = db.addUser({ name, salt, hash, email, now: now(), cash, look: look ? JSON.stringify(look) : null });
@@ -227,7 +227,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   }
   function setLife(C, m) {
     C.lifeLim = C.lifeLim || new Bucket(6, .5); if (!C.lifeLim.take()) return;
-    const d = lifeOk(m.d, now()); if (d) db.lifePut(C.user.id, d);
+    const d = credCap(lifeOk(m.d, now()), db.lifeGet(C.user.id), now()); if (d) db.lifePut(C.user.id, d);
   }
   function setLook(C, m) {
     const look = lookOk(m); if (!look) return;

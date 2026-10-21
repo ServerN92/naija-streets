@@ -178,7 +178,7 @@ export function createBusiness(api) {
   function rows() {
     const b = CUR, P = b.pub || {}, R = RK[b.kind], KD = KINDS[b.kind]; if (!R) return [{ name: 'Connecting…', btn: '…', off: true, act() {} }];
     const cash = api.cash(), items = R.items, keys = Object.keys(items);
-    if (!P.o) return [{ name: `Buy this ${KD.word}`, sub: 'You can own 2 businesses. Sell it back any time for half.', btn: naira(R.price), off: cash < R.price, act() { send('buy'); } }];
+    if (!P.o) return [{ name: `Buy this ${KD.word}`, sub: 'You can own 2 businesses. Sell it back any time for half.', btn: naira(R.price), off: cash < R.price, rank: api.bizRank ? api.bizRank() : 0, act() { send('buy'); } }];
     if (!mineB(b) && b.kind === 'pos') return [
       { name: 'Send money to a player', sub: `By username · fee ${R.send.pct * 100}% (${naira(R.send.min)} to ${naira(R.send.max)}) · arrives at once`, btn: 'SEND ▸', off: !P.open, act() { askSend(); } },
       ...keys.map(k => ({ name: items[k].n, sub: 'For the people of the area', btn: `fee ${naira((P.m && P.m[k] && P.m[k][0]) || items[k].p)}`, off: true, act() {} }))];

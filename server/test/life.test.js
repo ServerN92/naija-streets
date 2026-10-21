@@ -52,3 +52,14 @@ test('estate houses in the life record: good ids kept, bad ones dropped, home on
   assert.equal(lifeOk({ est: ['A07'], estHome: 'A07' }).estHome, 'A07');
   const N = lifeOk({}); assert.deepEqual(N.est, []); assert.deepEqual(N.estAll, []); assert.equal(N.estHome, '');
 });
+
+test('street cred: kept, cannot jump, a guest brings at most a little', async () => {
+  const { credCap, CRED_GUEST, CRED_SLACK } = await import('../src/life.js');
+  const d = lifeOk({ cr: 999999, cx: { play: 3, BAD: 1 }, cs: 4 }, 1000);
+  assert.deepEqual(d.cx, { play: 3 }); assert.equal(d.cs, 4);
+  assert.equal(credCap({ ...d }, null, 1000).cr, CRED_GUEST);
+  const prev = { cr: 5000, st: 1000 };
+  assert.equal(credCap(lifeOk({ cr: 999999 }, 1000), prev, 1000).cr, 5000 + CRED_SLACK);            // no time passed: only the slack
+  assert.ok(credCap(lifeOk({ cr: 999999 }, 1000), prev, 1000 + 3600e3).cr <= 5000 + CRED_SLACK + 1500);   // an hour: at most 1500 more
+  assert.equal(credCap(lifeOk({ cr: 10 }, 1000), prev, 2000).cr, 5000);                              // never goes down
+});

@@ -32,5 +32,22 @@ export function lifeOk(d, now = Date.now()) {
     estAll,                                               // whole estates bought
     estHome,                                              // the estate house you live in ('' = none)
     t: Math.round(num(d.t, 0, now + DAY_MS)),
+    // street cred (the rank): points, the day being counted (yyyymmdd), active seconds counted that day, what each deed paid that day, the streak
+    cr: Math.floor(num(d.cr, 0, 1e7)), cd: num(d.cd, 0, 99991231) | 0, ca: Math.round(num(d.ca, 0, 86400)),
+    cx: cxOk(d.cx), cs: num(d.cs, 0, 3650) | 0, cl: num(d.cl, 0, 99991231) | 0,
   };
+}
+function cxOk(x) {
+  const o = {}; if (!x || typeof x !== 'object' || Array.isArray(x)) return o;
+  for (const [k, v] of Object.entries(x).slice(0, 24)) if (/^[a-z]{2,10}$/.test(k) && typeof v === 'number' && Number.isFinite(v)) o[k] = Math.min(1e5, Math.max(0, v));
+  return o;
+}
+// street cred cannot jump: at most what an hour of very busy play earns per hour since the last save (plus a little), never more than
+// the client claims; a guest bringing a life to a new account keeps at most the Hustler rank's worth
+export const CRED_RATE = 1500 / 3600, CRED_SLACK = 400, CRED_GUEST = 1999;
+export function credCap(d, prev, now) {
+  if (!d) return d;
+  if (!prev) { d.cr = Math.min(d.cr, CRED_GUEST); d.st = now; return d; }
+  const was = Math.floor(+prev.cr || 0), dt = Math.max(0, Math.min(12 * 3600, (now - (+prev.st || now)) / 1000));
+  d.cr = Math.max(was, Math.min(d.cr, was + CRED_SLACK + dt * CRED_RATE)); d.st = now; return d;
 }
