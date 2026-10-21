@@ -22,6 +22,8 @@ export function lifeOk(d, now = Date.now()) {
     flat: d.flat === true,
     own,
     ease: Math.round(num(d.ease, 0, 1) * 1000) / 1000,
+    eat: Math.round(num(d.eat, 0, 1) * 1000) / 1000,       // the care bars: hunger and tiredness (0 fine .. 1 full)
+    sleep: Math.round(num(d.sleep, 0, 1) * 1000) / 1000,
     est,                                                  // houses bought in the estates
     estAll,                                               // whole estates bought
     estHome,                                              // the estate house you live in ('' = none)
