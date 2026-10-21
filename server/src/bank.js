@@ -23,7 +23,7 @@ export function createBank({ db, now, log = () => {}, rand = Math.random, ctx })
     none: q('SELECT id FROM users WHERE id NOT IN (SELECT uid FROM bank) ORDER BY id'),
     txAdd: q('INSERT INTO bank_tx(t, src, dst, n, fee, note, q) VALUES(?,?,?,?,?,?,?)'),
     txQ: q('SELECT * FROM bank_tx WHERE src=? AND q=?'),
-    sent: q('SELECT COUNT(*) k, COALESCE(SUM(n),0) s FROM bank_tx WHERE src=? AND t>?'),
+    sent: q("SELECT COUNT(*) k, COALESCE(SUM(n),0) s FROM bank_tx WHERE src=? AND t>? AND (q IS NULL OR q NOT LIKE 'union:%')"),   // (the union's returns are not your sends)
     hist: q(`SELECT x.*, us.name sname, ud.name dname, bs.bank sbank, bd.bank dbank, bd.acct dacct FROM bank_tx x
              LEFT JOIN users us ON us.id=x.src LEFT JOIN users ud ON ud.id=x.dst LEFT JOIN bank bs ON bs.uid=x.src LEFT JOIN bank bd ON bd.uid=x.dst
              WHERE x.src=? OR x.dst=? ORDER BY x.id DESC LIMIT ?`),

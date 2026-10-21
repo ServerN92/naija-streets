@@ -10,7 +10,10 @@
 // own boys for the fight) fights the chairman's crew in the yard: both crews brawl, the players on each side join in,
 // and every enemy boy a player knocks down counts. The side with boys left standing wins; a challenger who wins is
 // the new chairman. When no player holds the seat, Chairman Kasali (the old chairman) does, with six boys.
+import { DAY_MINUTES } from './clock.js';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const gameDay = t => Math.floor(t / (DAY_MINUTES * 60000));   // a game day: 2 real hours (06:00 to 06:00)
+const naira = n => '₦' + Math.round(n).toLocaleString('en-NG');
 const dayKey = t => new Date(t + 3600e3).toISOString().slice(0, 10);   // the day in Lagos (UTC+1)
 export const PARK = {
   join: 5000,                          // the union's registration
@@ -24,6 +27,10 @@ export const PARK = {
   load: [20e3, 34e3], window: 22e3,    // a danfo starts loading every 20 to 34 s; its ticket can be collected for 22 s
   reach: 8, sackDay: 5, idleDays: 3, kosPerFight: 6,
   rate: .02,                           // in the fight: each second a side loses a boy with this chance for every boy (or player) on the other side
+  // on the road: agberos stop the danfos at the bus stops for the day's ticket (once a game day for each danfo). Half is the
+  // boy's at once; the oga's half is kept aside and goes to the chairman's bank account at the end of the game day, with what
+  // the chairman's paid crew brought in from the bus stops
+  street: 200, streetShare: .5, streetMax: 40, streetGap: 6e3, crewStreet: 1000,
 };
 // for testing on a developer's machine only: a quick meeting and low ranks (never set on the real server)
 export function tune(env) {
@@ -41,7 +48,7 @@ export const SITE = {
 };
 const ROUTES = ['Oshodi', 'Yaba', 'Ojota', 'Ikeja', 'Ojuelegba', 'Costain', 'Oyingbo'];
 export const rankOf = rp => rp >= PARK.ranks[2][0] ? 2 : rp >= PARK.ranks[1][0] ? 1 : 0;
-const freshPark = () => ({ chair: null, cname: '', price: PARK.price, crew: 0, crewUntil: 0, since: 0, decl: null, day: { k: '', tk: 0, ret: 0, npc: 0 }, sacks: { k: '', n: 0 }, last: null, wins: 0, owe: 0 });
+const freshPark = () => ({ chair: null, cname: '', price: PARK.price, crew: 0, crewUntil: 0, since: 0, decl: null, day: { k: '', tk: 0, ret: 0, npc: 0 }, sacks: { k: '', n: 0 }, last: null, wins: 0, owe: 0, street: { d: -1, by: {} }, lastStreet: null });
 const freshMember = name => ({ on: 1, name, rp: 0, tk: 0, earned: 0, day: { k: '', tk: 0, earned: 0 }, side: 'c', ban: 0, joined: 0, kos: 0 });
 
 export function createPark({ db, now = () => Date.now(), rand = Math.random, log = () => {}, ctx }) {
@@ -84,8 +91,10 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
   function me(C) {   // your own part: rank, respect, today; the chairman's crew and money too
     const t = now(), m = M.get(C.user.id), chair = P.chair === C.user.id;
     if (m) rollDay(m, t);
+    const st = m && m.st && m.st.d === gameDay(t) ? m.st : null;
     const o = { on: !!(m && m.on), rp: m ? m.rp : 0, rank: m ? rankOf(m.rp) : 0, tk: m ? m.tk : 0, earned: m ? m.earned : 0, today: m ? m.day : null, side: m ? m.side : 'c', ban: m && m.ban > t ? m.ban - t : 0,
-      chair, declared: !!(P.decl && P.decl.uid === C.user.id) };
+      chair, declared: !!(P.decl && P.decl.uid === C.user.id), st: { n: st ? st.n : 0, max: PARK.streetMax, got: st ? st.got : 0, held: st ? st.held : 0 } };
+    if (chair) { const S0 = streetNow(t), by = Object.values(S0.by); o.street = { n: by.reduce((a, b) => a + b.n, 0), held: by.reduce((a, b) => a + b.held, 0), boys: by.length, crew: crewNow(t) * PARK.crewStreet, last: P.lastStreet }; }
     if (chair) { rollDay(P, t); Object.assign(o, { crew: crewNow(t), crewLeft: Math.max(0, P.crewUntil - t), day: P.day, sacks: P.sacks.k === dayKey(t) ? P.sacks.n : 0,
       list: [...M.entries()].filter(([u, x]) => x.on && u !== C.user.id).sort((a, b) => (b[1].day.k === P.day.k ? b[1].day.tk : 0) - (a[1].day.k === P.day.k ? a[1].day.tk : 0) || b[1].rp - a[1].rp).slice(0, 12)
         .map(([u, x]) => [u, x.name, x.rp, x.day.k === P.day.k ? x.day.tk : 0, x.ban > t ? 1 : 0]) }); }
@@ -135,6 +144,44 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
     me(C); pushLoads(true); if (P.chair && P.chair !== uid) meById(P.chair);
   }
 
+  // ---- on the road: a danfo's ticket for the day at a bus stop (the game says which danfo: its plate number)
+  function streetNow(t) { if (!P.street || P.street.d !== gameDay(t)) { if (P.street && P.street.d >= 0) settleStreet(t); P.street = { d: gameDay(t), by: {} }; dirty = true; } return P.street; }
+  function street(C, m) {
+    const t = now(), uid = C.user.id, x = M.get(uid), plate = String(m.plate || '').toUpperCase().slice(0, 12);
+    if (!x || !x.on) return err(C, 'Only union agberos collect tickets. Join at the office in Mushin Motor Park.');
+    if (x.ban > t) return err(C, 'The chairman don sack you for now. You no fit collect.');
+    if (!C.p || !C.p.has || C.p.v) return err(C, 'Come down first. You collect on your feet.');
+    if (inPark(C, 10)) return err(C, 'Inside the park, collect from the danfos loading in the bays.');
+    if (!/^[A-Z]{3}-\d{3}[A-Z]{2}$/.test(plate)) return;
+    if (x.lastSt && t - x.lastSt < PARK.streetGap) return;
+    const d = gameDay(t); if (!x.st || x.st.d !== d) x.st = { d, n: 0, got: 0, held: 0, plates: [] };
+    if (x.st.n >= PARK.streetMax) return err(C, `You don collect ${PARK.streetMax} tickets today. Rest small, a new day go come.`);
+    if (x.st.plates.includes(plate)) return err(C, 'This danfo don pay today already.');
+    x.lastSt = t; x.st.n++; x.st.plates.push(plate);
+    const price = PARK.street, self = P.chair === uid, got = self ? price : Math.round(price * PARK.streetShare), held = price - got;
+    ctx.give(C, got, 'street ticket ' + plate);
+    x.st.got += got; x.st.held += held; x.rp++; x.tk++; x.earned += got; touchM(uid);
+    if (held) { const S0 = streetNow(t), b = S0.by[uid] || (S0.by[uid] = { name: C.user.name, n: 0, held: 0 }); b.n++; b.held += held; }
+    dirty = true;
+    ctx.send(C, { t: 'pkst', plate, got, held, chair: chairName(), n: x.st.n, max: PARK.streetMax });
+    me(C); if (P.chair && P.chair !== uid) meById(P.chair);
+  }
+  // the end of the game day: every boy's kept half goes to the chairman's account (one transfer from each boy, on their bank
+  // history), with what the chairman's paid crew brought in; with Chairman Kasali in the seat, the old man takes it
+  function settleStreet(t) {
+    const S0 = P.street, by = Object.entries(S0.by || {}).filter(([, b]) => b.held > 0), total = by.reduce((a, [, b]) => a + b.held, 0), n = by.reduce((a, [, b]) => a + b.n, 0);
+    const crew = P.chair ? crewNow(t) * PARK.crewStreet : 0, chair = chairName();
+    if (P.chair && (total || crew)) {
+      for (const [u, b] of by) if (ctx.bankTx) ctx.bankTx(+u, P.chair, b.held, `Street tickets ×${b.n} (oga's half)`, 'union:' + S0.d);
+      ctx.credit(P.chair, total + crew, 'street returns ' + S0.d, `🏦 Credit alert! ${naira(total + crew)} street returns for the day: ${by.length} boy${by.length === 1 ? '' : 's'}, ${n} danfo${n === 1 ? '' : 's'}${crew ? ` (with ${naira(crew)} from your crew)` : ''}.`);
+      rollDay(P, t); P.day.ret += total + crew;
+    }
+    for (const [u, b] of by) { ctx.note && ctx.note(+u, `End of the day: ${naira(b.held)} (the oga's half of your ${b.n} street ticket${b.n === 1 ? '' : 's'}) don go to ${chair}${P.chair ? "'s account" : ''}.`); if (ctx.bankRefresh) ctx.bankRefresh(+u); }
+    if (P.chair && ctx.bankRefresh) ctx.bankRefresh(P.chair);
+    P.lastStreet = { d: S0.d, total, crew, boys: by.length, n, chair }; dirty = true;
+    if (total || crew) log('street returns', chair, total, crew, by.length);
+  }
+
   // ---- the meeting: the fight for the seat
   function sideOf(uid) {
     if (!F) return null;
@@ -176,7 +223,7 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
     const cm = M.get(f.buid);
     let msg;
     if (win === 'b') {
-      payOwed(); const old = P.chair;
+      payOwed(); if (P.street && P.street.d >= 0) { settleStreet(t); P.street = { d: gameDay(t), by: {} }; } const old = P.chair;
       Object.assign(P, { chair: f.buid, cname: f.B, crew: Math.max(PARK.minBoys, f.b), crewUntil: t + 24 * 3600e3, since: t, wins: 0 });
       if (cm) { cm.rp += 25; cm.side = 'c'; touchM(f.buid); }
       if (old) { const o = M.get(old); if (o) { o.rp = Math.max(0, o.rp - 30); touchM(old); } ctx.note(old, `${f.B} don take your seat at ${S.name}. You are not the chairman again.`); setBadge(old); }
@@ -219,6 +266,7 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
     switch (m.a) {
       case 'info': me(C); return;
       case 'ticket': return ticket(C, m);
+      case 'street': return street(C, m);
       case 'ko': return ko(C);
       case 'down': if (F && sideOf(uid)) F.down.set(uid, t + 25e3); return;
     }
@@ -270,7 +318,7 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
         ctx.note(m.uid, `Chairman ${C.user.name} sacked you from ${S.name} for a day.`); meById(m.uid); break;
       }
       case 'resign': {
-        if (!chair) return; payOwed(); Object.assign(P, { chair: null, cname: '', crew: 0, crewUntil: 0 }); dirty = true; flush();
+        if (!chair) return; payOwed(); if (P.street && P.street.d >= 0) { settleStreet(t); P.street = { d: gameDay(t), by: {} }; } Object.assign(P, { chair: null, cname: '', crew: 0, crewUntil: 0 }); dirty = true; flush();
         ok(C, `You stepped down. ${S.npc} is back in the chair.`); setBadge(uid);
         for (const D of ctx.online.values()) if (D.ws.open && D.user && D !== C) ctx.send(D, { t: 'note', m: `${C.user.name} stepped down as chairman of ${S.name}.` });
         break;
@@ -285,6 +333,7 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
   function tick() {
     const t = now();
     for (const L of [...loads.values()]) if (L.until <= t) endLoad(L, t);
+    if (!P.street || P.street.d !== gameDay(t)) { streetNow(t); flush(); }   // a new game day: yesterday's street returns go to the oga
     if (t >= nextLoad) { startLoad(t); const [a, b] = PARK.load; nextLoad = t + (a + rand() * (b - a)) * Math.pow(P.price / PARK.price, .7); }
     for (const C of ctx.online.values()) {   // who is near enough to see the bays
       if (!C.user || !C.ws.open) continue; const near = !!(C.p && C.p.has && Math.hypot(C.p.x - S.x, C.p.z - S.z) < 400);
@@ -301,14 +350,14 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
   }
   function flush() {
     if (!dirty && !mDirty.size) return;
-    db.tx(() => { if (dirty) db.parkPut(S.id, JSON.stringify(P)); for (const u of mDirty) { const x = M.get(u); if (x) { const { lastTk, ...rest } = x; db.pmPut(u, S.id, JSON.stringify(rest)); } } });
+    db.tx(() => { if (dirty) db.parkPut(S.id, JSON.stringify(P)); for (const u of mDirty) { const x = M.get(u); if (x) { const { lastTk, lastSt, ...rest } = x; db.pmPut(u, S.id, JSON.stringify(rest)); } } });
     dirty = false; mDirty.clear();
   }
   function hello(C) {
-    ctx.send(C, { t: 'pk', p: pub(), rules: { join: PARK.join, price: PARK.price, priceMin: PARK.priceMin, priceMax: PARK.priceMax, priceStep: PARK.priceStep, share: PARK.share, npcCut: PARK.npcCut, ranks: PARK.ranks, boyFight: PARK.boyFight, boyDay: PARK.boyDay, maxBoys: PARK.maxBoys, minBoys: PARK.minBoys, npcBoys: PARK.npcBoys, every: PARK.every, reach: PARK.reach, npc: S.npc, name: S.name } });
+    ctx.send(C, { t: 'pk', p: pub(), rules: { join: PARK.join, price: PARK.price, priceMin: PARK.priceMin, priceMax: PARK.priceMax, priceStep: PARK.priceStep, share: PARK.share, npcCut: PARK.npcCut, ranks: PARK.ranks, boyFight: PARK.boyFight, boyDay: PARK.boyDay, maxBoys: PARK.maxBoys, minBoys: PARK.minBoys, npcBoys: PARK.npcBoys, every: PARK.every, reach: PARK.reach, npc: S.npc, name: S.name, street: PARK.street, streetShare: PARK.streetShare, streetMax: PARK.streetMax, crewStreet: PARK.crewStreet } });
     C.pkNear = false; me(C);
   }
   // the account's name for a player who signs in (a fresh member gets their badge from here)
   return { handle, tick, flush, hello, badge, pub, pvpKo, get fight() { return F; }, get state() { return P; }, member: uid => M.get(uid), loads: () => [...loads.values()], meetAt,
-    _test: { startLoad: t => startLoad(t ?? now()), setRp: (uid, rp) => { const x = M.get(uid); if (x) { x.rp = rp; touchM(uid); } } } };
+    _test: { settle: () => streetNow(now()), startLoad: t => startLoad(t ?? now()), setRp: (uid, rp) => { const x = M.get(uid); if (x) { x.rp = rp; touchM(uid); } } } };
 }

@@ -112,3 +112,39 @@ test('the chairman holds the park when the challenger brings too few boys; it al
   // steps down: Kasali is back
   T.park.handle(tunde, { a: 'resign' }); assert.equal(T.park.state.chair, null); assert.equal(T.park.pub().ch, 'Chairman Kasali');
 });
+
+test('street tickets: half to the boy at once, the oga half kept and paid to the chairman at the end of the game day; once a danfo, 40 a day', () => {
+  const T = setup(), chief = T.mk('Chief', 200000), ada = T.mk('Ada', 20000, 'away'), bayo = T.mk('Bayo', 20000, 'away');
+  const txs = []; T.park._ctxBank = null;
+  // make Chief the chairman (as if he won the seat)
+  Object.assign(T.park.state, { chair: chief.user.id, cname: 'Chief', crew: 4, crewUntil: T.now() + 24 * 3600e3 });
+  for (const C of [ada, bayo]) { C.p.x = SITE.x; C.p.z = SITE.z; T.park.handle(C, { a: 'join' }); C.p.x += 900; }
+  T.park.handle(ada, { a: 'street', plate: 'KJA-123AB' }); const st = T.last('Ada', 'pkst');
+  assert.equal(st.got, PARK.street * PARK.streetShare); assert.equal(st.held, PARK.street - st.got); assert.equal(st.chair, 'Chief');
+  T.adv(PARK.streetGap + 10); T.park.handle(ada, { a: 'street', plate: 'KJA-123AB' }); assert.match(T.last('Ada', 'err').m, /pay today already/);
+  T.adv(PARK.streetGap + 10); T.park.handle(ada, { a: 'street', plate: 'kja-124ab' }); assert.equal(T.last('Ada', 'pkst').n, 2);
+  T.park.handle(ada, { a: 'street', plate: 'KJA-125AB' }); assert.equal(T.last('Ada', 'pkst').n, 2, 'too fast: ignored');
+  T.adv(PARK.streetGap + 10); T.park.handle(bayo, { a: 'street', plate: 'KJA-123AB' }); assert.equal(T.last('Bayo', 'pkst').n, 1, 'another boy, another stop: the same plate pays him');
+  // in the park or in a motor: no
+  ada.p.v = 'sedan'; T.adv(PARK.streetGap + 10); T.park.handle(ada, { a: 'street', plate: 'KJA-200AB' }); assert.match(T.last('Ada', 'err').m, /Come down/); ada.p.v = '';
+  ada.p.x = SITE.x; T.park.handle(ada, { a: 'street', plate: 'KJA-200AB' }); assert.match(T.last('Ada', 'err').m, /Inside the park/); ada.p.x += 900;
+  assert.equal(ada.cash, 20000 - PARK.join + 2 * st.got); assert.equal(bayo.cash, 20000 - PARK.join + st.got);
+  // the chairman sees it waiting
+  T.park.handle(chief, { a: 'info' }); const m = T.last('Chief', 'pkme').m; assert.equal(m.street.n, 3); assert.equal(m.street.held, 3 * st.held); assert.equal(m.street.crew, 4 * PARK.crewStreet);
+  // the game day ends: the oga's half (and the crew's) goes to the chairman
+  const c0 = chief.cash; T.adv(2 * 3600e3); T.tick(1);
+  assert.equal(chief.cash, c0 + 3 * st.held + 4 * PARK.crewStreet);
+  assert.match(T.last('Ada', 'note').m, /don go to Chief's account/);
+  assert.equal(T.park.state.lastStreet.n, 3);
+  T.tick(5); assert.equal(chief.cash, c0 + 3 * st.held + 4 * PARK.crewStreet, 'paid once');
+  // 40 a day at most
+  for (let i = 0; i < 45; i++) { T.adv(PARK.streetGap + 10); T.park.handle(ada, { a: 'street', plate: `LND-${String(100 + i)}XY` }); }
+  assert.equal(T.last('Ada', 'pkst').n, PARK.streetMax); assert.match(T.last('Ada', 'err').m, /40 tickets today/);
+});
+
+test('street tickets with Chairman Kasali in the seat: the boy keeps half, the old man takes the rest', () => {
+  const T = setup(), ada = T.mk('Ada', 20000);
+  T.park.handle(ada, { a: 'join' }); ada.p.x += 900;
+  T.park.handle(ada, { a: 'street', plate: 'APP-777QQ' }); const st = T.last('Ada', 'pkst'); assert.equal(st.chair, SITE.npc); assert.equal(st.got, 100);
+  T.adv(2 * 3600e3); T.tick(1); assert.match(T.last('Ada', 'note').m, /Chairman Kasali/);
+});

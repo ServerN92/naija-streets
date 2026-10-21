@@ -79,3 +79,13 @@ test('limits: 20 sends an hour, ₦1,000,000 a day', () => {
   T.adv(3700); for (let i = 0; i < 5; i++) B.handle(ada, { a: 'send', acct: Tn.acct, bank: Tn.bank, n: 200000 });
   assert.match(T.last('Ada', 'err').m, /daily limit/); assert.equal(tunde.cash, 20 * 1000 + 4 * 200000);
 });
+
+test('the union returns show on both histories and do not count against your own sends', () => {
+  const T = setup(), boy = T.mk('Boy', 500000), oga = T.mk('Oga', 0); const B = T.bank(); B.account(boy.user.id); const O = B.account(oga.user.id);
+  T.db.bankTx(T.now(), boy.user.id, oga.user.id, 2000, 'Street tickets ×20 (oga\'s half)', 'union:1');
+  T.db.bankTx(T.now(), boy.user.id, oga.user.id, 2000, 'again', 'union:1');   // the same day again: one line
+  B.hello(oga); const h = T.last('Oga', 'bk').hist; assert.equal(h.length, 1); assert.equal(h[0].d, 2000); assert.equal(h[0].who, 'Boy');
+  B.hello(boy); assert.equal(T.last('Boy', 'bk').hist[0].d, -2000);
+  for (let i = 0; i < 20; i++) B.handle(boy, { a: 'send', acct: O.acct, bank: O.bank, n: 100 });
+  assert.equal(T.last('Boy', 'bksent').tx.d, -100); assert.equal(T.sent.filter(([n, o]) => n === 'Boy' && o.t === 'bksent').length, 20);
+});

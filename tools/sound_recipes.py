@@ -60,3 +60,11 @@ RECIPES.update({
     'radio_static': dict(src='fx_static', a=2, d=1.1, kind='shot', level=-24, fi=.02, fo=.25),
     'radio_jingle': dict(src='fx_jingle', kind='shot', fo=.2),
 })
+# --- our own Lagos recordings (the game's maker): the market, a danfo conductor calling, the conductor and an agbero
+RECIPES.update({
+    'amb_mkt_own':  dict(src='own_market', a=.4, d=13.6, kind='bed', level=-23, hp=70, xf=1.8),
+})
+for i, (a, b) in enumerate([(0.0, 4.1), (5.1, 8.5), (8.5, 14.2), (14.2, 18.6), (19.9, 23.9), (23.9, 26.6)], 1):   # the conductor calls (cut at his breaths)
+    RECIPES[f'cond_call_{i}'] = dict(src='own_danfo', a=a, d=b - a, kind='shot', level=-19, hp=90, fi=.05, fo=.25)
+for i, (a, b) in enumerate([(1.4, 7.3), (7.6, 12.2), (13.6, 19.4), (19.4, 26.6), (26.6, 31.4), (31.8, 35.5), (35.5, 38.95), (39.5, 46.9)], 1):   # the agbero and the conductor over the ticket
+    RECIPES[f'agb_tk_{i}'] = dict(src='own_ticket', a=a, d=b - a, kind='shot', level=-19, hp=90, fi=.05, fo=.3)

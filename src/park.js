@@ -167,6 +167,7 @@ export function createPark(api) {
       for (const id of [...ST.loads.keys()]) if (!seen.has(id)) { ST.loads.delete(id); dropMarker(id); }
     }
     else if (m.t === 'pkt') api.toast(`Driver: "${['Take your ticket, abeg make I go.', 'Oya take. Na ' + m.route + ' I dey go.', 'Agbero, no vex, take am.'][m.id % 3]}" +${naira(m.got)} for you · ${naira(m.ret)} to ${m.chair}.`, 3);
+    else if (m.t === 'pkst') { if (api.street) api.street(m); api.toast(`Conductor: "${['Oya take your ticket.', 'Agbero, take am, abeg make we go.', 'Na ₦200 be this. Oya.'][m.n % 3]}" +${naira(m.got)} for you${m.held ? ` · ${naira(m.held)} for ${m.chair} at the end of the day` : ''} · ${m.n}/${m.max} today.`, 3.4); }
     else if (m.t === 'pkf') { ST.fight = m.f; if (m.end) { ST.end = m.end; ST.fight = null; api.crewEnd(m.end.win); } }
     else if ((m.t === 'err' || m.t === 'ok') && m.w === 'pk') { ST.said = m.m; api.toast(m.m, 3.2); if (api.menuOpen() && MENU) setTimeout(refresh, 60); }
   }
@@ -228,6 +229,7 @@ export function createPark(api) {
     if (M.chair) {
       const steps = []; for (let p = R.priceMin; p <= R.priceMax; p += R.priceStep) steps.push(p); const nxP = steps[(steps.indexOf(P.price) + 1) % steps.length] || R.price;
       out.push({ name: `Today: ${M.day ? M.day.tk : 0} tickets by agberos, ${M.day ? M.day.npc : 0} by the touts`, sub: `Your return today ${naira(M.day ? M.day.ret : 0)} (it comes to you every minute)`, btn: '₦', off: true, act() {} });
+      if (M.street) { const S = M.street; out.push({ name: `On the road today: ${S.n} danfos by ${S.boys} boy${S.boys === 1 ? '' : 's'}`, sub: `${naira(S.held)} kept for you${S.crew ? ` + ${naira(S.crew)} from your crew` : ''} · it comes to your bank account at the end of the day${S.last && S.last.total + S.last.crew ? ` · last day ${naira(S.last.total + S.last.crew)}` : ''}`, btn: '🏦', off: true, act() {} }); }
       out.push({ name: `Ticket price ${naira(P.price)}`, sub: 'Dearer tickets: more money each, but fewer danfos load', btn: `${naira(nxP)} ▸`, act() { send('price', { p: nxP }); } });
       out.push({ name: `Your boys: ${M.crew || 0}`, sub: M.crew ? `Paid ${Math.ceil(M.crewLeft / 36e5)} h more · they defend the park at the meeting` : 'Nobody defends your seat! Pay some boys', btn: 'BOYS ▸', act() { VIEW = 'boys'; refresh(); } });
       out.push({ name: 'Sack an agbero', sub: `${M.sacks | 0}/5 today`, btn: 'SACK ▸', act() { VIEW = 'sack'; refresh(); } });
@@ -237,6 +239,7 @@ export function createPark(api) {
       const nxt = M.rank < 2 ? R.ranks[M.rank + 1][0] : 0;
       out.push({ name: `${RANKS[M.rank]} · respect ${M.rp}`, sub: M.rank < 2 ? `${R.ranks[M.rank + 1][1]} at ${nxt}: keep ${Math.round(R.share[M.rank + 1] * 100)}% of each ticket${M.rank === 1 ? ' and fight for chairman' : ''}` : `You keep ${Math.round(R.share[2] * 100)}% of each ticket. You can declare for chairman`, btn: '★', off: true, act() {} });
       out.push({ name: `Today: ${M.today && M.today.k ? M.today.tk : 0} tickets · ${naira(M.today && M.today.k ? M.today.earned : 0)}`, sub: `All time ${M.tk} tickets, ${naira(M.earned)}${M.ban ? ` · SACKED for ${Math.ceil(M.ban / 36e5)} h more` : ''}`, btn: '₦', off: true, act() {} });
+      if (M.st) out.push({ name: `On the road today: ${M.st.n}/${M.st.max} danfos · ${naira(M.st.got)} for you`, sub: `Stop danfos at the bus stops for the day's ticket (${naira(R.street || 200)}): you keep half, ${naira(M.st.held)} goes to ${P.npc ? P.ch : 'Chairman ' + P.ch} at the end of the day`, btn: '🚐', off: true, act() {} });
       if (M.declared) out.push({ name: 'You declared for the seat', sub: `The fight is at ${api.clockAt(P.decl ? P.decl.at : P.nextAt)}. Be in the yard: every boy you knock down counts`, btn: '⚔', off: true, act() {} });
       else if (P.decl) out.push({ name: M.side === 'x' ? `You will fight with ${P.decl.n}` : `You will fight for ${P.npc ? P.ch : 'Chairman ' + P.ch}`, sub: `${P.decl.n} declared with ${P.decl.b} boys · switch sides before the meeting`, btn: 'SWITCH', act() { send('side', { s: M.side === 'x' ? 'c' : 'x' }); } });
       else if (M.rank >= 2) out.push({ name: 'Declare for chairman', sub: `Pay your boys and fight ${P.ch}'s crew at the next meeting (${api.clockAt(P.nextAt)})`, btn: 'DECLARE ▸', off: !!ST.fight, act() { VIEW = 'declare'; refresh(); } });
@@ -279,5 +282,6 @@ export function createPark(api) {
   function koed() { if (ST.fight) send('ko'); }
   function downed() { if (ST.fight) send('down'); }
   return { on, prompt, action, near: () => atDesk() || !!loadNear(), update, signedOut, badge, side, fightHere, koed, downed,
+    member: () => member() && !ST.me.ban, chairName: () => ST.p ? (ST.p.npc ? ST.p.ch : 'Chairman ' + ST.p.ch) : 'the chairman', street: () => ST.me && ST.me.st,
     office: () => O, debug: () => ({ said: ST.said || '', p: ST.p, me: ST.me, loads: [...ST.loads.values()].map(l => ({ ...l, left: Math.round(l.until - performance.now()) })), near: (loadNear() || {}).id || null, mode: api.mode(), pl: api.player(), fight: ST.fight, end: ST.end, office: O, yard: YARD, ready: ST.ready }) };
 }

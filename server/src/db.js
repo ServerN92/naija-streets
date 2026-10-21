@@ -103,6 +103,7 @@ export function openDb(file) {
     parkPut: q('INSERT INTO park(id,data) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data'),
     pmAll: q('SELECT m.uid, m.data, u.name FROM park_m m JOIN users u ON u.id=m.uid WHERE m.park=?'),
     pmPut: q('INSERT INTO park_m(uid,park,data) VALUES(?,?,?) ON CONFLICT(uid,park) DO UPDATE SET data=excluded.data'),
+    bankTx: q('INSERT INTO bank_tx(t,src,dst,n,fee,note,q) VALUES(?,?,?,?,0,?,?) ON CONFLICT(src,q) DO NOTHING'),
     bizPut: q('INSERT INTO biz(id,kind,owner,name,data,till,bought,saved) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind, owner=excluded.owner, name=excluded.name, data=excluded.data, till=excluded.till, bought=excluded.bought, saved=excluded.saved'),
   };
   return {
@@ -151,6 +152,7 @@ export function openDb(file) {
     parkPut: (id, data) => S.parkPut.run(id, data),
     pmAll: park => S.pmAll.all(park),
     pmPut: (uid, park, data) => S.pmPut.run(uid, park, data),
+    bankTx: (t, src, dst, n, note, q) => S.bankTx.run(t, src, dst, n, note || null, q || null),   // a line on both bank histories (money the server moved itself)
     tx(fn) { db.exec('BEGIN'); try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; } },
     close: () => db.close(),
   };
