@@ -190,6 +190,7 @@ const ICONS = {
   wallet: ['linear-gradient(180deg,#2b2b30,#0c0c0e)', '#fff', SV('<rect x="3" y="5" width="18" height="5" rx="1.5" fill="#ff9500" stroke="none"/><rect x="3" y="8" width="18" height="5" rx="1.5" fill="#30d158" stroke="none"/><rect x="3" y="11" width="18" height="8" rx="2" fill="#0a84ff" stroke="none"/><path d="M15 15h3" stroke="#fff"/>')],
   weather: ['linear-gradient(180deg,#4facfe,#1e6fd9)', '#fff', SV('<circle cx="9" cy="9" r="3.5" fill="#ffd60a" stroke="none"/><path d="M8 19h9a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6 1.5A2.8 2.8 0 0 0 8 19z" fill="#fff" stroke="none"/>')],
   settings: ['linear-gradient(180deg,#a2a2a8,#6e6e75)', '#fff', SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')],
+  hustle: ['linear-gradient(180deg,#ff9f43,#e8590c)', '#fff', SV('<rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="rgba(255,255,255,.18)"/><path d="M9 8V6.2A1.7 1.7 0 0 1 10.7 4.5h2.6A1.7 1.7 0 0 1 15 6.2V8M3.5 13h17"/><path d="M12 12v2.4" stroke-width="2.4"/>')],
   farm: ['linear-gradient(180deg,#8fd14f,#3e8e1f)', '#fff', SV('<path d="M3 20h18" stroke="#fff"/><path d="M12 20V9" stroke="#fff" stroke-width="2.2"/><path d="M12 13c-3.5 0-5.5-2.2-5.5-5.5 3.3 0 5.5 2 5.5 5.5zM12 11c0-3.6 2.2-6 6-6 0 3.8-2.4 6-6 6z" fill="#fff" stroke="none"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
 };
@@ -311,7 +312,7 @@ export function createPhone(api) {
   const bar = h('div', 'iph-bar'), barHit = btn('iph-barhit', [], () => toHome(), 'Home'); scr.append(bar, barHit);
 
   const APPS = [
-    ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
+    ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
     ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
@@ -357,7 +358,7 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
   function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
@@ -366,6 +367,14 @@ export function createPhone(api) {
     for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
       for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#d0451b'; row.append(tx);
         if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.app === 'farm') openApp('farm'); }, 60); }); row.append(bb); }
+        L.append(row); }
+      b.append(L); } }
+  function hustleApp() {   // My Hustle: the job you picked and its tasks (the game makes the rows)
+    const d = api.hustle && api.hustle(); const b = frameApp('My Hustle', { light: true }); R.view.querySelector('h1').style.color = '#e8590c';
+    if (!d) { b.append(h('div', 'iph-note', 'Loading…')); return; }
+    for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
+      for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#e8590c'; row.append(tx);
+        if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.open && R.app === 'hustle') openApp('hustle'); }, 60); }); row.append(bb); }
         L.append(row); }
       b.append(L); } }
   function workApp() { const b = frameApp('Oya Work'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#1fcf8a'; api.workUI(); }
@@ -674,5 +683,6 @@ export function createPhone(api) {
   const cam = () => R.cam;
   function test(what) { if (what === 'dispatch') return JSON.stringify(api.callPolice(api.nearPlaces(1)[0], 'Fight')); if (what === 'camera') { if (!R.open) api.reopen(); openCamera(); return 1; } if (what === 'shoot') { shoot(); return 1; } if (what === 'selfie') { setSelfie(true); return 1; } if (what === 'closecam') { closeCamera(); return 1; } if (what === 'home') { toHome(); return 1; } if (what === 'back') { goBack(); return 1; } if (what === 'badge') return pbN.hidden ? 0 : pbN.textContent; if (what.startsWith && what.startsWith('sms:')) { sms('mama', 'Mama', '#e91e63', '👩🏾', what.slice(4)); return 1; } if (what === 'gistev') { R.badge.gist++; setBadges(); return 1; } if (what === 'police') { openApp('phone'); startCall(CONTACTS.find(c => c.police)); return 1; } if (what && what.startsWith('call:')) { openApp('phone'); startCall(CONTACTS.find(c => c.id === what.slice(5))); return 1; } if (what && what.startsWith('tap:')) { const b = [...scr.querySelectorAll('button')].find(x => x.textContent.includes(what.slice(4))); if (b) { b.click(); return 1; } return 0; } openApp(what); return 1; }
   setBadges();
-  return { open, close, event, tick, camHook, cam, closeCamera, test, back: goBack, home: toHome, isOpen: () => R.open, app: () => R.app, bank: () => ({ me: BK.me, view: BK.view, f: BK.f, hist: BK.hist.length, rc: BK.rc }) };
+  function openTo(k) { open(); openApp(k); }
+  return { open, openTo, close, event, tick, camHook, cam, closeCamera, test, back: goBack, home: toHome, isOpen: () => R.open, app: () => R.app, bank: () => ({ me: BK.me, view: BK.view, f: BK.f, hist: BK.hist.length, rc: BK.rc }) };
 }

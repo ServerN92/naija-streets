@@ -419,7 +419,7 @@ export function createFarm(api) {
     api.toast(`${C.em} You planted ${C.n.toLowerCase()}. Now water am!`, 2.4); api.guide('farm_water'); return true; }
   function water(i) { const b = S.beds[i]; if (!b.crop || b.wet || b.stage >= 3) return; b.wet = true; b.until = now() + CROPS[b.crop].stage * 1000; save(); refresh(); api.splash && api.splash(); api.toast(`💧 Watered. ${CROPS[b.crop].n} go grow small small (${fmtT(CROPS[b.crop].stage)}).`, 2.2); }
   function harvest(i) { const b = S.beds[i], C = CROPS[b.crop]; if (!room(C.yield)) { api.toast(`Your store is full (${stored()}/${S.cap}). Sell something first.`, 2.6); return; }
-    put(b.crop, C.yield); api.toast(`${C.em} You harvested ${C.yield} ${C.n.toLowerCase()}! It's in your store.`, 2.6); Object.assign(b, { crop: null, stage: 0, wet: false }); save(); refresh(); api.gist('harvest', { what: C.n.toLowerCase() }); }
+    put(b.crop, C.yield); api.toast(`${C.em} You harvested ${C.yield} ${C.n.toLowerCase()}! It's in your store.`, 2.6); Object.assign(b, { crop: null, stage: 0, wet: false }); save(); refresh(); api.gist('harvest', { what: C.n.toLowerCase() }); if (api.ev) api.ev('farm_harvest'); }
   function buyBed(i) { const p = BED_PRICE[i]; if (api.cash() < p) { api.toast(`This land costs ${naira(p)}. Make more money first.`); return; } api.addCash(-p); S.open = i + 1; save(); refresh(); api.toast('🚜 The land is yours! Plant something.', 2.4); }
   function buyCow() { if (S.cows.length >= MAX_COWS) return; if (api.cash() < COW_PRICE) { api.toast(`A cow costs ${naira(COW_PRICE)}.`); return; } api.addCash(-COW_PRICE); S.cows.push({ hu: 0, meals: 0 }); save(); animals(); api.toast('🐄 Your new cow don land!', 2.2); }
   function buyHen() { if (S.hens.length >= MAX_HENS) return; if (api.cash() < HEN_PRICE) { api.toast(`A hen costs ${naira(HEN_PRICE)}.`); return; } api.addCash(-HEN_PRICE); S.hens.push({ hu: 0, meals: 0 }); save(); animals(); api.toast('🐔 New hen for your coop!', 2.2); }
@@ -427,12 +427,12 @@ export function createFarm(api) {
   function claim() { if (S.got) return; S.got = true; Object.assign(S, { open: 2, cows: [{ hu: 0, meals: 0 }], hens: [{ hu: 0, meals: 0 }, { hu: 12, meals: 0 }, { hu: 24, meals: 0 }], grain: [], drops: [], lorry: { load: {} } });
     S.turf.forEach(t => { t.a = 1; t.w = 0; }); throwGrain(true); save(); flush(); animals(); refresh(); turfShow(); spawnLorry();
     api.toast('🚜 Welcome, farmer! The farm behind this gate is yours: land, a cow, three hens and your own lorry.', 4); api.gist('farm', { place: 'Farm Settlement' }); api.guide('farm_yard'); }
-  function sellGate() { const load = { ...S.store }, v = Math.round(valueOf(load) * GATE_RATE); if (!v) { api.toast('Your store is empty.'); return; } S.store = {}; save(); api.addCash(v); S.earned += v; api.toast(`The middleman paid ${naira(v)} for ${list(load)}. (Cheap, but quick.)`, 3.2); }
+  function sellGate() { const load = { ...S.store }, v = Math.round(valueOf(load) * GATE_RATE); if (!v) { api.toast('Your store is empty.'); return; } S.store = {}; save(); api.addCash(v); S.earned += v; if (api.ev) api.ev('farm_sell'); api.toast(`The middleman paid ${naira(v)} for ${list(load)}. (Cheap, but quick.)`, 3.2); }
   function takeCarry() { if (S.carry) { api.toast('You are already carrying goods. Sell them at the market first.'); return; } if (!stored()) { api.toast('Your store is empty.'); return; }
     const load = {}; let n = 0; for (const k of Object.keys(S.store)) { const t = Math.min(S.store[k], CARRY_CAP - n); if (t > 0) { load[k] = t; S.store[k] -= t; n += t; } }
     S.carry = load; save(); if (MARKET) api.gps(MARKET.x, MARKET.z, { name: 'Farm produce buyer', sub: MARKET.name || 'Market' });
     api.toast(`🧺 You carry ${list(load)}. Take am to the produce buyer at ${MARKET ? MARKET.name || 'the market' : 'the market'} (GPS on).`, 3.4); hud(); }
-  function sellCarry() { const load = S.carry; if (!load) return; const v = valueOf(load); S.carry = null; save(); api.addCash(v); S.earned += v; hud(); api.clearGps && api.clearGps();
+  function sellCarry() { const load = S.carry; if (!load) return; const v = valueOf(load); S.carry = null; save(); api.addCash(v); S.earned += v; if (api.ev) api.ev('farm_sell'); hud(); api.clearGps && api.clearGps();
     api.toast(`🧺 The buyer paid you ${naira(v)} for ${list(load)}. Full price!`, 3); api.gist('market', { place: MARKET && MARKET.name || 'the market' }); }
   function hireHand() { if (handOn()) { api.toast('Your farmhand is already working.'); return; } if (api.cash() < HAND_PAY) { api.toast(`A farmhand costs ${naira(HAND_PAY)} a day.`); return; }
     api.addCash(-HAND_PAY); S.hand = now() + api.dayMs(); save(); handSpot(); api.toast('👨🏾‍🌾 Musa the farmhand starts work: he waters, harvests, milks and collects eggs till tomorrow.', 3.4); }
@@ -472,7 +472,7 @@ export function createFarm(api) {
   }
   function loadTruck() { if (!stored()) return null; const load = {}; let n = 0; for (const k of Object.keys(S.store)) { const t = Math.min(S.store[k], TRUCK_CAP - n); if (t > 0) { load[k] = t; S.store[k] -= t; n += t; } } save(); return load; }
   function finishTrip() { const T = S.trip; if (!T) return; const gross = valueOf(T.load || {}), cut = Math.round(Math.min(gross * .5, Math.max(300, gross * DRIVER_CUT)) / 10) * 10, net = Math.max(0, gross - cut);
-    S.trip = null; save(); if (truck) { api.releaseTruck(truck); truck = null; } if (net) { api.addCash(net); S.earned += net; }
+    S.trip = null; save(); if (truck) { api.releaseTruck(truck); truck = null; } if (net) { api.addCash(net); S.earned += net; if (api.ev) api.ev('farm_sell'); }
     api.sms(`${DRIVER} (pickup)`, `I don come back. Market price ${naira(gross)}, my transport ${naira(cut)}. Your ${naira(net)} don enter. Call me anytime!`);
     api.toast(`🚚 ${DRIVER} brought your money: ${naira(net)} (he took ${naira(cut)}).`, 3.4); }
 
@@ -490,7 +490,7 @@ export function createFarm(api) {
     save(); flush(); cratesShow();
     if (MARKET) api.gps(MARKET.x, MARKET.z, { name: 'Farm produce buyer', sub: MARKET.name || 'Market' });
     api.toast(`📦 You packed ${list(moved)} into your lorry (${loaded()}/${LORRY_CAP}). Drive to the produce buyer at ${MARKET && MARKET.name || 'the market'} (GPS on).`, 3.6); api.guide && api.guide('farm_lorry'); }
-  function sellLorry() { const load = S.lorry.load, v = valueOf(load); if (!v) return; const what = list(load); S.lorry.load = {}; save(); flush(); cratesShow(); api.addCash(v); S.earned += v; api.clearGps && api.clearGps();
+  function sellLorry() { const load = S.lorry.load, v = valueOf(load); if (!v) return; const what = list(load); S.lorry.load = {}; save(); flush(); cratesShow(); api.addCash(v); S.earned += v; if (api.ev) api.ev('farm_sell'); api.clearGps && api.clearGps();
     api.toast(`🚚 The buyer bought your whole lorry load: ${what}. ${naira(v)} for you, full price!`, 3.6); api.gist('market', { place: MARKET && MARKET.name || 'the market' }); }
   function cratesShow() { const n = Math.min(24, Math.ceil(loaded() / 2)); pool(crates, 'crate', n); }
   function tickCrates() {   // the crates ride on the lorry's back: 3 across, 4 along, 2 high
