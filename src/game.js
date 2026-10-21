@@ -2999,7 +2999,7 @@ function musTick(x,z,h,inside){ if(!SND||!SND.SONGS.length) return;
 /* ================= HUD ================= */
 // people talk to a woman as a woman
 const SHE=[[/\bmy son\b/g,'my daughter'],[/\bOga\b/g,'Madam'],[/\bsir!/g,'ma!'],[/\bUncle\b/g,'Aunty'],[/\bboy!/g,'girl!'],[/\bBoss\b/g,'Madam'],[/\bmy guy\b/g,'my sister'],[/\bguy man\b/g,'fine girl']];
-let toastT=0; function toast(msg,dur=2.6){ if(isF()&&/"/.test(msg)) for(const [a,b] of SHE) msg=msg.replace(a,b); const t=$('#toast'); t.textContent=msg; t.hidden=false; t.onclick=null; toastT=dur; }
+let toastT=0; function toast(msg,dur=2.6){ if(!msg) return; if(isF()&&/"/.test(msg)) for(const [a,b] of SHE) msg=msg.replace(a,b); const t=$('#toast'); t.textContent=msg; t.classList.remove('out'); t.hidden=false; t.onclick=null; toastT=dur; }
 const DISTRICTS=WD.pois.place.map(([x,z,n])=>({x,z,n,D:distAt(x,z)}));
 function districtAt(x,z){ const D=distAt(x,z); let best=D?D.name:'Mushin',bd=1e18; for(const d of DISTRICTS){ if(d.D!==D) continue; const q=(d.x-x)**2+(d.z-z)**2; if(q<bd){ bd=q; best=d.n; } } return best; }
 const atCheckpoint=(x,z)=>DISTS.some(g=>g.gate&&!distAt(x,z)&&Math.abs(x-g.gate.x)<60&&Math.abs(z-g.gate.z)<45);
@@ -3134,7 +3134,7 @@ function updateHUD(dt){ if(!started) return;
     else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
-  if(toastT>0&&!mapView.isOpen){ toastT-=dt; if(toastT<=0) $('#toast').hidden=true; }
+  if(toastT>0&&!mapView.isOpen){ toastT-=dt; const t=$('#toast'); if(toastT<.3) t.classList.add('out'); if(toastT<=0) t.hidden=true; }   // (fades out)
   if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':''; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ const job=pl&&pl.job; mapView.clearRoute(); if(!job) toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
@@ -7725,6 +7725,7 @@ function buildSimsRoom(name,g){
   return R; }
 function setSign(mesh,text,bg='#1a1410',fg='#e9c46a'){ if(!mesh) return; const g=mesh.geometry.parameters, old=mesh.material.map; mesh.material.map=texSign(text,bg,fg,g.width,g.height); mesh.material.needsUpdate=true; if(old) old.dispose(); }
 // a person standing (or dancing) at a spot inside a room or out in the street
+const LIE_YAW=0;   // the lying move along the mat
 function folk(parent,cast,at,clips,list){ const C=PEOPLE.casts[cast]; if(!C||!at) return null; const inner=cloneCast(C), root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(inner); inner.position.y=C.y0;
   root.position.set(at.x,(at.y>.1&&at.y<.6?at.y:0),at.z); root.rotation.y=at.yaw??0; parent.add(root); const mixer=new THREE.AnimationMixer(inner);
   const nm=[].concat(clips||[]).find(n=>C.clips[n])||C.idle0, clip=C.clips[nm]; if(clip){ const a=mixer.clipAction(clip); a.play(); a.time=Math.random()*clip.duration; inner.position.y=C.y0+(C.off[nm]||0); }
@@ -7861,7 +7862,7 @@ async function enterPolice(){ if(busy) return; const R=await intGet('int_police'
   goRoom(R,'spawn',starCount()>0?'Police station. You get wahala o: they dey look for you!':'Police station. Charge room is ahead.'); }
 function setupPolice(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
   R.fill=R=>{ folk(R.scene,'police_m',M.officer,['idle_1','phone'],R.folk); const cast=['areaboy','baba','areaboy','schoolboy','areaboy','baba'];
-    ['a1','a2','a3','b1','b2','b3'].forEach((k,i)=>{ const m=M['inmate_'+k]; if(!m||(k==='a1'&&JAIL.left>0)) return; const pose=m.pose; folk(R.scene,cast[i],{...m,y:0},pose==='stand'?['argue','talk','idle_1']:pose==='lie'?['idle_baba','idle_2']:['idle_2','idle_1','talk'],R.folk); }); };
+    ['a1','a2','a3','b1','b2','b3'].forEach((k,i)=>{ const m=M['inmate_'+k]; if(!m||(k==='a1'&&JAIL.left>0)) return; const pose=m.pose; folk(R.scene,cast[i],pose==='lie'?{...m,yaw:(m.yaw||0)+LIE_YAW}:{...m,y:0},pose==='stand'?['argue','talk','idle_1']:pose==='lie'?['lie']:['idle_2','idle_1','talk'],R.folk); }); };   // (the one on the mat lies down: he used to stand there with his top half in the wall)
   fillRoom(R);
   R.spot(M.exit,'Go back outside',()=>leaveRoom(STATION.front),1.8);
   R.spot(M.counter,()=>starCount()>0?'Turn yourself in':'Talk to the officer',()=>{ if(starCount()>0){ toast('"Na you we dey find! Enter cell."',3); FIGHT.heat=0; enterJail(); return; }
@@ -8764,13 +8765,19 @@ function simulate(dt){
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
+let SHARP=false, slowN=0; try{ SHARP=localStorage.getItem('naija-sharp')==='1'; }catch(e){}
+const prFloor=()=>Math.max(Q.prMin,Q.pr*.75);   // never softer than three quarters of the full picture
 function tuneResolution(avg,ivs){ const goal=capped30?33.4:16.7;
+  if(SHARP){ if(PR!==Q.pr){ PR=Q.pr; applyPR(); } return; }
   if(capped30&&avg<20) capped30=false;   // Low Power Mode was switched off
   if(probe){ const gained=avg<probe.avg*.9; if(!gained&&probe.avg>28&&probe.avg<38){ capped30=true; PR=probe.pr; applyPR(); } probe=null; prCool=6; return; }
-  if(avg>goal*1.32&&PR>Q.prMin+.01){ const m=ivs.slice().sort((a,b)=>a-b), tight=m[Math.floor(m.length*.85)]-m[Math.floor(m.length*.15)]<2.5;
-    if(!capped30&&tight&&avg>30&&avg<37){ probe={pr:PR,avg}; PR=Math.max(Q.prMin,PR*.8); applyPR(); prCool=4; return; }   // a big test step: a slow phone gains, a capped browser doesn't
-    PR=Math.max(Q.prMin,PR-.12); applyPR(); prCool=4; }
-  else if(avg<goal*1.08&&PR<Q.pr-.01&&prCool<=0){ PR=Math.min(Q.pr,PR+.06); applyPR(); prCool=5; } }
+  if(avg>goal*1.32){ if(++slowN<2) return; } else slowN=0;   // only after two slow spells in a row (a short hitch is not a reason)
+  if(avg>goal*1.32&&PR>prFloor()+.01){ const m=ivs.slice().sort((a,b)=>a-b), tight=m[Math.floor(m.length*.85)]-m[Math.floor(m.length*.15)]<2.5;
+    if(!capped30&&tight&&avg>30&&avg<37){ probe={pr:PR,avg}; PR=Math.max(prFloor(),PR*.85); applyPR(); prCool=4; return; }   // a test step: a slow phone gains, a capped browser doesn't
+    PR=Math.max(prFloor(),PR-.08); applyPR(); prCool=4; slowN=0; }
+  else if(avg<goal*1.15&&PR<Q.pr-.01&&prCool<=0){ PR=Math.min(Q.pr,PR+.1); applyPR(); prCool=3; } }   // back to sharp quickly once it runs well
+document.querySelectorAll('#sharp button').forEach(b=>{ const on=()=>document.querySelectorAll('#sharp button').forEach(x=>x.setAttribute('aria-pressed',(x.dataset.p==='sharp')===SHARP?'true':'false')); on();
+  b.addEventListener('click',()=>{ SHARP=b.dataset.p==='sharp'; try{ localStorage.setItem('naija-sharp',SHARP?'1':'0'); }catch(e){} if(SHARP&&PR!==Q.pr){ PR=Q.pr; applyPR(); } on(); toast(SHARP?'The picture stays sharp.':'The picture softens a little when the phone is busy.',2.4); }); });
 const perfIv=[];
 function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-lastT;
   if(raw<10.5) return;   // 120 Hz+ screens: draw at ~60 fps to save battery and heat
