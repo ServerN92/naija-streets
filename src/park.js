@@ -166,8 +166,8 @@ export function createPark(api) {
       }
       for (const id of [...ST.loads.keys()]) if (!seen.has(id)) { ST.loads.delete(id); dropMarker(id); }
     }
-    else if (m.t === 'pkt') api.toast(`Driver: "${['Take your ticket, abeg make I go.', 'Oya take. Na ' + m.route + ' I dey go.', 'Agbero, no vex, take am.'][m.id % 3]}" +${naira(m.got)} for you · ${naira(m.ret)} to ${m.chair}.`, 3);
-    else if (m.t === 'pkst') { if (api.street) api.street(m); api.toast(`Conductor: "${['Oya take your ticket.', 'Agbero, take am, abeg make we go.', 'Na ₦200 be this. Oya.'][m.n % 3]}" +${naira(m.got)} for you${m.held ? ` · ${naira(m.held)} for ${m.chair} at the end of the day` : ''} · ${m.n}/${m.max} today.`, 3.4); }
+    else if (m.t === 'pkt') (api.ev && api.ev('ticket')), api.toast(`Driver: "${['Take your ticket, abeg make I go.', 'Oya take. Na ' + m.route + ' I dey go.', 'Agbero, no vex, take am.'][m.id % 3]}" +${naira(m.got)} for you · ${naira(m.ret)} to ${m.chair}.`, 3);
+    else if (m.t === 'pkst') { if (api.street) api.street(m); if (api.ev) api.ev('ticket'); api.toast(`Conductor: "${['Oya take your ticket.', 'Agbero, take am, abeg make we go.', 'Na ₦200 be this. Oya.'][m.n % 3]}" +${naira(m.got)} for you${m.held ? ` · ${naira(m.held)} for ${m.chair} at the end of the day` : ''} · ${m.n}/${m.max} today.`, 3.4); }
     else if (m.t === 'pkf') { ST.fight = m.f; if (m.end) { ST.end = m.end; ST.fight = null; api.crewEnd(m.end.win); } }
     else if ((m.t === 'err' || m.t === 'ok') && m.w === 'pk') { ST.said = m.m; api.toast(m.m, 3.2); if (api.menuOpen() && MENU) setTimeout(refresh, 60); }
   }

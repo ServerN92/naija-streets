@@ -133,8 +133,8 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, g: j.g, b: j.b || '', w: j.w | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b); scene.add(R.tag); }
-    else { const changed = R.c !== j.c || R.f !== (j.f | 0), retag = R.w !== (j.w | 0) || R.b !== (j.b || ''); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || ''); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
       if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
@@ -155,7 +155,7 @@ export function createOnline(api) {
     try { C = await api.loadCast(id); if (C) X = await api.moves(C); } catch (e) { C = null; }
     R.loading = false;
     if (!C || !X || RS.get(R.id) !== R || R.root) return;
-    const inner = api.clone(C.tpl); api.setOutfit(inner, R.f >= 0 ? R.f : 0);
+    const inner = api.clone(C.tpl); api.setOutfit(inner, R.f >= 0 ? R.f : 0); if (api.tone) api.tone(inner, id, R.k);   // their skin tone
     const root = new THREE.Group(); root.rotation.order = 'YXZ'; root.add(inner); root.visible = false; scene.add(root);
     let hips = null; inner.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } if (!hips && o.isBone && /Hips$/.test(o.name)) hips = o; });
     Object.assign(R, { cast: C, X, root, inner, hips, mixer: new THREE.AnimationMixer(inner), acts: {}, cur: null, cn: '', q: -1 });

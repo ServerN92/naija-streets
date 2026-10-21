@@ -22,6 +22,12 @@ export function lifeOk(d, now = Date.now()) {
     flat: d.flat === true,
     own,
     ease: Math.round(num(d.ease, 0, 1) * 1000) / 1000,
+    eat: Math.round(num(d.eat, 0, 1) * 1000) / 1000,       // the care bars: hunger and tiredness (0 fine .. 1 full)
+    sleep: Math.round(num(d.sleep, 0, 1) * 1000) / 1000,
+    ntc: Math.round(num(d.ntc, 0, 2 * 2 * 3600)),         // the landlord's notice still running (seconds of play)
+    job: typeof d.job === 'string' && /^[a-z_]{2,16}$/.test(d.job) ? d.job : '',   // the hustle you picked
+    tk: num(d.tk, 0, 20) | 0, tkn: num(d.tkn, 0, 1e5) | 0,                       // how far along its tasks
+    hk: num(d.hk, 0, 40) | 0,                              // pure water sachets in your bag
     est,                                                  // houses bought in the estates
     estAll,                                               // whole estates bought
     estHome,                                              // the estate house you live in ('' = none)
