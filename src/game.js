@@ -13,21 +13,21 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=73b6783e60';
-import * as C2 from './char2.js?v=73b6783e60';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=73b6783e60';
-import { createPhone } from './phone.js?v=73b6783e60';
-import { createGuide } from './guide.js?v=73b6783e60';
+import * as CLOCK from './clock.js?v=f9b89d7ade';
+import * as C2 from './char2.js?v=f9b89d7ade';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=f9b89d7ade';
+import { createPhone } from './phone.js?v=f9b89d7ade';
+import { createGuide } from './guide.js?v=f9b89d7ade';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=73b6783e60';
-import { createBusiness } from './business.js?v=73b6783e60';
-import { createOnline } from './online.js?v=73b6783e60';
-import { createPolice } from './police.js?v=73b6783e60';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=73b6783e60';
-import { MapView, GPS_RED } from './mapview.js?v=73b6783e60';
+import { createFarm } from './farm.js?v=f9b89d7ade';
+import { createBusiness } from './business.js?v=f9b89d7ade';
+import { createOnline } from './online.js?v=f9b89d7ade';
+import { createPolice } from './police.js?v=f9b89d7ade';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=f9b89d7ade';
+import { MapView, GPS_RED } from './mapview.js?v=f9b89d7ade';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='73b6783e60';
+const BUILD='f9b89d7ade';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -671,6 +671,37 @@ function inBSite(x,z,pad=0){ for(const S of BSITES){ const dx=x-S.x, dz=z-S.z, c
   if(WD.foot) WD.foot=WD.foot.filter(f=>{ const p=f.p||f; if(!p||!p.length) return true; return !inBSite(p[0],p[1],2); });
   if(WD.water) WD.water=WD.water.filter(w=>!inBSite(w.p[0],w.p[1],4));
   for(const k in WD.pois){ const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!inBSite(q[0],q[1],6)); } }
+// ---- the new places made in the user's Blender (~/Documents/naija_rooms, gra/jobs/exp_job_a.py): GLOW LUXE (luxury hair,
+// nails, lashes and beauty), KINGS COURT (the big men's grooming lounge), THE IROKO ROOM (fine Nigerian dining), MAISON
+// ADUNNI (couture, the big sister of Adunni's Fashion House) and the street salons. The luxury ones stand behind a wall with
+// a gate and a gateman, most of them in Ikeja past the police toll gate; the street salons are all over, open to the road.
+// Plots were found by __ns.plotSearch (clear ground facing a road); the houses on them go. Set-local: lx across, lz from
+// the back (hz0) to the front (hz1) at the road, like the GRA sites.
+const LUXK={
+  glow:{set:'set_glow_luxe',int:'int_glow_luxe',name:'GLOW LUXE',sub:'Luxury hair, nails, lashes & beauty',hx:15,hz0:-17,hz1:11,door:1.5,gate:[0,11],guard:[4.8,10.3],col:'#e85d9b',kind:'service'},
+  kings:{set:'set_kings_court',int:'int_kings_court',name:'KINGS COURT',sub:'Grooming lounge · barbers · pool · bar',hx:12.5,hz0:-14.2,hz1:9.5,door:1.5,gate:[0,9.5],guard:[4.8,8.8],col:'#c9a227',kind:'service'},
+  iroko:{set:'set_iroko_room',int:'int_iroko_room',name:'THE IROKO ROOM',sub:'Fine Nigerian dining · bar · live band',hx:13.5,hz0:-17.2,hz1:12,door:1.5,gate:[0,12],guard:[4.8,11.3],col:'#2fbf71',kind:'food'},
+  maison:{set:'set_maison_adunni',int:'int_maison_adunni',name:'MAISON ADUNNI',sub:'Couture · bespoke · aso-ebi',hx:12.5,hz0:-15.4,hz1:9.5,door:1.5,gate:[0,9.5],guard:[4.8,8.8],col:'#e8b04a',kind:'shop'},
+  street:{set:'set_blessing_salon',int:'int_blessing_salon',name:'',sub:'Hair · braids · nails · make-up',hx:4.8,hz0:-7.4,hz1:2.9,door:1.3,street:true,col:'#f2b705',kind:'service'}};
+const LUXP=[
+  {k:'glow',x:-4186.08,z:1301.63,ry:-2.7533,area:'Ikeja'},{k:'iroko',x:-4131.55,z:1280.41,ry:-2.7533,area:'Ikeja'},
+  {k:'kings',x:-1961.19,z:1091.07,ry:2.271,area:'Opebi'},{k:'maison',x:-1960.85,z:1031.2,ry:-.8313,area:'Opebi'},
+  {k:'glow',x:-4524.98,z:503.5,ry:-1.1801,area:'Adegbola'},{k:'kings',x:-4484.45,z:608.77,ry:-1.2143,area:'Adegbola'},
+  {k:'iroko',x:-3975.69,z:623.07,ry:-2.5682,area:'Awolowo Way'},
+  {k:'glow',x:-1508.81,z:-476.48,ry:-.0029,area:'Mushin'},{k:'kings',x:-1565.02,z:-644.56,ry:-1.6795,area:'Mushin'},
+  {k:'street',x:258.12,z:-299.32,ry:1.8416,area:'Agege Motor Road',name:"BLESSING'S UNISEX BEAUTY SALON",pal:0},
+  {k:'street',x:279.07,z:1127.65,ry:-.7464,area:'Ishaga Road',name:'GRACE TOUCH BEAUTY SALON',pal:1},
+  {k:'street',x:-792.35,z:729.31,ry:-.0294,area:'Akanro Street',name:'MAMA TOBI HAIR PALACE',pal:2},
+  {k:'street',x:-233.82,z:-1210.24,ry:.5864,area:'Akinyemi Crescent',name:'DIVINE FAVOUR SALON',pal:3},
+  {k:'street',x:1085.96,z:248.34,ry:-.6453,area:'Agege Motor Road',name:"NNEKA'S BRAIDS & NAILS",pal:4},
+  {k:'street',x:-735.37,z:-571.62,ry:1.0137,area:'Palm Avenue',name:'QUEEN ESTHER BEAUTY HOME',pal:5},
+  {k:'street',x:-4098.32,z:1077.47,ry:-1.0171,area:'Simbiat Abiola Road',name:'FINE GIRL HAIR STUDIO',pal:6},
+  {k:'street',x:-2812.67,z:-203.72,ry:-1.0792,area:'Allen Avenue',name:'ROYAL TOUCH UNISEX SALON',pal:7}];
+const luxLoc=(P,x,z)=>{ const dx=x-P.x, dz=z-P.z, c=Math.cos(P.ry), s=Math.sin(P.ry); return {lx:dx*c-dz*s,lz:dx*s+dz*c}; };
+function inLuxP(x,z,pad=0){ for(const P of LUXP){ const K=LUXK[P.k], q=luxLoc(P,x,z); if(Math.abs(q.lx)<K.hx+pad&&q.lz>K.hz0-pad&&q.lz<K.hz1+pad) return P; } return null; }
+{ const nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const r=Math.max(WD.bld[i+2],WD.bld[i+3])/2; if(!inLuxP(WD.bld[i],WD.bld[i+1],r+1.5)) for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb;
+  WD.areas=WD.areas.filter(a=>{ let x=0,z=0; const n=a.p.length/2; for(let i=0;i<a.p.length;i+=2){ x+=a.p[i]; z+=a.p[i+1]; } return !inLuxP(x/n,z/n,2); });
+  for(const k in WD.pois){ const L=WD.pois[k]; if(Array.isArray(L)&&Array.isArray(L[0])) WD.pois[k]=L.filter(q=>!inLuxP(q[0],q[1],4)); } }
 // ---- Ikeja GRA (the Alausa side of Kudirat Abiola Way, just past the Mushin gate): quiet streets, big villas behind walls,
 // lawns and palms, and four places made in the user's Blender: EKO GRAND HOTEL, NAIJA MOTORS, the mechanic garage and
 // Adunni's Fashion House (each a set: hz0..hz1 is back..front, the front looks at the road). The crowded houses there go.
@@ -1600,6 +1631,27 @@ for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B
   if(B.name==='set_city'){ const g=new THREE.PlaneGeometry(B.hx*2,B.hz*2).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*B.hx/4,uv.getY(i)*B.hz/4); const m=new THREE.Mesh(g,MAT.lawn); m.position.set(B.x,.012,B.z); m.rotation.y=B.ry; m.receiveShadow=true; scene.add(m); }   // the city quarter stands on grass, as in Blender
   PLACES.push({name:B.label,sub:'Mushin',kind:'place',x:B.x,z:B.z});
   S.onLoad=S2=>{ setPlants(S2); if(B.name==='set_market'){ S2.folk=[]; S2.tick=(dt,d)=>marketFolk(S2,dt,d); } }; }
+// the new places' sets: they load when you come near; the paving is theirs (no wild tufts on it); each street salon
+// gets its own painted signboard (name and colours) over the one from Blender
+const LUX_PAL=[['#f9d43a','#d0202c','#1b3fa0','#1b3fa0'],['#fbe7ef','#c2185b','#4a148c','#c2185b'],['#e6f4ea','#1b7a3a','#7a3b12','#1b7a3a'],['#fff3d6','#7a3b12','#b8860b','#7a3b12'],
+  ['#e3f2fd','#0d47a1','#c62828','#0d47a1'],['#fce4ec','#880e4f','#1a237e','#880e4f'],['#fffde7','#e65100','#33691e','#e65100'],['#ede7f6','#4527a0','#c2185b','#4527a0']];
+function texStreetSign(name,sub,pal){ const [bg,t1,t2,band]=pal, W=2048, H=480, [c,g]=cv(W,H);
+  g.fillStyle=bg; g.fillRect(0,0,W,H); g.lineWidth=22; g.strokeStyle=band; g.strokeRect(11,11,W-22,H-22); g.lineWidth=6; g.strokeStyle=t1; g.strokeRect(40,40,W-80,H-80);
+  g.textAlign='center'; g.textBaseline='middle'; const words=name.split(' '), cut=Math.max(1,Math.ceil(words.length/2)), l1=words.slice(0,cut).join(' '), l2=words.slice(cut).join(' ');
+  g.lineJoin='round'; for(const [t,y,col,sz] of [[l1,130,t1,150],[l2,262,t2,118]]){ if(!t) continue; fitFont(g,t,W-780,sz,'Bungee'); g.strokeStyle='#ffffff'; g.lineWidth=14; g.strokeText(t,W/2,y); g.fillStyle=col; g.fillText(t,W/2,y); }
+  g.fillStyle=band; g.fillRect(330,350,W-660,74); g.fillStyle='#ffffff'; fitFont(g,sub,W-760,44,'"Barlow Semi Condensed"','700'); g.fillText(sub,W/2,388);
+  for(const [x,hair] of [[190,'#1a120c'],[W-190,'#3a1a0c']]){ g.fillStyle=hair; g.beginPath(); g.ellipse(x,215,108,130,0,0,7); g.fill(); g.fillStyle='#7a4a2e'; g.beginPath(); g.ellipse(x,240,64,82,0,0,7); g.fill();
+    g.fillStyle='#120c08'; g.beginPath(); g.arc(x-22,228,7,0,7); g.arc(x+22,228,7,0,7); g.fill(); g.strokeStyle='#b0303a'; g.lineWidth=5; g.beginPath(); g.arc(x,262,20,.3,2.8); g.stroke(); }
+  const n=g.getImageData(0,0,W,H); for(let i=0;i<n.data.length;i+=4){ const k=(Math.random()-.5)*14; n.data[i]+=k; n.data[i+1]+=k; n.data[i+2]+=k; } g.putImageData(n,0,0);
+  return tx(c,true,false,2048); }
+for(const P of LUXP){ const K=LUXK[P.k], S=addSet(K.set,P.x,P.z,P.ry,{near:K.street?420:650,detailDist:K.street?110:160}); P.S=S; P.K=K;
+  P.title=K.street?P.name:`${K.name} · ${P.area}`; const c=setPt(P,0,(K.hz0+K.hz1)/2); SCAT_OFF.push({x:c.x,z:c.z,ry:P.ry,hw:K.hx+1,hd:(K.hz1-K.hz0)/2+1});
+  const d=setPt(P,0,K.door); P.door={x:d.x,z:d.z,ry:P.ry,yaw:P.ry};
+  if(K.gate){ const g=setPt(P,K.gate[0],K.gate[1]), w=setPt(P,K.guard[0],K.guard[1]); P.gateAt={x:g.x,z:g.z}; P.guardAt={x:w.x,z:w.z,yaw:P.ry}; }
+  S.onLoad=S2=>{ setPlants(S2); if(!K.street) return;
+    for(const grp of [S2.far,S2.near_]) if(grp&&grp.traverse) grp.traverse(o=>{ if(o.isMesh&&/SignImg/.test(o.material.name||'')) o.visible=false; });
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(6.8,1.59),new THREE.MeshStandardMaterial({map:texStreetSign(P.name,'HAIR  •  BRAIDS  •  WEAVING  •  NAILS  •  MAKE-UP  •  PEDICURE',LUX_PAL[P.pal%LUX_PAL.length]),roughness:.75}));
+    m.position.set(0,4.3,.275); m.castShadow=false; m.layers.set(1); S2.root.add(m); }; }
 // the market street: buyers walking up and down, people standing at the shop fronts and stalls (your own townspeople)
 function marketFolk(S,dt,d){ if(d<S.detailDist&&!S.peopleIn&&PEOPLE.n){ const ids=townCasts(); if(!ids.length) return; S.peopleIn=true; const R=mulberry32(919), n=Q.npc>=24?34:Q.npc>=14?24:14;
     for(let i=0;i<n;i++){ const id=ids[(R()*ids.length)|0], C=PEOPLE.casts[id], walk=i%5<3&&C.clips.walk;
@@ -1784,7 +1836,7 @@ function plantTrees(kind,items,dist){ const t=TREES[kind]; new CullSet([{geo:t.g
   new CullSet([{geo:TREE_SHADE.geo,mat:TREE_SHADE.mat,dist:Math.min(dist,Q.draw*.45),shadow:false}],items.map(it=>({x:it.x,y:(it.y??SLAB)+.03,z:it.z,sx:t.W*.62*it.sx,sy:1,sz:t.W*.62*it.sx})),{shadowDist:0,name:kind+'-shade'}); }
 
 // trees: along the streets wherever a house leaves room, more in schools, the hospital grounds and the parks
-{ const trees=[], palms=[]; const free=(x,z,r)=>onLand(x,z,2)&&!roadAt(x,z,.4)&&!EST.in(x,z,10)&&!resolveCircle({x,z},r);   // (the estates keep their fronts clear)
+{ const trees=[], palms=[]; const free=(x,z,r)=>onLand(x,z,2)&&!roadAt(x,z,.4)&&!EST.in(x,z,10)&&!inLuxP(x,z,3)&&!resolveCircle({x,z},r);   // (the estates keep their fronts clear)
   for(const e of ROADS){ if(e.c>6||e.c===0) continue; const A0=nodes[e.a], step0=e.c<=3?16:30;
     for(let t=A0.r+6;t<e.len-6;t+=rr(step0,step0*1.6)) for(const sd of [-1,1]){ if(R()<.45) continue; const o=e.hw+rr(1.3,2.4), x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
       if(Math.hypot(x-APT.front.x,z-APT.front.z)<6||!free(x,z,1.1)) continue; (e.c<=3&&R()<.5?palms:trees).push({x,y:0,z,ry:R()*6,sx:rr(.75,1.1),sy:rr(.8,1.15),sz:rr(.75,1.1)}); } }
@@ -8107,6 +8159,93 @@ function setupAdunni(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=
   R.spot(M.tailor,'Sew native wear (tailor)',()=>boutiqueMenu({title:'TAILOR · NATIVE WEAR',note:'Baba Tailor: "Make I take your measurement."',mult:2.2,only:id=>NATIVE.has(id),sewn:true}),1.6);
   R.spot(M.mirror,'Look in the mirror',()=>toast(mpick(['Correct! You fine pass.','The mirror say: "Who be this fine person?"']),2.4),1.3); }
 
+// ---- the new places, inside: one room for each kind (the same room in every branch); you come back out of the branch you went in
+const LUX={cur:null,greet:new Map(),ate:0,glam:0};
+const wearId=()=>{ const id=WARD.cur, C=V2.casts&&V2.casts[id]; const o=C&&C.meta&&C.meta.outfits?C.meta.outfits[fitOf(id)]:null; return o?o.id:null; };
+const luxOut=()=>leaveRoom(LUX.cur&&LUX.cur.door);
+const luxSay=(t,s=3.2)=>toast(t,s);
+function luxServe(title,note,rows,done){ openMenu(title,note,rows.map(([name,sub,price,line])=>({name,sub,price,act:()=>{ closeMenu(); fadeSwap(()=>{}); setTimeout(()=>{ luxSay(line,3.6); if(done) done(name); },420); }}))); }
+async function enterLux(P,force){ if(busy) return; const K=P.K;
+  if(!K.street&&!force&&wearId()==='rags'){ luxSay(mpick([`Gateman: "Ah ah! ${isF()?'Madam':'Oga'}, this place no be for rags. Go change your cloth first."`,'Gateman: "Who you be? Dress well before you enter here, abeg."','Gateman: "With this torn cloth? Security no go gree. Go wear better thing."']),4); return; }
+  const R=await intGet(K.int,`Opening ${P.title}…`); if(!R) return; LUX.cur=P; luxSetup(P.k,R); R.label=P.title;
+  goRoom(R,'spawn',K.street?`${P.name}. "Welcome! Sit down, we go attend to you now now."`:P.k==='glow'?`${P.title}. "Welcome, darling! Hair, nails, lashes: we dey here for you."`:P.k==='kings'?`${P.title}. "Welcome, boss! Fresh cut, cold drink, game of pool."`:P.k==='iroko'?`${P.title}. "Good evening. Table for you?"`:`${P.title}. "Welcome to Maison Adunni. Couture, made to your measure."`); }
+function luxSetup(k,R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks, at=n=>M[n]; R.camDist=k==='street'?2.6:3.0;
+  const guests=(n,rect,seed,cs,av)=>roomGuests(R,n,rect,seed,cs,av);
+  R.spot(at('exit'),'Go back outside',luxOut,1.4);
+  if(k==='glow'){
+    R.fill=R=>{ folk(R.scene,'suit_lady',at('receptionist'),['idle_suit','f_talk'],R.folk); folk(R.scene,'p_amaka',at('stylist_1'),['f_talk','idle_3'],R.folk); folk(R.scene,'lady_black',at('stylist_2'),['idle_3','text'],R.folk);
+      folk(R.scene,'p_ada',at('stylist_3'),['talk','idle_2'],R.folk); folk(R.scene,'lady_red',at('nail_tech'),['idle_3','phone'],R.folk); folk(R.scene,'p_bisi',at('makeup_artist'),['f_talk','idle_3'],R.folk); folk(R.scene,'mama',at('braider'),['idle_1','talk'],R.folk);
+      guests(5,[-9,-12,9,-2],141,[['lady_red',['phone','idle_3']],['lady_black',['text','idle_3']],['p_ada',['talk','idle_2']],['suit_lady',['f_talk','idle_suit']]],[M.spawn,M.desk,M.lounge,M.wash]); };
+    fillRoom(R);
+    const H=[['Silk press','Wash, blow-dry and flat iron, bone straight',25000,'Hair don shine like mirror. Everybody go dey look you!'],['Frontal wig install','Glue-less, melted lace, styled your way',45000,'The lace don melt finish. Nobody fit know say na wig!'],
+      ['Knotless braids','Mid-back, feed-in, 8 hours of patience',60000,'Knotless don land! Light on your head, heavy on the eye.'],['Colour and treatment','Honey blonde or burgundy, deep conditioning',38000,'The colour enter well well. You don glow!']];
+    for(const n of ['chair_1','chair_2','chair_3','chair_4']) R.spot(at(n),'Make your hair',()=>luxServe('GLOW LUXE · HAIR','"Sit down, darling. Wetin we dey do today?"',H,()=>{ LUX.glam=T0; }),1.4);
+    R.spot(at('wash'),'Wash and deep condition',()=>luxServe('GLOW LUXE · WASH BAY','Warm water, scalp massage',[['Wash & deep condition','Steam, scalp massage, hot towel',12000,'Your head don light like feather. Scalp massage na correct thing!']]),1.4);
+    R.spot(at('dryer'),'Sit under the dryer',()=>luxSay('Warm air, gist with the ladies, small chin chin. 30 minutes don pass like 5!'),1.5);
+    R.spot(at('nails'),'Do your nails',()=>luxServe('GLOW LUXE · NAIL BAR','"Pick your colour, any one you like."',[['Gel manicure','Shape, cuticle care, gel colour',18000,'Ten fingers, ten jewels. Your nails dey sparkle!'],['Acrylic set','Long coffin, ombre or chrome',28000,'Long nails, soft life. Mind how you press phone!']]),1.5);
+    R.spot(at('pedicure'),'Pedicure spa',()=>luxServe('GLOW LUXE · PEDICURE','Throne chair, warm foot spa',[['Spa pedicure','Soak, scrub, massage, polish',20000,'Your feet don soft like baby own. You go fit wear any sandals!']]),1.6);
+    R.spot(at('makeup'),'Make-up and lashes',()=>luxServe('GLOW LUXE · MAKE-UP','"Owambe, wedding or photoshoot?"',[['Lash extensions','Classic or volume',15000,'Your lashes dey long like fan. Blink, blink!'],['Full glam make-up','Owambe beat, setting spray included',35000,'Face don beat! Na you go be the star of the party.'],['Gele tying','Any style, any fabric',8000,'The gele stand gidigba. Mama go proud of you!']]),1.5);
+    R.spot(at('wigs'),'Buy a wig',()=>luxServe('GLOW LUXE · WIG BAR','100% human hair, ready to wear',[['Bob wig, 12 inch','Double drawn, natural black',85000,'New wig, new you. Rock am!'],['Bone straight, 24 inch','Raw hair, frontal',220000,'This one na serious hair. You don arrive!'],['Body wave, burgundy','26 inch, glue-less',180000,'Burgundy body wave! E dey move as you dey waka.']]),1.5);
+    R.spot(at('braids'),'Braids corner',()=>luxServe('GLOW LUXE · BRAIDS','"Which style we dey do?"',[['Cornrows','Straight back or Ghana weaving',15000,'The lines dey straight like ruler. Clean!'],['Fulani braids','With beads and cuffs',42000,'Fulani braids with the beads. You fine pass!']]),1.5);
+    R.spot(at('desk'),'Talk to the receptionist',()=>luxSay(mpick(['"Welcome to GLOW LUXE! You get appointment? No wahala, we fit fit you in."','"Our stylists na the best for Lagos. Make yourself comfortable."','"Champagne or zobo while you wait?"'])),1.5);
+    R.spot(at('lounge'),'Relax in the lounge',()=>luxSay('Velvet sofa, cold zobo, Afrobeats on low. Soft life!'),1.6);
+    R.spot(at('selfie'),'Take a selfie at the flower wall',()=>luxSay(mpick(['Click! The flower wall + the glow queen sign. This one go blow for Instagram.','Selfie don land. 500 likes before you reach home!'])),1.5); }
+  else if(k==='street'){
+    R.fill=R=>{ folk(R.scene,'mama',at('owner'),['talk','idle_1'],R.folk); folk(R.scene,'lady_black',at('stylist_1'),['idle_3','text'],R.folk); folk(R.scene,'p_basira',at('stylist_2'),['f_talk','idle_3'],R.folk);
+      guests(3,[-3,-5.6,3.6,-1],77,[['lady_red',['phone','idle_3']],['girl',['f_idle','text']],['mama',['idle_1','talk']]],[M.spawn,M.wash]); };
+    fillRoom(R);
+    const H=[['Washing and setting','Wash, roller set, dryer',3000,'Your hair don fresh. Fine girl!'],['Ghana weaving','Neat lines, small attachment',8000,'The Ghana weaving straight well. Correct!'],['Knotless braids','Medium size, waist length',25000,'Knotless don land. Your neck go rest small o!'],
+      ['Wig install','Glue-less, we go style am',10000,'Wig don sit gidigba. Nobody go know!'],['Relaxer','Retouch, no burn',5000,'Relaxer don take. Your hair soft like silk!']];
+    for(const n of ['chair_1','chair_2','chair_3']) R.spot(at(n),'Make your hair',()=>luxServe(LUX.cur?LUX.cur.name:'SALON','"Sit down, my sister. Wetin we dey do?"',H),1.3);
+    R.spot(at('wash'),'Wash your hair',()=>luxServe(LUX.cur?LUX.cur.name:'SALON','Bucket water, small shampoo',[['Wash and condition','Cold water today, NEPA take light',2000,'Na cold water but e clean well. Your head don fresh!']]),1.3);
+    R.spot(at('dryer'),'Sit under the dryer',()=>luxSay(mpick(['The dryer dey hum. Gen dey shout outside. You dey hear all the gist of the street.','Generator dey run. Small heat, plenty gist.'])),1.3);
+    R.spot(at('nails'),'Do your nails',()=>luxServe(LUX.cur?LUX.cur.name:'SALON','"Fix nails or polish?"',[['Manicure','Polish any colour',4000,'Your nails dey shine. You fit go!'],['Pedicure','Bowl of warm water, scrub, polish',6000,'Your legs don clean. Shine shine!'],['Fix nails','Stick-on, any length',3500,'The nails don stick. No open soda with am o!']]),1.3);
+    R.spot(at('wait'),'Wait on the bench',()=>luxSay(mpick(['Nollywood dey play for TV. Everybody dey shout at the screen!','You siddon dey wait. Gist about the landlord, the price of tomato and somebody wedding.'])),1.4);
+    R.spot(at('owner'),'Talk to the owner',()=>luxSay(mpick(['"My dear, come back on Saturday morning, we go do your hair for owambe."','"No credit today, come tomorrow!" (she points at the board)','"You fit bring your own attachment, or buy from us."'])),1.3); }
+  else if(k==='kings'){
+    R.fill=R=>{ folk(R.scene,'suit_lady',at('receptionist'),['idle_suit','f_talk'],R.folk); for(const n of ['barber_1','barber_2','barber_3','barber_4']) folk(R.scene,'areaboy',at(n),['idle_1','talk'],R.folk);
+      folk(R.scene,'p_tunde',at('bartender'),['idle_1','talk'],R.folk); folk(R.scene,'baba',at('shine'),['idle_baba','talk'],R.folk);
+      guests(5,[-6,-11,6,-2],303,[['baba',['talk','idle_baba']],['p_tunde',['idle_1','text']],['areaboy',['phone','idle_1']],['lady_red',['phone','idle_3']]],[M.spawn,M.pool,M.bar,M.desk]); };
+    fillRoom(R);
+    const C=[['Low cut','Clean low cut with the machine',8000,'Low cut don clean. You dey like oga at the top!'],['Skin fade + beard','Fade, line-up, hot towel, beard oil',15000,'The fade dey blend like Photoshop. Beard sharp!'],
+      ['Waves and dye','360 waves, jet black dye',20000,'The waves dey move like ocean. You fit make person sea-sick!'],['Dreadlocks retwist','Retwist and style',25000,'Your locs don fresh. Rasta for life!']];
+    for(let i=1;i<=8;i++) R.spot(at('cut_'+i),'Get a cut',()=>luxServe('KINGS COURT · BARBERS','"Boss, siddon. Wetin we dey do today?"',C),1.4);
+    R.spot(at('wash'),'Wash and hot towel',()=>luxServe('KINGS COURT','Shampoo, scalp massage, hot towel',[['Wash & hot towel','Ten minutes of peace',6000,'Hot towel for face. Stress don comot!']]),1.4);
+    R.spot(at('shine'),'Shine your shoes',()=>luxServe('KINGS COURT · SHOE SHINE','Baba Shine',[['Shoe shine','Polish, buff, the works',2000,'Your shoe dey shine like mirror. You fit see your face!']]),1.4);
+    R.spot(at('pool'),'Play pool (₦5,000 bet)',()=>{ if(CASH.n<5000){ luxSay('"No money, no game. Pool na for those wey get change."'); return; } addCash(-5000); cashHUD(); setTimeout(()=>{ if(Math.random()<.48){ addCash(10000); cashHUD(); luxSay(mpick(['You pot the black ball clean! +₦10,000. "This guy na pro!"','Bank shot! You win the money. The boys dey hail you.']),3.6); } else luxSay(mpick(['You miss the black ball. Money don go. "Better luck next time, boss!"','Scratch on the 8 ball! The man laugh, collect him money.']),3.6); },600); },1.6);
+    R.spot(at('bar'),'Order a drink',()=>luxServe('KINGS COURT · BAR','"Wetin you dey drink, boss?"',[['Chapman','Cold, with cucumber',3000,'Chapman cold like Jos weather. Sweet!'],['Malt','Ice cold',1500,'Malt for the body. Correct!'],['Whisky, one shot','Single malt, on the rocks',9000,'Smooth! You dey feel like CEO.'],['Small chops','Puff-puff, samosa, spring roll',5000,'Small chops na big chops. You chop finish!']]),1.5);
+    R.spot(at('tv'),'Play FIFA on the big screen (₦1,000)',()=>{ if(CASH.n<1000){ luxSay('"₦1,000 per match, boss."'); return; } addCash(-1000); cashHUD(); const w=Math.random(); luxSay(w<.45?'Last minute goal! You win 2-1. The whole lounge shout!':w<.75?'1-1 draw. Rematch? Another ₦1,000.':'You lose 3-0. "Your controller spoil?" everybody dey laugh.',3.6); },1.6);
+    R.spot(at('desk'),'Talk to the receptionist',()=>luxSay(mpick(['"Welcome to KINGS COURT. Waiting time na ten minutes. Pool table dey free."','"Members get free drink every Friday. You wan register?"'])),1.5); }
+  else if(k==='iroko'){
+    R.fill=R=>{ folk(R.scene,'suit_lady',at('hostess'),['idle_suit','f_talk'],R.folk); folk(R.scene,'p_tunde',at('bartender'),['idle_1','talk'],R.folk); folk(R.scene,'baba',at('chef'),['idle_baba','talk'],R.folk);
+      folk(R.scene,'mama',at('chef_2'),['idle_1','talk'],R.folk); folk(R.scene,'p_amaka',at('singer'),['f_talk','sassy'],R.folk); folk(R.scene,'areaboy',at('waiter'),['idle_1','talk'],R.folk); folk(R.scene,'p_femi',at('waiter_2'),['idle_1','phone'],R.folk);
+      guests(6,[-8,-14,8,-2],512,[['suit_lady',['f_talk','idle_suit']],['baba',['talk','idle_baba']],['lady_red',['phone','idle_3']],['p_ada',['talk','idle_2']]],[M.spawn,M.bar,M.pass,M.host]); };
+    fillRoom(R);
+    const F=[['Party Jollof, smoked chicken','The one wey dey sweet pass all',18500,'This jollof get that party taste. Smoky, sweet, correct!'],['Seafood okra & pounded yam','Prawns, crab, fish',24000,'Okra dey draw, pounded yam soft. You lick your finger!'],['Goat meat pepper soup','Hot, with yam',12000,'Pepper soup hot like fire. Your eye don clear!'],
+      ['Asun & fried plantain','Spicy goat, dodo',9500,'Asun and dodo. Heaven don land for plate.'],['Ofada rice & ayamase','Designer stew, local rice',16000,'Ayamase pepper dey enter. Water! Water!'],['Grilled croaker fish','Whole fish, chips, pepper sauce',28000,'The fish fresh, the pepper sauce dey talk. Big man food!']];
+    const D=[['Chapman (house)','Our special',4500,'Chapman with the orange and cucumber. Sweet!'],['Palm wine, chilled','Fresh tapped',5000,'Fresh palm wine. Small small o!'],['Red wine, glass','French',12000,'Wine for your hand like say you be chief.'],['Zobo, iced','With ginger',2500,'Zobo cold and spicy. Correct drink!']];
+    const eat=()=>luxServe('THE IROKO ROOM · MENU','"Tonight\'s menu, sir/ma."',F,()=>{ LUX.ate=T0; });
+    for(let i=1;i<=7;i++) R.spot(at('table_'+i),'Sit and order food',eat,1.5);
+    for(let i=1;i<=4;i++) R.spot(at('booth_'+i),'Sit in a booth and order',eat,1.4);
+    R.spot(at('bar'),'Order a drink',()=>luxServe('THE IROKO ROOM · BAR','"Wetin you go drink?"',D),1.5);
+    R.spot(at('pass'),'Look into the kitchen',()=>luxSay(mpick(['Chef dey shout: "Service! Table four!" The smell of jollof dey enter your nose.','Pots dey boil, plantain dey fry. The kitchen hot like Lagos sun.'])),1.5);
+    R.spot(at('stage'),'Request a song from the band',()=>luxServe('THE IROKO ROOM · LIVE BAND','Highlife and Afrobeats',[['Request a song','Spray the band too',5000,'The band don start your song. Everybody dey dance!']]),1.6);
+    R.spot(at('host'),'Talk to the hostess',()=>luxSay(mpick(['"Good evening. Table for how many?"','"Our live band start at 8. Highlife tonight."','"The restroom dey for back, sir/ma. Free for our guests."'])),1.4);
+    R.spot(at('pass')?{x:at('pass').x-2.6,z:at('pass').z}:null,'Use the restroom',()=>{ if(LUX.ate&&T0-LUX.ate<1800){ LIFE.ease=0; LIFE_SYNC.warn75=false; lifeSave(); luxSay('Clean restroom, nice smell, soft tissue. Relief!'); } else { if(CASH.n<500){ luxSay('"Restroom na for customers. Order something first."'); return; } addCash(-500); cashHUD(); LIFE.ease=0; LIFE_SYNC.warn75=false; lifeSave(); luxSay('₦500 for the restroom (you never order food). Relief!'); } },1.2); }
+  else if(k==='maison'){
+    R.fill=R=>{ folk(R.scene,'p_amaka',at('owner'),['f_talk','idle_3'],R.folk); folk(R.scene,'baba',at('tailor'),['idle_baba','talk'],R.folk); folk(R.scene,'p_basira',at('seamstress'),['idle_3','f_talk'],R.folk);
+      guests(4,[-7,-10,7,-2],626,[['lady_red',['phone','idle_3']],['lady_black',['idle_3','text']],['p_ada',['talk','idle_2']],['suit_lady',['f_talk','idle_suit']]],[M.spawn,M.desk,M.fitting,M.mirror]); };
+    fillRoom(R);
+    const shop=()=>boutiqueMenu({title:'MAISON ADUNNI',note:'Adunni: "Couture pieces. You go shine pass everybody!"',mult:3.2,only:id=>!NATIVE.has(id)});
+    const sew=()=>boutiqueMenu({title:'MAISON ADUNNI · BESPOKE',note:'The tailor: "Make I take your measurement. Lace, aso-oke or ankara?"',mult:3.6,only:id=>NATIVE.has(id),sewn:true});
+    R.spot(at('desk'),'Talk to Adunni',()=>luxSay(mpick(['Adunni: "Welcome to the Maison! Wedding, owambe, red carpet, we do am all."','Adunni: "Aso-ebi for the whole family? Give me two weeks."','Adunni: "Everything here na one of one. Nobody go wear the same."'])),1.5);
+    R.spot(at('rails'),'Buy couture',shop,1.6); R.spot(at('cases'),'Look at the accessories',shop,1.5); R.spot(at('podium'),'Look at the gowns',shop,1.8);
+    R.spot(at('window_l'),'Look at the window display',shop,1.5); R.spot(at('window_r'),'Look at the window display',shop,1.5);
+    R.spot(at('tailor'),'Bespoke native wear (tailor)',sew,1.6); R.spot(at('fabric'),'Choose fabric for bespoke',sew,1.6);
+    R.spot(at('fitting'),'Use the fitting room',()=>{ if(typeof openWard==='function') openWard(); else luxSay('You try am on. E fit you like glove!'); },1.5);
+    R.spot(at('mirror'),'Look in the three-way mirror',()=>luxSay(mpick(['Front, side, back: you fine from every angle!','The mirror don confirm am: na you be the main character.'])),1.4);
+    R.spot(at('lounge'),'Sit in the client lounge',()=>luxSay('Emerald velvet sofa and a glass of zobo. Adunni go soon attend to you.'),1.6); } }
+
 // ---- the mechanic: drive in, step out, talk to Baba; the car nearest the yard gets fixed
 function garageCar(){ const c=gp('garage',0,0); let best=null, bd=1e9; for(const v of vehicles){ if(v.ai||v===RIDE.v||!(v.dmg>0||v.wreck)) continue; const d=Math.hypot(v.x-c.x,v.z-c.z)-(v.mine?15:0); if(d<30&&d<bd){ bd=d; best=v; } } return best; }
 function garageMenu(){ const v=garageCar(); if(!v){ toast(mpick(['Mechanic: "Bring the car inside the yard first. Wetin spoil?"','Mechanic: "Your car no get problem. Na fuel you need?"']),3); return; }
@@ -8183,6 +8322,14 @@ DOORS.push({x:EKO.back.x,z:EKO.back.z,r:2,label:'Go into the hotel lobby',act:()
 { const m=gp('hotel',-4,-36.6); DOORS.push({x:m.x,z:m.z,r:2.6,label:'Swim in the pool',act:()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+15); }); toast(mpick(['You dive in. The water cool well well!','Ten laps of the pool. Your body don fresh.']),3); }}); }
 { const m=gp('hotel',70,39.6); DOORS.push({x:m.x,z:m.z,r:2.4,label:'Golf club · play 6 holes (₦15,000)',act:()=>{ if(CASH.n<15000){ toast('"Green fee na ₦15,000. Come back."',2.8); return; } addCash(-15000); cashHUD(); golfRound(); }}); }
 doorMark(GRA_DOOR.motors.x,GRA_DOOR.motors.z,'#2fbf71','ENTER · NAIJA MOTORS'); doorMark(GRA_DOOR.boutique.x,GRA_DOOR.boutique.z,'#e85d9b','ENTER · ADUNNI\'S FASHION HOUSE');
+// the new places on the map, their doors, and the gatemen at the luxury gates (they greet you, and turn back rags)
+for(const P of LUXP){ const K=P.K;
+  PLACES.push({name:P.title,sub:K.street?`Street salon · ${K.sub} · ${P.area}`:`${K.sub} · ${P.area}`,kind:K.kind,x:P.x,z:P.z});
+  DOORS.push({x:P.door.x,z:P.door.z,r:K.street?1.8:2.2,label:`Enter ${K.street?P.name:P.title}`,act:()=>enterLux(P)});
+  doorMark(P.door.x,P.door.z,K.col,`ENTER · ${K.street?P.name:K.name}`);
+  if(P.guardAt) worldGroup(P.x,P.z,G=>{ const f=folk(scene,'baba',P.guardAt,['idle_baba','idle_1'],G.list); if(f) f.root.position.y=0;
+    G.tick=()=>{ const d=Math.hypot(player.x-P.gateAt.x,player.z-P.gateAt.z); if(d<5&&mode==='walk'&&T0-(LUX.greet.get(P)||-99)>90){ LUX.greet.set(P,T0);
+        toast(wearId()==='rags'?`Gateman: "Hey! Where you dey go with this rags? This na ${K.name}."`:mpick([`Gateman: "Welcome to ${K.name}, ${isF()?'madam':'oga'}! Enter, enter."`,`Gateman: "Good day ${isF()?'ma':'sir'}! Park inside, I go watch your car."`,'Gateman: "You look sharp today! Welcome."']),3.2); } }; }); }
 PLACES.push({name:'NAIJA MOTORS',sub:'Car showroom · Ikeja GRA · brand new and tokunbo',kind:'cars',x:GRA.sites.motors.x,z:GRA.sites.motors.z},
   {name:'Adunni\'s Fashion House',sub:'Boutique and tailor · Ikeja GRA',kind:'shop',x:GRA.sites.boutique.x,z:GRA.sites.boutique.z},
   {name:'Baba Sule Mechanic',sub:'Mechanic · fix your car · Ikeja GRA',kind:'service',x:GRA.sites.garage.x,z:GRA.sites.garage.z},
@@ -9001,6 +9148,21 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     requestAnimationFrame(tick); })(performance.now());
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
+    // dev: plots for the new places (salons, barbers, restaurants, fashion houses), facing a road, clear of everything
+    plotSearch(hx,hz0,hz1,maxC=4,step=12,space=50,box=null){ const out=[], bizS=[[265.98,-17.85],[-143.05,206.92],[82.11,-415.92],[-274.61,-379.09],[738.22,11.62],[1043.05,537.73],[-1058.91,-1566.99],[-4058.97,935.85],[304.73,-150.51],[-180.69,345.03],[-140.06,-425.01],[796.67,122.87],[1141,433.78],[-3963.78,899.85],[-95.83,116.51],[354.07,-61.82],[-45.52,-517.66],[860.8,22.13],[1209.72,580.06],[-4143.5,998.67]];
+      const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school'||a.k==='farmland'||a.k==='npcfarm'||a.k==='estate'||a.k==='gra');
+      const pts=PLACES.filter(q=>!q.minor&&q.kind!=='place'), far=[...bizS.map(([x,z])=>({x,z,r:28})),...pts.map(q=>({x:q.x,z:q.z,r:26})),...TOLLS.map(g=>({x:g.x,z:g.z,r:60})),...(CPB.list||[]).map(g=>({x:g.x,z:g.z,r:70})),...((AGB.posts||[]).map(g=>({x:g.x,z:g.z,r:40})))];
+      if(HOME) far.push({x:HOME.cx,z:HOME.cz,r:70}); if(GATE) far.push({x:GATE.x,z:GATE.z,r:80}); far.push({x:STATION.front.x,z:STATION.front.z,r:50});
+      for(const k in SITES){ const b=SITES[k]; if(b&&b.cx!==undefined) far.push({x:b.cx,z:b.cz,r:Math.max(b.w||0,b.d||0,b.hw||0,40)}); }
+      const keepHit=(x,z)=>KEEP.some(r=>{ const dx=x-r.cx, dz=z-r.cz, c=Math.cos(r.ang), s=Math.sin(r.ang); return Math.abs(dx*c+dz*s)<r.hw+2&&Math.abs(-dx*s+dz*c)<r.hd+2; });
+      const bad=(x,z)=>!onLand(x,z,2)||roadAt(x,z,1.2)||railD(x,z)<9||inBSite(x,z,3)||GRA.in(x,z)||GRA.site(x,z,4)||EST.in(x,z,5)||inFarmZone(x,z,5)||inForest(x,z,5)||inNpcFarm(x,z,5)||keepHit(x,z)||noGo.some(a=>inPoly(a.pts,x,z));
+      for(const e of ROADS){ if(!e.drive||e.br||e.c>maxC||FLYE.has(e.i)||e.len<2*hx+40) continue; const A=nodes[e.a];
+        for(let t=hx+20;t<=e.len-hx-20;t+=step) for(const sd of [-1,1]){ const nx=-e.fz*sd, nz=e.fx*sd, fx0=A.x+e.fx*t+nx*(e.hw+1.6), fz0=A.z+e.fz*t+nz*(e.hw+1.6), ox=fx0+nx*hz1, oz=fz0+nz*hz1;
+          if(box&&(ox<box[0]||ox>box[2]||oz<box[1]||oz>box[3])) continue; if(far.some(q=>Math.hypot(q.x-ox,q.z-oz)<q.r+hx)) continue;
+          const ry=Math.atan2(-nx,-nz), c=Math.cos(ry), s=Math.sin(ry); let ok=true;
+          for(let lx=-hx;lx<=hx+.01&&ok;lx+=2.5) for(let lz=hz0;lz<=hz1+.01;lz+=2.5){ const x=ox+lx*c+lz*s, z=oz-lx*s+lz*c; if(bad(x,z)){ ok=false; break; } }
+          if(!ok) continue; if(out.some(q=>Math.hypot(q[0]-ox,q[1]-oz)<space)) continue; out.push([+ox.toFixed(2),+oz.toFixed(2),+ry.toFixed(4),e.c,e.name||'']); } }
+      return out; },
     roadBlocks(r=.9){ const out={}, P={x:0,z:0}; for(const e of ROADS){ if(e.br) continue; const A=nodes[e.a], B=nodes[e.b], rx=-e.fz, rz=e.fx;
         for(let t=(A.deg>=3?A.r:0)+3;t<e.len-(B.deg>=3?B.r:0)-3;t+=3) for(const o of [-e.hw*.5,0,e.hw*.5]){ const x=A.x+e.fx*t+rx*o, z=A.z+e.fz*t+rz*o;
           for(const c of query(x-r,z-r,x+r,z+r)){ if(c.y0>1.4||c.h<.25) continue; P.x=x; P.z=z; RC_CAR=true; const h=resolveCircle(P,r,[c],0); RC_CAR=false; if(!h) continue;
@@ -9031,6 +9193,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     act(){ action(); return {mode,label:ROOM&&ROOM.label,prompt:$('#promptTxt').textContent,busy}; },
     here:()=>({mode,label:mode==='interior'?ROOM.label:null,x:player.x,z:player.z,yaw:player.yaw,prompt:$('#prompt').hidden?'':$('#promptTxt').textContent,cash:CASH.n,stay:STAY,menu:MENU.open}),
     spots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>({l:spotLabel(s),x:s.x,z:s.z})):[],
+    lux:()=>LUXP.map(P=>({t:P.title,x:P.x,z:P.z,s:P.S&&P.S.state,door:P.door,gate:P.gateAt||null})), luxGo(i,force){ enterLux(LUXP[i],force); return 1; }, shotURL(w=1280,h=720){ renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); const up=usePost; usePost=false; updateCamera(0); renderFrame(0); usePost=up; return renderer.domElement.toDataURL('image/jpeg',.85); },
     graGo(k){ const f={eko:enterEko,motors:enterMotors,adunni:enterAdunni,cellar:enterCellar,velvet:enterVelvet}[k]; if(f) f(); return !!f; },
     gra:()=>({sets:Object.fromEntries(Object.entries(GRA.sites).map(([k,G])=>[k,G.S&&G.S.state])),villas:GRA.villas.length,eko:EKO,doors:GRA_DOOR}),
     at(x,z,yaw){ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } return true; },
