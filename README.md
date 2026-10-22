@@ -719,6 +719,34 @@ for very little cost. Hook them in after the scene is drawn whenever the pixel r
 
 Map data © OpenStreetMap contributors, ODbL.
 
+## The Central Bank of Nigeria
+
+Blender: `naija_rooms/cbn` (cbn_ext.py outside, cbn_hall.py and cbn_office.py inside, worker jobs c01, c03 and c10).
+It stands where the city quarter's old bank was (that part of set_city is cut away). Outside: the fence with razor wire, four
+watchtowers, the vehicle gate (boom arms, tyre killer, road blocker, guard house, inspection canopy, sandbag post, an APC), the
+pedestrian gate with its screening kiosk, staff and VIP parking, the bullion bay with armoured vans, CCTV all round. Armed
+guards stand at their posts: hit one or fire a gun on the grounds and they all come for you. Inside (int_cbn_hall): the
+queue belts, X-ray, walk-through detectors and the search table; weapons are kept in the locker until you leave; the speed
+gates let you through only once the detector clears you; reception, the lounge and four lifts. The lift takes you to the
+12th floor (int_cbn_office): the Banking Supervision unit, 14 staff typing at their own desks and computers, the head of
+unit's glass office, the meeting room, the copier and the water cooler, and your own desk by the window (one paid shift a day).
+
+## Credits: the Central Bank
+
+From Sketchfab (CC BY 4.0 unless marked "Sketchfab Standard"):
+- X-ray: "Baggage Scanner" by Anom404 (Sketchfab Standard) — https://sketchfab.com/3d-models/6db2b2392c2b45948f7a70286853fa29
+- Detectors: "Metal detector (entrance)" by menX1151 — https://sketchfab.com/3d-models/e05f5f48b3eb4fa88fc5c7548a3a324a
+- Speed gates: "Simple turnstile" by LUMENE — https://sketchfab.com/3d-models/b0fb9ddd343544a681ae108591bf0277
+- Queue belts: "Poste_separador_queue_Barrier" by eventdesignws — https://sketchfab.com/3d-models/d9146a68827e4b1c854991bb9872046e
+- Sofas: "Modern Sofa" by 3dimentionalben — https://sketchfab.com/3d-models/ac92f6e97eaa43c4ad6cb8f7c65ac43f
+- Plants: "Monstera Deliciosa Potted Mid-Century plant" by ChubbyPanda — https://sketchfab.com/3d-models/1ab9bf841df04c07b1819be596327629
+- Chairs: "Office Chair Modern" by thethieme — https://sketchfab.com/3d-models/675f34f7304e4d92812a41e9750539aa
+- Monitors: "Computer Monitor Lowpoly Model" by marcoZakaria — https://sketchfab.com/3d-models/1d4ee42eda804b02b05b63721921c1d7
+- Copier: "MFP Office Printer" by nokillnando — https://sketchfab.com/3d-models/d55f6fca7c3d45c883bbff770672970d
+- Water cooler: "Water cooler" by tboiston — https://sketchfab.com/3d-models/4b88c4c4e94c497ca39f831f374e89fc
+- Coffee: "coffee machine" by maxdragon — https://sketchfab.com/3d-models/6784e4f16a7248518cd5ef1118a2198a
+- Filing cabinets: "Filing cabinet - green" by sousinho (Sketchfab Standard) — https://sketchfab.com/3d-models/f79a828774b84838b8f9d36d02920361
+
 ## Credits: the women
 Bodies, shoes and some hair from MakeHuman (MPFB, CC0). From Sketchfab, used under CC BY 4.0:
 - The head: "Female Head Base Mesh" by snailpot_maysachan — https://sketchfab.com/3d-models/dcb462e129924a7ca0232f4b11830208

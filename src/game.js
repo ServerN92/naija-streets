@@ -13,22 +13,22 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=5a6c1f319d';
-import * as C2 from './char2.js?v=5a6c1f319d';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=5a6c1f319d';
-import { createPhone } from './phone.js?v=5a6c1f319d';
-import { createGuide } from './guide.js?v=5a6c1f319d';
+import * as CLOCK from './clock.js?v=eb31b555e5';
+import * as C2 from './char2.js?v=eb31b555e5';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=eb31b555e5';
+import { createPhone } from './phone.js?v=eb31b555e5';
+import { createGuide } from './guide.js?v=eb31b555e5';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=5a6c1f319d';
-import { createFarm } from './farm.js?v=5a6c1f319d';
-import { createBusiness } from './business.js?v=5a6c1f319d';
-import { createOnline } from './online.js?v=5a6c1f319d';
-import { createPolice } from './police.js?v=5a6c1f319d';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=5a6c1f319d';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=5a6c1f319d';
+import { createFootball } from './football.js?v=eb31b555e5';
+import { createFarm } from './farm.js?v=eb31b555e5';
+import { createBusiness } from './business.js?v=eb31b555e5';
+import { createOnline } from './online.js?v=eb31b555e5';
+import { createPolice } from './police.js?v=eb31b555e5';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=eb31b555e5';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=eb31b555e5';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='5a6c1f319d';
+const BUILD='eb31b555e5';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -686,9 +686,13 @@ function inNpcFarm(x,z,pad=0){ for(const f of NPC_FARMS){ const dx=x-f.x, dz=z-f
     WD.areas.push({k:'npcfarm',p:[...q(-15,-13),...q(15,-13),...q(15,13),...q(-15,13)],n:f.n+' Farm'}); } }
 // ---- places made in the user's Blender ("Naija Ground"), set down in Mushin: the city quarter (stadium, club, hotel, restaurant,
 // school, office, CBN, estate, presidential villa), the Lagos market street and the big farm. The houses and streets under them go.
+// the old Central Bank in the city quarter (set-local x0,x1,z0,z1): the new one (set_cbn, its outside, and two walk-in floors) stands there instead
+const CBN_PLOT=[252,396,-165,0];
 const BSITES=[{name:'set_city',label:'Naija City Quarter',x:-1440,z:100,ry:-Math.PI/2,hx:400,hz:185},
   {name:'set_market',label:'Oja Market Street',x:360,z:-1442,ry:0,hx:82,hz:60},
   {name:'set_farm',label:'Oke-Odo Farms',x:300,z:807,ry:0,hx:226,hz:184}];
+// where the new Central Bank stands: the old one's plot in the city quarter (its middle, set-local 324, -82.5)
+const CBN_AT=MANIFEST['assets/models/set_cbn.glb']?(()=>{ const B=BSITES[0], c=Math.cos(B.ry), s=Math.sin(B.ry), lx=(CBN_PLOT[0]+CBN_PLOT[1])/2, lz=(CBN_PLOT[2]+CBN_PLOT[3])/2; return {x:B.x+lx*c+lz*s,z:B.z-lx*s+lz*c,ry:B.ry}; })():null;
 function inBSite(x,z,pad=0){ for(const S of BSITES){ const dx=x-S.x, dz=z-S.z, c=Math.cos(S.ry), s=Math.sin(S.ry), lx=dx*c-dz*s, lz=dx*s+dz*c; if(Math.abs(lx)<S.hx+pad&&Math.abs(lz)<S.hz+pad) return S; } return null; }
 { const nb=[]; for(let i=0;i<WD.bld.length;i+=8){ const r=Math.max(WD.bld[i+2],WD.bld[i+3])/2; if(!inBSite(WD.bld[i],WD.bld[i+1],r+3)) for(let k=0;k<8;k++) nb.push(WD.bld[i+k]); } WD.bld=nb;
   const ne=[]; for(let k=0;k<WD.edges.length;k+=7){ const a=WD.edges[k], b=WD.edges[k+1], x0=WD.nodes[a*2], z0=WD.nodes[a*2+1], x1=WD.nodes[b*2], z1=WD.nodes[b*2+1]; let hit=false;
@@ -1008,6 +1012,7 @@ function obTop(acc,K,y,col,ts=8){ acc.quad([K[0][0],y,K[0][1]],[K[1][0],y,K[1][1
 // rectangles that must stay clear (your house, the hotel, the police station, the motor park, footbridge stairs)
 const KEEP=[];
 const SCAT_OFF=EST.list.map(E=>({x:E.cx,z:E.cz,ry:E.ry,hw:EST.W/2,hd:EST.D/2}));   // paved or built-over ground where no grass tufts or stones grow: {x,z,ry,hw,hd} (the estates' kept lawns too)
+if(CBN_AT) SCAT_OFF.push({x:CBN_AT.x,z:CBN_AT.z,ry:CBN_AT.ry,hw:72,hd:83});   // the Central Bank's kept grounds
 const SPORT_OFF=[], sportOff=(x,z)=>SPORT_OFF.some(r=>{ const dx=x-r.x, dz=z-r.z, c=Math.cos(r.ry), s=Math.sin(r.ry); return Math.abs(dx*c-dz*s)<r.hw&&Math.abs(dx*s+dz*c)<r.hd; });   // the pitches and stadiums: nothing grows there
 const scatOff=(x,z)=>SCAT_OFF.some(r=>{ const dx=x-r.x, dz=z-r.z, c=Math.cos(r.ry), s=Math.sin(r.ry); return Math.abs(dx*c-dz*s)<r.hw&&Math.abs(dx*s+dz*c)<r.hd; });
 function rectHit(b,r){ // two turned rectangles overlap? (separating axis test)
@@ -1438,12 +1443,15 @@ if(HOUSES){ const farC={bungalow:['#ece6da','#8e3125'],storey:['#ece6da','#4b555
    The meshes are merged per material (few draw calls); small things (seats, plants, bags, signs) form a "detail" layer that is
    only drawn up close. Walls and furniture block you: a 25 cm grid of everything between knee and head height, turned into boxes. */
 const SET_DETAIL=/^(GD_|CT_L_|AP_Bench|AP_Arm|AP_Plant|AP_Bags|AP_Nooks|AP_Fids|AP_Desk|AP_Shop|AP_Gate|AP_Cafe|AP_Pole|AP_Bridge|AP_DoorTxt|AP_LinearLights)/;
-function setMerge(root,{detail=SET_DETAIL,lift=null}={}){ root.updateMatrixWorld(true); const far=new Map(), near=new Map(), all=[];
+// drop the triangles of a (non-indexed) geometry whose middle lies in one of the rectangles (set-local x0,x1,z0,z1): an old building taken out of a set
+function cutGeo(g,rects){ const P=g.attributes.position, n=P.count/3, keep=[]; for(let t=0;t<n;t++){ const x=(P.getX(t*3)+P.getX(t*3+1)+P.getX(t*3+2))/3, z=(P.getZ(t*3)+P.getZ(t*3+1)+P.getZ(t*3+2))/3; if(!rects.some(r=>x>r[0]&&x<r[1]&&z>r[2]&&z<r[3])) keep.push(t); }
+  if(keep.length===n) return g; const o=new THREE.BufferGeometry(); for(const k of Object.keys(g.attributes)){ const A=g.attributes[k], sz=A.itemSize, src=A.array, dst=new src.constructor(keep.length*3*sz); keep.forEach((t,i)=>dst.set(src.subarray(t*3*sz,(t*3+3)*sz),i*3*sz)); o.setAttribute(k,new THREE.BufferAttribute(dst,sz,A.normalized)); } return o; }
+function setMerge(root,{detail=SET_DETAIL,lift=null,cut=null}={}){ root.updateMatrixWorld(true); const far=new Map(), near=new Map(), all=[];
   root.traverse(o=>{ if(!o.isMesh) return; let top=o; while(top.parent&&top.parent!==root) top=top.parent; const nm=top.name||o.name, det=detail&&detail.test(nm), up=lift&&lift.test(nm)?lift.dy||0:0;
     const ms=[].concat(o.material).map(m=>m&&/^G_leafy_grass/.test(m.name||'')?MAT.grass:m), g=o.geometry; const groups=g.groups.length?g.groups:[{start:0,count:(g.index?g.index.count:g.attributes.position.count),materialIndex:0}];
     for(const gr of groups){ const m=ms[gr.materialIndex]||ms[0]; let sub=g;
       if(groups.length>1){ sub=g.clone(); sub.clearGroups(); if(g.index) sub.setIndex(Array.from(g.index.array.slice(gr.start,gr.start+gr.count))); }
-      let w=floatGeo(sub.index?sub.toNonIndexed():sub.clone()); w.applyMatrix4(o.matrixWorld); if(up) w.translate(0,up,0);
+      let w=floatGeo(sub.index?sub.toNonIndexed():sub.clone()); w.applyMatrix4(o.matrixWorld); if(up) w.translate(0,up,0); if(cut){ w=cutGeo(w,cut); if(!w.attributes.position.count) continue; }
       for(const k of Object.keys(w.attributes)) if(!['position','normal','uv','color'].includes(k)) w.deleteAttribute(k);
       if(!w.attributes.normal) w.computeVertexNormals(); if(!w.attributes.uv) w.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(w.attributes.position.count*2),2));
       if(w.attributes.color) w.deleteAttribute('color');
@@ -1469,12 +1477,12 @@ function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3,out=null}={}){ const 
   return nb; }
 const SETS=[];
 // a set at (x,z) turned ry: loads when you come within `near` metres; `onLoad(set)` adds the extras (people, doors, planes)
-function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad}={}){ const S={name,x,z,ry,near,detailDist,lift,onLoad,state:0,root:new THREE.Group(),far:null,near_:null,json:null};
+function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ const S={name,x,z,ry,near,detailDist,lift,onLoad,cut,state:0,root:new THREE.Group(),far:null,near_:null,json:null};
   S.root.position.set(x,0,z); S.root.rotation.y=ry; scene.add(S.root); SETS.push(S); return S; }
 function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,player.z-S.z);
     if(S.state===0&&d<S.near){ S.state=1; const u=murl(S.name), ju=`assets/models/${S.name}.json`; DL.exp[u]=MANIFEST[`assets/models/${S.name}.glb`]||4e6;
       Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),MANIFEST[ju]?fetch(ju+'?v='+(AV[ju]||MANIFEST[ju])).then(r=>r.json()).catch(()=>null):Promise.resolve(null)]).then(([g,j])=>{
-        const R=setMerge(g.scene,{lift:S.lift}); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
+        const R=setMerge(g.scene,{lift:S.lift,cut:S.cut}); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
         .catch(e=>{ console.warn('set',S.name,e); S.state=0; S.near=-1; }); }
     if(S.state===2){ S.near_.visible=d<S.detailDist; if(S.tick) S.tick(dt,d); } } }
 // set-local point -> world
@@ -1677,7 +1685,7 @@ const LAND=(()=>{ if(!AIRPORT||!MODELS.airtoll) return null; const A=AIRPORT;
 const SET_TREE={palm:'tree_palm',tree:'tree_oak_big',leafy:'tree_oak',island_tree_02_LOD0:'tree_oak_big'};
 const SET_CROP={maize:'maize_3',cassava:'cassava_3',yam:'yam_3',pepper:'pepper_3',tomato:'tomato_3',gnut:'pepper_2',okra:'tomato_2',banana:'plantain',plantain:'plantain'};
 function setPlants(S){ const L=(S.json&&S.json.inst)||[]; if(!L.length) return; const trees={}, crops={}, seen=new Set();
-  for(const [kind,lx,lz,y,yaw,sc] of L){ const key=kind+'|'+Math.round(lx*4)+'|'+Math.round(lz*4); if(seen.has(key)) continue; seen.add(key); const w=setPt(S,lx,lz); if(sportOff(w.x,w.z)) continue; const k=String(kind).replace(/^CT_Lib_|^FM_Lib_/,'').toLowerCase().replace(/[^a-z_0-9]/g,'');
+  for(const [kind,lx,lz,y,yaw,sc] of L){ const key=kind+'|'+Math.round(lx*4)+'|'+Math.round(lz*4); if(seen.has(key)) continue; seen.add(key); if(S.cut&&S.cut.some(r=>lx>r[0]&&lx<r[1]&&lz>r[2]&&lz<r[3])) continue; const w=setPt(S,lx,lz); if(sportOff(w.x,w.z)) continue; const k=String(kind).replace(/^CT_Lib_|^FM_Lib_/,'').toLowerCase().replace(/[^a-z_0-9]/g,'');
     const tk=Object.keys(SET_TREE).find(t=>k.startsWith(t.toLowerCase())), ck=Object.keys(SET_CROP).find(c=>k.startsWith(c));
     if(ck&&!(ck==='banana'&&!S.name.includes('farm'))){ (crops[SET_CROP[ck]]||(crops[SET_CROP[ck]]=[])).push({x:w.x,y:0,z:w.z,ry:yaw+S.ry,sc:Math.max(.6,Math.min(1.6,sc||1))}); }
     else if(tk&&TREES[SET_TREE[tk]]){ const t=SET_TREE[tk], s2=Math.max(.6,Math.min(1.5,sc||1)); (trees[t]||(trees[t]=[])).push({x:w.x,y:0,z:w.z,ry:yaw,sx:s2,sy:s2,sz:s2}); addCol({x0:w.x-.3,x1:w.x+.3,z0:w.z-.3,z1:w.z+.3,h:4}); } }
@@ -1713,8 +1721,10 @@ PLACES.push({name:'Apapa-Oworonshoki Expressway',sub:'Expressway · Mushin west'
     signAt(g,{x:0,y:2.15,z:.1,yaw:0,w:4.2,h:1.25},'IKEJA G.R.A.\nWELCOME','#1f5130','#ffffff'); signAt(g,{x:0,y:2.15,z:-.1,yaw:Math.PI,w:4.2,h:1.25},'IKEJA G.R.A.\nDRIVE SLOWLY','#1f5130','#ffffff'); }
   for(const k in GRA.sites){ const G=GRA.sites[k], S=addSet(G.name,G.x,G.z,G.ry,{near:(k==='hotel'?1100:650),detailDist:k==='hotel'?280:150}); G.S=S;
     S.onLoad=S2=>{ setPlants(S2); for(const [x0,x1,z0,z1] of (S2.json&&S2.json.solids)||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,1.2); } graLoaded(k,S2); }; } }
-for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B.hz)+700,detailDist:Math.max(B.hx,B.hz)+120});
-  if(B.name==='set_city'){ const g=new THREE.PlaneGeometry(B.hx*2,B.hz*2).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*B.hx/4,uv.getY(i)*B.hz/4); const m=new THREE.Mesh(g,MAT.lawn); m.position.set(B.x,.012,B.z); m.rotation.y=B.ry; m.receiveShadow=true; scene.add(m); }   // the city quarter stands on grass, as in Blender
+for(const B of BSITES){ const S=addSet(B.name,B.x,B.z,B.ry,{near:Math.max(B.hx,B.hz)+700,detailDist:Math.max(B.hx,B.hz)+120,cut:B.name==='set_city'&&MANIFEST['assets/models/set_cbn.glb']?[CBN_PLOT]:null});
+  if(B.name==='set_city'){ const R=[], X=B.hx, Z=B.hz, c=S.cut&&S.cut[0];   // (a hole where the Central Bank's own grounds are)
+    if(c) R.push([-X,c[0],-Z,Z],[c[1],X,-Z,Z],[c[0],c[1],-Z,c[2]],[c[0],c[1],c[3],Z]); else R.push([-X,X,-Z,Z]);
+    const g=mergeGeometries(R.map(([x0,x1,z0,z1])=>{ const q=new THREE.PlaneGeometry(x1-x0,z1-z0).rotateX(-Math.PI/2).translate((x0+x1)/2,0,(z0+z1)/2), P=q.attributes.position, uv=q.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,P.getX(i)/8,-P.getZ(i)/8); return q; }),false); const m=new THREE.Mesh(g,MAT.lawn); m.position.set(B.x,.012,B.z); m.rotation.y=B.ry; m.receiveShadow=true; scene.add(m); }   // the city quarter stands on grass, as in Blender
   PLACES.push({name:B.label,sub:'Mushin',kind:'place',x:B.x,z:B.z});
   S.onLoad=S2=>{ setPlants(S2); if(B.name==='set_market'){ S2.folk=[]; S2.tick=(dt,d)=>marketFolk(S2,dt,d); } }; }
 // the new places' sets: they load when you come near; the paving is theirs (no wild tufts on it); each street salon
@@ -8828,6 +8838,126 @@ if(typeof FOOT_SITES!=='undefined'&&(FOOT_SITES.length||BIG_SITES.length)){
     PLACES.push({name,sub:'Stadium · 11-a-side matches',kind:'sport',x:g.cx,z:g.cz,r:70});
     S.onLoad=S2=>{ for(const [x0,x1,z0,z1] of (S2.json&&S2.json.solids)||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,8); }
       const m=S2.json&&S2.json.marks&&S2.json.marks.sign; if(m){ const w=setPt(S2,m[0],m[1]); DOORS.push({x:w.x,z:w.z,r:3,label:'Enter the stadium · play a match',act:()=>FOOT.menu(PI)}); } }; } }
+/* ================= the Central Bank (Blender: naija_rooms/cbn; set_cbn outside, int_cbn_hall + int_cbn_office inside) =================
+   Outside: the fence with razor wire, watchtowers, the vehicle gate (boom arms, tyre killers, road blocker, an APC), the
+   pedestrian gate with its screening kiosk, staff and VIP parking, the bullion bay. Inside: the hall with the security
+   screening (X-ray, walk-through detectors, the search table, speed gates you pass only once cleared), reception and four
+   lifts; on the 12th floor the Banking Supervision unit: 14 people at their own desks and computers, your desk, the head of unit. */
+const CBN={S:null,guards:[],tower:[],alarmT:-999,cleared:false,box:null,scanT:0,saidT:0,shiftDay:-1,in:false};
+if(CBN_AT){ const S=addSet('set_cbn',CBN_AT.x,CBN_AT.z,CBN_AT.ry,{near:950,detailDist:300,lift:Object.assign(/./,{dy:.035})}); CBN.S=S;   // (all of it just above the city quarter's lawn)
+  PLACES.push({name:'Central Bank of Nigeria',sub:'The apex bank · security screening · offices',kind:'place',x:CBN_AT.x,z:CBN_AT.z,r:80});
+  S.onLoad=S2=>{ const J=S2.json||{}, M=J.marks||{}, W=(k)=>{ const m=M[k]; if(!m) return null; const w=setPt(S2,m[0],m[1]); return {x:w.x,z:w.z,yaw:(m[2]||0)+S2.ry}; };
+    for(const [x0,x1,z0,z1] of J.solids||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,6); }
+    setPlants(S2); CBN.W=W; CBN.M=M;
+    const e=W('enter'); if(e) DOORS.push({x:e.x,z:e.z,r:2.6,label:'Enter the Central Bank',act:()=>enterCBN()});
+    // parked: staff cars on the west, the big men's cars on the east, the bullion vans at the back, the APC by the gate
+    const rnd=mulberry32(4114), STAFF=['v_corolla','v_camry','v_accord','sedan','v_corolla','v_hilux','v_v190'], VIP=['v_landcruiser','v_gwagon','v_sclass','v_rangerover','v_landcruiser'];
+    const CC=['#1c1c1e','#e8e8e6','#8e9399','#1d2b44','#6b0f12','#c9c4b8','#2f4a35'];
+    const park=(type,col,w)=>{ if(!w) return; const v=newVehicle(type,col,true); Object.assign(v,{x:w.x,z:w.z,y:0,h:carYaw(w.yaw),keep:1,parked:true}); };
+    for(const k in M){ if(/^car_/.test(k)&&rnd()<.62) park(STAFF[(rnd()*STAFF.length)|0],CC[(rnd()*CC.length)|0],W(k));
+      else if(/^vip_/.test(k)&&rnd()<.8) park(VIP[(rnd()*VIP.length)|0],rnd()<.7?'#0d0d0f':'#e9e9e7',W(k)); }
+    park('police','#2b3a2c',W('apc')); park('police','#cfd2d4',W('van_0')); park('police','#cfd2d4',W('van_1'));
+    cbnCCTV(S2,J.cctv||[]);
+    // the men up in the watchtowers (folk: they stay up there)
+    const tw=()=>{ if(!PEOPLE.n){ setTimeout(tw,1500); return; }
+      for(const k of Object.keys(M).filter(k=>/^tower_guard/.test(k))){ const w=W(k); const f=cbnGuard(scene,{x:w.x,z:w.z,yaw:Math.atan2(CBN_AT.x-w.x,CBN_AT.z-w.z)+Math.PI},null); if(f){ f.root.position.y=7.22; f.wc={}; f.base=f.root.rotation.y; f.ph=rnd()*6; CBN.tower.push(f); } } };
+    tw(); }; }
+// the cameras on the poles and the corners of the building (a body, a sun hood, a bracket), all looking into the grounds
+function cbnCCTV(S,L){ if(!L.length) return; const parts=[], body=new THREE.BoxGeometry(.16,.14,.36), hood=new THREE.BoxGeometry(.2,.03,.42), arm=new THREE.BoxGeometry(.05,.05,.3), lens=new THREE.CylinderGeometry(.05,.05,.02,12).rotateX(Math.PI/2);
+  const gW=[], gD=[], m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler();
+  for(const [lx,lz,h] of L){ const w=setPt(S,lx,lz), yaw=Math.atan2(CBN_AT.x-w.x,CBN_AT.z-w.z), tilt=h>8?.45:.22;
+    const put=(g,arr,ox,oy,oz,t)=>{ const G=g.clone(); e.set(t,yaw,0,'YXZ'); q.setFromEuler(e); const off=new THREE.Vector3(ox,oy,oz).applyQuaternion(q); m4.compose(new THREE.Vector3(w.x+off.x,h+off.y,w.z+off.z),q,new THREE.Vector3(1,1,1)); G.applyMatrix4(m4); arr.push(G); };
+    put(arm,gD,0,-.02,-.1,0); put(body,gW,0,-.1,.12,tilt); put(hood,gW,0,-.01,.14,tilt); put(lens,gD,0,-.1+Math.sin(tilt)*-.18,.31,tilt); }
+  const mW=new THREE.MeshStandardMaterial({color:0xe9e9e6,roughness:.5}), mD=new THREE.MeshStandardMaterial({color:0x1a1b1d,roughness:.4,metalness:.4});
+  for(const [g,m] of [[gW,mW],[gD,mD]]){ const M=new THREE.Mesh(mergeGeometries(g.map(x=>x.index?x.toNonIndexed():x),false),m); M.castShadow=false; scene.add(M); } }
+// the guards on the ground: real people of the street (they fight back), posted where Blender marked them, AK slung
+const CBN_POSTS=['door_guard_1','door_guard_2','kiosk_guard','kiosk_guard_2','gate_guard_1','gate_guard_2','gate_guard_3','insp_guard','insp_guard_2','soldier_1','plaza_guard','bay_guard_1','bay_guard_2'];
+function cbnUpdate(dt){ if(!CBN.S||CBN.S.state!==2||!CBN.W) return; const d=Math.hypot(player.x-CBN_AT.x,player.z-CBN_AT.z);
+  // the men in the towers turn slowly, their guns on their backs
+  if(d<260){ if(!ARMS.lib.ak) loadWeapon('ak'); for(const f of CBN.tower){ f.mixer.update(dt); f.ph+=dt*.25; f.root.rotation.y=f.base+Math.sin(f.ph)*.9; if(ARMS.lib.ak&&!f.w){ f.w=cloneWeapon('ak'); if(f.w) scene.add(f.w); } if(f.w) slingOn(f.w,f.inner,f.wc,f.root.rotation.y); } }
+  const calm=T0-CBN.alarmT>90;
+  if(d<150&&calm&&mode!=='interior'){ CBN.guards=CBN.guards.filter(q=>q.state==='gateguard');
+    const have=new Set(CBN.guards.map(q=>q.postK)), want=CBN_POSTS.filter(k=>CBN.M[k]).map(k=>({k,w:CBN.W(k)})).sort((a,b)=>Math.hypot(a.w.x-player.x,a.w.z-player.z)-Math.hypot(b.w.x-player.x,b.w.z-player.z)).slice(0,9);
+    for(const {k,w} of want){ if(have.has(k)) continue; const q=rbPed(); if(!q) break; const cast=/kiosk_guard_2|plaza/.test(k)?'police_f':'police_m'; wakePed(q,cast);
+      Object.assign(q,{x:w.x,z:w.z,y:groundY(w.x,w.z),yaw:w.yaw,state:'gateguard',cop:1,van:null,post:{x:w.x,z:w.z,ry:w.yaw},postK:k,hp:HP0(cast),wid:'ak',fireT:1,burst:0,atk:null,atkT:.5,speed:0,losT:0,los:false,mad:0,near:false,aimOn:false,aimDir:new THREE.Vector3(0,0,1),recoil:0}); q.seq=(q.seq||0)+1; CBN.guards.push(q); } }
+  else if((d>190||mode==='interior')&&CBN.guards.length&&calm){ for(const q of CBN.guards) if(q.state==='gateguard') offPed(q); CBN.guards=[]; }
+  for(const q of CBN.guards){ if(q.state!=='gateguard') continue; const P=q.post; q.speed=0; if(q.actT>0) q.actT-=dt; else q.act=null; const look=Math.hypot(player.x-q.x,player.z-q.z)<12?Math.atan2(player.x-q.x,player.z-q.z):P.ry; q.yaw=lerpA(q.yaw,look,Math.min(1,dt*3)); q.x=P.x; q.z=P.z; }
+  // trouble: one of them hit, or a gun fired on the grounds -> they all come for you
+  if(calm&&CBN.guards.length&&(CBN.guards.some(q=>q.state!=='gateguard'&&q.state!=='off')||(T0-(ARMS.lastShot||-9)<.3&&d<110))){ CBN.alarmT=T0; addHeat(.9);
+    for(const q of CBN.guards) if(q.state==='gateguard'){ q.state='cop'; q.mad=1; q.van=null; q.atk=null; q.atkT=mrr(.2,.6); } CBN.guards=[]; toast('Soldier: "ATTACK ON THE BANK! Take am down!"',2.6); }
+  // the screening kiosk at the pedestrian gate: the wand, the beep
+  if(mode==='walk'&&CBN.M.det_out){ const w=CBN.W('det_out'); if(Math.hypot(player.x-w.x,player.z-w.z)<1.3) cbnScan('kiosk'); } }
+// walking through a detector: anything that can hurt is taken (you collect it when you leave); then you are cleared
+function cbnScan(where){ if(T0<CBN.scanT) return; CBN.scanT=T0+5; const own=Object.keys(ARMS.own).filter(k=>k!=='fists'&&k!=='board');
+  if(own.length){ for(let i=0;i<4;i++) setTimeout(()=>phoneBeep(1900,.16,.5),i*220);
+    const box={own:{},mag:ARMS.mag,ammo:ARMS.ammo,cur:ARMS.cur}; for(const k of own){ box.own[k]=ARMS.own[k]; delete ARMS.own[k]; } if(CBN.box){ Object.assign(CBN.box.own,box.own); CBN.box.mag+=box.mag; CBN.box.ammo+=box.ammo; } else CBN.box=box;
+    ARMS.cur='fists'; ARMS.mag=0; ARMS.ammo=0; ARMS.aim=false; weapHUD(true); saveArms();
+    toast(`BEEP BEEP! Security: "Wetin dey your body? ${own.length>1?'All these ones':'This one'} go stay for our locker. You go collect am when you dey comot."`,4.2); }
+  else { phoneBeep(880,.08,.35); setTimeout(()=>phoneBeep(1320,.12,.35),120); toast(where==='kiosk'?'Security: "Arms up… you dey clear. Enter."':'Scanner: clear. Guard: "Oya pass. Take the lifts by the back."',2.6); }
+  if(where==='hall'){ CBN.cleared=true; const R=INTS.int_cbn_hall&&INTS.int_cbn_hall.room; if(R&&R.gd) folkDo(R.gd,['talk','idle_1']); } }
+function cbnGiveBack(){ const b=CBN.box; if(!b) return; Object.assign(ARMS.own,b.own); ARMS.mag+=b.mag|0; ARMS.ammo+=b.ammo|0; if(b.cur&&ARMS.own[b.cur]) selectWeapon(b.cur); CBN.box=null; saveArms(); weapHUD(true); toast('Security hands back your things at the gate.',2.4); }
+// people of the bank in their office clothes
+function cbnPerson(parent,id,at,clip,list,fit=['office','suit']){ const C=PEOPLE.casts[id]; if(!C||!clip||!at) return null; const o=SkeletonUtils.clone(C.tpl);
+  if(C.v2){ const VC=V2.casts[C.who||id], f=VC?fitsOf(VC,fit):[]; C2.setOutfit(o,f.length?f[(MR()*f.length)|0]:C.fits&&C.fits.length?C.fits[0]:0); }
+  const root=new THREE.Group(); root.scale.setScalar(C.sc); root.add(o); o.position.y=C.y0; root.position.set(at.x,at.y||0,at.z); root.rotation.y=at.yaw||0; parent.add(root);
+  const mixer=new THREE.AnimationMixer(o), a=mixer.clipAction(clip); a.play(); a.time=Math.random()*clip.duration; const f={root,mixer,inner:o,C,cast:id}; if(list) list.push(f); return f; }
+// the bank's security men and women: our people in police uniform
+const cbnCops=f=>Object.keys(PEOPLE.casts).filter(k=>{ const C=PEOPLE.casts[k]; if(!CAST[k]||!C.v2||(f!==undefined&&!!C.f!==f)) return false; const VC=V2.casts[C.who||k]; return VC&&fitsOf(VC,['police']).length; });
+function cbnGuard(parent,at,list,f=false,clips=['idle_1','idle_2','idle_suit']){ const ids=cbnCops(f).length?cbnCops(f):cbnCops(); if(!at) return null;
+  if(!ids.length) return folk(parent,PEOPLE.casts.police_m?'police_m':townCasts()[0],at,clips,list);
+  const id=ids[(MR()*ids.length)|0], C=PEOPLE.casts[id], cl=clips.map(n=>C.clips[n]).find(Boolean)||C.clips[C.idle0]; return cbnPerson(parent,id,at,cl,list,['police']); }
+const cbnOffice=()=>Object.keys(PEOPLE.casts).filter(k=>CAST[k]&&!CAST[k].cop&&PEOPLE.casts[k].v2&&V2.casts[PEOPLE.casts[k].who||k]&&fitsOf(V2.casts[PEOPLE.casts[k].who||k],['office','suit']).length);
+// sitting at the desk, typing: the sitting body with the arms and head of a typing pose
+function castType(id){ const C=PEOPLE.casts[id]; if(!C) return null; if(C._type) return C._type; const s=castSit(id); if(!s) return null; if(!V2.movesDone) return s;
+  try{ const D=C2.skeletonInfo(C.tpl), dur=s.duration||2, keys=[], U=(f,x=0)=>[x,1,f];
+    for(let i=0,t=0;t<=dur+1e-3;i++,t+=.16){ const a=(i%2?.06:-.05)*(.7+.6*Math.random()), b=-a; keys.push({t,d:{LeftArm:[.22,-.86,.42],LeftForeArm:[-.2,-.12+a,1],LeftHand:[-.1,-.3+a*2,1],RightArm:[-.22,-.86,.42],RightForeArm:[.2,-.12+b,1],RightHand:[.1,-.3+b*2,1],Neck:U(.22),Head:U(.16,i%9===0?.08:0)}}); }
+    const P=C2.poseClip(D,'npc_typearm',keys,{loop:false}), re=/(LeftArm|RightArm|LeftForeArm|RightForeArm|LeftHand|RightHand|Neck|Head)\.quaternion$/;
+    return C._type=new THREE.AnimationClip('npc_type',dur,s.tracks.filter(t=>!re.test(t.name)).concat(P.tracks.filter(t=>re.test(t.name)))); }catch(e){ console.warn('type',e); return C._type=s; } }
+async function enterCBN(){ if(busy) return; if(!MANIFEST['assets/models/int_cbn_hall.glb']){ toast('Security: "The banking hall dey under renovation. Come back later."',3); return; }
+  const R=await intGet('int_cbn_hall','Security is checking you in…'); if(!R) return; setupCbnHall(R); CBN.cleared=false; CBN.in=true;
+  goRoom(R,'spawn','Central Bank of Nigeria. Every visitor passes through security.'); }
+function cbnOut(){ const e=CBN.W&&CBN.W('enter'); CBN.in=false; leaveRoom(e?{x:e.x+Math.sin(e.yaw)*-1.6,z:e.z+Math.cos(e.yaw)*-1.6,ry:e.yaw+Math.PI}:STATION.front); if(CBN.box) setTimeout(cbnGiveBack,900); }
+function cbnLift(here){ const ding=()=>{ phoneBeep(1046,.25,.4); setTimeout(()=>phoneBeep(784,.35,.4),260); };
+  openMenu('LIFT','Central Bank tower · choose a floor',()=>[
+    {name:'Ground floor',sub:'Banking hall · security · reception · way out',btn:here==='hall'?'HERE':'GO',price:0,act(){ closeMenu(); if(here==='hall') return; intGet('int_cbn_hall').then(R=>{ if(!R) return; setupCbnHall(R); ding(); goRoom(R,'lift_2','Ground floor.'); }); }},
+    {name:'12th floor',sub:'Banking Supervision Department · your unit',btn:here==='office'?'HERE':'GO',price:0,act(){ closeMenu(); if(here==='office') return;
+      if(!MANIFEST['assets/models/int_cbn_office.glb']){ toast('The lift is under maintenance.',2.4); return; }
+      intGet('int_cbn_office','Going up…').then(R=>{ if(!R) return; setupCbnOffice(R); ding(); goRoom(R,'spawn','12th floor · Banking Supervision Department.'); }); }}]); }
+function setupCbnHall(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4; R.label='Central Bank · banking hall';
+  R.fill=R=>{ const off=cbnOffice(), any=townCasts();
+    for(const [k,fem] of [['guard_xray',false],['guard_det',false],['guard_det_2',true],['guard_search',false],['guard_desk',true],['guard_gates',false]]){ const f=cbnGuard(R.scene,M[k],R.folk,fem); if(k==='guard_det') R.gd=f; }
+    for(const k of ['receptionist','receptionist_2']){ const id=off.filter(i=>PEOPLE.casts[i].f)[k==='receptionist'?0:1]||off[0]||'suit_lady'; const C=PEOPLE.casts[id]; if(C) cbnPerson(R.scene,id,M[k],C.clips.f_talk||C.clips.idle_suit||C.clips[C.idle0],R.folk); }
+    for(const k of ['wait_1','wait_2']){ const id=any[(MR()*any.length)|0], cl=id&&castSit(id); if(cl&&M[k]) cbnPerson(R.scene,id,{...M[k]},cl,R.folk,['senator','kaftan','gown','office','suit']); } };
+  fillRoom(R);
+  R.spot(M.exit,'Leave the bank',()=>cbnOut(),1.8);
+  R.spot(M.xray_put,'Put your things on the X-ray belt',()=>{ phoneBeep(520,.3,.25); toast('Your bag rolls through the X-ray. The officer watches the screen…',2.4); },1.2);
+  R.spot(M.reception,'Talk to reception',()=>openMenu('RECEPTION','Central Bank of Nigeria · Visitors and staff',()=>[
+    {name:'"I work upstairs"',sub:'Banking Supervision, 12th floor: your desk is there',btn:'OK',price:0,act(){ closeMenu(); toast(CBN.cleared?'Receptionist: "Good morning! Lifts are at the back. Have a nice day."':'Receptionist: "Good morning. Please pass through security first."',3); }},
+    {name:'"I want to see the Governor"',sub:'Maybe…',btn:'ASK',price:0,act(){ closeMenu(); toast('Receptionist: "Do you have an appointment? No? Please sit down at the lounge."',3); }}]),1.6);
+  for(const k of ['lift_1','lift_2','lift_3','lift_4']) R.spot(M[k],'Take the lift',()=>{ if(!CBN.cleared){ toast('Guard: "Oga, security first!"',2); return; } cbnLift('hall'); },1.5);
+  // the speed gates: not past them before the detector says you are clean
+  const base=R.move.bind(R), gz=M.gates?M.gates.z-.75:4.05;
+  R.move=(nx,nz)=>{ if(!CBN.cleared&&nz<gz&&player.z>=gz){ if(T0-CBN.saidT>2.5){ CBN.saidT=T0; toast('Guard: "Oga! You no fit pass the gate like that. Go through the scanner."',2.6); } return; } base(nx,nz); };
+  const dets=[M.scan?{x:M.scan.x,z:M.scan.z-1.4}:null,M.scan?{x:-M.scan.x,z:M.scan.z-1.4}:null].filter(Boolean);
+  const tk=R.tick; R.tick=dt=>{ if(tk) tk(dt); if(!CBN.cleared) for(const p of dets) if(Math.abs(player.x-p.x)<.55&&Math.abs(player.z-p.z)<.45) cbnScan('hall'); }; }
+function setupCbnOffice(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3; R.label='CBN · Banking Supervision, 12th floor';
+  R.fill=R=>{ const off=cbnOffice(), ids=off.length?off:townCasts(), rnd=mulberry32(1212); let n=0;
+    for(let i=0;i<14;i++){ const m=M['worker_'+i]; if(!m) continue; const id=ids[(i*5+3)%ids.length], cl=castType(id); if(cl&&cbnPerson(R.scene,id,{x:m.x,z:m.z,yaw:m.yaw},cl,R.folk)) n++; }
+    const man=ids.find(i=>!PEOPLE.casts[i].f)||ids[0]; if(M.manager){ const cl=castType(man); if(cl) R.boss=cbnPerson(R.scene,man,M.manager,cl,R.folk,['suit','senator']); }
+    const sec=ids.find(i=>PEOPLE.casts[i].f)||ids[0], C=PEOPLE.casts[sec]; if(C&&M.secretary) cbnPerson(R.scene,sec,M.secretary,C.clips.f_talk||C.clips.idle_suit||C.clips[C.idle0],R.folk);
+    const w=ids[(ids.length*rnd())|0], CW=PEOPLE.casts[w]; if(CW&&M.water) cbnPerson(R.scene,w,M.water,CW.clips.phone||CW.clips[CW.idle0],R.folk);
+    R.count=n; };
+  fillRoom(R);
+  for(const k of ['lift','lift_2']) R.spot(M[k],'Take the lift',()=>cbnLift('office'),1.5);
+  R.spot(M.my_desk||M.my_chair,'Sit at your desk · work a shift',()=>cbnShift(),1.3);
+  R.spot(M.water,'Drink water',()=>{ toast('Cold water from the dispenser. Refreshing.',2.2); if(typeof hpAdd==='function') hpAdd(8); },1.2);
+  R.spot(M.printer,'Print your report',()=>{ for(let i=0;i<6;i++) setTimeout(()=>phoneBeep(240+(i%2)*40,.09,.2),i*160); toast('The copier hums and pushes out your report.',2.2); },1.3);
+  R.spot(M.manager_door,'Talk to the head of unit',()=>{ const st=CBN.shiftDay===dayOf()?'"Good work today. Your report is on my desk."':'"You are late. The examination reports are due this week. Sit down and work."'; toast('Head of unit: '+st,3.4); },1.6);
+  R.spot(M.meeting,'Meeting room',()=>toast('The 2 pm meeting: "Q3 bank examinations". The chairs are still empty.',2.6),1.6); }
+const dayOf=()=>Math.floor(Date.now()/864e5);
+function cbnShift(){ if(CBN.shiftDay===dayOf()){ toast('You have done your shift for today. Come back tomorrow.',2.6); return; }
+  fadeSwap(()=>{ CBN.shiftDay=dayOf(); const pay=15000+Math.min(6,myRank())*2500; addCash(pay); cashHUD(); credAdd('work',30,false,'shift at the Central Bank');
+    toast(`You type through the examination reports for hours. Salary paid: ${naira(pay)}.`,3.6); }); }
 // how far left of the line a point is, at distance s
 function raceLat(x,z,s){ const p=racePt(s); return (x-p.x)*Math.sin(p.h)+(z-p.z)*Math.cos(p.h); }
 // a point on the racing line at distance s, off metres to the left
@@ -9875,7 +10005,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -10214,7 +10344,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
-    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnScan,enterCBN,cbnLift,cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
