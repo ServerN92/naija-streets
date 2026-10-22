@@ -10675,8 +10675,8 @@ function stageClear(){ if(STAGE.body&&STAGE.sc) STAGE.sc.remove(STAGE.body); STA
 function stageTick(dt){ const S=STAGE; if(!S.R) return; const cv=S.R.domElement, w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
   const pr=S.R.getPixelRatio(); if(cv.width!==Math.round(w*pr)||cv.height!==Math.round(h*pr)) S.R.setSize(w,h,false);
   // the stand (1.4 m across) and a person (up to 2 m) always in the picture
-  const asp=w/h, half=Math.tan(THREE.MathUtils.degToRad(S.cam.fov/2)), d=Math.max(1.07/half,.84/(half*asp));
-  S.cam.aspect=asp; S.cam.position.set(0,1.3,d); S.cam.lookAt(0,1.02,0); S.cam.updateProjectionMatrix();
+  const asp=w/h, half=Math.tan(THREE.MathUtils.degToRad(S.cam.fov/2)), d=Math.max(1.13/half,.86/(half*asp));
+  S.cam.aspect=asp; S.cam.position.set(0,1.28,d); S.cam.lookAt(0,.98,0); S.cam.updateProjectionMatrix();
   if(!S.drag){ if(S.idle>0) S.idle-=dt; else S.ry+=dt*.3; }
   if(S.body) S.body.rotation.y=S.ry; if(S.ped) S.ped.rotation.y=S.ry;
   if(S.mx) S.mx.update(dt); S.R.render(S.sc,S.cam); }
