@@ -28,6 +28,25 @@ export function createBank({ db, now, log = () => {}, rand = Math.random, ctx })
              LEFT JOIN users us ON us.id=x.src LEFT JOIN users ud ON ud.id=x.dst LEFT JOIN bank bs ON bs.uid=x.src LEFT JOIN bank bd ON bd.uid=x.dst
              WHERE x.src=? OR x.dst=? ORDER BY x.id DESC LIMIT ?`),
   };
+  // the loan: ₦100k, ₦250k or ₦500k at once, 20% interest, paid back from your work (15% of every job payment) or any time
+  // from the app; after 7 days the bank's collectors take half of what you carry whenever money moves, until it is settled
+  db.raw.exec('CREATE TABLE IF NOT EXISTS bank_loan(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, n INTEGER NOT NULL, total INTEGER NOT NULL, took INTEGER NOT NULL, paid INTEGER NOT NULL DEFAULT 0);');
+  const LN = { get: q('SELECT * FROM bank_loan WHERE uid=?'), put: q('INSERT INTO bank_loan(uid,n,total,took,paid) VALUES(?,?,?,?,?) ON CONFLICT(uid) DO UPDATE SET n=excluded.n,total=excluded.total,took=excluded.took,paid=excluded.paid'), del: q('DELETE FROM bank_loan WHERE uid=?') };
+  const LOAN = { sizes: [100000, 250000, 500000], rate: .2, cut: .15, grace: 7 * 864e5, collect: .5 };
+  const loanOf = uid => LN.get.get(uid) || null;
+  const loanPub = l => l ? { left: l.n, total: l.total, took: l.took, paid: l.paid, due: l.took + LOAN.grace } : null;
+  function loanTake(C, m) {
+    const n = +m.n; if (!LOAN.sizes.includes(n)) return ctx.err(C, 'bk', 'The bank gives ₦100,000, ₦250,000 or ₦500,000.');
+    if (loanOf(C.user.id)) return ctx.err(C, 'bk', 'You still owe the bank. Settle that one first.');
+    const total = Math.round(n * (1 + LOAN.rate)); LN.put.run(C.user.id, total, total, now(), 0); C.cash += n; C.dsum += n; C.dirty = true; log('loan', C.user.name, n);
+    ctx.send(C, { t: '$', n: C.cash, s: C.cseq || 0 }); ctx.send(C, { t: 'bkloan', k: 'take', n, loan: loanPub(loanOf(C.user.id)) }); hello(C);
+  }
+  function loanPay(C, n, k) {   // k: 'work' (the cut from your pay), 'pay' (you, from the app), 'collect' (the collectors)
+    const l = loanOf(C.user.id); if (!l) return 0; n = Math.max(0, Math.min(Math.round(n), l.n, C.cash)); if (!n) return 0;
+    C.cash -= n; C.dsum -= n; C.dirty = true; l.n -= n; l.paid += n; if (l.n <= 0) LN.del.run(C.user.id); else LN.put.run(C.user.id, l.n, l.total, l.took, l.paid);
+    ctx.send(C, { t: 'bkloan', k, n, loan: loanPub(loanOf(C.user.id)) }); if (k !== 'work') ctx.send(C, { t: '$', n: C.cash, s: C.cseq || 0 }); return n;
+  }
+  function loanCut(C, g) { const l = loanOf(C.user.id); if (!l) return; if (now() - l.took > LOAN.grace && C.cash > 0) loanPay(C, C.cash * LOAN.collect, 'collect'); else loanPay(C, g * LOAN.cut, 'work'); }
   const keys = Object.keys(BANKS);
   function open(uid) {   // a new account, at a bank picked for you, with a number nobody else has
     const bank = keys[Math.floor(rand() * keys.length) % keys.length];
@@ -51,7 +70,7 @@ export function createBank({ db, now, log = () => {}, rand = Math.random, ctx })
   const hist = (uid, n = 25) => S.hist.all(uid, uid, n).map(x => row(x, uid));
   function hello(C) {
     const me = account(C.user.id); if (!me) return;
-    ctx.send(C, { t: 'bk', me: pub(me), banks: banks(), hist: hist(C.user.id), rules: { ...RULES, fees: [[5000, 10], [50000, 25], [Infinity, 50]] } });
+    ctx.send(C, { t: 'bk', me: pub(me), banks: banks(), hist: hist(C.user.id), rules: { ...RULES, fees: [[5000, 10], [50000, 25], [Infinity, 50]], loan: LOAN.sizes, rate: LOAN.rate, cut: LOAN.cut, grace: LOAN.grace }, loan: loanPub(loanOf(C.user.id)) });
   }
   // whose account is this? (before you send; a few a minute at most, so nobody can go through all the numbers)
   function enquire(C, m) {
@@ -96,6 +115,8 @@ export function createBank({ db, now, log = () => {}, rand = Math.random, ctx })
     if (m.a === 'name') return enquire(C, m);
     if (m.a === 'send') return send(C, m);
     if (m.a === 'me') return hello(C);
+    if (m.a === 'loan') return loanTake(C, m);
+    if (m.a === 'repay') { const l = loanOf(C.user.id); if (!l) return ctx.err(C, 'bk', 'You owe nothing.'); const n = m.n === 'all' ? Math.min(l.n, C.cash) : +m.n; if (!(n >= 100)) return ctx.err(C, 'bk', 'At least ₦100.'); if (n > C.cash) return ctx.err(C, 'bk', 'You don\'t have that much on you.'); loanPay(C, n, 'pay'); return ctx.ok(C, 'bk', l.n - n <= 0 ? 'Loan settled. The bank thanks you!' : `Paid ${n.toLocaleString('en-NG')}. You still owe ₦${(l.n - n).toLocaleString('en-NG')}.`); }
   }
-  return { hello, handle, account, hist };
+  return { hello, handle, account, hist, loanCut, loanOf };
 }

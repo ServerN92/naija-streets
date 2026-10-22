@@ -17,7 +17,7 @@ const SEE = 160, CELL = 160;      // you see people this far away (m); grid cell
 const MAX_SEEN = 30;              // the nearest 30 at most
 const NEAR_CHAT = 60;             // "near" chat reaches this far (m)
 const START_MAX = 50000;          // money you can bring from playing as a guest, when you make an account
-const START_CASH = 1000;          // what a new life starts with (under the bridge)
+const START_CASH = 5000;          // what a new life starts with (under the bridge)
 const EARN_CAP = 250000, EARN_RATE = 150;   // money from the game itself: ₦250k at once, then ₦150 a second (₦540k an hour)
 const SESSION_DAYS = 90;
 const LOOK_IDS = /^p_[a-z]{2,10}$/;
@@ -248,7 +248,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (ep && L0 && L0.e === ep && seq <= L0.s) return send(C, { t: '$', n: C.cash, s: L0.s });
     if (ep) lastPay.set(C.user.id, { e: ep, s: seq });
     if (m.d < 0) C.cash = Math.max(0, C.cash + m.d);
-    else { const g = C.earn.takeUpTo(m.d, now()); C.held += m.d - g; C.cash += g; if (g < m.d) log('held', C.user.name, m.d - g); if (typeof m.j === 'string' && g > 0) ogaCut(C, g, m.j.slice(0, 16)); }
+    else { const g = C.earn.takeUpTo(m.d, now()); C.held += m.d - g; C.cash += g; if (g < m.d) log('held', C.user.name, m.d - g); if (typeof m.j === 'string' && g > 0) { ogaCut(C, g, m.j.slice(0, 16)); bank.loanCut(C, g); } }
     C.dsum += m.d; C.dirty = true; C.cseq = seq;
     send(C, { t: '$', n: C.cash, s: seq });
   }
