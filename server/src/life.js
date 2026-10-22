@@ -35,8 +35,26 @@ export function lifeOk(d, now = Date.now()) {
     // street cred (the rank): points, the day being counted (yyyymmdd), active seconds counted that day, what each deed paid that day, the streak
     cr: Math.floor(num(d.cr, 0, 1e7)), cd: num(d.cd, 0, 99991231) | 0, ca: Math.round(num(d.ca, 0, 86400)),
     cx: cxOk(d.cx), cs: num(d.cs, 0, 3650) | 0, cl: num(d.cl, 0, 99991231) | 0,
+    pos: posOk(d.pos, now),                               // where you were when you left (you carry on there if you come back soon)
+    jp: jpOk(d.jp),                                       // points in each hustle: your rank in the job
+    kf: num(d.kf, 0, 9),                                  // how well the police know your face (it fades day by day)
+    kfd: num(d.kfd, 0, 99991231) | 0, ogd: num(d.ogd, 0, 99991231) | 0, seen: d.seen ? 1 : 0,
   };
 }
+function posOk(p, now) {
+  if (!p || typeof p !== 'object' || Array.isArray(p) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return null;
+  const c = (v, lo, hi) => Math.min(hi, Math.max(lo, +v || 0));
+  return { x: Math.round(c(p.x, -9000, 9000) * 10) / 10, z: Math.round(c(p.z, -9000, 9000) * 10) / 10, r: Math.round(c(p.r, -7, 7) * 100) / 100, t: Math.round(c(p.t, 0, now + 60000)), st: c(p.st, 0, 5) | 0, car: p.car ? 1 : 0 };
+}
+function jpOk(j) {
+  const o = {}; if (!j || typeof j !== 'object' || Array.isArray(j)) return o;
+  for (const [k, v] of Object.entries(j).slice(0, 12)) if (/^[a-z_]{2,16}$/.test(k) && typeof v === 'number' && Number.isFinite(v)) o[k] = Math.min(1e6, Math.max(0, Math.round(v * 10) / 10));
+  return o;
+}
+// your rank in your hustle (the game has the same list: src/game.js JOB_PTS); the police have their own ranks (law.js)
+export const JOB_PTS = [0, 15, 60, 160, 400];
+export const jobRankOf = (jp, job) => { const p = (jp && +jp[job]) || 0; let i = 0; while (i < JOB_PTS.length - 1 && p >= JOB_PTS[i + 1]) i++; return i; };
+export const jobBadge = d => d && d.job && d.job !== 'police' ? `${d.job}:${jobRankOf(d.jp, d.job)}` : '';
 function cxOk(x) {
   const o = {}; if (!x || typeof x !== 'object' || Array.isArray(x)) return o;
   for (const [k, v] of Object.entries(x).slice(0, 24)) if (/^[a-z]{2,10}$/.test(k) && typeof v === 'number' && Number.isFinite(v)) o[k] = Math.min(1e5, Math.max(0, v));

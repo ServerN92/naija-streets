@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { openDb } from '../src/db.js';
-import { lifeOk } from '../src/life.js';
+import { lifeOk, jobRankOf, jobBadge } from '../src/life.js';
 
 test('the start-over: money to ₦1,000 for everybody, the old amount kept, a ledger line', () => {
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ns-life-')), 'a.db');
@@ -62,4 +62,15 @@ test('street cred: kept, cannot jump, a guest brings at most a little', async ()
   assert.equal(credCap(lifeOk({ cr: 999999 }, 1000), prev, 1000).cr, 5000 + CRED_SLACK);            // no time passed: only the slack
   assert.ok(credCap(lifeOk({ cr: 999999 }, 1000), prev, 1000 + 3600e3).cr <= 5000 + CRED_SLACK + 1500);   // an hour: at most 1500 more
   assert.equal(credCap(lifeOk({ cr: 10 }, 1000), prev, 2000).cr, 5000);                              // never goes down
+});
+
+test('life: where you left off, your hustle points and the oga badge are kept, cleaned', () => {
+  const t = 1.8e12;
+  const d = lifeOk({ job: 'okada', jp: { okada: 170.25, bad: 'x', 'NO': 3, water: -4, farmer: 5e9 }, pos: { x: 12.345, z: -99999, r: 9, t: t + 5e6, st: 7, car: 'y' }, kf: 30, seen: 1 }, t);
+  assert.deepEqual(d.jp, { okada: 170.3, water: 0, farmer: 1e6 });
+  assert.deepEqual(d.pos, { x: 12.3, z: -9000, r: 7, t: t + 60000, st: 5, car: 1 });
+  assert.equal(d.kf, 9); assert.equal(d.seen, 1);
+  assert.equal(lifeOk({ pos: { x: 'a', z: 1 } }, t).pos, null);
+  assert.equal(jobRankOf({ okada: 170 }, 'okada'), 3); assert.equal(jobRankOf({}, 'okada'), 0);
+  assert.equal(jobBadge(d), 'okada:3'); assert.equal(jobBadge({ job: 'police', jp: {} }), ''); assert.equal(jobBadge({ job: '' }), '');
 });
