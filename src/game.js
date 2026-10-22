@@ -10103,9 +10103,13 @@ const heShe=L=>L.g==='f'?'she':'he', himHer=L=>L.g==='f'?'her':'him';
     for(const k of [2.6,3.4,1.8,4.2]){ const x=s.x+nx*k+(i%2?1:-1)*1.2, z=s.z+nz*k; if(onLand(x,z,.35)&&!roadAt(x,z,.4)&&!resolveCircle({x,z},.4)){ at={x,z}; break; } }
     if(!at) at={x:s.x+1.5,z:s.z+1.5}; L.x=at.x; L.z=at.z; L.ry=Math.atan2(-nx,-nz);
     lifeSpot(L.cast,{x:L.x,z:L.z,ry:L.ry},L.g==='f'?['f_idle','text','f_talk','idle_3']:['idle_1','phone','talk']);
-    PLACES.push({name:`💕 ${L.n}`,sub:`${L.job} · toast ${himHer(L)} (rank ${RANKS[L.need]?RANKS[L.need][0]:''}+)`,kind:'place',x:L.x,z:L.z}); });
+    L.place={name:`💕 ${L.n}`,sub:`${L.job} · toast ${himHer(L)} (rank ${RANKS[L.need]?RANKS[L.need][0]:''}+)`,kind:'place',x:L.x,z:L.z,lover:L.id}; });
   LOVE.ready=LOVERS.some(L=>L.x!=null); }
-const loverNear=()=>{ if(mode!=='walk'||!LOVE.ready) return null; for(const L of LOVERS){ if(L.x==null) continue; if(Math.abs(L.x-player.x)<2.6&&Math.abs(L.z-player.z)<2.6&&Math.hypot(L.x-player.x,L.z-player.z)<2.4) return L; } return null; };
+// a man and a woman only: you see (and can toast) the lovers of the other gender
+const loverOk=L=>!!PROFILE&&L.g!==(PROFILE.g==='f'?'f':'m');
+function loverPlaces(){ for(let i=PLACES.length-1;i>=0;i--) if(PLACES[i].lover) PLACES.splice(i,1); for(const L of LOVERS) if(L.place&&loverOk(L)) PLACES.push(L.place); }
+loverPlaces();
+const loverNear=()=>{ if(mode!=='walk'||!LOVE.ready) return null; for(const L of LOVERS){ if(L.x==null||!loverOk(L)) continue; if(Math.abs(L.x-player.x)<2.6&&Math.abs(L.z-player.z)<2.6&&Math.hypot(L.x-player.x,L.z-player.z)<2.4) return L; } return null; };
 const LOVE_LINES={win:['"Hmm, you sabi talk o. Okay, take my number."','"You funny! Oya, save my number. No dey disappear o."','"I go think am… okay, call me tonight."'],
   lose:['"Abeg, I get boyfriend."','"Na this one you wan use toast me? Try again."','"Ehn ehn, I no dey for this kind thing now."','"Abeg, comot for road."'],
   loseM:['"Abeg, I get babe."','"Na this one you wan use toast me? Try again."','"I no dey for this kind thing now."','"Abeg, comot for road."'],
@@ -10173,8 +10177,8 @@ function doDate(){ const D=LOVE.date, L=myLove(), K=D&&DATES[D.kind]; if(!K||!L)
 function R_dates(){ if(LIFE.rel) LIFE.rel.dates=(LIFE.rel.dates|0)+1; }
 const GIFTS=[['🌹','Flowers and chocolate',3000,5],['🧴','Perfume',8000,9],['💇🏾','Human hair (wig)',20000,16,'f'],['⌚','Wristwatch',20000,16,'m'],['📱','New phone',80000,32]];
 function loveAppNpc(){ const L=myLove(), R=LIFE.rel;
-  if(!L) return {title:'Love',sections:[{h:'You never get anybody',rows:[{name:'Toast somebody',sub:'Look for 💕 on your map: Chioma, Kemi, Tunde, Dayo… Walk up to them and press E. Baff, wear better cloth and rise your rank first.',btn:'MAP',act:()=>{ closePhone(); if(mode!=='interior') openMap(); }}]},
-    {h:'Who dey around',rows:LOVERS.filter(q=>q.x!=null).map(q=>({name:`💕 ${q.n}`,sub:`${q.job} · wants ${RANKS[q.need][0]} or higher${LIFE.relNo&&LIFE.relNo[q.id]===gameDay()?' · still vexing for you':''}`,btn:'SHOW WAY',act:()=>{ mapView.setDest(q.x,q.z,{name:q.n,x:q.x,z:q.z}); closePhone(); }}))}]};
+  if(!L) return {title:'Love',sections:[{h:'You never get anybody',rows:[{name:'Toast somebody',sub:`Look for 💕 on your map: ${LOVERS.filter(loverOk).slice(0,3).map(q=>q.n).join(', ')}… Walk up to them and press E. Baff, wear better cloth and rise your rank first.`,btn:'MAP',act:()=>{ closePhone(); if(mode!=='interior') openMap(); }}]},
+    {h:'Who dey around',rows:LOVERS.filter(q=>q.x!=null&&loverOk(q)).map(q=>({name:`💕 ${q.n}`,sub:`${q.job} · wants ${RANKS[q.need][0]} or higher${LIFE.relNo&&LIFE.relNo[q.id]===gameDay()?' · still vexing for you':''}`,btn:'SHOW WAY',act:()=>{ mapView.setDest(q.x,q.z,{name:q.n,x:q.x,z:q.z}); closePhone(); }}))}]};
   const hearts='❤️'.repeat(Math.max(1,Math.round(R.love/20)))+'🤍'.repeat(5-Math.max(1,Math.round(R.love/20)));
   const rows=[{name:`${hearts}  ${Math.round(R.love)}%`,sub:R.love>=70?`${L.n} dey happy with you: +5% work pay, and ${heShe(L)} dey hype you`:R.love<30?`${L.n} dey vex small. Do something before breakfast reach you!`:`${L.n} · ${L.job} · ${R.dates|0} dates`,warn:R.love<30}];
   if(R.ask) rows.push({name:`🙏 "Urgent ${naira(R.ask.n)}"`,sub:`Send am before ${Math.max(1,Math.ceil((R.ask.until-Date.now())/60e3))} min, or ${heShe(L)} go vex`,warn:true,btn:'SEND',off:CASH.n<R.ask.n,act:()=>{ const n=R.ask.n; addCash(-n); cashHUD(); R.ask=null; loveAdd(n>=10000?14:n>=5000?10:7); toast(`${L.n}: "Thank you my love! God bless you 😘"`,3); }});
@@ -10243,8 +10247,8 @@ function romSection(){ const H='Real players (18+)';
   if(ROM.partner){ const end=()=>{ if(confirm(`End it with ${ROM.partner}?`)) romSend({a:'end'}); };
     if(ROM.stage==='part') rows.push({name:`💕 ${ROM.partner} · partners`,sub:'Stand close to them and press E to ask for a kiss.',btn:'END',act:end});
     else rows.push({name:`💕 ${ROM.partner} · talking stage`,sub:`Bond ${ROM.bond}/${ROM.need} · today ${ROM.today}/${ROM.cap}. Chill together: hang out, ride together, gist. Every minute close counts. ${ROM.today>=ROM.cap?'Enough for today, come back tomorrow.':'Partners can kiss.'}`,btn:'END',act:end}); }
-  else if(ROM.on){ const f=mode==='drive'&&drive.v?drive.v:player, near=ON.nearby().filter(o=>!o.pt&&Math.hypot(o.x-f.x,o.z-f.z)<12);
-    if(!near.length) rows.push({name:'Nobody near you',sub:'Stand near a player (12 steps) to ask them out. They must turn on romance too.'});
+  else if(ROM.on){ const f=mode==='drive'&&drive.v?drive.v:player, myG=PROFILE&&PROFILE.g==='f'?'f':'m', near=ON.nearby().filter(o=>!o.pt&&o.g!==myG&&Math.hypot(o.x-f.x,o.z-f.z)<12);
+    if(!near.length) rows.push({name:'Nobody near you',sub:`Stand near a ${myG==='f'?'man':'woman'} (12 steps) to ask them out. They must turn on romance too.`});
     for(const o of near.slice(0,6)) rows.push({name:o.n,sub:'Near you',btn:'ASK OUT',act:()=>romSend({a:'ask',i:o.id})}); }
   return {h:H,rows}; }
 // ---- the pure water hawker: buy a bag (20 sachets) at any kiosk, sell to people on the street
@@ -10660,7 +10664,7 @@ const eb=$('#enterBtn');
       PL.hidden=false; };
     for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ if(pickG===b.dataset.g) return; pickG=b.dataset.g; pickC=null; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); people(); ok(); });
     PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!eb.disabled) eb.click(); }); }
-  eb.makeProfile=()=>{ if(PROFILE) return; eb.fresh=true; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,k:pickK,camp:CAMP_I,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
+  eb.makeProfile=()=>{ if(PROFILE) return; eb.fresh=true; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,k:pickK,camp:CAMP_I,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who(); loverPlaces();
     if(CAST[pickC]) CAST[pickC].w=0;   // no copies of you on the street
   }; }
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection

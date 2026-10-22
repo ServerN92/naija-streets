@@ -478,7 +478,7 @@ export function createOnline(api) {
     targets: () => { const out = []; if (!S.me) return out; for (const R of RS.values()) { const s = R.s; if (!s || s.v || s.a === 'k' || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z }); } return out; },
     hit: (id, k) => send({ t: 'hit', i: id, k }),
     // everybody near you: where they are, what they are doing ('k': lying down), their stars and badge
-    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '', jb: R.jb || '', pt: R.pt || '' }); } return out; },
+    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '', jb: R.jb || '', pt: R.pt || '', g: R.g || 'm' }); } return out; },
     spot: id => { const R = RS.get(id); return R && R.s ? { x: R.s.x, y: R.s.y, z: R.s.z } : null; },
     get myId() { return S.me ? S.me.id : -1; },
     get signedIn() { return !!S.me; },

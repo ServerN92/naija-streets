@@ -4,7 +4,7 @@
 // is kept, it is set once and can't be changed by the player. Romance is OFF until you turn it on, and only players who
 // are 18+ and have it on can be asked or ask. Then: ask a player standing near you to be your partner (they accept, say
 // no or block you); partners standing together can ask for a kiss (the other accepts or says no). Everybody near sees the
-// hearts. A "no" keeps you from asking that player again for half an hour; a block for good. Either partner can end it.
+// hearts (a man and a woman only). A "no" keeps you from asking that player again for half an hour; a block for good. Either partner can end it.
 // A yes is only the talking stage: no kiss yet. You become partners by spending time together: every minute the two of you
 // are close (chilling, riding together, gisting) is a point, at most 30 a day, 60 to be partners, so two days at least.
 export const LOVE = { near: 12, kissNear: 3.2, askCd: 20e3, kissCd: 15e3, noCd: 30 * 60e3, pend: 60e3, fxR: 60, blockMax: 200,
@@ -34,6 +34,8 @@ export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) 
   const put = (uid, d) => S.put.run(uid, JSON.stringify(d));
   const adult = d => !!d.adultAt && now() >= d.adultAt;
   const byPid = pid => { for (const D of ctx.online.values()) if (D.p && D.user && D.p.id === pid) return D; return null; };
+  const sex = C => C && C.p && C.p.look ? C.p.look.g : '';   // 'm' or 'f' (from the look you picked)
+  const pair = (A, B) => !!sex(A) && !!sex(B) && sex(A) !== sex(B);   // a man and a woman only
   const dist = (A, B) => (A.p && B.p && A.p.has && B.p.has) ? Math.hypot(A.p.x - B.p.x, A.p.z - B.p.z) : 1e9;
   const noUntil = new Map();   // "asker:target" -> until (after a no)
   function tag(C, d) { if (!C || !C.p) return; const pt = d.partner ? d.pname : ''; if ((C.p.pt || '') !== pt) { C.p.pt = pt; C.p.lv++; C.p.ver++; } }
@@ -56,6 +58,7 @@ export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) 
         const kiss = m.a === 'kiss', D = byPid(m.i | 0);
         if (!adult(d) || !d.on) return err('Turn on romance in the Love app first (18+).');
         if (!D || D === C) return err('That player is not here.');
+        if (!pair(C, D)) return err('Romance here is between a man and a woman.');
         const e = get(D.user.id);
         if (kiss) { if (d.partner !== D.user.id) return err('You can only kiss your partner.'); if (d.stage !== 'part') return err(`You and ${D.user.name} are still talking. Chill together more first.`); if (dist(C, D) > LOVE.kissNear) return err('Stand close to your partner first.');
           if (t - (C.romKiss || 0) < LOVE.kissCd) return err('Wait small.'); C.romKiss = t; }
@@ -74,6 +77,7 @@ export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) 
         if (m.a === 'block') { d.block = [...new Set([...(d.block || []), P.from])].slice(-LOVE.blockMax); put(uid, d); }
         if (m.a !== 'yes') { if (P.k === 'rel') noUntil.set(P.from + ':' + uid, t + LOVE.noCd); if (A) ctx.send(A, { t: 'romno', k: P.k, n: C.user.name }); return ctx.ok(C, 'rom', m.a === 'block' ? 'Blocked. They can\'t ask you again.' : 'You said no.'); }
         if (!A) return err('They are gone.');
+        if (!pair(A, C)) return err('Romance here is between a man and a woman.');
         const a = get(P.from);
         if (P.k === 'rel') {
           if (!adult(d) || !d.on || d.partner || !adult(a) || !a.on || a.partner) return err('That can\'t happen now.');
