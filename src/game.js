@@ -3422,7 +3422,7 @@ function inputVec(){ if(WARD.open||NOMOVE||TL.hold) return [0,0]; let f=0,s=0; i
   if(mode==='drive'&&drvPedals()){ f+=DRV.gas-DRV.rev; s+=DRV.sv; } return [clamp(f,-1,1),clamp(s,-1,1)]; }
 // driving on a phone: ARROWS (the default: ◀ ▶ on the right steer, GAS and BRAKE on the left, BRAKE held when stopped
 // reverses), WHEEL (a steering wheel you turn with your thumb, the same pedals) or JOYSTICK (the old way). Kept on this phone.
-const DRV={m:'easy',gas:0,rev:0,l:0,r:0,sv:0,wr:0,wp:null,wa:0,w0:0}; try{ const m=localStorage.getItem('naija-drive'); if(m==='easy'||m==='wheel'||m==='joy') DRV.m=m; }catch(e){}
+const DRV={m:'easy',look:'pedal',gas:0,rev:0,l:0,r:0,sv:0,wr:0,wp:null,wa:0,w0:0}; try{ const m=localStorage.getItem('naija-drive'); if(m==='easy'||m==='wheel'||m==='joy') DRV.m=m; if(localStorage.getItem('naija-drvlook')==='round') DRV.look='round'; }catch(e){}
 const drvPedals=()=>touchUI&&DRV.m!=='joy';
 function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
   if(DRV.m==='wheel'){ if(DRV.wp==null) DRV.wr*=Math.exp(-10*dt); if(Math.abs(DRV.wr)<.3&&DRV.wp==null) DRV.wr=0; DRV.sv=clamp(DRV.wr/90,-1,1); $('#tWheel').style.transform=DRV.wr?`rotate(${DRV.wr.toFixed(1)}deg)`:''; }   // let go and it turns back to straight
@@ -3430,8 +3430,10 @@ function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
 function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; if(p&&!DRV.told){ DRV.told=true; let seen=false; try{ seen=!!localStorage.getItem('naija-drv-tip'); localStorage.setItem('naija-drv-tip','1'); }catch(e){} if(!seen) toast('Gas pedal: go · brake pedal: brake (hold to reverse) · ◀ ▶ steer. Stunts: hold the brake while you turn fast to drift; on a bike, gas + brake = wheelie. Tap Get out to come down.',8); } $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
   $('#tBrake').hidden=!(on&&!drvPedals()); document.body.classList.toggle('drvpad',p&&!w); document.body.classList.toggle('drvwheel',w);
   if(!p){ DRV.gas=DRV.rev=DRV.l=DRV.r=0; DRV.sv=DRV.wr=0; DRV.wp=null; for(const id of ['tGas','tRev','tLeft','tRight','tWheel']) $('#'+id).classList.remove('on'); } }
-function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
+function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); document.querySelectorAll('#drvLook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===DRV.look))); document.body.classList.toggle('drvround',DRV.look==='round'); try{ localStorage.setItem('naija-drvlook',DRV.look); }catch(e){} if(typeof blApply==='function'&&touchUI) requestAnimationFrame(blApply); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
 document.querySelectorAll('#drvSeg button').forEach(b=>b.addEventListener('click',()=>{ DRV.m=b.dataset.d; drvSettings(); }));
+document.querySelectorAll('#drvLook button').forEach(b=>b.addEventListener('click',()=>{ DRV.look=b.dataset.l; drvSettings(); }));
+document.body.classList.toggle('drvround',DRV.look==='round'); document.querySelectorAll('#drvLook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===DRV.look))); document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m)));
 // physical key positions, so AZERTY / other layouts still use the WASD spot
 const CODE={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arrowdown',ArrowLeft:'arrowleft',ArrowRight:'arrowright',ShiftLeft:'shift',ShiftRight:'shift',Space:' ',KeyE:'e',KeyF:'f',KeyH:'h',KeyJ:'j',KeyK:'k',KeyM:'m',KeyC:'c',KeyG:'g',Escape:'escape',Enter:'enter'};
 const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
@@ -3499,25 +3501,31 @@ const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tRadio','tBrake'
 try{ BL.data=JSON.parse(localStorage.getItem('naija-btns')||'{}')||{}; }catch(e){ BL.data={}; }
 const blKey=()=>innerWidth>innerHeight?'land':'port';
 const BL_NAME={tE:'E',tGrab:'GRAB / AIM',tPunch:'ATTACK / FIRE',tCrouch:'CROUCH',tJump:'JUMP'};
+const BL_WHAT={tGas:'gas pedal',tRev:'brake pedal',tLeft:'left arrow',tRight:'right arrow',tWheel:'steering wheel',tHorn:'horn',tRadio:'radio',tBrake:'brake',tGrab:'grab',tPunch:'attack',tCrouch:'crouch',tJump:'jump',tE:'E',tSk1:'trick 1',tSk2:'trick 2',tSk3:'trick 3'};
+// tap a button in the editor: the size slider then sizes that one only (tap it again: all of them)
+function blSelect(id){ BL.sel=id; document.querySelectorAll('.tbtns button.sel').forEach(b=>b.classList.remove('sel')); const L=BL.data[blKey()]||{};
+  if(id){ $('#'+id).classList.add('sel'); $('#beWhat').textContent='Size · '+(BL_WHAT[id]||'this button'); $('#beSize').value=Math.round((L.s||1)*((L.sz&&L.sz[id])||1)*100); }
+  else { $('#beWhat').textContent='Size · all'; $('#beSize').value=Math.round((L.s||1)*100); } }
 function blSave(){ try{ localStorage.setItem('naija-btns',JSON.stringify(BL.data)); }catch(e){} }
 function blApply(){ const L=BL.data[blKey()], box=document.querySelector('.tbtns'); if(!box) return; const sc=L&&L.s||1; box.style.setProperty('--bs',sc); box.style.setProperty('--bo',L&&L.o||1);
-  for(const id of BL.ids){ const b=$('#'+id); if(!b) continue; const p=L&&L.pos&&L.pos[id];
-    if(p){ const d=(b.classList.contains('tbig')?76:64)*sc; b.classList.add('free'); b.style.left=Math.round(clamp(p[0]*innerWidth,d/2,innerWidth-d/2)-d/2)+'px'; b.style.top=Math.round(clamp(p[1]*innerHeight,d/2,innerHeight-d/2)-d/2)+'px'; }
+  for(const id of BL.ids){ const b=$('#'+id); if(!b) continue; const p=L&&L.pos&&L.pos[id], k=L&&L.sz&&L.sz[id]; if(k) b.style.setProperty('--bs',sc*k); else b.style.removeProperty('--bs');   // a button sized on its own
+    if(p){ b.classList.add('free'); const w=b.offsetWidth||(b.classList.contains('tbig')?76:64)*sc, h=b.offsetHeight||w; b.style.left=Math.round(clamp(p[0]*innerWidth,w/2,innerWidth-w/2)-w/2)+'px'; b.style.top=Math.round(clamp(p[1]*innerHeight,h/2,innerHeight-h/2)-h/2)+'px'; }
     else { b.classList.remove('free'); b.style.left=b.style.top=''; } } }
 function blShown(){ if(mode==='drive') return BL.ids.filter(id=>!$('#'+id).hidden&&id!=='tCrouch'&&id!=='tJump'&&id!=='tGrab'&&id!=='tPunch'&&id!=='tE');   // the buttons of what you are doing now
   return ['tGrab','tPunch','tCrouch','tJump']; }
 function blRecord(ids){ const L=BL.data[blKey()]||(BL.data[blKey()]={s:1,o:1,pos:{}}); L.pos=L.pos||{};
   for(const id of ids){ if(L.pos[id]) continue; const r=$('#'+id).getBoundingClientRect(); if(r.width) L.pos[id]=[(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight]; } return L; }
-function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
+function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; if(!on) blSelect(null); document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
   if(on){ BL.was={}; const set=blShown(); for(const id of BL.ids){ const b=$('#'+id); BL.was[id]={h:b.hidden,t:b.textContent}; b.hidden=!set.includes(id); if(BL_NAME[id]&&mode!=='drive') b.textContent=BL_NAME[id]; }
     requestAnimationFrame(()=>{ const L=blRecord(set); blApply(); $('#beSize').value=Math.round((L.s||1)*100); $('#beOp').value=Math.round((L.o||1)*100); }); }
   else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; b.textContent=BL.was[id].t; } BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=true; } }
 { const box=document.querySelector('.tbtns');
   box.addEventListener('pointerdown',e=>{ if(!BL.edit) return; const b=e.target.closest('button'); e.preventDefault(); e.stopPropagation(); if(!b) return; const r=b.getBoundingClientRect();
-    BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
-  addEventListener('pointermove',e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; const L=BL.data[blKey()]; L.pos[D.b.id]=[clamp((e.clientX-D.dx)/innerWidth,.03,.97),clamp((e.clientY-D.dy)/innerHeight,.05,.97)]; blApply(); });
-  const end=e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; D.b.classList.remove('drag'); BL.drag=null; blSave(); }; addEventListener('pointerup',end); addEventListener('pointercancel',end);
-  $('#beSize').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; const ns=+e.target.value/100, r=ns/(L.s||1); L.s=ns;
+    BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId,x0:e.clientX,y0:e.clientY,moved:false}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
+  addEventListener('pointermove',e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; if(!D.moved&&Math.hypot(e.clientX-D.x0,e.clientY-D.y0)<7) return; D.moved=true; const L=BL.data[blKey()]; L.pos[D.b.id]=[clamp((e.clientX-D.dx)/innerWidth,.03,.97),clamp((e.clientY-D.dy)/innerHeight,.05,.97)]; blApply(); });
+  const end=e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; D.b.classList.remove('drag'); BL.drag=null; if(!D.moved&&e.type==='pointerup') blSelect(BL.sel===D.b.id?null:D.b.id); blSave(); }; addEventListener('pointerup',end); addEventListener('pointercancel',end);
+  $('#beSize').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; if(BL.sel){ L.sz=L.sz||{}; L.sz[BL.sel]=(+e.target.value/100)/(L.s||1); blApply(); return; }   // one button only
+    const ns=+e.target.value/100, r=ns/(L.s||1); L.s=ns;
     // bigger buttons spread apart (and smaller ones close up) so they never sit on top of each other, then the group is kept on screen
     const W=innerWidth, H=innerHeight, ids=Object.keys(L.pos).filter(id=>!$('#'+id).hidden); if(ids.length){ let cx=0, cy=0; for(const id of ids){ cx+=L.pos[id][0]*W; cy+=L.pos[id][1]*H; } cx/=ids.length; cy/=ids.length;
       let x0=1e9, y0=1e9, x1=-1e9, y1=-1e9; const P={};
@@ -3525,7 +3533,7 @@ function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.bod
       const sx=x0<0?-x0:x1>W?W-x1:0, sy=y0<0?-y0:y1>H?H-y1:0; for(const id of ids) L.pos[id]=[(P[id][0]+sx)/W,(P[id][1]+sy)/H]; }
     blApply(); });
   $('#beOp').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; L.o=+e.target.value/100; blApply(); });
-  $('#beReset').addEventListener('click',()=>{ delete BL.data[blKey()]; blApply(); requestAnimationFrame(()=>{ const L=blRecord(blShown()); blApply(); $('#beSize').value=100; $('#beOp').value=100; void L; }); });
+  $('#beReset').addEventListener('click',()=>{ delete BL.data[blKey()]; blSelect(null); blApply(); requestAnimationFrame(()=>{ const L=blRecord(blShown()); blApply(); $('#beSize').value=100; $('#beOp').value=100; void L; }); });
   $('#beDone').addEventListener('click',()=>blEdit(false));
   $('#btnEdit').addEventListener('click',()=>blEdit(true));
   addEventListener('resize',()=>{ if(touchUI) blApply(); }); }
