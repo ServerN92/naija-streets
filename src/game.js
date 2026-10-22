@@ -3215,7 +3215,7 @@ function sndNepaOff(x,z,h){ const d=Math.floor(Date.now()/(CLOCK.DAY_MINUTES*6e4
 const STATIONS=[{name:'Gbedu FM 98.1',g:['afrobeats','street']},{name:'Piano Radio 101.5',g:['amapiano']},{name:'Highlife Gold 92.3',g:['highlife','afrobeat']}];
 const MUS={st:0,on:true,home:false,r0:null,c1:null,sp:{},last:{},horn:12};
 try{ const m=JSON.parse(localStorage.getItem('naija-radio')||'{}'); MUS.st=clamp(m.st|0,0,STATIONS.length-1); MUS.on=m.on!==false; }catch(e){}
-const RADIO_V={sedan:1,suv:1,car2:1,benz:1,police:1,danfo:1,bus:1,keke:1,tanker:1};
+const RADIO_V=new Proxy({},{get:(o,ty)=>typeof ty==='string'&&!!ty&&!BIKE[ty]&&ty!=='skate'});   // a radio in every motor (the dealer's cars, the trucks, the race cars too); not on a bike or a board
 function musPick(genres,ch){ const L=SND.songsOf(genres).length?SND.songsOf(genres):SND.songsOf(null); if(!L.length) return null; let n=L[0]; for(let k=0;k<8;k++){ n=L[(Math.random()*L.length)|0]; if(n!==MUS.last[ch]) break; } MUS.last[ch]=n; return n; }
 function radioPress(){ if(!SND||!SND.SONGS.length) return; if(!MUS.on){ MUS.on=true; MUS.st=0; } else if(MUS.st<STATIONS.length-1) MUS.st++; else MUS.on=false;
   MUS.r0=null; if(!MUS.on){ SND.songStop(0,.3); toast('📻 Radio off',1.6); } else SND.play('radio_static',{b:'music',gain:.55}); try{ localStorage.setItem('naija-radio',JSON.stringify({st:MUS.st,on:MUS.on})); }catch(e){} }
@@ -4787,7 +4787,8 @@ function skBail(msg){ const v=drive.v, sp=Math.abs(drive.speed); SK.combo=null; 
   setTimeout(()=>{ if(FIGHT.ko&&!FIGHT.dead&&FIGHT.koT>=3) FIGHT.ko=false; },3500); toast(msg||mpick(['Bail! You don fall.','Ouch! The board throw you.','Bail! Small small next time.']),2.4); }
 function updateSkate(dt){ const v=drive.v, S=SK, [f,s]=inputVec(); if(FIGHT.ko) return;
   const jl=Math.hypot(joy.x,joy.y), hard=K.shift||touchRun||jl>.88, sideK=K.a||K.d||K.arrowleft||K.arrowright, sideJ=Math.abs(joy.x)>.45;
-  const keys={jump:K[' ']||TSK.b2,kick:K.j||TSK.b1&&joy.x>-.4&&joy.y>-.5,heel:K.k||TSK.b1&&joy.x<=-.4,shove:K.l&&!sideK||TSK.b3&&!sideJ,spin:K.o||K.l&&sideK||TSK.b3&&sideJ,flip360:K.i||TSK.b1&&joy.y<=-.5};
+  const tb=!!TSK.b1; if(tb&&!S.tbPrev) S.tw=['kick','heel','shove','spin','flip360'][S.tn=((S.tn|0)+1)%5]; S.tbPrev=tb;   // the TRICK button: kickflip, heelflip, shove-it, 360 spin, 360 flip, one after the other
+  const keys={jump:K[' ']||TSK.b2,kick:K.j||tb&&S.tw==='kick',heel:K.k||tb&&S.tw==='heel',shove:K.l&&!sideK||tb&&S.tw==='shove'||TSK.b3&&!sideJ,spin:K.o||K.l&&sideK||tb&&S.tw==='spin'||TSK.b3&&sideJ,flip360:K.i||tb&&S.tw==='flip360'};
   const press=n=>{ const on=!!keys[n], was=S.prev[n]; S.prev[n]=on; return on&&!was; }; const P={}; for(const n in keys) P[n]=press(n);
   const surf=condAt(v.x,v.z), rough=surf==='dirt'?3.2:surf==='bad'?1.7:1, cap=hard?11:8.2, B=skRig();
   S.sp=drive.speed; S.vy0=4.4+Math.min(S.sp,10)*.07;
@@ -4934,7 +4935,8 @@ function skillTime(name,on,dt,perSec){ const T=SKILL.timers; if(on){ T[name]=(T[
 // which skill buttons a phone shows: on a bike WHEELIE and HOP, on the skateboard FLIP, OLLIE and SPIN
 let skBtnK='';
 function skillButtons(){ if(!touchUI||BL.edit) return; const v=mode==='drive'&&!drive.ride?drive.v:null, t=v?(v.type==='skate'?'skate':BIKE[v.type]?'bike':''):'';
-  if(t===skBtnK) return; skBtnK=t; const L=t==='skate'?['FLIP','OLLIE','SPIN']:t==='bike'?['WHEELIE','HOP','']:['','',''];
+  if(t===skBtnK) return; skBtnK=t; const L=t==='skate'?['TRICK','OLLIE','']:t==='bike'?['WHEELIE','HOP','']:['','',''];   // the board: one trick button (it goes round the tricks) and the ollie
+  document.body.classList.toggle('onskate',t==='skate'); { const g=$('#tGas .lbl'); if(g) g.textContent=t==='skate'?'PUSH':'GAS'; }
   ['#tSk1','#tSk2','#tSk3'].forEach((id,i)=>{ const b=$(id); b.hidden=!L[i]||t==='bike'; b.textContent=L[i]; }); $('#tHorn').hidden=!v||t==='skate'; $('#tBrake').textContent='BRAKE'; }   // (no WHEELIE / HOP buttons on bikes: they hid the road)
 function skillTick(dt){ if(SKILL.hideT>0&&(SKILL.hideT-=dt)<=0) $('#trick').hidden=true; }
 // phone buttons for skills (what they do depends on what you ride): b1 left, b2 middle, b3 top
