@@ -84,6 +84,15 @@ const CSS = `
 .iph-chips{display:flex;flex-wrap:wrap;gap:1.8cqw;margin:1cqw 0 2.4cqw}.iph-chips button{padding:1.8cqw 3cqw;border-radius:4cqw;background:rgba(118,118,128,.24);font-size:3.5cqw;font-weight:600}
 .iph-note{font-size:3.5cqw;opacity:.65;margin:2cqw 1cqw}
 .fm-btn{flex:none;padding:1.6cqw 3cqw;border-radius:4cqw;background:#2e7d1f;color:#fff!important;font-size:3.2cqw;font-weight:700;white-space:nowrap}.fm-btn.off{background:rgba(120,120,128,.18);color:#333!important;font-weight:600}
+/* the CBN app: the Central Bank's green and gold */
+.cb-hero{margin:0 0 3cqw;padding:4cqw;border-radius:4cqw;background:linear-gradient(140deg,#0b5d3b,#063a25);color:#fff}.cb-hero small{display:block;opacity:.75;font-size:3.1cqw}.cb-hero b{display:block;font-size:5.6cqw;margin:.6cqw 0;color:#f3d27a}
+.cb-bar{height:1.6cqw;border-radius:1cqw;background:rgba(255,255,255,.2);margin-top:2cqw;overflow:hidden}.cb-bar i{display:block;height:100%;background:#f3d27a}
+.cb-ta{width:100%;box-sizing:border-box;min-height:34cqw;padding:3cqw;border-radius:3cqw;border:1px solid rgba(0,0,0,.12);background:#fff;color:#111;font:inherit;font-size:max(12px,3.7cqw);resize:vertical;outline:none}
+.cb-ta.sm{min-height:16cqw}.cb-cnt{font-size:3cqw;opacity:.55;text-align:right;margin:1cqw 0 2cqw}
+.cb-letter{white-space:pre-wrap;font-size:3.5cqw;line-height:1.4;background:#f6f3ea;border-radius:3cqw;padding:3cqw;margin:1.5cqw 0;color:#222}
+.cb-row{display:flex;gap:2cqw;margin:1cqw 0 3cqw}.cb-row .fm-btn{flex:1;text-align:center;padding:2.4cqw}.fm-btn.no{background:#c0392b}.fm-btn.cb{background:#0b5d3b}
+.cb-st{display:inline-block;padding:.6cqw 2cqw;border-radius:2cqw;font-size:3cqw;font-weight:700;color:#fff;background:#888}.cb-st.wait{background:#d18b00}.cb-st.yes{background:#1d8a4e}.cb-st.no{background:#c0392b}
+.iph-li.me b{color:#0b5d3b}
 /* gist (social) */
 .gx-post{background:rgba(255,255,255,.05);border-radius:4cqw;padding:3.4cqw;margin:0 0 3.4cqw}
 .gx-hd{display:flex;align-items:center;gap:2.6cqw;margin-bottom:2cqw}.gx-hd .iph-av{width:9cqw;height:9cqw;font-size:4.6cqw}
@@ -193,6 +202,7 @@ const ICONS = {
   hustle: ['linear-gradient(180deg,#ff9f43,#e8590c)', '#fff', SV('<rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="rgba(255,255,255,.18)"/><path d="M9 8V6.2A1.7 1.7 0 0 1 10.7 4.5h2.6A1.7 1.7 0 0 1 15 6.2V8M3.5 13h17"/><path d="M12 12v2.4" stroke-width="2.4"/>')],
   farm: ['linear-gradient(180deg,#8fd14f,#3e8e1f)', '#fff', SV('<path d="M3 20h18" stroke="#fff"/><path d="M12 20V9" stroke="#fff" stroke-width="2.2"/><path d="M12 13c-3.5 0-5.5-2.2-5.5-5.5 3.3 0 5.5 2 5.5 5.5zM12 11c0-3.6 2.2-6 6-6 0 3.8-2.4 6-6 6z" fill="#fff" stroke="none"/>')],
   love: ['linear-gradient(180deg,#ff7aa8,#d6336c)', '#fff', SV('<path d="M12 20.5s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.9a4.3 4.3 0 0 1 7.5 2.6c0 5.4-7.5 10-7.5 10z" fill="rgba(255,255,255,.9)" stroke="none"/>')],
+  cbn: ['linear-gradient(180deg,#14804f,#073d27)', '#f3d27a', SV('<path d="M3 9.5 12 4l9 5.5z" fill="#f3d27a" stroke="#f3d27a" stroke-width="1.2"/><path d="M5.5 11.5v6M9.8 11.5v6M14.2 11.5v6M18.5 11.5v6" stroke="#fff" stroke-width="2"/><path d="M3.5 20h17" stroke="#f3d27a" stroke-width="2"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
 };
 const icon = k => { const [bg, fg, svg] = ICONS[k]; const d = document.createElement('div'); d.className = 'iph-ico'; d.style.background = bg; d.style.color = fg; d.innerHTML = svg; return d; };
@@ -314,7 +324,7 @@ export function createPhone(api) {
 
   const APPS = [
     ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['love', 'Love', () => openApp('love')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
-    ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')],
+    ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')], ['cbn', 'CBN', () => openApp('cbn')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
   const badges = {};
@@ -359,7 +369,7 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
   function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
@@ -386,6 +396,55 @@ export function createPhone(api) {
         if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.open && R.app === 'hustle') openApp('hustle'); }, 60); }); row.append(bb); }
         L.append(row); }
       b.append(L); } }
+  // ---------------------------------------------------------------- CBN: the Central Bank (apply, your position and pay, the Governor's desk)
+  R.cbnDraft = R.cbnDraft || { letter: '', msg: {} };
+  function cbnApp() {
+    const b = frameApp('CBN', { light: true }); R.view.querySelector('h1').style.color = '#0b5d3b';
+    const d = api.cbn ? api.cbn() : null, N = api.naira, ago2 = t => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`; };
+    if (!d || !d.signed) { b.append(h('div', 'cb-hero', null), h('div', 'iph-note', 'The Central Bank of Nigeria hires online players only. Sign in to apply for the best-paid job in Lagos.'));
+      b.firstChild.append(h('small', null, 'Central Bank of Nigeria'), h('b', null, 'Careers'), h('small', null, 'Clerk to Governor · up to ₦1,000,000 a shift'));
+      const r = h('div', 'cb-row'); r.append(btn('fm-btn cb', ['Sign in'], () => api.openSignIn && api.openSignIn())); b.append(r); return; }
+    const m = d.me; if (!m) { b.append(h('div', 'iph-note', 'Connecting to the CBN…')); return; }
+    const hero = h('div', 'cb-hero'), R0 = m.ranks[m.rank], nx = m.ranks[m.rank + 1];
+    if (m.on) { hero.append(h('small', null, 'Central Bank of Nigeria · your position'), h('b', null, m.title), h('small', null, `${N(R0[2])} a shift · ${m.shifts} shifts worked · ${N(m.earned)} earned`));
+      if (nx) { const bar = h('div', 'cb-bar'), i = h('i'); i.style.width = Math.min(100, Math.round((m.shifts - R0[1]) / Math.max(1, nx[1] - R0[1]) * 100)) + '%'; bar.append(i); hero.append(bar, h('small', null, `Next: ${nx[0]} at ${nx[1]} shifts (${N(nx[2])})${nx[3] ? ' · needs the Governor\'s approval' : ''}`)); } }
+    else hero.append(h('small', null, 'Central Bank of Nigeria'), h('b', null, 'Careers'), h('small', null, 'The best-paid job in Lagos. Not easy to get.'));
+    b.append(hero);
+    b.append(h('div', 'iph-h', 'The Governor'));
+    const gl = h('div', 'iph-list'), gr = h('div', 'iph-li'), gt = h('div', 'tx'); gt.append(h('b', null, m.gov ? `Governor ${m.gov}` : 'The seat is empty'), h('small', null, m.gov ? (m.isGov ? 'That is you. The letters come to your desk.' : 'Reads every application') : 'The Board reads the letters until a Deputy Governor takes the seat')); gr.append(gt); gl.append(gr); b.append(gl);
+    if (m.on) {
+      b.append(h('div', 'iph-note', m.today ? '✅ You have worked your shift today. Come back tomorrow.' : m.working ? '⏳ Your shift is running at your desk.' : '🏢 Go to the Central Bank, take the lift to the 12th floor and sit at your desk to work today\'s shift.'));
+    } else {
+      const job = (m.apps || []).find(a => a.k === 'job');
+      if (job && job.st === 'wait') { b.append(h('div', 'iph-h', 'Your application')); const L = h('div', 'iph-list'), r = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, 'With the ' + (m.gov ? 'Governor' : 'Board')), h('small', null, 'Sent ' + ago2(job.t))); r.append(tx, h('span', 'cb-st wait', 'WAITING')); L.append(r); b.append(L); }
+      else {
+        if (job && job.st === 'no') { b.append(h('div', 'iph-h', 'Last application')); const L = h('div', 'iph-list'), r = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, `Rejected by ${job.by === 'The Board' ? 'the Board' : 'Governor ' + job.by}`), h('small', null, ago2(job.rt || job.t))); r.append(tx, h('span', 'cb-st no', 'NO')); L.append(r); b.append(L); if (job.msg) b.append(h('div', 'cb-letter', `“${job.msg}”`)); }
+        b.append(h('div', 'iph-h', 'Apply: why do you want to work with us?'));
+        const ta = h('textarea', 'cb-ta'); ta.maxLength = m.letter[1]; ta.placeholder = 'Dear Governor,\n\nTell us who you are, what you can do, and why you want to work at the Central Bank of Nigeria…'; ta.value = R.cbnDraft.letter;
+        const cnt = h('div', 'cb-cnt'), upd = () => { R.cbnDraft.letter = ta.value; cnt.textContent = `${ta.value.trim().length} / ${m.letter[1]} (at least ${m.letter[0]})`; }; upd();
+        ta.addEventListener('input', upd); ta.addEventListener('keydown', e => e.stopPropagation()); ta.addEventListener('focus', () => api.typing && api.typing(true));
+        const r = h('div', 'cb-row'); r.append(btn('fm-btn cb', ['Send application'], () => { const L2 = ta.value.trim(); if (L2.length < m.letter[0]) { phToast(`At least ${m.letter[0]} characters`); return; } api.cbnSend({ a: 'apply', letter: L2 }); }));
+        b.append(ta, cnt, r);
+      }
+    }
+    if (m.isGov) {
+      b.append(h('div', 'iph-h', `On your desk (${(m.queue || []).length})`));
+      if (!(m.queue || []).length) b.append(h('div', 'iph-note', 'No letters waiting.'));
+      for (const a of m.queue || []) {
+        const L = h('div', 'iph-list'), r = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, a.k === 'promo' ? `${a.n} · promotion to ${m.ranks[a.r][0]}` : `${a.n} · job application`), h('small', null, ago2(a.t))); r.append(tx); L.append(r); b.append(L);
+        b.append(h('div', 'cb-letter', a.letter));
+        const ta = h('textarea', 'cb-ta sm'); ta.maxLength = 400; ta.placeholder = 'A message for them (optional)'; ta.value = R.cbnDraft.msg[a.id] || ''; ta.addEventListener('input', () => { R.cbnDraft.msg[a.id] = ta.value; }); ta.addEventListener('keydown', e => e.stopPropagation()); ta.addEventListener('focus', () => api.typing && api.typing(true));
+        const row = h('div', 'cb-row'); row.append(btn('fm-btn cb', ['Accept'], () => { api.cbnSend({ a: 'decide', id: a.id, yes: true, msg: ta.value }); delete R.cbnDraft.msg[a.id]; }), btn('fm-btn no', ['Reject'], () => { api.cbnSend({ a: 'decide', id: a.id, yes: false, msg: ta.value }); delete R.cbnDraft.msg[a.id]; }));
+        b.append(ta, row);
+      }
+    }
+    const msgs = (m.apps || []).filter(a => a.msg && a.st !== 'wait');
+    if (msgs.length && m.on) { b.append(h('div', 'iph-h', 'Messages from the top')); for (const a of msgs.slice(0, 3)) b.append(h('div', 'cb-letter', `“${a.msg}” — ${a.by === 'The Board' ? 'the Board' : 'Governor ' + a.by}`)); }
+    b.append(h('div', 'iph-h', 'Positions and pay (one shift a day)'));
+    const PL = h('div', 'iph-list'); m.ranks.forEach(([n, sh, pay, ap], i) => { const r = h('div', 'iph-li' + (m.on && i === m.rank ? ' me' : '')), tx = h('div', 'tx'); tx.append(h('b', null, (m.on && i === m.rank ? '▶ ' : '') + n), h('small', null, `${i === 7 ? 'One seat · ' : ''}${sh} shifts${ap ? ' · Governor\'s approval' : ''}`)); r.append(tx, h('span', 'rt', N(pay))); PL.append(r); }); b.append(PL);
+    if ((m.staff || []).length) { b.append(h('div', 'iph-h', 'The staff')); const SL = h('div', 'iph-list'); for (const s2 of m.staff) { const r = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, (s2.on ? '🟢 ' : '') + s2.n), h('small', null, `${m.ranks[s2.r][0]} · ${s2.s} shifts`)); r.append(tx); SL.append(r); } b.append(SL); }
+    if (m.on && !m.isGov) { const r = h('div', 'cb-row'); r.append(btn('fm-btn off', ['Resign'], () => { if (R.cbnSure) { api.cbnSend({ a: 'resign' }); R.cbnSure = 0; } else { R.cbnSure = 1; phToast('Tap again to resign'); setTimeout(() => { R.cbnSure = 0; }, 3000); } })); b.append(r); }
+  }
   function workApp() { const b = frameApp('Oya Work'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#1fcf8a'; api.workUI(); }
 
   // ---------------------------------------------------------------- Gist: the Lagos social feed
@@ -672,6 +731,7 @@ export function createPhone(api) {
     if (kind === 'cash') { const t = { d: d.d, t: Date.now(), w: d.why || api.where() }; S.tx.unshift(t); if (S.tx.length > 40) S.tx.length = 40; save(); cashQ += d.d; cashW = t.w; clearTimeout(cashT);
       cashT = setTimeout(() => { if (Math.abs(cashQ) >= 100) bkAlert(null, `${cashQ > 0 ? 'Credit' : 'Debit'} Alert! Acct: ••${BK.me ? BK.me.acct.slice(-4) : '4521'}\nAmt: ${api.naira(Math.abs(cashQ))}\nDesc: ${cashW}\nBal: ${api.naira(api.cash())}`); cashQ = 0; }, 2500); if (R.app === 'wallet' && (BK.view === 'home' || !BK.me)) openApp('wallet'); refreshHome(); return; }
     if (kind === 'bank') { bankMsg(d); return; }
+    if (kind === 'cbn') { if (R.open && R.app === 'cbn') openApp('cbn'); return; }
     if (kind === 'sms') { sms(d.id, d.n, d.c, d.e, d.x); return; }
     if (kind === 'ride') { sms('oyaride', 'Oya Ride', '#f2b705', '🚕', `Your ${d.bike ? 'okada' : 'car'} to ${d.name} don book. Driver: ${d.who}. Fare: ${api.naira(d.fare)}, pay cash. Safe journey!`); return; }
     gistEvent(kind, d);
