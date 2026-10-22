@@ -275,3 +275,18 @@ test('the bank over the line: an account at sign-in, whose account, a transfer a
   assert.match((await b.next('note')).m, /Credit alert! ₦5,000 from Bank_Ada/); assert.equal((await b.next('bktx')).tx.note, 'chop money');
   a.close(); b.close();
 });
+
+test('the oga takes a part of the work money of his hustle near him, nothing from far away or other money', async () => {
+  const [o] = await account('ogaman'), [b] = await account('okadaboy'), [f] = await account('faraway');
+  o.send({ t: 'life', d: { job: 'okada', jp: { okada: 170 }, t: Date.now() } }); b.send({ t: 'life', d: { job: 'okada', jp: { okada: 3 }, t: Date.now() } }); f.send({ t: 'life', d: { job: 'okada', jp: { okada: 1 }, t: Date.now() } });
+  o.send({ t: 'p', x: 100, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 }); b.send({ t: 'p', x: 300, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 }); f.send({ t: 'p', x: 1500, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  await new Promise(r => setTimeout(r, 300));
+  b.send({ t: '$', d: 1000, s: 1, j: 'okada' });
+  const cut = await b.next('oga'); assert.deepEqual([cut.n, cut.c], ['ogaman', 100]);
+  assert.equal((await b.next(m => m.t === '$' && m.s === 1)).n, 900);
+  const got = await o.next('ogaget'); assert.deepEqual([got.n, got.c], ['okadaboy', 100]);
+  b.send({ t: '$', d: 1000, s: 2 }); assert.equal((await b.next(m => m.t === '$' && m.s === 2)).n, 1900, 'money that is not from the work: no cut');
+  f.send({ t: '$', d: 1000, s: 1, j: 'okada' }); assert.equal((await f.next(m => m.t === '$' && m.s === 1)).n, 1000, 'too far from the oga: no cut');
+  o.send({ t: '$', d: 1000, s: 5, j: 'okada' }); assert.equal(o.got.some(m => m.t === 'oga'), false, 'the oga pays nobody');
+  o.close(); b.close(); f.close();
+});

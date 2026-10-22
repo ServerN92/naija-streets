@@ -214,6 +214,25 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       if (all || D === C || (P.has && D.p.has && Math.hypot(D.p.x - P.x, D.p.z - P.z) <= NEAR_CHAT)) D.ws.send(out);
     }
   }
+  // the oga of the area: a player of your hustle who is an oga (rank 4 and up) within 600 m takes a part of what your
+  // work pays (10%, 5% from the third rank; an oga pays nobody). Only work money counts (the game marks it: m.j).
+  const OGA_R = 600, OGA_CUT = [.1, .1, .05];
+  function ogaCut(C, n, job) {
+    const [j, r] = String((C.p && C.p.jb) || '').split(':'), rk = +r || 0;
+    if (!j || j !== job || rk >= 3 || !(n >= 100) || !C.p.has) return 0;
+    let best = null;
+    for (const D of online.values()) {
+      if (D === C || !D.p || !D.p.has || !D.user) continue;
+      const [dj, dr] = String(D.p.jb || '').split(':'), drk = +dr || 0; if (dj !== j || drk < 3) continue;
+      const d = Math.hypot(D.p.x - C.p.x, D.p.z - C.p.z); if (d > OGA_R) continue;
+      if (!best || drk > best.r || (drk === best.r && d < best.d)) best = { D, r: drk, d };
+    }
+    if (!best) return 0;
+    const cut = Math.min(C.cash, Math.round(n * OGA_CUT[rk] / 10) * 10); if (!(cut > 0)) return 0;
+    C.cash -= cut; give(best.D, cut, 'oga:' + C.user.name);
+    send(C, { t: 'oga', n: best.D.user.name, c: cut }); send(best.D, { t: 'ogaget', n: C.user.name, c: cut });
+    return cut;
+  }
   const lastPay = new Map();   // account -> the last money message taken {e: that page's id, s: its number}, so a resend after a lost line is not counted twice
   function cash(C, m) {
     if (!Number.isInteger(m.d) || m.d > 5e6 || m.d < -1e10 || !m.d) return;   // spending may be big (a house in an estate, a whole estate)
@@ -222,7 +241,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (ep && L0 && L0.e === ep && seq <= L0.s) return send(C, { t: '$', n: C.cash, s: L0.s });
     if (ep) lastPay.set(C.user.id, { e: ep, s: seq });
     if (m.d < 0) C.cash = Math.max(0, C.cash + m.d);
-    else { const g = C.earn.takeUpTo(m.d, now()); C.held += m.d - g; C.cash += g; if (g < m.d) log('held', C.user.name, m.d - g); }
+    else { const g = C.earn.takeUpTo(m.d, now()); C.held += m.d - g; C.cash += g; if (g < m.d) log('held', C.user.name, m.d - g); if (typeof m.j === 'string' && g > 0) ogaCut(C, g, m.j.slice(0, 16)); }
     C.dsum += m.d; C.dirty = true; C.cseq = seq;
     send(C, { t: '$', n: C.cash, s: seq });
   }
