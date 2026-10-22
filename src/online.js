@@ -82,7 +82,7 @@ export function createOnline(api) {
       case 'say': heard(m); break;
       case '$': money(m); break;
       case 'kick': S.kicked = true; S.me = null; dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); api.toast(m.m || 'You signed in somewhere else.', 4); ui(); break;
-      case 'out': if (m.gone) api.toast('Your account has been deleted.', 4); S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); break;
+      case 'out': if (m.gone) api.toast('Your account has been deleted.', 4); S.me = null; save(null); dropAll(); api.bizOut && api.bizOut(); api.bank && api.bank({ t: 'bkout' }); restoreGuest(); api.lifeOut && api.lifeOut(); S.st = 'guest'; ui(); api.toast('Signed out. You are playing on this phone only.', 3); if (S.afterOut) { const f = S.afterOut; S.afterOut = null; f(); } break;
       case 'old': S.old = true; api.toast(m.m, 6); try { S.ws && S.ws.close(); } catch (e) { /* gone */ } ui(); break;
     }
   }
@@ -96,7 +96,10 @@ export function createOnline(api) {
     showCash();
     S.look = ''; S.last = null; lookTick();
     if (api.lifeIn) api.lifeIn(m.life || null, m.uid);   // where you sleep, your rent, your clothes: the account's own
-    if (S.panel && fresh) closePanel();
+    const want = S.wantLive; S.wantLive = false;
+    if (S.solo) { S.solo = false; S.me = null; send({ t: 'out' }); return; }   // they chose Solo Hustle while this was on its way
+    if (S.panel && (fresh || want)) closePanel();
+    if (want && api.goLive) setTimeout(() => api.goLive(), 150);
     if (fresh) api.toast(`Welcome, ${m.name}! You are online · ${m.n || 1} in Lagos now.`, 3.5);
     ui();
   }
@@ -392,7 +395,7 @@ export function createOnline(api) {
 
   // ---- the sign-in panel
   function openPanel() { S.panel = true; $('#onlinePanel').hidden = false; if (!S.ws && !S.old) { S.tries = 0; S.kicked = false; connect(); } ui(); const u = $('#olUser'); if (!S.me && u && !u.value) setTimeout(() => u.focus(), 50); api.typing(true); }
-  function closePanel() { S.panel = false; const p = $('#onlinePanel'); if (p) p.hidden = true; hideMsg(); api.typing(false); if (!S.me && !(saved && saved.tok) && S.ws) { try { S.ws.close(); } catch (e) { /* ignore */ } } }
+  function closePanel() { S.panel = false; S.wantLive = false; const p = $('#onlinePanel'); if (p) p.hidden = true; hideMsg(); api.typing(false); if (!S.me && !(saved && saved.tok) && S.ws) { try { S.ws.close(); } catch (e) { /* ignore */ } } }
   function hideMsg() { for (const id of ['#olErr', '#olMsg']) { const e = $(id); if (e) e.hidden = true; } }
   function showErr(w, m) { const e = $(w === 'email' || w === 'pw' ? '#olMsg' : '#olErr'); if (!e) { api.toast(m, 3); return; } e.textContent = m; e.className = 'oerr'; e.hidden = false; if (w === 'say') api.toast(m, 2); buttons(); }
   function showOk(w, m) {
@@ -415,7 +418,9 @@ export function createOnline(api) {
     // the title screen and the settings
     const sub = $('#onlSub'), set = $('#olSetSub');
     const line = S.old ? 'New version out: reload the page' : S.kicked ? 'Signed in on another phone · tap to play here' : S.me ? `Online as ${S.me.name} · ${S.n} in Lagos` : saved && saved.tok ? (st === 'connecting' ? 'Connecting…' : 'Can’t reach the server · trying again') : 'Sign in to see other players';
-    if (sub) sub.textContent = line; if (set) set.textContent = line;
+    if (set) set.textContent = line;
+    if (sub) sub.textContent = S.old ? 'New version out. Reload the page.' : S.kicked ? 'Signed in on another phone. Tap to play here.' : S.me ? `Continue as ${S.me.name}${S.n ? `. ${S.n} in Lagos now` : ''}` : saved && saved.tok ? (st === 'connecting' ? 'Connecting…' : 'Can’t reach the server. Trying again.') : `Play with real people${S.n ? `. ${S.n} in Lagos now` : ''}`;
+    lobbyText();
     const btn = $('#onlBtn'); if (btn) btn.classList.toggle('on', !!S.me);
     // the HUD
     const chip = $('#onlN'); if (chip) { chip.hidden = !S.me; chip.textContent = `${S.n} online`; }
@@ -430,9 +435,18 @@ export function createOnline(api) {
     $('#olKick').hidden = !S.kicked;
     buttons();
   }
+  // the Solo Hustle button: signed in, playing solo signs you out
+  function lobbyText() { const ss = $('#soloSub'), sb = $('#soloBtn'); if (!ss || (sb && sb.classList.contains('warn'))) return; ss.textContent = S.me || (saved && saved.tok) ? 'Just you, on this phone. You go sign out.' : 'Just you, on this phone. No account needed.'; }
+  function openLive() { S.wantLive = true; openPanel(); setTab(saved && saved.name ? 'in' : 'new'); }
+  function goSolo(cb) {
+    S.wantLive = false;
+    if (S.me) { S.afterOut = cb; if (!send({ t: 'out' })) { S.afterOut = null; save(null); S.me = null; dropAll(); restoreGuest(); ui(); cb(); } return; }
+    if (saved && saved.tok) { S.solo = true; save(null); try { S.ws && S.ws.close(); } catch (e) { /* gone */ } }   // signed in last time, not on the line yet: forget it on this phone
+    cb();
+  }
   function bind() {
     const P = $('#onlinePanel'); if (!P) return;
-    $('#onlBtn') && $('#onlBtn').addEventListener('click', () => { if (S.kicked) { S.kicked = false; S.tries = 0; connect(); } openPanel(); });
+    $('#onlBtn') && $('#onlBtn').addEventListener('click', () => { if (S.kicked) { S.kicked = false; S.tries = 0; connect(); } if (api.goLive && !api.started()) { api.goLive(); return; } openPanel(); });
     $('#olSetBtn') && $('#olSetBtn').addEventListener('click', openPanel);
     $('#olClose').addEventListener('click', closePanel);
     P.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') closePanel(); });
@@ -482,6 +496,8 @@ export function createOnline(api) {
     spot: id => { const R = RS.get(id); return R && R.s ? { x: R.s.x, y: R.s.y, z: R.s.z } : null; },
     get myId() { return S.me ? S.me.id : -1; },
     get signedIn() { return !!S.me; },
+    get hasAccount() { return !!S.me || !!(saved && saved.tok); },
+    openLive, goSolo, lobbyText,
     get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },
     debug: () => ({ st: S.st, me: S.me, n: S.n, last: S.last, ws: S.ws ? S.ws.readyState : -1, others: [...RS.values()].map(R => ({ id: R.id, n: R.n, c: R.c, body: !!R.root, vis: !!(R.root && R.root.visible), car: R.ck, clip: R.cn, d: Math.round(R.d), s: R.s && { x: R.s.x, z: R.s.z, a: R.s.a } })), cash: { srv: S.srv, pend: S.cpend.length }, chat: CH.lines.length }),

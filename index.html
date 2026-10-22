@@ -58,39 +58,84 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .lbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--flag),var(--danfo));transition:width .3s}
 .ltxt{font-size:15px;color:var(--muted);letter-spacing:.04em;min-height:1.3em;font-variant-numeric:tabular-nums}
 .lerr{color:#ffb4a6;font-size:15px}
-.prof{display:flex;flex-direction:column;gap:10px}
-.pname{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:14px;font-weight:600}
-.pname input{font:inherit;font-size:18px;color:var(--cream);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:12px 14px;min-height:48px;max-width:320px}
-.pname input:focus{outline:2px solid var(--danfo);outline-offset:1px}
-.pg{display:flex;gap:10px;flex-wrap:wrap}
-.pgb{flex:1 1 150px;max-width:220px;text-align:left;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);border-radius:12px;padding:12px 14px;min-height:56px;display:flex;flex-direction:column;gap:2px;cursor:pointer}
-.pgb b{font-family:var(--fd);font-weight:400;font-size:20px}.pgb small{color:var(--muted);font-size:13px}
-.pgb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
-.ppl{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
-.ppc{flex:none;width:84px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);border-radius:12px;cursor:pointer;font-weight:700;font-size:14px}
-.ppc img{width:68px;height:85px;border-radius:8px;object-fit:cover;background:#2a2420}
-.ppc[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}.ppc.busy img{opacity:.55}
-.pshape{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:14px;font-weight:600}
-.psb{min-height:40px;padding:6px 16px;border-radius:20px;background:rgba(0,0,0,.35);color:var(--cream);border:2px solid rgba(255,255,255,.22);font-weight:700;cursor:pointer}
-.psb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
-.pskb{width:34px;height:34px;flex:none;border-radius:50%;background:var(--sk);border:3px solid rgba(255,255,255,.28);cursor:pointer;padding:0;box-shadow:inset 0 -6px 10px rgba(0,0,0,.25)}
-.pskb.own{position:relative}.pskb.own::after{content:'★';position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:rgba(255,255,255,.85)}
-.pskb[aria-pressed="true"]{border-color:var(--danfo);transform:scale(1.12)}
-.lookb.who img{flex:none;width:30px;height:38px;border-radius:7px;object-fit:cover;background:#2a2420}
-.pnote{color:var(--muted);font-size:13px}
-.pwho{color:var(--cream);font-weight:700;font-size:17px}
-.enter:disabled{opacity:.5}
-.enter{font-family:var(--fd);font-size:20px;background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:16px 26px;align-self:flex-start;min-height:56px}
-.enter:hover{filter:brightness(1.08)}
 .lnote{font-size:13px;color:var(--muted);margin:0}
+/* the lobby: who you are (left), you on the danfo stand under the street light (middle), how you play (right) */
+.loading.lob{place-items:stretch;background:radial-gradient(38% 60% at 50% 8%,rgba(255,157,60,.22) 0%,transparent 70%),radial-gradient(60% 40% at 50% 100%,rgba(242,183,5,.07) 0%,transparent 70%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink)}
+.loading.lob .ld{width:min(1180px,100%);margin:0 auto;gap:8px;min-height:100%}
+.loading.lob .ld h1{font-size:clamp(22px,4.2vh,34px);line-height:1}
+.loading.lob .ld h1 span{display:inline}.loading.lob .ld h1 .b{margin-left:.3em}.loading.lob .ld h1 .c{display:none}
+.loading.lob .ld>p,.loading.lob .lbar,.loading.lob .ltxt,.loading.lob .lnote{display:none}
+.lobby{flex:1;display:grid;grid-template-columns:minmax(220px,1fr) minmax(240px,1.15fr) minmax(230px,1fr);gap:clamp(10px,2.4vw,28px);align-items:center;min-height:0}
+.lobby.back{grid-template-columns:1fr minmax(240px,1.15fr) 1fr}
+.lobby.back .lb-go{grid-column:3}.lobby.back .lb-stage{grid-column:2}
+.lb-pick{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pg{display:flex;padding:4px;gap:4px;background:rgba(255,255,255,.06);border-radius:14px;width:max-content}
+.pgb{font:700 17px/1 var(--fb);color:var(--muted);background:none;border:0;border-radius:10px;padding:11px 22px;min-height:44px;cursor:pointer}
+.pgb[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
+.ppl{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px;max-width:330px}
+.ppc{padding:0;border:0;background:none;cursor:pointer;border-radius:12px;position:relative;aspect-ratio:4/5;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.12)}
+.ppc img{width:100%;height:100%;object-fit:cover;display:block;background:#2a2420;transition:transform .25s}
+.ppc:hover img{transform:scale(1.06)}
+.ppc[aria-pressed="true"]{box-shadow:0 0 0 3px var(--danfo),0 6px 18px rgba(242,183,5,.25)}
+.pshape{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:14px;font-weight:600}
+.pshape>span{min-width:34px}
+.psb{min-height:36px;padding:4px 14px;border-radius:18px;background:rgba(255,255,255,.06);color:var(--cream);border:2px solid transparent;font-weight:700;cursor:pointer}
+.psb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.14)}
+.pskb{width:30px;height:30px;flex:none;border-radius:50%;background:var(--sk);border:3px solid rgba(255,255,255,.2);cursor:pointer;padding:0;box-shadow:inset 0 -6px 10px rgba(0,0,0,.25)}
+.pskb.own{position:relative}.pskb.own::after{content:'★';position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:rgba(255,255,255,.85)}
+.pskb[aria-pressed="true"]{border-color:var(--danfo);transform:scale(1.12)}
+.pnote{color:var(--muted);font-size:13px;margin:0;max-width:34ch}
+.lb-stage{margin:0;position:relative;height:100%;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.lb-stage::before{content:'';position:absolute;left:50%;top:-6%;width:62%;height:96%;transform:translateX(-50%);background:linear-gradient(180deg,rgba(255,190,110,.20),rgba(255,190,110,0) 85%);clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);pointer-events:none}
+.lb-stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.lb-stage canvas:active{cursor:grabbing}
+.lb-stage figcaption{position:relative;color:var(--muted);font-size:13px;font-weight:600;padding:6px 12px;border-radius:12px;background:rgba(14,16,20,.55);margin-bottom:2px;pointer-events:none}
+.lb-go{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pname{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:14px;font-weight:600}
+.pname input{font:inherit;font-size:18px;color:var(--cream);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 14px;min-height:48px;width:100%;box-sizing:border-box}
+.pname input:focus{outline:2px solid var(--danfo);outline-offset:1px}
+.pwho{color:var(--cream);font-weight:700;font-size:20px}.pwho small{display:block;color:var(--muted);font-size:14px;font-weight:600;margin-top:2px}
+.onl{display:flex}
+.go-live{position:relative;width:100%;display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--danfo);color:var(--ink);border:0;border-radius:16px;padding:16px 18px 24px;cursor:pointer;overflow:hidden;box-shadow:0 10px 30px rgba(242,183,5,.28),inset 0 -2px 0 rgba(0,0,0,.15);transition:transform .12s,box-shadow .2s}
+.go-live:hover{transform:translateY(-1px);box-shadow:0 14px 36px rgba(242,183,5,.38),inset 0 -2px 0 rgba(0,0,0,.15)}
+.go-live:active{transform:translateY(1px)}
+.gl-top{display:flex;align-items:center;gap:10px}
+.go-live b{font-family:var(--fd);font-weight:400;font-size:clamp(24px,3.4vw,32px);line-height:1}
+.go-live small{font-size:15px;font-weight:700;color:rgba(14,16,20,.78)}
+.go-live .dot{width:12px;height:12px;border-radius:50%;background:#0f8a52;box-shadow:0 0 0 0 rgba(15,138,82,.6);animation:livePulse 1.8s ease-out infinite;flex:none}
+.go-live .stripes{position:absolute;left:0;right:0;bottom:7px;height:10px;background:linear-gradient(#17171a 0 3px,transparent 3px 7px,#17171a 7px 10px)}
+.go-live.on .dot{background:#0b6e40}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(15,138,82,.55)}70%{box-shadow:0 0 0 10px rgba(15,138,82,0)}100%{box-shadow:0 0 0 0 rgba(15,138,82,0)}}
+.go-solo{width:100%;display:flex;flex-direction:column;gap:3px;text-align:left;background:transparent;color:var(--cream);border:2px solid rgba(247,239,223,.28);border-radius:14px;padding:11px 16px;cursor:pointer}
+.go-solo:hover{border-color:rgba(247,239,223,.55)}
+.go-solo b{font-family:var(--fd);font-weight:400;font-size:18px;line-height:1.05}
+.go-solo small{font-size:13.5px;font-weight:600;color:var(--muted)}
+.go-solo.warn{border-color:var(--rust)}.go-solo.warn small{color:#ffb4a6}
+.go-hint{margin:0;min-height:1.2em;color:var(--danfo);font-size:14px;font-weight:600}
+@media (prefers-reduced-motion:reduce){.go-live .dot{animation:none}.ppc img{transition:none}}
+/* a phone held upright: you on the stand on top, the choices under, the two ways to play at the bottom */
+@media (max-aspect-ratio:4/5){
+  .loading.lob .ld{gap:12px}
+  .lobby,.lobby.back{grid-template-columns:1fr;align-items:start}
+  .lobby.back .lb-go,.lobby.back .lb-stage{grid-column:auto}
+  .lb-stage{order:-1;height:40vh;min-height:240px}
+  .ppl{grid-template-columns:repeat(6,1fr);max-width:none}
+}
 @media (max-height:520px){
   .ld{gap:10px;width:min(720px,100%)}
   .ld h1{font-size:clamp(30px,11vh,60px)}
   .ld p{display:none}
   .lnote{display:none}
-  .enter{padding:12px 22px;min-height:48px;font-size:18px}
-  .loading.pf .lbar,.loading.pf .ltxt{display:none}
-  .pgb small{display:none} .pname span{display:none} .ld h1 .c{display:none} .pgb{min-height:44px;padding:6px 12px} .ppc{width:62px;padding:3px;font-size:12px;gap:2px} .ppc img{width:50px;height:56px} .psb{min-height:36px;padding:4px 12px} .pname input{min-height:44px;padding:8px 12px} .prof{gap:8px}
+  .loading.lob{padding-top:calc(10px + var(--st));padding-bottom:calc(10px + var(--sb))}
+  .lb-pick{gap:8px}.lb-go{gap:8px}
+  .pgb{min-height:38px;padding:8px 18px;font-size:15px}
+  .ppl{grid-template-columns:repeat(4,52px);gap:6px}
+  .pskb{width:26px;height:26px}.psb{min-height:32px}
+  .pnote{display:none}
+  .pname span{display:none}.pname input{min-height:42px;padding:8px 12px;font-size:16px}
+  .go-live{padding:11px 14px 20px}.go-live b{font-size:22px}.go-live small{font-size:13px}
+  .go-solo{padding:8px 14px}.go-solo b{font-size:15px}.go-solo small{font-size:12.5px}
+  .lb-stage{min-height:0}
 }
 
 /* HUD */
@@ -151,6 +196,8 @@ body.touchui .ward .kb{display:none}
 .lookb span{flex:1}
 .lookb small{font-weight:600;font-size:12px;color:var(--muted)}
 .lookb[aria-pressed="true"]{background:var(--cream);color:var(--ink);border-color:var(--cream)}
+.lookb.who img{flex:none;width:30px;height:38px;border-radius:7px;object-fit:cover;background:#2a2420}
+.ppl.ward{grid-template-columns:repeat(auto-fill,minmax(52px,1fr));max-width:none;margin:0 0 10px}
 .lookb:disabled{opacity:.5}
 .swatches{display:flex;flex-wrap:wrap;gap:8px}
 .sw{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.25);padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
@@ -385,10 +432,7 @@ body.touchui .toast{max-width:min(560px,calc(100vw - 24px));font-size:13.5px;pad
   body.touchui .speedo{bottom:calc(162px + var(--sb))}
 }
 /* Online: the title-screen button, the sign-in panel, the chat */
-.onl{display:flex}
-.onlb{display:flex;flex-direction:column;gap:2px;text-align:left;background:rgba(22,160,107,.16);color:var(--cream);border:2px solid rgba(22,160,107,.7);border-radius:12px;padding:10px 14px;min-height:52px;cursor:pointer;max-width:340px}
-.onlb b{font-family:var(--fd);font-weight:400;font-size:18px;color:#7ee2a0}.onlb small{color:var(--muted);font-size:13px;font-weight:600}
-.onlb.on{border-color:var(--flag);background:rgba(22,160,107,.28)}
+
 .opanel{position:fixed;inset:0;z-index:56;display:grid;place-items:center;background:rgba(6,7,9,.6);padding:calc(10px + var(--st)) calc(12px + var(--sr)) calc(10px + var(--sb)) calc(12px + var(--sl));pointer-events:auto}
 .obox{position:relative;width:min(380px,100%);box-sizing:border-box;max-height:100%;overflow:auto;touch-action:pan-y;overscroll-behavior:contain;background:rgba(12,14,18,.96);border:1px solid var(--line);border-radius:16px;padding:16px 18px 18px;box-shadow:0 20px 50px rgba(0,0,0,.55)}
 .obox h2{font-family:var(--fd);font-weight:400;font-size:17px;margin:0 40px 4px 0;color:var(--danfo)}
@@ -701,20 +745,32 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
     <div class="lbar"><i id="loadBar"></i></div>
     <div class="ltxt" id="loadTxt">Starting the engine…</div>
     <div class="lerr" id="loadErr" hidden></div>
-    <div class="prof" id="prof" hidden>
-      <label class="pname"><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. Tunde or Ada"></label>
-      <div class="pg" role="group" aria-label="Man or woman">
-        <button type="button" class="pgb" data-g="m" aria-pressed="false"><b>MAN</b><small>Then pick who you are</small></button>
-        <button type="button" class="pgb" data-g="f" aria-pressed="false"><b>WOMAN</b><small>Then pick who you are</small></button>
-      </div>
-      <div class="ppl" id="ppl" role="group" aria-label="Who you are" hidden></div>
-      <div class="pshape" id="pshape" role="group" aria-label="Body shape" hidden></div>
-      <div class="pshape pskin" id="pskin" role="group" aria-label="Skin colour" hidden></div>
-      <div class="pnote">Man or woman stays. Change person, clothes and colours in the wardrobe at home.</div>
+    <div class="lobby" id="lobby" hidden>
+      <section class="lb-pick" id="prof" hidden aria-label="Who you are">
+        <div class="pg" role="group" aria-label="Man or woman">
+          <button type="button" class="pgb" data-g="m" aria-pressed="false">Man</button>
+          <button type="button" class="pgb" data-g="f" aria-pressed="false">Woman</button>
+        </div>
+        <div class="ppl" id="ppl" role="group" aria-label="Pick your person" hidden></div>
+        <div class="pshape" id="pshape" role="group" aria-label="Body shape" hidden></div>
+        <div class="pshape pskin" id="pskin" role="group" aria-label="Skin colour" hidden></div>
+        <p class="pnote">Man or woman can’t change later. Clothes, you change at home.</p>
+      </section>
+      <figure class="lb-stage" id="stage">
+        <canvas id="stageCv" aria-label="The person you picked, standing on a stand"></canvas>
+        <figcaption id="stageCap">Pick man or woman to start</figcaption>
+      </figure>
+      <section class="lb-go">
+        <label class="pname" id="profNameF" hidden><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. Tunde or Ada"></label>
+        <div class="pwho" id="pwho" hidden></div>
+        <div class="onl" id="onlRow" hidden>
+          <button type="button" class="go-live" id="onlBtn"><span class="gl-top"><i class="dot" aria-hidden="true"></i><b>Lagos Live</b></span><small id="onlSub">Play with real people</small><span class="stripes" aria-hidden="true"></span></button>
+        </div>
+        <button type="button" class="go-solo" id="soloBtn"><b>Solo Hustle</b><small id="soloSub">Just you, on this phone. No account needed.</small></button>
+        <p class="go-hint" id="goHint" aria-live="polite"></p>
+        <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
+      </section>
     </div>
-    <div class="pwho" id="pwho" hidden></div>
-    <div class="onl" id="onlRow" hidden><button type="button" class="onlb" id="onlBtn"><b>PLAY ONLINE</b><small id="onlSub">Sign in to see other players</small></button></div>
-    <button type="button" class="enter" id="enterBtn" hidden>ENTER LAGOS</button>
     <p class="lnote">Works on phones, tablets and computers. On a phone, turn it sideways.</p>
   </div>
 </div>

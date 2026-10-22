@@ -6139,17 +6139,19 @@ function applySavedLook(){ if(!PROFILE) return; let id=savedLook();
       if((v2||(L2&&L2.file))&&id!==baseLook()){ id=baseLook(); WARD.want=id; } setTimeout(go,400); }); };
   go(); }
 // a woman never shows up as the man you start with: her body has to be on first
-const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; } };
+let GO_PEND=null;   // Lagos Live or Solo Hustle pressed while your body was still loading: go when it is ready
+const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; if(GO_PEND){ const f=GO_PEND; GO_PEND=null; setTimeout(f,0); } } };
 function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0, h=t=>{ const e=document.createElement('h3'); e.textContent=t; box.appendChild(e); };
   const cur=WARD.cur, mine=isV2(cur);
   h('Who you are');
-  for(const P of pickable(f)){ const b=document.createElement('button'); b.type='button'; b.className='lookb who';
-    const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; const sp=document.createElement('span'); sp.textContent=P.name; b.append(im,sp);
+  const grid=document.createElement('div'); grid.className='ppl ward'; box.appendChild(grid); let n=0;   // faces only, no names
+  for(const P of pickable(f)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-label',`${f?'Woman':'Man'} ${++n}`);
+    const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; b.append(im);
     b.setAttribute('aria-pressed',P.id===cur?'true':'false');
-    b.addEventListener('click',async()=>{ if(WARD.busy||P.id===WARD.cur) return; if(!V2.casts[P.id]) toast(`Getting ${P.name} ready…`,5);
+    b.addEventListener('click',async()=>{ if(WARD.busy||P.id===WARD.cur) return; if(!V2.casts[P.id]) toast('Getting your new look ready…',5);
       const done=await wearLook(P.id); if(done&&PROFILE){ PROFILE.c=P.id; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} }
-      toast(done?`You are ${P.name}.`:'Not ready yet. Try again soon.'); wardUI(); });
-    box.appendChild(b); }
+      toast(done?'New look. You fresh!':'Not ready yet. Try again soon.'); wardUI(); });
+    grid.appendChild(b); }
   const P0=v2Of(cur), mx=!!(P0&&P0.mx);
   if(mine&&!mx){ h('Skin'); const r=document.createElement('div'); r.className='pshape pskin'; toneRow(r,toneOf(),cur,k=>{ setTone(k); wardUI(); }); box.appendChild(r); }
   if(mine&&P0.shape){ h('Body shape'); const r=document.createElement('div'); r.className='swatches';
@@ -10215,7 +10217,7 @@ const romSend=o=>!!(ON&&ON.send({t:'rom',...o}));
 function romOn(m){
   if(m.t==='romme'){ const d=m.m||{}; Object.assign(ROM,{known:!!d.known,adult:!!d.adult,on:!!d.on,partner:d.partner||'',stage:d.stage||'',bond:d.bond|0,need:d.need||60,today:d.today|0,cap:d.cap||30}); if(PH) PH.event('loveup'); return; }
   if(m.t==='err'||m.t==='ok'){ toast(m.m,3.2); if(PH) PH.event('loveup'); return; }
-  if(m.t==='romask'){ ROM.req={k:m.k,i:m.i,n:m.n,t:T0}; romCard(); return; }
+  if(m.t==='romask'){ ROM.req={k:m.k,i:m.i,n:m.n,t:Date.now()}; romCard(); return; }
   if(m.t==='romok'){ bigMsg('TALKING STAGE 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} dey talk now. Chill together (stay close) for a day or two to become partners.`,5); return; }
   if(m.t==='rompart'){ bigMsg('PARTNERS 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} are partners now! Stand close and press E to ask for a kiss.`,5); return; }
   if(m.t==='romno'){ toast(m.k==='kiss'?`${m.n} no gree for the kiss now. 😅`:`${m.n} said no. 💔`,3); return; }
@@ -10226,7 +10228,7 @@ function kissFx(m){ if(!ON) return; const me=ON.myId, sp=id=>id===me?{x:player.x
   if(m.a===me||m.b===me){ const o=m.a===me?B:A, who=(m.n||[])[m.a===me?1:0]||''; if(o&&mode==='walk') player.yaw=Math.atan2(o.x-player.x,o.z-player.z); toast(`💋 You and ${who} kiss. Love dey air! 💕`,3.2); } }
 const romKissNear=()=>{ if(!ROM.partner||ROM.stage!=='part'||mode!=='walk'||!ON) return null; for(const o of ON.nearby()) if(o.n===ROM.partner&&!o.v&&o.a!=='k'&&Math.hypot(o.x-player.x,o.z-player.z)<3) return o; return null; };
 function romKiss(o){ if(T0-ROM.kissT<15){ toast('Wait small 😅',2); return; } ROM.kissT=T0; player.yaw=Math.atan2(o.x-player.x,o.z-player.z); romSend({a:'kiss',i:o.id}); }
-function romTick(){ if(ROM.req&&T0-ROM.req.t>58){ ROM.req=null; romCardClose(); } }
+function romTick(){ if(ROM.req&&Date.now()-ROM.req.t>58e3){ ROM.req=null; romCardClose(); } }   // the server forgets a request after 60 s
 function romCardShow(c){ c.hidden=false; c.classList.remove('out'); requestAnimationFrame(()=>c.classList.add('show')); if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} }
 function romCardClose(){ const c=$('#romCard'); if(c.hidden) return; c.classList.remove('show'); c.classList.add('out'); setTimeout(()=>{ if(!c.classList.contains('show')) c.hidden=true; },380); }
 const romEl=(t,x,cls)=>{ const e=document.createElement(t); if(x!=null) e.textContent=x; if(cls) e.className=cls; return e; };
@@ -10312,7 +10314,7 @@ const perfIv=[];
 function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-lastT;
   if(raw<(FPS.cap===30?29:10.5)) return;   // phones: 30 fps (cool and steady); 60 if you choose it (120 Hz+ screens never go past ~60)
   lastT=t; const dt=Math.min(raw/1000,.05);
-  if(!started&&warm>8){ warm++; return; }   // nothing to draw behind the title screen
+  if(!started&&warm>8){ warm++; stageTick(dt); return; }   // nothing to draw behind the title screen (only you on the stand)
   T0+=dt; warm++;
   try{ simulate(dt); }catch(e){ reportErr(e); }
   if(ON&&started) try{ ON.frame(dt); }catch(e){ reportErr(e); }
@@ -10429,7 +10431,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(), jobLabel, stink:()=>makeStink(3,4),
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
-  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m),
+  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m), goLive:()=>goLive(),
   biz:m=>{ if(BIZ) BIZ.on(m); }, bank:m=>{ if(PH) PH.event('bank',m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
@@ -10641,35 +10643,87 @@ window.__nsReady=true;
 setTimeout(loadPeople,200);   // the real people arrive while the title screen shows (the walkers are look-alikes until then)
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
 const eb=$('#enterBtn');
-// ---- profile: the first time, you choose a name and man or woman (kept on this device; it cannot be changed later)
-{ const PF=$('#prof'), PN=$('#profName'), PW=$('#pwho'); let pickG=null, pickC=null, pickK=-1;
-  const who=()=>{ PW.textContent=`${PROFILE.name} · ${(v2Of(myPerson())||{}).name||(PROFILE.g==='f'?'Woman':'Man')}`; PW.hidden=false; PF.hidden=true; };
-  const ok=()=>{ eb.disabled=!(pickG&&pickC&&PN.value.trim().length>=2); };
-  if(PROFILE) who();
-  else { PF.hidden=false; $('#loading').classList.add('pf'); eb.dataset.label=eb.textContent='CREATE & ENTER'; eb.disabled=true;
-    // first man or woman, then the people of that kind (their faces), then (for some women) a body shape
-    const PL=$('#ppl'), PS=$('#pshape');
+// ---- the lobby (the start page): who you are on the left, you on the danfo stand in the middle (the stand from Blender:
+// tools/blender_stage.py), the two ways to play on the right. The stand has its own little renderer, gone when you enter.
+const STAGE={R:null,sc:null,cam:null,ped:null,body:null,mx:null,ry:-.45,drag:null,idle:0,id:'',k:-1,seq:0};
+const STAGE_TOP=.252;   // the concrete top of the stand: the feet go here
+function stageInit(){ const cv=$('#stageCv'); if(!cv||STAGE.R) return;
+  try{ const R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,powerPreference:'low-power'}); R.setPixelRatio(Math.min(devicePixelRatio||1,2)); R.outputColorSpace=THREE.SRGBColorSpace; R.toneMapping=renderer.toneMapping; R.toneMappingExposure=1.05;
+    R.shadowMap.enabled=true; R.shadowMap.type=THREE.PCFSoftShadowMap;
+    const sc=new THREE.Scene(), hemi=new THREE.HemisphereLight(0xc8d0ff,0x3a2a1e,1.15), key=new THREE.DirectionalLight(0xffd7a8,2.6), rim=new THREE.DirectionalLight(0x8fb2ff,1.8), fill=new THREE.DirectionalLight(0xffffff,.45);
+    key.position.set(1.1,4,2.4); key.castShadow=true; key.shadow.mapSize.set(1024,1024); Object.assign(key.shadow.camera,{left:-1.2,right:1.2,top:2.3,bottom:-.4,near:.5,far:9}); key.shadow.bias=-.0005; key.shadow.normalBias=.02;
+    rim.position.set(-1.6,2.2,-2.4); fill.position.set(-2,1,3); sc.add(hemi,key,rim,fill);
+    const sh=document.createElement('canvas'); sh.width=sh.height=128; const g=sh.getContext('2d'), gr=g.createRadialGradient(64,64,8,64,64,64); gr.addColorStop(0,'rgba(0,0,0,.62)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128);
+    const blob=new THREE.Mesh(new THREE.PlaneGeometry(2.5,2.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sh),transparent:true,depthWrite:false})); blob.rotation.x=-Math.PI/2; blob.position.y=-.004; sc.add(blob);
+    STAGE.R=R; STAGE.sc=sc; STAGE.cam=new THREE.PerspectiveCamera(24,1,.1,30);
+    GLL.load('assets/models/stage.glb',gl=>{ if(!STAGE.sc) return; const p=gl.scene; p.traverse(o=>{ if(o.isMesh){ o.receiveShadow=true; o.castShadow=true; } }); STAGE.ped=p; STAGE.sc.add(p); },undefined,()=>{});
+    // turn it with a finger or the mouse
+    cv.addEventListener('pointerdown',e=>{ STAGE.drag={x:e.clientX,ry:STAGE.ry}; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
+    cv.addEventListener('pointermove',e=>{ if(STAGE.drag) STAGE.ry=STAGE.drag.ry+(e.clientX-STAGE.drag.x)*.012; });
+    const up=()=>{ if(STAGE.drag){ STAGE.drag=null; STAGE.idle=2.5; } }; cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  }catch(e){ console.warn('stage',e); STAGE.R=null; } }
+function stageCap(t,hideAfter){ const c=$('#stageCap'); c.textContent=t; c.hidden=!t; clearTimeout(stageCap.t); if(hideAfter) stageCap.t=setTimeout(()=>{ c.hidden=true; },hideAfter); }
+function stageShow(id,k){ const my=++STAGE.seq; STAGE.id=id; STAGE.k=k;
+  if(!id){ stageClear(); stageCap('Pick man or woman to start'); return; }
+  if(!STAGE.body) stageCap('Getting ready…');
+  loadV2(id).then(C=>{ if(my!==STAGE.seq||!STAGE.sc) return; if(!C){ stageCap('This one no load. Pick another.'); return; }
+    stageClear(); const inner=SkeletonUtils.clone(C.tpl); C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,k); inner.position.y=STAGE_TOP;
+    inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
+    const cl=C.clips&&C.clips[C.idle0]; if(cl){ STAGE.mx=new THREE.AnimationMixer(inner); STAGE.mx.clipAction(cl).play(); }
+    STAGE.sc.add(inner); STAGE.body=inner; stageCap('Drag to turn',2600); }).catch(()=>{ if(my===STAGE.seq) stageCap('This one no load. Pick another.'); }); }
+function stageClear(){ if(STAGE.body&&STAGE.sc) STAGE.sc.remove(STAGE.body); STAGE.body=null; if(STAGE.mx) STAGE.mx.stopAllAction(); STAGE.mx=null; }
+function stageTick(dt){ const S=STAGE; if(!S.R) return; const cv=S.R.domElement, w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
+  const pr=S.R.getPixelRatio(); if(cv.width!==Math.round(w*pr)||cv.height!==Math.round(h*pr)) S.R.setSize(w,h,false);
+  // the stand (1.4 m across) and a person (up to 2 m) always in the picture
+  const asp=w/h, half=Math.tan(THREE.MathUtils.degToRad(S.cam.fov/2)), d=Math.max(1.14/half,.86/(half*asp));
+  S.cam.aspect=asp; S.cam.position.set(0,1.3,d); S.cam.lookAt(0,1.0,0); S.cam.updateProjectionMatrix();
+  if(!S.drag){ if(S.idle>0) S.idle-=dt; else S.ry+=dt*.3; }
+  if(S.body) S.body.rotation.y=S.ry; if(S.ped) S.ped.rotation.y=S.ry;
+  if(S.mx) S.mx.update(dt); S.R.render(S.sc,S.cam); }
+function stageDone(){ const S=STAGE; if(!S.R) return; stageClear(); try{ S.R.dispose(); S.R.forceContextLoss(); }catch(e){} S.R=null; S.sc=null; S.ped=null; }
+const goHint=t=>{ $('#goHint').textContent=t||''; };
+// a new player: keep the profile and dress them (her body arrives in a moment)
+function makeMe(){ if(PROFILE) return; eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }
+function goWhy(){ if(eb.dataset.wait) return 'wait'; if(!eb.disabled) return '';
+  if(!PROFILE){ if(!document.querySelector('.pgb[aria-pressed="true"]')) return 'Pick man or woman first.'; if($('#profName').value.trim().length<2){ if(!touchUI) $('#profName').focus(); return 'Type your name first (2 letters or more).'; } }
+  return 'Wait small…'; }
+// Lagos Live: with real people (sign in or make an account first; then straight in)
+function goLive(){ const why=goWhy(); if(why==='wait'){ GO_PEND=goLive; goHint('Getting you ready…'); return; } if(why){ goHint(why); return; } goHint('');
+  if(!ON){ goHint('Online no dey work now. Play Solo Hustle.'); return; }
+  if(ON.signedIn){ eb.click(); return; }
+  makeMe(); ON.openLive(); }
+// Solo Hustle: just you, on this phone (signed in? that signs you out: tap twice)
+function goSolo(){ const why=goWhy(); if(why==='wait'){ GO_PEND=goSolo; goHint('Getting you ready…'); return; } if(why){ goHint(why); return; } goHint('');
+  const sb=$('#soloBtn'); if(ON&&ON.hasAccount){ if(!sb.classList.contains('warn')){ sb.classList.add('warn'); $('#soloSub').textContent='Tap again: you go sign out and play alone.'; clearTimeout(goSolo.t); goSolo.t=setTimeout(()=>{ sb.classList.remove('warn'); if(ON) ON.lobbyText(); },3500); return; }
+    sb.classList.remove('warn'); ON.goSolo(()=>eb.click()); return; }
+  eb.click(); }
+$('#soloBtn').addEventListener('click',goSolo);
+// ---- profile: the first time, you choose man or woman, your person (faces, no names), skin, and your name (kept on this device; man or woman can't change later)
+{ const PF=$('#prof'), PN=$('#profName'), PNF=$('#profNameF'), PW=$('#pwho'), LB=$('#lobby'); let pickG=null, pickC=null, pickK=-1;
+  $('#loading').classList.add('lob'); LB.hidden=false; stageInit();
+  const who=()=>{ const b=document.createElement('span'), sm=document.createElement('small'); b.textContent=`Welcome back, ${PROFILE.name}`; sm.textContent='Change clothes and colours at home.'; PW.replaceChildren(b,sm); PW.hidden=false; PF.hidden=true; PNF.hidden=true; LB.classList.add('back'); };
+  const ok=()=>{ eb.disabled=!(pickG&&pickC&&PN.value.trim().length>=2); if(!eb.disabled) goHint(''); };
+  if(PROFILE){ who(); stageShow(isV2(savedLook())?savedLook():myPerson(),PROFILE.k??-1); }
+  else { PF.hidden=false; PNF.hidden=false; eb.dataset.label='ENTER LAGOS'; eb.disabled=true; stageShow('',-1);
+    const PL=$('#ppl'), PS=$('#pshape'), PK=$('#pskin');
     const shapes=P=>{ PS.textContent=''; PS.hidden=!P.shape; if(!P.shape) return; const l=document.createElement('span'); l.textContent='Body'; PS.appendChild(l);
       for(const [k,name] of SHAPES){ const b=document.createElement('button'); b.type='button'; b.className='psb'; b.textContent=name; b.setAttribute('aria-pressed',(V2.shape[P.id]||'curvy')===k?'true':'false');
-        b.addEventListener('click',()=>{ setShape(P.id,k); for(const c of PS.querySelectorAll('button')) c.setAttribute('aria-pressed',c===b?'true':'false'); }); PS.appendChild(b); } };
-    // the skin colour: the faces above change with it
-    let pseq=0; const PK=$('#pskin'), face=()=>{ const b=PL.querySelector('.ppc[aria-pressed="true"]'); for(const c of PL.querySelectorAll('.ppc')){ const im=c.querySelector('img'); if(c!==b&&im.dataset.src) im.src=im.dataset.src; } if(!b||!pickC) return;
-        const im=b.querySelector('img'), my=++pseq, id=pickC; im.dataset.src=im.dataset.src||im.src; b.classList.add('busy'); portrait(id,pickK).then(u=>{ if(my!==pseq) return; b.classList.remove('busy'); if(u) im.src=u; }); };   // the one you picked, drawn in your skin
-    const skins=P=>{ PK.hidden=false; toneRow(PK,pickK,P.id,k=>{ pickK=k; face(); }); };
-    const people=()=>{ PL.textContent=''; PS.hidden=true; PK.hidden=true;
-      for(const P of pickable(pickG==='f'?1:0)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-pressed','false');
-        const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; const sp=document.createElement('span'); sp.textContent=P.name; b.append(im,sp);
-        b.addEventListener('click',()=>{ pickC=P.id; for(const c of PL.children) c.setAttribute('aria-pressed',c===b?'true':'false'); shapes(P); skins(P); ok(); loadV2(P.id); if(pickK>=0) face(); });   // start bringing them in
-        PL.appendChild(b); }
-      PL.hidden=false; };
+        b.addEventListener('click',()=>{ setShape(P.id,k); for(const c of PS.querySelectorAll('button')) c.setAttribute('aria-pressed',c===b?'true':'false'); stageShow(P.id,pickK); }); PS.appendChild(b); } };
+    const skins=P=>{ PK.hidden=false; toneRow(PK,pickK,P.id,k=>{ pickK=k; stageShow(pickC,pickK); }); };
+    const pick=(P,b)=>{ pickC=P.id; for(const c of PL.children) c.setAttribute('aria-pressed',c===b?'true':'false'); shapes(P); skins(P); ok(); stageShow(P.id,pickK); };
+    const people=()=>{ PL.textContent=''; PS.hidden=true; PK.hidden=true; let i=0, first=null;
+      for(const P of pickable(pickG==='f'?1:0)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-pressed','false'); b.setAttribute('aria-label',`${pickG==='f'?'Woman':'Man'} ${++i}`);
+        const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; b.append(im);
+        b.addEventListener('click',()=>pick(P,b)); PL.appendChild(b); if(!first) first=[P,b]; }
+      PL.hidden=false; if(first) pick(...first); };
     for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ if(pickG===b.dataset.g) return; pickG=b.dataset.g; pickC=null; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); people(); ok(); });
-    PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!eb.disabled) eb.click(); }); }
+    PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') goLive(); }); }
   eb.makeProfile=()=>{ if(PROFILE) return; eb.fresh=true; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,k:pickK,camp:CAMP_I,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who(); loverPlaces();
     if(CAST[pickC]) CAST[pickC].w=0;   // no copies of you on the street
   }; }
-if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
-eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
-eb.addEventListener('click',()=>{ portraitDone(); if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
+if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent='GETTING READY…'; setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
+if(!touchUI){ if(PROFILE) $('#onlBtn').focus(); }
+eb.addEventListener('click',()=>{ portraitDone(); stageDone(); makeMe();
   if(touchUI) goFull(); started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); if(LIFE.job) toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);
