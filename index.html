@@ -119,9 +119,12 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .speedo{position:absolute;right:calc(22px + var(--sr));bottom:calc(22px + var(--sb));text-align:right;text-shadow:0 3px 10px rgba(0,0,0,.7)}
 .speedo b{display:block;font-family:var(--fd);font-weight:400;font-size:64px;line-height:.9;font-variant-numeric:tabular-nums}
 .speedo small{font-weight:700;letter-spacing:.2em;color:var(--danfo);font-size:14px}
-.toast{position:absolute;left:50%;top:calc(70px + var(--st));transform:translateX(-50%);background:linear-gradient(180deg,rgba(28,31,38,.46),rgba(12,14,18,.36));color:#fff;font-weight:600;font-size:15px;line-height:1.3;padding:6px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.16);text-shadow:0 1px 2px rgba(0,0,0,.75);max-width:min(560px,calc(100vw - 32px - var(--sl) - var(--sr)));box-sizing:border-box;text-align:center;width:max-content;pointer-events:none;transition:opacity .3s}
-.toast:not([hidden]){animation:toastIn .2s ease-out}
-.toast.out{opacity:0}
+.toast{position:fixed;left:50%;top:calc(8px + var(--st));transform:translate(-50%,-160%);opacity:0;z-index:45;background:rgba(14,16,21,.86);color:#fff;font-weight:600;font-size:15px;line-height:1.32;padding:8px 16px 8px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);border-left:3px solid #F2B705;box-shadow:0 8px 24px rgba(0,0,0,.35);text-shadow:none;max-width:min(620px,calc(100vw - 40px));text-align:left;pointer-events:auto;transition:transform .42s cubic-bezier(.2,.9,.28,1.12),opacity .32s ease;will-change:transform}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.carecard{z-index:46;max-width:min(470px,calc(100vw - 20px));font-size:13px;padding:10px 14px 9px 12px;border-left-color:#7be0a0}
+.carecard h4{margin:0 0 5px;font:800 12px/1 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;color:#F2B705}
+.carecard p{margin:3px 0;font-weight:500}.carecard b{font-weight:800}.carecard small{display:block;margin-top:6px;color:rgba(255,255,255,.55);font-weight:500;font-size:11px}
+.toast.out{transform:translate(-50%,-160%);opacity:0;transition:transform .36s cubic-bezier(.5,0,.75,0),opacity .3s ease}   /* drops in from the top, slides back up */
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translateX(-50%)}}
 body:not(.touchui) .toast{-webkit-backdrop-filter:blur(7px) saturate(1.25);backdrop-filter:blur(7px) saturate(1.25)}   /* glass: the view shows through (on phones it stays see-through without the blur, which costs frames) */
 .panel{position:absolute;right:calc(18px + var(--sr));top:calc(68px + var(--st));width:min(320px,calc(100vw - 36px));background:rgba(12,14,18,.86);border:1px solid var(--line);border-radius:14px;padding:14px 16px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:auto;box-sizing:border-box;max-height:calc(100vh - 90px - var(--st));max-height:calc(100dvh - 90px - var(--st) - var(--sb));overflow:auto;touch-action:pan-y;overscroll-behavior:contain}
@@ -239,11 +242,14 @@ body.fbon #loc,body.fbon #tHorn,body.fbon #tRadio,body.fbon #tGrab,body.fbon #tJ
 /* driving, Call of Duty Mobile style: ▲ ▼ on the left, ◀ ▶ on the right, round and see-through; a small horn (and radio) above them */
 .tbtns .tdrv{position:fixed;width:calc(62px * var(--bs));height:calc(62px * var(--bs));border-radius:50%;background:rgba(10,12,16,.34);border:2px solid rgba(255,255,255,.5);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}
 .tbtns .tdrv svg{width:56%;height:56%;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.55))}
-#tGas{left:calc(40px + var(--sl));bottom:calc(46vh - 31px)}#tRev{left:calc(40px + var(--sl));bottom:calc(20vh - 31px)}
+#tGas{left:calc(40px + var(--sl));bottom:calc(46vh - 31px)}#tRev{left:calc(39px + var(--sl));bottom:calc(20vh - 42px)}
 #tLeft{right:calc(132px + var(--sr));bottom:calc(25vh - 31px)}#tRight{right:calc(38px + var(--sr));bottom:calc(25vh - 31px)}
 #tWheel{right:calc(22px + var(--sr));bottom:calc(14px + var(--sb));width:calc(140px * var(--bs));height:calc(140px * var(--bs));border-radius:50%;background:rgba(12,14,18,.3);color:rgba(247,239,223,.9);padding:6px}
 #tWheel svg{width:100%;height:100%}
-.tbtns .tdrv.on{background:rgba(242,183,5,.8);border-color:var(--danfo);color:#111}#tWheel.on{background:rgba(12,14,18,.45);color:var(--danfo)}
+.tbtns .tdrv.on{background:rgba(242,183,5,.8);border-color:var(--danfo);color:#111}
+.tbtns .tdrv.pedal{border-radius:12px;background:none;border:none;width:calc(64px * var(--bs));height:calc(84px * var(--bs));opacity:.92;transition:transform .08s ease}
+.tbtns .tdrv.pedal svg{width:100%;height:100%;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
+.tbtns .tdrv.pedal.on{background:none;transform:perspective(220px) rotateX(24deg) scale(.95);opacity:1}   /* the brake pedal: an iron pedal with rubber grooves; pressing tips it down#tWheel.on{background:rgba(12,14,18,.45);color:var(--danfo)}
 :is(body.drvpad,body.drvwheel) #tHorn:not(.free){position:fixed;right:calc(10px + var(--sr));bottom:calc(47vh - 23px);width:calc(46px * var(--bs));height:calc(46px * var(--bs));font-size:10px}
 :is(body.drvpad,body.drvwheel) #tRadio:not(.free){position:fixed;right:calc(64px + var(--sr));bottom:calc(47vh - 23px);width:calc(46px * var(--bs));height:calc(46px * var(--bs));font-size:9px}
 body.drvwheel #tHorn:not(.free),body.drvwheel #tRadio:not(.free){bottom:calc(14px + 150px + var(--sb))}
@@ -313,8 +319,7 @@ body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bott
 @media (max-height:500px),(max-width:760px){ body.touchui #mmWrap{width:96px;height:96px} body.touchui #mm{border-radius:9px;border-width:2px} body.touchui #mmWrap .mmtag{font-size:10px;padding:3px 7px 2px;bottom:3px;right:-4px} }
 body.touchui.vit #mmWrap{top:calc(122px + var(--st))}
 body.touchui #mmWrap,body.touchui.vit #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(62px + var(--st));bottom:auto;width:88px;height:88px}   /* top right, clear of the move pad */
-@media (orientation:landscape){ body.touchui.vit .toast{left:calc(50% + 50px);max-width:calc(100vw - 360px)} }   /* keep messages clear of the health bars */
-body.touchui .toast{max-width:min(520px,calc(100vw - 330px));font-size:13.5px;padding:5px 12px}
+body.touchui .toast{max-width:min(560px,calc(100vw - 24px));font-size:13.5px;padding:7px 14px 7px 12px}
 .ctxlost{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(10,11,14,.9);padding:24px;text-align:center}
 .ctxlost div{max-width:320px;display:flex;flex-direction:column;gap:14px;align-items:center;font-size:18px;font-weight:600}
 .ctxlost button{background:var(--danfo);color:var(--ink);border:none;border-radius:10px;padding:12px 22px;font-family:var(--fd);font-size:16px;min-height:48px}
@@ -358,8 +363,7 @@ body.touchui .toast{max-width:min(520px,calc(100vw - 330px));font-size:13.5px;pa
   body.touchui #mmWrap,body.touchui.vit #mmWrap{left:auto;right:calc(14px + var(--sr));top:calc(66px + var(--st));width:84px;height:84px}
   body.touchui .speedo{right:auto;left:calc(18px + var(--sl));top:calc(66px + var(--st));bottom:auto;text-align:left}
   body.touchui .prompt{bottom:calc(172px + var(--sb))}
-  body.touchui .toast{top:calc(196px + var(--st));max-width:calc(100vw - 32px)}
-  body.touchui.vit .toast{top:calc(242px + var(--st))}
+  body.touchui .toast{max-width:calc(100vw - 20px)}
 }
 @media (max-height:520px){
   #mmWrap{width:132px;height:132px}
@@ -441,6 +445,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
   <div class="prompt" id="prompt" hidden role="button" tabindex="-1"><kbd id="promptKey">E</kbd><span id="promptTxt"></span></div>
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="toast carecard" id="careCard" hidden role="dialog" aria-label="Your care bars"></div>
   <div class="chatlog" id="chatLog" hidden aria-live="polite"></div>
   <form class="chatbar" id="chatBar" hidden autocomplete="off">
     <div class="seg" id="chatSeg" role="group" aria-label="Who hears you"><button type="button" data-ch="n" aria-pressed="true">Near</button><button type="button" data-ch="a" aria-pressed="false">All Lagos</button></div>
@@ -593,7 +598,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" id="tSk3" hidden>SPIN</button>
       <button type="button" id="tPunch" class="fightb tbig" hidden aria-label="Attack: tap tap tap for jab, cross, kick">ATTACK</button>
       <button type="button" id="tGas" class="tdrv" hidden aria-label="Accelerate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.5 12H9v9h6v-9h5.5z" fill="currentColor"/></svg></button>
-      <button type="button" id="tRev" class="tdrv" hidden aria-label="Brake; hold to reverse"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21 3.5 12H9V3h6v9h5.5z" fill="currentColor"/></svg></button>
+      <button type="button" id="tRev" class="tdrv pedal" hidden aria-label="Brake pedal: brake, hold to reverse; hold while turning fast to drift"><svg viewBox="0 0 48 64" aria-hidden="true"><defs><linearGradient id="pdM" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3f5f7"/><stop offset=".45" stop-color="#a7adb4"/><stop offset=".7" stop-color="#dfe3e7"/><stop offset="1" stop-color="#7d838a"/></linearGradient><linearGradient id="pdR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2e33"/><stop offset="1" stop-color="#141619"/></linearGradient></defs><path d="M9 4h30q5 0 5 5l-2 47q0 5-5 5H11q-5 0-5-5L4 9q0-5 5-5z" fill="url(#pdM)" stroke="#1b1d21" stroke-width="2"/><rect x="10" y="10" width="28" height="45" rx="4" fill="url(#pdR)"/><g stroke="#4a4f57" stroke-width="3.2" stroke-linecap="round"><path d="M14 16h20M14 22h20M14 28h20M14 34h20M14 40h20M14 46h20"/></g><g stroke="#0b0c0e" stroke-width="1.2" stroke-linecap="round" opacity=".9"><path d="M14 18h20M14 24h20M14 30h20M14 36h20M14 42h20M14 48h20"/></g><circle cx="9" cy="8" r="1.3" fill="#5c6168"/><circle cx="39" cy="8" r="1.3" fill="#5c6168"/></svg></button>
       <button type="button" id="tLeft" class="tdrv" hidden aria-label="Steer left"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 12 3.5V9h9v6h-9v5.5z" fill="currentColor"/></svg></button>
       <button type="button" id="tRight" class="tdrv" hidden aria-label="Steer right"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12 12 3.5V9H3v6h9v5.5z" fill="currentColor"/></svg></button>
       <button type="button" id="tWheel" class="tdrv" hidden aria-label="Steering wheel: turn it with your thumb"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="50" cy="50" r="12" fill="currentColor"/><path d="M50 62V91M38 50H9M62 50H91" stroke="currentColor" stroke-width="8"/><rect x="45" y="3" width="10" height="12" rx="2" fill="#f5b400"/></svg></button>

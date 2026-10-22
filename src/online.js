@@ -246,19 +246,18 @@ export function createOnline(api) {
     sp.renderOrder = 998; sp.visible = false; sp.userData.P = P; sp.userData.ph = Math.random() * 6.3; return sp;
   }
   // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman), their stars when wanted, then their rank medal
-  function tagSprite(name, stars = 0, badge = '', rk = 0, jb = '') {
-    const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '', H = 92, MS = 92, med = MEDAL[rk | 0], hasM = !!(med && med.complete && med.naturalWidth);
+  function tagSprite(name, stars = 0, badge = '', rk = 0, jb = '') {   // one small pill: dot, name, (oga title), stars, and the rank medal inside it
+    const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '', H = 60, med = MEDAL[rk | 0], hasM = !!(med && med.complete && med.naturalWidth), MS = hasM ? 50 : 0;
     const jt = jb && api.jobLabel ? api.jobLabel(jb) : '';   // an oga's title (👑 Okada oga) after the name
     g.font = `700 ${fs}px ${FONT}`; const tw0 = Math.ceil(g.measureText(name).width); g.font = `700 ${fs * .62}px ${FONT}`; const jw = jt ? Math.ceil(g.measureText(' ' + jt).width) : 0; g.font = `700 ${fs}px ${FONT}`;
-    const tw = tw0 + jw, sw = st ? Math.ceil(g.measureText(st).width) : 0, pw = tw + sw + 36, w = pw + MS + 6; cv.width = w; cv.height = H;
-    const y0 = (H - 60) / 2;
-    g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, y0 + 4, pw - 4, 52, 16); g.fill();
-    g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, y0 + 30, 6, 0, 6.3); g.fill();
-    g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, y0 + 32);
-    if (jt) { g.font = `700 ${fs * .62}px ${FONT}`; g.fillStyle = '#F2B705'; g.fillText(' ' + jt, 29 + tw0, y0 + 33); g.font = `700 ${fs}px ${FONT}`; }
-    if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, y0 + 32); }
-    if (hasM) g.drawImage(med, pw + 6, 0, MS, MS);
-    const sp = spriteOf(cv, .4 * TS * H / 60); sp.userData.medal = hasM; sp.userData.mx = (pw + 6 + MS / 2) / w; sp.userData.ms = MS / H; return sp;
+    const tw = tw0 + jw, sw = st ? Math.ceil(g.measureText(st).width) : 0, mx0 = 29 + tw + sw + 6, pw = hasM ? mx0 + MS + 6 : 29 + tw + sw + 14, w = pw + 2; cv.width = w; cv.height = H;
+    g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, 4, pw - 2, 52, 16); g.fill();
+    g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, 30, 6, 0, 6.3); g.fill();
+    g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, 32);
+    if (jt) { g.font = `700 ${fs * .62}px ${FONT}`; g.fillStyle = '#F2B705'; g.fillText(' ' + jt, 29 + tw0, 33); g.font = `700 ${fs}px ${FONT}`; }
+    if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, 32); }
+    if (hasM) g.drawImage(med, mx0, 5, MS, MS);
+    const sp = spriteOf(cv, .4 * TS * H / 60); sp.userData.medal = hasM; sp.userData.mx = (mx0 + MS / 2) / w; sp.userData.ms = Math.max(MS, 1) / H; return sp;
   }
   function bubbleSprite(text) {
     const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 36, pad = 18, maxW = 520;
