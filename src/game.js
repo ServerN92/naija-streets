@@ -9080,6 +9080,46 @@ const doorNear=()=>{ if(mode!=='walk') return null; let best=null, bd=1e9; for(c
 // the police station opens at once when you are caught
 setTimeout(()=>{ if(STATION.r&&STATION.r.M.marks) intLoad('int_police'); },25000);
 
+/* ================= road dividers, the Naija way =================
+   A low concrete kerb down the middle of the big two-way roads, and along the inside edge of each carriageway of the
+   dual carriageways, painted in black-and-white blocks like every big road in Lagos. Cars can't cross it (find a gap:
+   there is one every few hundred metres, and at every junction), people step over it. */
+const MEDIAN={n:0,len:0,segs:[],why:{}}; const mwhy=(k,l)=>{ MEDIAN.why[k]=(MEDIAN.why[k]||0)+l; };
+{ const acc=new Acc(), WHITE=new THREE.Color(1,1,1), up=[0,1,0], H=.3, PER=2;   // 1 m black, 1 m white
+  const hsh=i=>{ const n=Math.sin(i*127.1+311.7)*43758.5453; return n-Math.floor(n); };
+  const near=(x,z,r)=>(GATE&&Math.hypot(GATE.x-x,GATE.z-z)<r)||TOLLS.some(g=>Math.hypot(g.x-x,g.z-z)<r);
+  // a one-way road is a carriageway of a dual carriageway when its other half runs the other way just beside it (on its left)
+  const pairAt=(e,x,z)=>{ const lx=e.fz, lz=-e.fx; let best=null, bd=1e9; for(const o of roadsNear(x,z)){ if(o===e||!o.ow||!o.drive||o.br||o.fx*e.fx+o.fz*e.fz>-.8) continue;
+      const d=segD(o,x,z); if(d>45||d>=bd) continue; const A=nodes[o.a], tt=clamp((x-A.x)*o.fx+(z-A.z)*o.fz,0,o.len), px=A.x+o.fx*tt, pz=A.z+o.fz*tt; if((px-x)*lx+(pz-z)*lz<=0) continue; bd=d; best=o; }
+    return best?{o:best,d:bd}:null; };
+  const piece=(x0,z0,x1,z1,rx,rz,o,w,t0,t1)=>{ const a=o-w/2, b=o+w/2, P=(x,z,k,y)=>[x+rx*k,y,z+rz*k], u0=t0/PER, u1=t1/PER;
+    acc.quad(P(x0,z0,a,H),P(x0,z0,b,H),P(x1,z1,b,H),P(x1,z1,a,H),up,[[u0,0],[u0,1],[u1,1],[u1,0]],WHITE);                      // top
+    for(const [k,s] of [[a,-1],[b,1]]) acc.quad(P(x0,z0,k,0),P(x1,z1,k,0),P(x1,z1,k,H),P(x0,z0,k,H),[rx*s,0,rz*s],[[u0,0],[u1,0],[u1,1],[u0,1]],WHITE);   // the two painted sides
+    const fx=x1-x0, fz=z1-z0, fl=Math.hypot(fx,fz)||1;
+    for(const [x,z,s,u] of [[x0,z0,-1,u0],[x1,z1,1,u1]]) acc.quad(P(x,z,a,0),P(x,z,b,0),P(x,z,b,H),P(x,z,a,H),[fx/fl*s,0,fz/fl*s],[[u,0],[u+.01,0],[u+.01,1],[u,1]],WHITE); };   // ends
+  for(const e of ROADS){
+    if(!e.drive||e.bar||FLYE.has(e.i)||e.cond==='dirt'||e.c<1||e.c>4||e.w<(e.ow?6.5:7.5)) continue;   // (a drivable "bridge" road is at street level in the game)
+    const A0=nodes[e.a], B0=nodes[e.b], ra=A0.deg>=3?A0.r+2.5:0, rb=B0.deg>=3?B0.r+2.5:0; if(e.len-ra-rb<5) continue;
+    const rx=-e.fz, rz=e.fx, w=e.ow?.55:(e.w>=11?.8:.5), o=0, seg=6, off=hsh(e.i)*190;
+    let t=ra; while(t<e.len-rb-.5){
+      if(((t+off)%190)<10){ t+=10-((t+off)%190); continue; }   // a gap to turn back (a U-turn)
+      const t1=Math.min(t+seg,e.len-rb, t+190-((t+off)%190)), x0=A0.x+e.fx*t, z0=A0.z+e.fz*t, x1=A0.x+e.fx*t1, z1=A0.z+e.fz*t1;
+      let oo=o, skip=null;
+      if(e.ow){ const P=pairAt(e,(x0+x1)/2,(z0+z1)/2); if(!P){ mwhy('nopair',t1-t); t=t1; continue; }   // a plain one-way street: no divider
+        if(P.d-e.hw-P.o.hw>2.5) oo=-(e.hw+w/2+.05);                           // wide apart: a kerb on the inside edge of each carriageway
+        else { if(e.i>P.o.i){ mwhy('half',t1-t); t=t1; continue; } oo=-P.d/2; skip=P.o; } }       // side by side: one divider on the line between them
+      const ox=rx*oo, oz=rz*oo, mx=(x0+x1)/2+ox, mz=(z0+z1)/2+oz, oth=(x,z)=>roadsNear(x,z).some(q=>q!==e&&q!==skip&&(!q.br||q.drive)&&!(e.ow&&q.ow&&Math.abs(q.fx*e.fx+q.fz*e.fz)>.9)&&segD(q,x,z)<q.hw+.4);   // (the rest of both carriageways runs alongside: only roads that cross it count)
+      if(t1-t<.8||oth(x0+ox,z0+oz)||oth(x1+ox,z1+oz)||oth(mx,mz)||near(mx,mz,22)){ mwhy((e.ow?'ow':'two')+'_blocked',t1-t); t=t1; continue; }
+      piece(x0,z0,x1,z1,rx,rz,oo,w,t,t1);
+      addOB(mx,mz,(t1-t)/2,w/2,Math.atan2(e.fz,e.fx),H+.05).car=true;   // the cars stop; people step over
+      MEDIAN.n++; MEDIAN.len+=t1-t; MEDIAN.segs.push(Math.round(x0+ox),Math.round(z0+oz),Math.round(x1+ox),Math.round(z1+oz)); t=t1; } }
+  const c=document.createElement('canvas'); c.width=128; c.height=16; const g=c.getContext('2d');
+  g.fillStyle='#1d1d1c'; g.fillRect(0,0,64,16); g.fillStyle='#ecebe5'; g.fillRect(64,0,64,16);
+  for(let i=0;i<260;i++){ const x=Math.random()*128, y=Math.random()*16; g.fillStyle=x<64?`rgba(255,255,255,${Math.random()*.06})`:`rgba(60,50,40,${Math.random()*.12})`; g.fillRect(x,y,1+Math.random()*3,1+Math.random()*2); }   // a bit of dust and wear
+  g.fillStyle='rgba(70,60,50,.35)'; g.fillRect(0,13,128,3);   // dirty at the bottom, where the road dust sits
+  const tx=new THREE.CanvasTexture(c); tx.colorSpace=THREE.SRGBColorSpace; tx.wrapS=THREE.RepeatWrapping; tx.anisotropy=Math.min(4,maxAniso);
+  stillTiles(acc,new THREE.MeshStandardMaterial({map:tx,roughness:.85,side:THREE.DoubleSide}),false,true); }
+
 /* ================= police roadblocks ("checkpoints") on the busy roads of Mushin =================
    Three roadblocks (built in Blender: tools/blender_checkpoint.py): drums and a striped plank half across the outer
    lane, a plank of nails, the officers' umbrella and bench by the kerb. Drive up and they wave you down: stop and talk
