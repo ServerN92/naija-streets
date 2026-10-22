@@ -3217,7 +3217,7 @@ function musTick(x,z,h,inside){ if(!SND||!SND.SONGS.length) return;
 /* ================= HUD ================= */
 // people talk to a woman as a woman
 const SHE=[[/\bmy son\b/g,'my daughter'],[/\bOga\b/g,'Madam'],[/\bsir!/g,'ma!'],[/\bUncle\b/g,'Aunty'],[/\bboy!/g,'girl!'],[/\bBoss\b/g,'Madam'],[/\bmy guy\b/g,'my sister'],[/\bguy man\b/g,'fine girl']];
-let toastT=0; function toast(msg,dur=2.6){ if(!msg) return; if(isF()&&/"/.test(msg)) for(const [a,b] of SHE) msg=msg.replace(a,b); const t=$('#toast'); t.textContent=msg; t.classList.remove('out'); t.hidden=false; t.onclick=null; toastT=dur; }
+let toastT=0; function toast(msg,dur=2.6){ if(!msg) return; if(isF()&&/"/.test(msg)) for(const [a,b] of SHE) msg=msg.replace(a,b); const t=$('#toast'), was=!t.hidden&&t.classList.contains('show'); t.textContent=msg; t.classList.remove('out'); if(!was){ t.hidden=false; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); } t.onclick=null; toastT=dur; }   // it drops in from the top (a new one while it shows just changes the words)
 const DISTRICTS=WD.pois.place.map(([x,z,n])=>({x,z,n,D:distAt(x,z)}));
 function districtAt(x,z){ const D=distAt(x,z); let best=D?D.name:'Mushin',bd=1e18; for(const d of DISTRICTS){ if(d.D!==D) continue; const q=(d.x-x)**2+(d.z-z)**2; if(q<bd){ bd=q; best=d.n; } } return best; }
 const atCheckpoint=(x,z)=>DISTS.some(g=>g.gate&&!distAt(x,z)&&Math.abs(x-g.gate.x)<60&&Math.abs(z-g.gate.z)<45);
@@ -3370,7 +3370,7 @@ function updateHUD(dt){ if(!started) return;
     else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=true; }   // (on a phone the prompt itself is the E button: one E, only when there is something to do)
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
-  if(toastT>0&&!mapView.isOpen){ toastT-=dt; const t=$('#toast'); if(toastT<.3) t.classList.add('out'); if(toastT<=0) t.hidden=true; }   // (fades out)
+  if(toastT>0&&!mapView.isOpen){ toastT-=dt; const t=$('#toast'); if(toastT<.4){ t.classList.add('out'); t.classList.remove('show'); } if(toastT<=0) t.hidden=true; }   // (slides back up)
   if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; if(touchUI) drvShow(dv); $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':''; }
   if(mapView.dest&&mode!=='interior'){ const me=mapView.getPlayer(), pl=mapView.dest.place, near=14+(pl&&pl.r?pl.r:0); if(Math.hypot(me.x-mapView.dest.x,me.z-mapView.dest.z)<near){ const job=pl&&pl.job; mapView.clearRoute(); if(!job) toast('You don reach! GPS cleared.'); } else { routeTick-=dt; if(routeTick<=0){ routeTick=1.5; mapView.recompute(); } } }
   if(mapView.isOpen){ mapView.draw(); return; }
@@ -3409,7 +3409,7 @@ const drvPedals=()=>touchUI&&DRV.m!=='joy';
 function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
   if(DRV.m==='wheel'){ if(DRV.wp==null) DRV.wr*=Math.exp(-10*dt); if(Math.abs(DRV.wr)<.3&&DRV.wp==null) DRV.wr=0; DRV.sv=clamp(DRV.wr/90,-1,1); $('#tWheel').style.transform=DRV.wr?`rotate(${DRV.wr.toFixed(1)}deg)`:''; }   // let go and it turns back to straight
   else { const t=DRV.r-DRV.l, k=!t?8:(DRV.sv&&Math.sign(t)!==Math.sign(DRV.sv)?10:4.5); DRV.sv+=(t-DRV.sv)*Math.min(1,dt*k); if(!t&&Math.abs(DRV.sv)<.02) DRV.sv=0; } }   // the arrows turn the wheel in smoothly, not all at once
-function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; if(p&&!DRV.told){ DRV.told=true; let seen=false; try{ seen=!!localStorage.getItem('naija-drv-tip'); localStorage.setItem('naija-drv-tip','1'); }catch(e){} if(!seen) toast('▲ go · ▼ brake (keep holding ▼ to reverse) · ◀ ▶ steer. Tap the Get out button to come down.',6); } $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
+function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; if(p&&!DRV.told){ DRV.told=true; let seen=false; try{ seen=!!localStorage.getItem('naija-drv-tip'); localStorage.setItem('naija-drv-tip','1'); }catch(e){} if(!seen) toast('▲ go · brake pedal: brake (hold to reverse) · ◀ ▶ steer. Stunts: hold the brake while you turn fast to drift; on a bike, gas + brake = wheelie. Tap Get out to come down.',8); } $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
   $('#tBrake').hidden=!(on&&!drvPedals()); document.body.classList.toggle('drvpad',p&&!w); document.body.classList.toggle('drvwheel',w);
   if(!p){ DRV.gas=DRV.rev=DRV.l=DRV.r=0; DRV.sv=DRV.wr=0; DRV.wp=null; for(const id of ['tGas','tRev','tLeft','tRight','tWheel']) $('#'+id).classList.remove('on'); } }
 function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
@@ -3681,17 +3681,20 @@ function updateWalk(dt,inside){
   if(hero) crTick(dt,player.speed);
   rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw; if(SWIM.on||SWIM.p>0||rig.root.rotation.x) swimPose();
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
-function updateDrive(dt){ drvTick(dt); const v=drive.v, [f,s]=RACE.hold?[0,0]:inputVec(), hb=RACE.hold||K[' ']||touchBrake; let sp=drive.speed;
+function updateDrive(dt){ drvTick(dt); const v=drive.v; let [f,s]=RACE.hold?[0,0]:inputVec(), hb=RACE.hold||K[' ']||touchBrake, sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
   if(v.type==='skate'){ updateSkate(dt); return; }
   const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker'||v.type==='v_tipper', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
+  // the phone pedals do the stunts too: the brake pedal held while you turn fast is the handbrake (drift; on a bike going
+  // straight, a stoppie), and gas + brake together on a bike is a wheelie
+  let pW=false; if(drvPedals()&&!RACE.hold){ if(B&&DRV.gas&&DRV.rev&&sp>2.5){ pW=true; f=1; } else if(DRV.rev&&sp>6&&(Math.abs(s)>.15||B)){ hb=true; f=Math.max(0,f+DRV.rev); } }
   // drift: handbrake while turning at speed slides the back out (big buses and tankers just brake)
   const drifting=hb&&Math.abs(sp)>7&&Math.abs(s)>.15&&!big&&SKL.st<.05;
   const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40],car2:[1.1,42],benz:[1.3,52],tanker:[.38,21],bike2:[1.45,40],sbike:[1.8,48],skate:[.55,7.5]})[v.type]||[1,38];
   if(f>.1) sp+=(sp<-.2?18:9.5*DT[0]*Math.max(0,1-sp/DT[1]))*dt*f; else if(f<-.1){ sp+=(sp>.4?-20:-6)*dt*(-f); if(sp<-9) sp=-9; } else { const dec=(1.6+Math.abs(sp)*.1)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
   if(hb){ const dec=(drifting?3.4:B&&SKL.st>.05?12:24)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
   // bikes: wheelie (Shift / WHEELIE), stoppie (brake hard going straight), bunny hop (J / HOP)
-  if(B){ const wantW=(K.shift||TSK.b1)&&f>.2&&sp>2.5&&SKL.hop<=0, wantS=hb&&sp>8&&Math.abs(s)<.3&&!wantW&&SKL.hop<=0;
+  if(B){ const wantW=(K.shift||TSK.b1||pW)&&f>.2&&sp>2.5&&SKL.hop<=0, wantS=hb&&sp>8&&Math.abs(s)<.3&&!wantW&&SKL.hop<=0;
     SKL.wh=wantW?Math.min(.5,SKL.wh+dt*(.9+.4*Math.sin(T0*3))):Math.max(0,SKL.wh-dt*1.6); SKL.st=wantS?Math.min(.3,SKL.st+dt*1.1):Math.max(0,SKL.st-dt*1.6);
     if(SKL.wh>.04) sp+=dt*.6*f;   // a wheelie pulls you on
     const jp=!!(K.j||TSK.b2); if(jp&&!SKL.prevJ&&SKL.hop<=0&&SKL.wh<.1){ SKL.hv=3.4; SKL.hop=.001; } SKL.prevJ=jp;
@@ -9333,7 +9336,19 @@ function faintTick(dt){ if(LIFE.eat<1){ FAINT.starve=0; FAINT.walk=0; FAINT.n=0;
   FAINT.walk+=player.speed*dt; if(FAINT.walk<FAINT.next) return; FAINT.walk=0; FAINT.next=14+Math.random()*16; FAINT.n++;
   FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1,onEnd:()=>heroDo('lie',{force:true,pause:true})});
   toast(FAINT.n===1?'You don faint! Hunger don finish you. Chop something sharp sharp: a buka, Mama Put, or cook for house.':mpick(['You faint again! Food, food, food!','Your eye don dark again. You need food now now!','"Somebody help am! E don faint!" Go chop!']),4); }
-function careHelp(){ toast('Your care bars, under your health: 🍲 EAT, 😴 SLEEP, 🚽 TOILET and 🚿 BATH. They fill as you play. Full EAT: your health goes down and you start fainting. Full SLEEP or TOILET: you can\'t run. Full BATH: you smell, flies follow you, people avoid you and buy less. Eat, sleep, use the toilet and bath to empty them. Keep all four green: ✨ fresh, +10% pay. No money? Church and mosque share free food once a day, Mama Put by your tent is ₦300, or beg at a bus stop.',11); }
+const CARE_CARD={open:false};
+function careHelp(){ const c=$('#careCard'); if(CARE_CARD.open){ careClose(); return; }
+  c.innerHTML=`<h4>YOUR BODY · KEEP THE FOUR BARS GREEN</h4>
+    <p>🍲 <b>EAT</b> · fills as you play. Full: your health drops and you <b>faint</b> as you walk. Chop at a buka, Mama Put (₦300) or cook at home.</p>
+    <p>😴 <b>SLEEP</b> · full: you can't run. Sleep in your tent (mosquitoes!), a room or a bed.</p>
+    <p>🚽 <b>TOILET</b> · full: you can't run, and if you hold it too long… e go happen 🤣. Public toilet ₦50.</p>
+    <p>🚿 <b>BATH</b> · full: you <b>smell</b>, flies follow you, people avoid you and buy less. Bucket bath ₦100 by the toilet, or your shower.</p>
+    <p>✨ <b>All four green</b>: you're FRESH, +10% on your work pay.</p>
+    <p>💸 <b>No money?</b> Church and mosque share free food once a day, or beg at a bus stop.</p>
+    <small>Tap anywhere to close</small>`;
+  c.hidden=false; c.classList.remove('out','show'); void c.offsetWidth; c.classList.add('show'); CARE_CARD.open=true; CARE_CARD.at=performance.now(); }
+function careClose(){ const c=$('#careCard'); if(!CARE_CARD.open) return; CARE_CARD.open=false; c.classList.remove('show'); c.classList.add('out'); setTimeout(()=>{ if(!CARE_CARD.open) c.hidden=true; },380); }
+addEventListener('pointerdown',e=>{ if(CARE_CARD.open&&performance.now()-CARE_CARD.at>250&&!(e.target.closest&&e.target.closest('#care'))) careClose(); },true);   // tap anywhere (but the bars, which toggle it) to close
 function careEat(k){ LIFE.eat=Math.max(0,LIFE.eat-k); if(LIFE.eat<.75) LIFE_SYNC.warnEat=false; lifeSave(); }
 function careSleep(to){ LIFE.sleep=Math.min(LIFE.sleep,to); if(LIFE.sleep<.75) LIFE_SYNC.warnSleep=false; lifeSave(); }
 // what you wear must be yours: rags until you buy better (the police uniform goes on by itself on duty)
