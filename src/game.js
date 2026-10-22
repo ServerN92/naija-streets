@@ -13,21 +13,22 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=509751adc8';
-import * as C2 from './char2.js?v=509751adc8';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=509751adc8';
-import { createPhone } from './phone.js?v=509751adc8';
-import { createGuide } from './guide.js?v=509751adc8';
+import * as CLOCK from './clock.js?v=95e474718d';
+import * as C2 from './char2.js?v=95e474718d';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=95e474718d';
+import { createPhone } from './phone.js?v=95e474718d';
+import { createGuide } from './guide.js?v=95e474718d';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=509751adc8';
-import { createBusiness } from './business.js?v=509751adc8';
-import { createOnline } from './online.js?v=509751adc8';
-import { createPolice } from './police.js?v=509751adc8';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=509751adc8';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=509751adc8';
+import { createFootball } from './football.js?v=95e474718d';
+import { createFarm } from './farm.js?v=95e474718d';
+import { createBusiness } from './business.js?v=95e474718d';
+import { createOnline } from './online.js?v=95e474718d';
+import { createPolice } from './police.js?v=95e474718d';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=95e474718d';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=95e474718d';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='509751adc8';
+const BUILD='95e474718d';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1053,7 +1054,7 @@ const railD=(x,z)=>{ let d=1e9; for(const [x0,z0,x1,z1] of RAILSEG){ const dx=x1
 function roadWide(x,z,R){ let best=null, bd=1e9; const seen=new Set();
   for(let i=Math.floor((x-R)/RGC);i<=Math.floor((x+R)/RGC);i++) for(let j=Math.floor((z-R)/RGC);j<=Math.floor((z+R)/RGC);j++) for(const e of RG.get(rgk(i,j))||[]){ if(seen.has(e)) continue; seen.add(e); if(!e.drive||e.c>6) continue; const d=segD(e,x,z)-e.hw; if(d<bd){ bd=d; best=e; } }
   return bd<=R?[best,bd]:[null,1e9]; }
-function openGround(o,rMin,rMax,hw,hd,step=25,far=16){ if(!o) return null; let best=null, bs=1e18;
+function openGround(o,rMin,rMax,hw,hd,step=25,far=16,keep=true){ if(!o) return null; let best=null, bs=1e18;
   const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school');   // the LUTH grounds are fine: real playing fields lie inside
   for(let gx=o.cx-rMax;gx<=o.cx+rMax;gx+=step) for(let gz=o.cz-rMax;gz<=o.cz+rMax;gz+=step){ const dd=Math.hypot(gx-o.cx,gz-o.cz); if(dd<rMin||dd>rMax) continue;
     if(!onLand(gx,gz,Math.max(hw,hd)+6)) continue;
@@ -1066,9 +1067,39 @@ function openGround(o,rMin,rMax,hw,hd,step=25,far=16){ if(!o) return null; let b
     if(KEEP.some(k=>Math.hypot(k.cx-gx,k.cz-gz)<Math.hypot(k.hw,k.hd)+Math.hypot(hw,hd))) continue;
     let cost=0, bad=false; for(const b of bldNear(gx,gz,Math.hypot(hw,hd)+20)) if(rectHit(b,rect)){ if(b.special||b===UNI_SITE||b===HOME){ bad=true; break; } cost+=b.w*b.d; } if(bad) continue;
     const sc=cost+dd*4; if(sc<bs){ bs=sc; best={cx:gx,cz:gz,ry,hw,hd}; } }
-  if(best) keepOut({cx:best.cx,cz:best.cz,hw:best.hw+2,hd:best.hd+2,ang:-best.ry}); return best; }
+  if(best&&keep) keepOut({cx:best.cx,cz:best.cz,hw:best.hw+2,hd:best.hd+2,ang:-best.ry}); return best; }
 const PITCH_SITE=HOUSES?openGround(UNI_SITE,30,500,36.5,24.5):null;
 const STADIUM_SITE=HOUSES?(openGround(UNI_SITE,100,800,61,47,20,40)||openGround(UNI_SITE,100,1500,61,47,25,90)):null;
+// ---- street football (Blender: pitch.blend): the sandlot (64 x 44) and the cage (46 x 33), two in school compounds, two on the streets
+const PITCH_SZ={sand:{hw:32,hd:22.5,lz0:0},cage:{hw:23.5,hd:17,lz0:-2.5}};   // lz0: the set's middle is off its origin
+function schoolGround(sc,hw,hd){ const P=sc.a.pts; let best=null, bs=1e18; const angs=new Set();
+  for(let i=0;i<P.length;i++){ const a=P[i], b=P[(i+1)%P.length]; if(Math.hypot(b[0]-a[0],b[1]-a[1])<10) continue; const r=Math.atan2(-(b[1]-a[1]),b[0]-a[0]); angs.add(+r.toFixed(2)); angs.add(+(r+Math.PI/2).toFixed(2)); }
+  let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9; for(const [x,z] of P){ x0=Math.min(x0,x); x1=Math.max(x1,x); z0=Math.min(z0,z); z1=Math.max(z1,z); }
+  for(const ry of angs){ const c=Math.cos(ry), sn=Math.sin(ry);
+    for(let gx=x0;gx<=x1;gx+=5) for(let gz=z0;gz<=z1;gz+=5){ let ok=true;
+      for(let u=-hw;u<=hw+.1&&ok;u+=hw/4) for(let v=-hd;v<=hd+.1;v+=hd/4){ const x=gx+c*u+sn*v, z=gz-sn*u+c*v; if(!inPoly(P,x,z)||roadAt(x,z,1)){ ok=false; break; } }
+      if(!ok) continue; const rect={cx:gx,cz:gz,hw:hw+1,hd:hd+1,ang:-ry};
+      if(KEEP.some(k=>Math.hypot(k.cx-gx,k.cz-gz)<Math.hypot(k.hw,k.hd)+Math.hypot(hw,hd))) continue;
+      let cost=0, bad=false; for(const b of bldNear(gx,gz,Math.hypot(hw,hd)+20)) if(rectHit(b,rect)){ if(b.special||b===HOME){ bad=true; break; } cost+=b.w*b.d; } if(bad) continue;
+      if(cost<bs){ bs=cost; best={cx:gx,cz:gz,ry,hw,hd}; } } }
+  if(best) keepOut({cx:best.cx,cz:best.cz,hw:best.hw+1,hd:best.hd+1,ang:-best.ry}); return best; }
+const FOOT_SITES=[];
+if(HOUSES&&MANIFEST['assets/models/set_pitch_sand.glb']){
+  const H0=HOME||{cx:0,cz:0};
+  // schools with their buildings standing (a compound, classrooms round the field), nearest your side of town first
+  const schoolBlds=a=>{ let n=0, sx=0, sz=0; for(const [x,z] of a.pts){ sx+=x; sz+=z; } sx/=a.pts.length; sz/=a.pts.length; for(const b of bldNear(sx,sz,Math.sqrt(a.a))) if(b.kind==='school'&&inPoly(a.pts,b.cx,b.cz)) n++; a.cx=sx; a.cz=sz; return n; };
+  const scs=AREAS.filter(a=>a.k==='school'&&a.a>2500&&schoolBlds(a)>=2).sort((a,b)=>Math.hypot(a.cx-H0.cx,a.cz-H0.cz)-Math.hypot(b.cx-H0.cx,b.cz-H0.cz));
+  for(const kind of ['sand','cage']){ const Z=PITCH_SZ[kind]; for(const a of scs){ if(FOOT_SITES.some(f=>f.area===a)) continue; const g=schoolGround({a},Z.hw,Z.hd); if(g){ FOOT_SITES.push({...g,kind,area:a,school:true}); break; } } }
+  const mk=AREAS.filter(a=>a.k==='market').sort((a,b)=>b.a-a.a)[0], mc=mk?{cx:mk.pts.reduce((s,p)=>s+p[0],0)/mk.pts.length,cz:mk.pts.reduce((s,p)=>s+p[1],0)/mk.pts.length}:null;
+  // on the street: an open plot among people's houses (the most houses round it of a few tries), not a park
+  const homes=g=>{ let n=0; for(const b of bldNear(g.cx,g.cz,110)) if(!b.skip&&(b.kind==='block'||b.kind==='shop')) n++; return n; };
+  const street=(os,kind)=>{ const Z=PITCH_SZ[kind]; let best=null, bn=-1; for(const o of os){ if(!o) continue; const g=openGround(o,30,300,Z.hw,Z.hd,20,30,false); if(!g) continue; const n=homes(g); if(n>bn){ bn=n; best=g; } }
+    if(!best) for(const o of os){ if(o&&(best=openGround(o,60,1400,Z.hw,Z.hd,25,60,false))) break; }
+    if(best){ keepOut({cx:best.cx,cz:best.cz,hw:best.hw+2,hd:best.hd+2,ang:-best.ry}); FOOT_SITES.push({...best,kind,school:false}); } };
+  const ring=(o,r)=>[0,1,2,3,4,5].map(k=>({cx:o.cx+Math.cos(k*1.047)*r,cz:o.cz+Math.sin(k*1.047)*r}));
+  street([H0,...ring(H0,250)],FOOT_SITES.some(f=>f.kind==='cage')?'sand':'cage');
+  street([mc,...ring(H0,650)].filter(o=>o&&!FOOT_SITES.some(f=>Math.hypot(f.cx-o.cx,f.cz-o.cz)<300)),FOOT_SITES.filter(f=>f.kind==='sand').length>1?'cage':'sand'); }
+for(const g of FOOT_SITES) SCAT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2});   // no stones or tufts on the pitches
 
 // ---- footbridges over the big roads: the real ones from the map, plus a few where crowds cross (market, bus stops)
 const FOOTB=[];
@@ -3327,7 +3358,7 @@ function updateHUD(dt){ if(!started) return;
 const camState={yaw:HOME0.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0}; camState.yaw=clearYaw(player.x,player.y,player.z,RESUME?RESUME.ry:homeNow()==='tent'?HOME0.ry+2.5:HOME0.ry);   // at your door: a clear view, not your wall
 const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
 let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
-function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
+function updateCamera(dt){ if(mode==='foot'&&FOOT&&!DEVCAM&&FOOT.cam(dt)) return; if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
   if(mode==='drive'){ const v=drive.v, sk=v.type==='skate'; _t.set(v.x,v.y+(sk?1.3+(v.lift||0)*.5:1.5),v.z); dist=sk?4.4+Math.abs(drive.speed)*.1:7.8+Math.abs(drive.speed)*.04;   // on the board the camera stays close, like on foot
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
   else { camFollow(dt); _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:CB.act&&CB.act.camH?CB.act.camH:1.55-.42*CR.w-.5*CR.pw),player.z+FIGHT.cz); dist=WARD.open?2.3:mode==='interior'?ROOM.camDist:gunOut()&&ARMS.aim?2.1:4.3; }
@@ -3366,6 +3397,7 @@ const CODE={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arr
 const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
 addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;   // typing your name
   const k=keyOf(e); if(k===' '||k==='tab'||k.startsWith('arrow')) e.preventDefault(); if(!started||e.repeat) return;
+  if(mode==='foot'&&FOOT&&!MENU.open){ if(!FOOT.key(k,true)) K[k]=true; return; }
   if(DEALER.open&&(k==='escape'||k==='e')){ closeShop(); K[k]=true; return; }
   if(MENU.open&&(k==='escape'||k==='e')){ closeMenu(); K[k]=true; return; }
   if(k==='escape'&&PH&&PH.cam()){ PH.closeCamera(); return; }
@@ -3375,7 +3407,7 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
   if(k==='m'&&!K.m){ K.m=true; if(mapView.isOpen) mapView.close(); else if(mode!=='interior') openMap(); return; }
   if(mapView.isOpen) return;
   if(!K[k]){ if(k==='e'||k==='f') action(); else if(k==='g') carryGrab(); else if(k==='c') $('#settings').hidden=!$('#settings').hidden; else if(k==='x') crDown(); else if(k==='h'&&mode==='drive'){ horn(); hornHeard(); } else if(k==='j'){ if(ARMS.cur==='board'&&mode==='walk') boardRide(); else if(gunOut()) ARMS.trig=true; else playerAttack('punch'); } else if(k==='k'){ if(gunOut()) ARMS.aim=!ARMS.aim; else playerAttack('kick'); } else if(k==='l'||k==='q') playerDodge(); else if(k==='p') togglePhone(); else if(k>='1'&&k<='7') selectWeapon(WEAP_ORDER[+k-1]); else if(k==='tab') cycleWeapon(); else if(k==='r') reload(); else if(k==='n') radioPress(); else if(k===' '&&mode==='walk') playerJump(); } K[k]=true; });
-addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; if(k==='x') crUp(); });
+addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(FOOT) FOOT.key(k,false); if(k==='j') ARMS.trig=false; if(k==='x') crUp(); });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
 addEventListener('pagehide',()=>{ if(started) lifeSave(); });
@@ -4118,7 +4150,7 @@ const SPOTS=[];
   for(const fo of FLYOVERS) for(const c of fo.camps){ const m=[[pk(['baba','areaboy','mama','hawker','areaboy']),null],[pk(['areaboy','lady_black','baba','mama']),null]]; if(SR()<.4) m.push([pk(['schoolboy','girl','areaboy']),null]);
     for(const q of m) q[1]=WAIT[q[0]]||ACT[q[0]]||['idle_1','talk']; addSpot('camp',c.x,c.z,m,{rot:SR()*6.28,skipFree:true}); }
   // school compounds: pupils in groups in the yard during school hours
-  for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; const span=Math.min(60,Math.sqrt(sc.a.a)*.45), want=Math.min(12,4+Math.floor(sc.a.a/2500)); for(let t=0;t<260&&n<want;t++){ const x=sc.x+rr(-span,span), z=sc.z+rr(-span,span); if(!inPoly(sc.a.pts,x,z)) continue;
+  for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; const span=Math.min(60,Math.sqrt(sc.a.a)*.45), want=Math.min(12,4+Math.floor(sc.a.a/2500)); for(let t=0;t<260&&n<want;t++){ const x=sc.x+rr(-span,span), z=sc.z+rr(-span,span); if(!inPoly(sc.a.pts,x,z)||scatOff(x,z)) continue;
       const m=[['schoolboy',['talk','idle_1','no','text']],['schoolboy',['idle_1','talk','idle_2']],['schoolboy',['talk','no','idle_1']]]; if(addSpot('pupils',x,z,m,{rot:SR()*6.28,hours:[7.3,13.4]})) n++; } } }
 
 
@@ -8729,6 +8761,35 @@ if(RACE_POS&&MANIFEST['assets/models/set_raceway.glb']){
       if(/RW_LightRed/.test(nm)) RACE.mats.red=o.material; if(/RW_LightGreen/.test(nm)) RACE.mats.green=o.material; if(/RW_Flood/.test(nm)) RACE.mats.flood=o.material; });
     for(const m of Object.values(RACE.mats)) if(m){ m.emissiveIntensity=0; }
     const prev=S2.tick; S2.tick=(dt,d)=>{ if(prev) prev.call(S2,dt,d); if(RACE.mats.flood) RACE.mats.flood.emissiveIntensity=ENV.lamp>0||RACE.on?4:0; }; }; }
+// ---- street football (src/football.js): the four pitches, the boys, the match
+let FOOT=null; const FOOTM={fov:0};
+async function footballer(id,kit,o={}){ const C=await loadV2(id); if(!C) return null;
+  const inner=SkeletonUtils.clone(C.tpl); let fi=-1; inner.traverse(x=>{ const m=/^o([0-9a-z])~jersey/.exec(x.name); if(m&&fi<0) fi=parseInt(m[1],36); });
+  const kitOn=fi>=0; if(fi<0) fi=o.me?fitOf(id):0; C2.setOutfit(inner,fi); toneBody(inner,id,o.me?toneOf():(Math.random()*Math.min(4,TONES.length))|0);
+  const ch=fi.toString(36); if(kitOn) inner.traverse(x=>{ if(!x.isMesh) return; const n=(x.parent&&x.parent.name)||x.name; if(!n.startsWith('o'+ch+'~')) return; const top=/jersey|shirt/.test(n), bot=/shorts/.test(n); if(top||bot) x.material=kitMat(x.material,top?kit[0]:kit[1]); });
+  inner.traverse(x=>{ if(x.isMesh){ x.castShadow=true; x.frustumCulled=false; } });
+  const root=new THREE.Group(); root.add(inner); scene.add(root); const mixer=new THREE.AnimationMixer(inner);
+  return {root,inner,mixer,clips:C.clips,D:C.info,rv:C.rv,wv:C.wv,dispose(){ mixer.stopAllAction(); scene.remove(root); }}; }
+// a team's colour on a shirt or shorts: the cloth keeps its folds and shading, the colour is the team's
+const KIT_MATS=new Map();
+function kitMat(m,col){ const k=m.uuid+col; let q=KIT_MATS.get(k); if(q) return q; q=m.clone(); const c=new THREE.Color(col);
+  q.onBeforeCompile=sh=>{ sh.uniforms.kitCol={value:c}; sh.fragmentShader='uniform vec3 kitCol;\n'+sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n{ float l=dot(diffuseColor.rgb,vec3(.299,.587,.114)); diffuseColor.rgb=kitCol*clamp(l*2.4,.3,1.15); }'); };
+  q.customProgramCacheKey=()=>'kit'; KIT_MATS.set(k,q); return q; }
+function footMode(on,at){ if(on){ if(mode==='drive') exitCar(); closePhone(); FOOTM.fov=camera.fov; mode='foot'; if(rig&&rig.root) rig.root.visible=false; }
+  else { mode='walk'; if(rig&&rig.root) rig.root.visible=true; if(FOOTM.fov){ camera.fov=FOOTM.fov; camera.updateProjectionMatrix(); } if(at){ player.x=at.x; player.z=at.z; } camState.last=-10; } }
+if(typeof FOOT_SITES!=='undefined'&&FOOT_SITES.length){
+  FOOT=createFootball({THREE,scene,camera,C2,ac:()=>AC,out:()=>master,toast,naira,openMenu,closeMenu,addCash:n=>{ addCash(n); cashHUD(); },cred:(p,why)=>credAdd('foot',p,false,why),
+    touch:()=>touchUI,input:()=>inputVec(),meId:()=>isV2(WARD.cur)?WARD.cur:myPerson(),myName:()=>(PROFILE&&PROFILE.name)||'You',footballer,
+    folk:(cast,at,clips)=>folk(scene,cast,at,clips,null),folkDo,folkGone:f=>{ if(f&&f.root) scene.remove(f.root); },
+    setPlayer:(w)=>{ player.x=w.x; player.z=w.z; },enter:footMode});
+  const used={};
+  FOOT_SITES.forEach(g=>{ const Z=PITCH_SZ[g.kind], c=Math.cos(g.ry), s=Math.sin(g.ry), x=g.cx-Z.lz0*s, z=g.cz-Z.lz0*c;
+    const sc=g.school?SCHOOLS.find(q=>q.a===g.area):null, n=(used[g.kind]=(used[g.kind]||0)+1);
+    const name=sc?`${sc.name} ${g.kind==='cage'?'football cage':'football field'}`:g.kind==='cage'?'The Cage':'Shoki Ground';
+    const S=addSet('set_pitch_'+g.kind,x,z,g.ry,{near:650,detailDist:140}), PI=FOOT.addPitch(S,g.kind,name);
+    PLACES.push({name,sub:g.kind==='cage'?'Street football · 5-a-side cage':'Street football · sandlot',kind:'sport',x,z,r:30});
+    S.onLoad=S2=>{ for(const [x0,x1,z0,z1] of (S2.json&&S2.json.solids)||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,1.2); }
+      const m=S2.json&&S2.json.marks&&S2.json.marks.sign; if(m){ const w=setPt(S2,m[0],m[1]); DOORS.push({x:w.x,z:w.z,r:2.6,label:'Play football (5-a-side)',act:()=>FOOT.menu(PI)}); } }; }); }
 // how far left of the line a point is, at distance s
 function raceLat(x,z,s){ const p=racePt(s); return (x-p.x)*Math.sin(p.h)+(z-p.z)*Math.cos(p.h); }
 // a point on the racing line at distance s, off metres to the left
@@ -9653,10 +9714,10 @@ let warm=0, perfAcc=0, perfN=0, prCool=3, errShown=0;
 function applyPR(){ renderer.setPixelRatio(PR); renderer.setSize(innerWidth,innerHeight); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } }
 function reportErr(e){ console.error(e); if(errShown++<1&&started) toast('Small hitch. The game kept running.'); }
 function simulate(dt){
-  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else updateDrive(dt); }
+  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else if(mode==='foot'){ if(FOOT) FOOT.update(dt); } else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
-  if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
+  if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
   updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
@@ -9844,6 +9905,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
     race(i=0){ return raceStart(RACE_KINDS[i]); }, get RACE(){ return RACE; },
+    get FOOT(){ return FOOT; }, fsites:()=>FOOT_SITES.map(g=>({kind:g.kind,school:g.school,x:Math.round(g.cx),z:Math.round(g.cz),ry:+g.ry.toFixed(2)})),
     // dev: plots for the new places (salons, barbers, restaurants, fashion houses), facing a road, clear of everything
     plotSearch(hx,hz0,hz1,maxC=4,step=12,space=50,box=null){ const out=[], bizS=[[265.98,-17.85],[-143.05,206.92],[82.11,-415.92],[-274.61,-379.09],[738.22,11.62],[1043.05,537.73],[-1058.91,-1566.99],[-4058.97,935.85],[304.73,-150.51],[-180.69,345.03],[-140.06,-425.01],[796.67,122.87],[1141,433.78],[-3963.78,899.85],[-95.83,116.51],[354.07,-61.82],[-45.52,-517.66],[860.8,22.13],[1209.72,580.06],[-4143.5,998.67]];
       const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school'||a.k==='farmland'||a.k==='npcfarm'||a.k==='estate'||a.k==='gra');
@@ -9997,7 +10059,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
     sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
-    cam(px,py,pz,tx,ty,tz){ DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
+    cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
     goto(q,back=26,yaw=null,zoom=3){ const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return PLACES.map(p=>p.name).slice(0,80); const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
