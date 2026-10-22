@@ -731,6 +731,26 @@ gates let you through only once the detector clears you; reception, the lounge a
 12th floor (int_cbn_office): the Banking Supervision unit, 14 staff typing at their own desks and computers, the head of
 unit's glass office, the meeting room, the copier and the water cooler, and your own desk by the window (one paid shift a day).
 
+### Working at the CBN (server/src/cbn.js, the CBN app on the phone)
+The best-paid job in the game, and the hardest to get. Apply on the CBN app with a letter (why you want to work with us).
+The Governor (a player: the highest-ranked worker) reads the letters, accepts or rejects them and can write a message back;
+rejected players can try again after a day. While the Governor's seat is empty, the Board reads the letters (after about
+30 minutes; it wants a serious letter) so the bank can fill up until someone climbs to the top. Staff only go up to the
+12th floor. One shift a day at your own desk (2 minutes seated, typing; walk off and the day is lost) pays by position:
+
+| Position | Shifts | Pay a shift |
+|---|---|---|
+| Clerk | 0 | ₦100,000 |
+| Officer | 5 | ₦150,000 |
+| Senior Officer | 12 | ₦250,000 |
+| Manager | 22 | ₦400,000 |
+| Assistant Director | 35 | ₦550,000 |
+| Director | 50 + Governor's approval | ₦700,000 |
+| Deputy Governor | 70 + Governor's approval | ₦850,000 |
+| Governor (one seat) | 100 + approval while the seat is empty | ₦1,000,000 |
+
+A Governor away for 7 days loses the seat (back to Deputy Governor). Wanted players cannot apply.
+
 ## Credits: the Central Bank
 
 From Sketchfab (CC BY 4.0 unless marked "Sketchfab Standard"):
