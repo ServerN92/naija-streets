@@ -2326,15 +2326,16 @@ const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:1000
 // cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
 function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
   return {cr:clamp(Math.floor(+(d&&d.cr)||0),0,1e7),cd:clamp((d&&d.cd)|0,0,99991231),ca:clamp(+(d&&d.ca)||0,0,86400),cx,cs:clamp((d&&d.cs)|0,0,3650),cl:clamp((d&&d.cl)|0,0,99991231)}; }
-const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',deco:{},store:{},boxes:[],pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,ffd:0,tips:0,rel:null,relNo:{},relHype:0,t:Date.now()});
+const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',deco:{},store:{},boxes:[],pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,ffd:0,tips:0,rel:null,relNo:{},relHype:0,yh:null,t:Date.now()});
 // where you were when you left (you carry on there if you come back soon), your points in each hustle (your rank in the job)
 const posClean=p=>p&&typeof p==='object'&&Number.isFinite(+p.x)&&Number.isFinite(+p.z)?{x:clamp(+p.x,-9e3,9e3),z:clamp(+p.z,-9e3,9e3),r:clamp(+p.r||0,-7,7),t:+p.t||0,st:clamp(p.st|0,0,5),car:p.car?1:0}:null;
 const jpClean=j=>{ const o={}; if(j&&typeof j==='object'&&!Array.isArray(j)) for(const [k,v] of Object.entries(j).slice(0,12)) if(/^[a-z_]{2,16}$/.test(k)&&Number.isFinite(+v)) o[k]=clamp(+v,0,1e6); return o; };
+function yhClean(y){ if(!y||typeof y!=='object') return null; const n=(v,lo,hi)=>Math.max(lo,Math.min(hi,+v||0)); return {st:['learn','free','dropped','caught'].includes(y.st)?y.st:'',days:(Array.isArray(y.days)?y.days:[]).map(v=>v|0).filter(v=>v>0).slice(0,8),t0:n(y.t0,0,2e13),grad:n(y.grad,0,2e13),last:n(y.last,0,2e13),n:n(y.n,0,9999)|0,dirty:n(y.dirty,0,1e12),jail:n(y.jail,0,2e13),caught:n(y.caught,0,2e13),heat:n(y.heat,0,100),legit:n(y.legit,0,1e12),desk:y.desk?1:0,hd:n(y.hd,0,1e8)|0}; }
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
   const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
   const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
   const {deco,store,boxes}=homeClean(d);
-  return {v:LIFE_V,deco,store,boxes,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,ffd:clamp(d.ffd|0,0,1e8),tips:clamp(d.tips|0,0,99),rel:relClean(d.rel),relNo:relNoClean(d.relNo),relHype:clamp(d.relHype|0,0,1e8),t:+d.t||0,u:d.u}; }
+  return {v:LIFE_V,deco,store,boxes,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,ffd:clamp(d.ffd|0,0,1e8),tips:clamp(d.tips|0,0,99),rel:relClean(d.rel),relNo:relNoClean(d.relNo),relHype:clamp(d.relHype|0,0,1e8),yh:yhClean(d.yh),t:+d.t||0,u:d.u}; }
 // your furniture (src/home.js): placed pieces per house [id, floor, x, z, turn], unboxed pieces kept in your store, boxes on the way
 function homeClean(d){ const FID=/^[a-z0-9_]{2,24}$/, HID=k=>k==='flat'||!!EST.byId[k], deco={}, store={};
   if(d.deco&&typeof d.deco==='object'&&!Array.isArray(d.deco)) for(const [k,L] of Object.entries(d.deco).slice(0,120)){ if(!HID(k)||!Array.isArray(L)) continue;
@@ -6270,7 +6271,7 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), yahoo:()=>yahooApp(), yahooBail:n=>yhBail(n), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
@@ -6471,7 +6472,7 @@ function workUI(b,el,btn){ b.append(el('h3','ph-h','OYA WORK'));
    G next to someone with a weapon in your hand robs them (shop and market sellers carry more). Jobs on the phone pay too. */
 const CASH={n:5000,shown:null,drops:[],geo:null,mat:null,flashT:0,flash:0};
 try{ const c=localStorage.getItem('naija-cash'); if(c!==null&&isFinite(+c)) CASH.n=+c; }catch(e){}
-function addCash(d,j){ d=Math.round(d); if(!d) return; if(d>0) credCash(d); CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d,j); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
+function addCash(d,j){ d=Math.round(d); if(!d) return; if(d>0) credCash(d); if(d>0&&j&&LIFE.yh) yhLegit(d); CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d,j); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
 const CASH_OF={areaboy:[300,3500],mama:[500,4500],baba:[800,6000],suit_lady:[3000,15000],lady_red:[500,5000],lady_black:[500,5000],hawker:[200,2500],schoolboy:[50,600],girl:[500,4000],police_m:[2000,9000],police_f:[2000,9000]};
 const cashOf=(c,k=1)=>{ const r=CASH_OF[c]||[300,3000]; return Math.max(50,Math.round(mrr(r[0],r[1])*k/50)*50); };
 function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
@@ -8790,7 +8791,7 @@ const EST_BOARD=new Map(), EST_POST=new THREE.MeshStandardMaterial({color:0x2b2d
 const estShort=n=>n>=1e9?'₦'+(n/1e9).toFixed(n%1e9?1:0)+'B':'₦'+Math.round(n/1e6)+'M';
 function estBoards(E){ if(E.board){ scene.remove(E.board); E.board.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
   const g=new THREE.Group(), by=new Map(), posts=[];
-  for(const p of E.plots){ const own=estOwns(p.id), key=own?'own':'sale'+p.price; if(!EST_BOARD.has(key)) EST_BOARD.set(key,new THREE.MeshBasicMaterial({map:own?texSign('YOUR HOUSE\nWELCOME HOME','#1f5130','#f2c94c',2.8,1.4):texSign('FOR SALE\n'+estShort(p.price),'#b3261e','#ffffff',2.8,1.4),toneMapped:false}));
+  for(const p of E.plots){ const own=estOwns(p.id), key=p.oga?'oga':own?'own':'sale'+p.price; if(!EST_BOARD.has(key)) EST_BOARD.set(key,new THREE.MeshBasicMaterial({map:p.oga?texSign('PRIVATE\nNO PARKING','#1b1b1b','#e8c46a',2.8,1.4):own?texSign('YOUR HOUSE\nWELCOME HOME','#1f5130','#f2c94c',2.8,1.4):texSign('FOR SALE\n'+estShort(p.price),'#b3261e','#ffffff',2.8,1.4),toneMapped:false}));
     const c=EST.pt(p,-7.5,.7), b=new THREE.PlaneGeometry(2.8,1.4); b.rotateY(p.ry); b.translate(c.x,2.15,c.z); (by.get(key)||by.set(key,[]).get(key)).push(b);
     const back=new THREE.BoxGeometry(2.86,1.46,.05); back.rotateY(p.ry); const cb=EST.pt(p,-7.5,.67); back.translate(cb.x,2.15,cb.z); posts.push(back);
     for(const dx of [-1.25,1.25]){ const q=EST.pt(p,-7.5+dx,.64), pg=new THREE.BoxGeometry(.09,2.2,.09); pg.rotateY(p.ry); pg.translate(q.x,1.1,q.z); posts.push(pg); } }
@@ -8821,13 +8822,13 @@ function plotMenu(p){ const E=p.E;
 function officeMenu(E){ openMenu('ESTATE OFFICE',`${E.name} · Agent: "Welcome, sir. The best address in Lagos."`,()=>{ const all=LIFE.estAll.includes(E.id), rows=[];
     rows.push({name:all?'The whole estate is yours':'Buy the whole estate',sub:all?'27 houses, the gate, the streets and the palms. Every gate opens for you.':`All 27 houses with the gate, the streets and the palms${estPaid(E)?' (what you paid for your houses here comes off)':''}. Every gate opens for you.`,
       price:all?0:estWhole(E),btn:all?'Yours':undefined,off:all,rank:all?0:8,act:()=>{ credAdd('house',600,true,'a whole estate'); estBuyAll(E); }});
-    for(const k of Object.keys(EST.STY).sort((a,b)=>EST.STY[a][1]-EST.STY[b][1])){ const free=E.plots.filter(p=>p.st===k&&!estOwns(p.id)); if(!free.length) continue; const p=free[0];
+    for(const k of Object.keys(EST.STY).sort((a,b)=>EST.STY[a][1]-EST.STY[b][1])){ const free=E.plots.filter(p=>p.st===k&&!estOwns(p.id)&&!p.oga); if(!free.length) continue; const p=free[0];
       rows.push({name:`${EST.STY[k][0]} · ${free.length} for sale`,sub:`House ${p.id} · ${estWhat(p)}`,price:EST.STY[k][1],rank:5,act:()=>estBuy(p)}); }
     return rows; }); }
 // the doors: each plot's gate (and the house's own door once its size is known), the estate office in both gatehouses
-for(const p of EST.plots) DOORS.push({x:p.gate.x,z:p.gate.z,r:3.2,label:()=>estOwns(p.id)?`Your house · ${p.name} (${p.id})`:`${p.name} for sale · ${naira(p.price)}`,act:()=>plotMenu(p)});
+for(const p of EST.plots) DOORS.push({x:p.gate.x,z:p.gate.z,r:3.2,label:()=>p.oga?'Private residence · the gateman':estOwns(p.id)?`Your house · ${p.name} (${p.id})`:`${p.name} for sale · ${naira(p.price)}`,act:()=>p.oga?ogaGate():plotMenu(p)});
 function estDoors(){ for(const p of EST.plots){ const S=ESTM.J.styles[p.st]; if(!S||!S.door) continue; const w=EST.pt(p,S.door[0],S.door[1]+2.2);
-  DOORS.push({x:w.x,z:w.z,r:3,label:()=>estOwns(p.id)?`Enter your house · ${p.name}`:`${p.name} · for sale ${naira(p.price)}`,act:()=>estOwns(p.id)&&HOMEX?HOMEX.enterEst(p):plotMenu(p)}); } }
+  DOORS.push({x:w.x,z:w.z,r:3,label:()=>p.oga?"The Oga's house":estOwns(p.id)?`Enter your house · ${p.name}`:`${p.name} · for sale ${naira(p.price)}`,act:()=>p.oga?ogaGate():estOwns(p.id)&&HOMEX?HOMEX.enterEst(p):plotMenu(p)}); } }
 for(const E of EST.list){ E.marks=[]; for(const s of [-1,1]){ const o=EST.at(E,s*27,EST.VG+12.4); DOORS.push({x:o.x,z:o.z,r:3,label:()=>`Estate office · ${E.name}`,act:()=>officeMenu(E)}); E.marks.push(doorMark(o.x,o.z,'#d4af37','ESTATE OFFICE · HOUSES FOR SALE')); }
   const g=EST.at(E,0,EST.VG-14); PLACES.push(E.place={name:E.name,sub:'',kind:'place',x:g.x,z:g.z});
   // the name on the gate beam (both faces) and on the wing walls
@@ -10357,6 +10358,123 @@ function romSection(){ const H='Real players (18+)';
     if(!near.length) rows.push({name:'Nobody near you',sub:`Stand near a ${myG==='f'?'man':'woman'} (12 steps) to ask them out. They must turn on romance too.`});
     for(const o of near.slice(0,6)) rows.push({name:o.n,sub:'Near you',btn:'ASK OUT',act:()=>romSend({a:'ask',i:o.id})}); }
   return {h:H,rows}; }
+/* ================= yahoo boys and the EFCC =================
+   The game's story of it (no real scam is taught: the "work" is a laptop with a progress bar). A man pays the Oga
+   ₦200,000 at his lowkey mansion (house C25, Emerald Gardens) and learns for 7 real days, one lesson a day at a desk in
+   the Oga's room; miss two days and the Oga drops you. Day 7 you graduate with ₦1.5M and work on your own: a desk and PC
+   at home (₦150,000), a cash-out every 2 days. Every naira of it is dirty: the heat rises with cash-outs, flashy cars and
+   big houses, falls with legit work. The EFCC stop flashy drivers and ask for the source of income; caught, they seize
+   everything (cash, cars, houses) and you sit in custody 10 minutes, unless a friend pays ₦500,000 bail at the bank.
+   Online the server keeps the money side (server/src/yahoo.js); playing solo the phone keeps it in the life record. */
+const YH_C={fee:200000,grad:1500000,days:7,gap:2*864e5,cashMin:150000,cashMax:400000,bail:500000,desk:150000,lesson:120,dropAfter:2,jailS:600};
+const YHS={st:'',days:0,need:7,grad:0,last:0,n:0,dirty:0,jail:0,caught:0,nextCash:0,les:0,on:false,deskObj:null,deskRoom:null,stopT:0,stop:null};
+const yhOn=()=>!!(ON&&ON.signedIn);
+const yhL=()=>LIFE.yh||(LIFE.yh={st:'',days:[],t0:0,grad:0,last:0,n:0,dirty:0,jail:0,caught:0,heat:0,legit:0,desk:0});
+const yhDay=t=>Math.floor(t/864e5);
+const OGA_PLOT=EST.byId.C25||null; if(OGA_PLOT) OGA_PLOT.oga=true;
+const yhStage=()=>YHS.st==='learn'?'learn':YHS.st==='free'?'free':'';
+function yhSync(){ if(yhOn()) return; const d=yhL(), t=Date.now();   // solo: the life record is the truth
+  if(d.st==='learn'){ const last=d.days[d.days.length-1]||yhDay(d.t0); if(yhDay(t)-last>YH_C.dropAfter) yhDropped(); }
+  Object.assign(YHS,{st:d.st,days:d.days.length,need:YH_C.days,grad:d.grad,last:d.last,n:d.n,dirty:d.dirty,jail:d.jail,caught:d.caught,nextCash:d.last?d.last+YH_C.gap:0}); }
+function yhDropped(){ const d=yhL(); d.st='dropped'; d.days=[]; lifeSave(true); yhSync(); toast('📩 The Oga: "You no come for lessons. You don fall my hand. Comot." Your ₦200,000 don go.',6); }
+// what the phone does: online it asks the server; solo it decides here with the same rules
+function yhDo(a,x){ if(yhOn()) return ON.send({t:'yh',a,...(x||{})});
+  const d=yhL(), t=Date.now();
+  if(a==='start'){ if(!PROFILE||PROFILE.g!=='m'){ toast('The Oga: "This work na for men. Comot."',3); return; } if(d.st==='learn'||d.st==='free'){ toast('You dey already.',2); return; } if(d.jail>t){ toast('You dey EFCC custody.',2); return; }
+    if(CASH.n<YH_C.fee){ toast('The Oga: "₦200,000 or nothing. Go find money."',3); return; } addCash(-YH_C.fee); cashHUD(); Object.assign(d,{st:'learn',days:[],t0:t,grad:0,last:0,n:0}); lifeSave(true); yhSync(); yhOnMsg({t:'ok',w:'yh',m:'The Oga: "Welcome to the game. Seven days, one lesson a day, at that desk. Miss two days and you are out."'}); yhStarted(); return; }
+  if(a==='lesson'){ if(d.st!=='learn') return; const dy=yhDay(t); if(d.days.includes(dy)){ toast("Today's lesson is done. Come back tomorrow.",3); return; } d.days.push(dy);
+    if(d.days.length>=YH_C.days){ d.st='free'; d.grad=t; d.last=t; d.dirty+=YH_C.grad; lifeSave(true); addCash(YH_C.grad); cashHUD(); yhSync(); yhOnMsg({t:'yhgrad',n:YH_C.grad}); return; }
+    lifeSave(true); yhSync(); yhOnMsg({t:'ok',w:'yh',m:`Lesson ${d.days.length} of ${YH_C.days} done. ${YH_C.days-d.days.length} more day${YH_C.days-d.days.length===1?'':'s'}.`}); return; }
+  if(a==='cash'){ if(d.st!=='free') return; if(t<d.last+YH_C.gap){ toast(`Not yet. Next cash-out in ${Math.ceil((d.last+YH_C.gap-t)/3600e3)} hours.`,3); return; }
+    const n=Math.min(YH_C.cashMax,YH_C.cashMin+d.n*50000); d.n++; d.last=t; d.dirty+=n; lifeSave(true); addCash(n); cashHUD(); yhSync(); yhOnMsg({t:'yhcash',n}); return; }
+  if(a==='caught'){ const had=CASH.n; if(had>0){ addCash(-had); cashHUD(); } d.st='caught'; d.caught=t; d.jail=t+YH_C.jailS*1000; d.days=[]; lifeSave(true); yhSync(); yhOnMsg({t:'yhcaught',n:had}); return; } }
+function yhStarted(){ if(PH) setTimeout(()=>PH.event('sms',{id:'mama',n:'Mama',c:'#7a4b2a',e:'👩🏾',x:'My son, I hear say you dey go that man house for Emerald Gardens. Abeg o, no do wetin go shame me. Remember where you come from.'}),4000); }
+// the words from the server (or from yhDo when solo)
+function yhOnMsg(m){
+  if(m.t==='yhme'){ Object.assign(YHS,m.m); if(YHS.jail>Date.now()&&JAIL.left<=0&&started) yhCustody(); return; }
+  if(m.t==='err'||m.t==='ok'){ toast(m.m,3.4); return; }
+  if(m.t==='yhgrad'){ bigMsg('YOU DON BLOW 💸','rankup',naira(m.n)); toast(`🎓 The Oga: "You don graduate. Go and shine, but shine small: EFCC dey." ${naira(m.n)} don enter. Buy a desk and PC for your house, then cash out every 2 days.`,8); yhHeat(20);
+    if(PH) PH.event('sms',{id:'oga',n:'The Oga',c:'#1b1b1b',e:'💻',x:'Congrats. You are on your own now. Keep a legit hustle as cover, no buy Benz on day one, and if EFCC stop you, you no know me.'}); return; }
+  if(m.t==='yhcash'){ bigMsg('CASH OUT 💸','rankup',naira(m.n)); toast(`💸 ${naira(m.n)} don land. The heat dey rise: EFCC dey look for people like you.`,5); yhHeat(30); return; }
+  if(m.t==='yhcaught'){ yhSeized(m.n); return; }
+  if(m.t==='yhbail'){ if(JAIL.left>0&&JAIL.efcc){ JAIL.efcc=false; leaveJail(); } bigMsg('BAILED 🙏','rankup',m.n); toast(`🙏 ${m.n} paid your bail (${naira(YH_C.bail)}). You are free. Behave.`,6); return; }
+  if(m.t==='yhdrop'){ toast('📩 The Oga: "'+m.m+'"',6); return; } }
+// the heat: how much the EFCC are looking at you (kept in the life record)
+function yhHeat(n){ const d=yhL(); d.heat=clamp((d.heat||0)+n,0,100); lifeSave(); }
+function yhFlashy(){ return OWNED.filter(o=>/benz|suv|f40|sport|v_/.test(o.type)).length+(LIFE.est.length?2:0)+(LIFE.estAll.length?4:0); }
+const yhDirtyShare=()=>{ const d=yhL(); const dirty=YHS.dirty||d.dirty||0, legit=d.legit||0; return dirty/(dirty+legit+1); };
+function yhLegit(n){ const d=LIFE.yh; if(!d) return; d.legit=(d.legit||0)+n; if(d.heat>0) d.heat=Math.max(0,d.heat-n/20000); }
+// ---- the Oga's mansion: not for sale, a gateman, and the room with the desks
+function ogaGate(){ const d=yhL();
+  if(YHS.st==='learn'||YHS.st==='free') return ogaEnter();
+  if(!PROFILE||PROFILE.g!=='m'){ toast('Gateman: "Madam, this na private residence. Oga no dey see anybody." (He looks you up and down.)',4); return; }
+  openMenu('PRIVATE RESIDENCE','Gateman: "Who you wan see? Oga no dey see people anyhow."',[
+    {name:'"I wan learn the work."',sub:`The gateman looks round, then opens small. "₦200,000 for Oga. Seven days, one lesson a day. Miss two days, you are out. No police, no police friends." · ${YHS.st==='caught'||d.jail>Date.now()?'EFCC don mark you: not now':YHS.st==='dropped'?'The Oga dropped you before: last chance':'Men only'}`,btn:naira(YH_C.fee),off:CASH.n<YH_C.fee||d.jail>Date.now(),act:()=>{ closeMenu(); yhDo('start'); setTimeout(()=>{ if(yhStage()==='learn') ogaEnter(); },yhOn()?900:200); }},
+    {name:'"Nothing. I dey pass."',sub:'Gateman: "Then pass."',btn:'GO',act:closeMenu}]); }
+async function ogaEnter(){ if(busy||!OGA_PLOT) return; const R=await intGet('int_est_S9_0','The gateman opens the small gate…'); if(!R) return; yhRoomSetup(R); R.label="The Oga's house";
+  goRoom(R,'door',YHS.st==='learn'?`The Oga's room. Lesson ${Math.min(YHS.days+1,YH_C.days)} of ${YH_C.days}: sit at your desk.`:'The Oga\'s room. The boys dey work.'); }
+function yhDeskModel(cb){ if(YHS.deskM){ cb(YHS.deskM); return; } (YHS.deskQ=YHS.deskQ||[]).push(cb); if(YHS.deskQ.length>1) return;
+  GLL.load('assets/models/yh_desk.glb',gl=>{ const g=gl.scene; g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); YHS.deskM=g; for(const f of YHS.deskQ) f(g); YHS.deskQ=null; },undefined,()=>{ YHS.deskQ=null; }); }
+function yhRoomSetup(R){ if(R.yh) return; R.yh=true; const M=R.marks, dr=M.door||M.spawn||{x:0,z:0,yaw:0}; R.camDist=3;
+  // four desks in a row away from the door, the Oga's chair at the end; the boys at three of them, yours is the last
+  // the living room of this house (int_est.json S9: x -12.6..-3.5, z -0.7..10.5): four desks along its near wall, the chairs toward the room
+  const desks=[]; for(let i=0;i<4;i++){ const q=R.nearFree(-11+i*2.1,.5); desks.push({x:q.x,z:q.z,yaw:0}); }
+  R.yhDesks=desks; yhDeskModel(g=>{ for(const d of desks){ const o=g.clone(); o.position.set(d.x,0,d.z); o.rotation.y=d.yaw; R.scene.add(o); } });
+  const og=R.nearFree(-6,6.5); R.yhOga={x:og.x,z:og.z,yaw:Math.PI*.75};
+  R.fill=R=>{ folk(R.scene,'areaboy',{x:R.yhOga.x,z:R.yhOga.z,yaw:R.yhOga.yaw},['phone','talk'],R.folk); for(let i=0;i<3;i++){ const d=desks[i]; folk(R.scene,i===1?'p_tunde':'areaboy',{x:d.x,z:d.z+1.1,yaw:Math.PI},['text','idle_1'],R.folk); } };
+  fillRoom(R);
+  R.spot(R.yhOga,'Talk to the Oga',ogaTalk,1.9);
+  const mine=desks[3]; R.spot({x:mine.x,z:mine.z+1.1},()=>YHS.st==='learn'?(YHS.les>0?'Learning… stay here':`Sit and learn · lesson ${Math.min(YHS.days+1,YH_C.days)} of ${YH_C.days}`):'The desk (you don finish here)',yhLesson,1.6);
+  R.spot(dr,'Go back outside',()=>{ YHS.les=0; const S=ESTM.J&&ESTM.J.styles[OGA_PLOT.st], dd=S&&S.door||[0,-13], w=EST.pt(OGA_PLOT,dd[0],dd[1]+2.2); leaveRoom({x:w.x,z:w.z,ry:OGA_PLOT.ry}); },1.8); }
+function ogaTalk(){ const d=yhL();
+  if(YHS.st==='learn') openMenu('THE OGA',`"Lesson ${Math.min(YHS.days+1,YH_C.days)} of ${YH_C.days}. Sit down and learn. Seven days."`,[{name:'"Yes Oga."',sub:'Sit at the last desk and press E.',btn:'OK',act:closeMenu}]);
+  else if(YHS.st==='free') openMenu('THE OGA',`"My boy! How market? ${d.desk?'Cash out at your desk at home, every 2 days.':'Buy a desk and PC for your house: without it you no fit cash out.'}"`,[
+    {name:'Desk and PC setup for your house',sub:d.desk?'You have it. It stands in your house.':'Two monitors, the tower, a gaming chair. Delivered to your house (flat, room or mansion).',btn:d.desk?'HAVE IT':naira(YH_C.desk),off:!!d.desk||CASH.n<YH_C.desk,act:()=>{ addCash(-YH_C.desk); cashHUD(); d.desk=1; lifeSave(true); toast('Your desk and PC dey your house now. Cash out there every 2 days.',4); closeMenu(); }},
+    {name:'"Oga, EFCC?"',sub:'"Keep a legit hustle as cover. No flashy car on day one. If they stop you and you no fit explain, settle them or run."',btn:'OK',act:closeMenu}]);
+  else openMenu('THE OGA','"Who be this one? Gateman!"',[{name:'"Sorry sir."',btn:'GO',act:()=>{ closeMenu(); }}]); }
+// a lesson: two minutes at the desk, in the room
+function yhLesson(){ if(YHS.st!=='learn'){ toast('Nothing for you here.',2); return; } if(YHS.les>0) return; const d=yhL(); if(!yhOn()&&d.days.includes(yhDay(Date.now()))){ toast("Today's lesson is done. Come back tomorrow.",3); return; }
+  YHS.les=.01; player.yaw=Math.PI; toast(`💻 Lesson ${Math.min(YHS.days+1,YH_C.days)}: the Oga dey show you the laptop. Stay here ${YH_C.lesson/60} minutes.`,4); }
+function yhTick(dt){ if(!started) return;
+  if(YHS.les>0){ if(mode!=='interior'||!ROOM||!ROOM.yh){ YHS.les=0; toast('You left the lesson. Start again at the desk.',3); } else { YHS.les+=dt; const k=YHS.les/YH_C.lesson; if(Math.floor(k*4)>Math.floor((YHS.les-dt)/YH_C.lesson*4)&&k<1) toast(`💻 ${Math.round(k*100)}%… "Format no be magic, na patience." Stay.`,2.5); if(YHS.les>=YH_C.lesson){ YHS.les=0; yhDo('lesson'); } } }
+  if(!yhOn()&&!YHS.synced){ YHS.synced=true; yhSync(); }
+  // the desk at home
+  if(mode==='interior'&&ROOM&&LIFE.yh&&LIFE.yh.desk&&yhHome()&&YHS.deskRoom!==ROOM) yhPlaceDesk(ROOM);
+  // the heat and the EFCC
+  if((YHS.stopT-=dt)<=0){ YHS.stopT=30; const d=LIFE.yh; if(d&&(d.st==='free'||d.st==='learn')){ const day=gameDay(); if(d.hd!==day){ d.hd=day; d.heat=clamp((d.heat||0)+yhFlashy()*6*(yhDirtyShare()>.5?1:.3)-5,0,100); lifeSave(); }
+      if(mode==='drive'&&drive.v&&!drive.ride&&!YHS.stop&&d.heat>=45&&!CHASE.on&&MR()<(d.heat-40)/300+(yhFlashy()?.05:0)) efccStop(); } } }
+const yhHome=()=>ROOM===INT||(ROOM&&ROOM.label&&/^Your room/.test(ROOM.label))||!!(HOMEX&&HOMEX.test&&HOMEX.test().cur);
+function yhPlaceDesk(R){ YHS.deskRoom=R; yhDeskModel(g=>{ if(ROOM!==R) return; let q, yaw=0;
+    // a free patch for desk and chair (1.3 m round), not too near the door, the chair side toward where you come in
+    const m=(R===INT?INT.spawn:(R.marks&&(R.marks.spawn||R.marks.door)))||{x:0,z:0,yaw:0}, b=R.bounds||{x0:-4,x1:4,z0:-4,z1:4}, fr=(x,z)=>typeof R.free==='function'?R.free(x,z,1.3):true; let bd=1e9;
+    for(let x=b.x0+1;x<=b.x1-1;x+=.5) for(let z=b.z0+1;z<=b.z1-1;z+=.5){ const d=Math.hypot(x-m.x,z-m.z); if(d<2.6||d>bd||!fr(x,z)) continue; bd=d; q={x,z}; }
+    if(!q) q=R.nearFree?R.nearFree(m.x+1.5,m.z+1.5):{x:m.x+1.5,z:m.z+1.5}; yaw=Math.atan2(m.x-q.x,m.z-q.z);
+    const o=g.clone(); o.position.set(q.x,0,q.z); o.rotation.y=yaw; R.scene.add(o); if(!R.spots) R.spots=[]; const at={x:q.x+Math.sin(yaw)*1.0,z:q.z+Math.cos(yaw)*1.0}; R.spots.push({x:at.x,z:at.z,r:1.5,label:()=>YHS.st==='free'?(Date.now()>=YHS.nextCash?'Your laptop · cash out 💸':`Your laptop · next cash-out in ${Math.max(1,Math.ceil((YHS.nextCash-Date.now())/3600e3))} h`):'Your laptop',act:()=>{ if(YHS.st!=='free'){ toast('The laptop is on. Nothing to do (yet).',2); return; } yhDo('cash'); }}); }); }
+// ---- the EFCC stop: black van, "source of income?"
+function efccStop(){ if(mode!=='drive'||!drive.v) return; const d=yhL(); YHS.stop=true; drive.v.speed=0; drive.speed=0; busy=true; bigMsg('EFCC! 🚨','jam','Source of income?');
+  const dirty=yhDirtyShare(), legit=(d.legit||0), v=drive.v, nm=(VT[v.type]||{name:'motor'}).name;
+  setTimeout(()=>{ busy=false; openMenu('EFCC · ROADBLOCK',`Officer: "Nice ${nm}. Where you get the money? Source of income?"`,[
+    {name:'Show your hustle',sub:legit>0?`${jobTitle()||'Hustler'} · legit earnings on record ${naira(legit)}${dirty>.5?' · but your things no match your pay…':''}`:'You have no legit work on record…',btn:'SHOW',act:()=>{ closeMenu(); if(dirty<.5&&legit>0){ yhHeat(-25); toast('Officer: "Okay. Your papers correct. Drive safe." (They let you go.)',4); YHS.stop=null; } else efccArrest(); }},
+    {name:'"Oga, make we settle"',sub:`₦250,000 · they fit take am (60%), they fit arrest you for bribery`,btn:'SETTLE',off:CASH.n<250000,act:()=>{ closeMenu(); addCash(-250000); cashHUD(); if(MR()<.6){ yhHeat(-30); toast('Officer: "…Go. We never see you." (They take the money.)',4); YHS.stop=null; } else efccArrest('"You wan bribe EFCC?!"'); }},
+    {name:'Run!',sub:'Drive off. 70% they catch you, and the police join',btn:'RUN',act:()=>{ closeMenu(); if(MR()<.3){ toast('You fly! The van no fit follow. (Heat +15)',3); yhHeat(15); YHS.stop=null; starAdd&&starAdd(2); } else efccArrest('They block the road ahead.'); }}]); },1200); }
+function efccArrest(why){ const d=yhL(); YHS.stop=null; toast(`EFCC: ${why||'"Your things no match your income."'} "You are under arrest."`,4);
+  setTimeout(()=>{ yhDo('caught'); },600); }
+function yhSeized(cash){ const cars=OWNED.length, houses=LIFE.est.length+(LIFE.estAll.length?27:0)+(LIFE.flat?1:0);
+  OWNED.length=0; saveOwned(); for(const v of vehicles) if(v.mine&&v!==myCar&&v!==mySkate) v.mine=false; LIFE.est=[]; LIFE.estAll=[]; LIFE.estHome=null; LIFE.flat=false; LIFE.yh.heat=0; lifeSave(true); if(typeof estOwned==='function') estOwned(); if(typeof lifePlaces==='function') lifePlaces();
+  bigMsg('SEIZED 🚨','jam','EFCC: cash, cars, houses'); toast(`EFCC seize everything: ${naira(cash)} cash${cars?`, ${cars} car${cars>1?'s':''}`:''}${houses?`, ${houses} house${houses>1?'s':''}`:''}. Sold off. You dey custody: ${YH_C.jailS/60} minutes, unless a friend pays ₦500,000 bail (Bank app · EFCC bail).`,9);
+  if(LIFE.rel){ const L=myLove(); if(L) setTimeout(()=>breakfast(L,`${L.n}: "EFCC?! So na yahoo you dey do? I no fit. Bye." 💔`),3000); }
+  if(PH) PH.event('sms',{id:'mama',n:'Mama',c:'#7a4b2a',e:'👩🏾',x:'I see am for news. EFCC. My son. I don tell you. God go help you.'});
+  if(mode==='drive'&&drive.v) exitCar(); setTimeout(()=>{ JAIL.extra=YH_C.jailS; JAIL.efcc=true; fadeSwap(()=>enterJail()); },1200); }
+function yhCustody(){ const left=Math.max(5,Math.min(YH_C.jailS,Math.ceil((YHS.jail-Date.now())/1000))); JAIL.efcc=true; fadeSwap(()=>enterJail(left)); }
+// bail a friend (the Bank app): ₦500,000 to the EFCC
+function yhBail(name){ if(!yhOn()){ toast('Bail is paid online (sign in).',3); return; } yhDo('bail',{n:name}); }
+// the Laptop app on the phone
+function yahooApp(){ const d=yhL(), st=YHS.st, t=Date.now(), rows=[];
+  if(!st||st==='dropped'||st==='caught') return {title:'Laptop',sections:[{h:'Nothing on this laptop',rows:[{name:'A plain laptop',sub:st==='caught'?'EFCC don mark you. Stay clean.':'Gist on the street: one Oga for Emerald Gardens, house C25, dey teach boys "the work". ₦200,000. Men only. Risky.',btn:'MAP',act:()=>{ if(OGA_PLOT) mapView.setDest(OGA_PLOT.gate.x,OGA_PLOT.gate.z,{name:'Emerald Gardens · C25',x:OGA_PLOT.gate.x,z:OGA_PLOT.gate.z}); closePhone(); }}]}]};
+  if(st==='learn') rows.push({name:`📚 Lesson ${Math.min(YHS.days+1,YH_C.days)} of ${YH_C.days}`,sub:`${YHS.days} done · one a day at the Oga's desk · miss 2 days and he drops you`,btn:'WAY',act:()=>{ if(OGA_PLOT) mapView.setDest(OGA_PLOT.gate.x,OGA_PLOT.gate.z,{name:"The Oga's house",x:OGA_PLOT.gate.x,z:OGA_PLOT.gate.z}); closePhone(); }});
+  if(st==='free'){ const due=t>=YHS.nextCash; rows.push({name:due?'💸 Cash-out ready':`💸 Next cash-out in ${Math.max(1,Math.ceil((YHS.nextCash-t)/3600e3))} h`,sub:`At your desk at home${d.desk?'':' · you need a desk and PC (the Oga sells it, ₦150,000)'} · ${naira(Math.min(YH_C.cashMax,YH_C.cashMin+YHS.n*50000))} · ${YHS.n} cash-out${YHS.n===1?'':'s'} so far`}); }
+  const heat=d.heat||0; rows.push({name:`🚨 EFCC heat: ${heat<25?'cool':heat<50?'warm':heat<75?'hot':'RED HOT'}`,sub:`Cash-outs, flashy cars and big houses raise it; legit work money cools it (${naira(d.legit||0)} on record)`,warn:heat>=50});
+  return {title:'Laptop',sections:[{h:st==='learn'?'Learning the work':'On your own',rows}]}; }
 // ---- the pure water hawker: buy a bag (20 sachets) at any kiosk, sell to people on the street
 const HAWK={sold:new WeakSet(),t:0};
 const kioskAt=()=>{ if(mode!=='walk') return null; const k=KIOSK_NEAR(player.x,player.z); if(!k) return null; const lx=(player.x-k.x)*k.c+(player.z-k.z)*k.s, lz=-(player.x-k.x)*k.s+(player.z-k.z)*k.c;
@@ -10389,7 +10507,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); loveTick(dt); romTick(); } heartTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); if(HOMEX) HOMEX.tick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); loveTick(dt); romTick(); yhTick(dt); } heartTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); if(HOMEX) HOMEX.tick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -10535,7 +10653,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(), jobLabel, stink:()=>makeStink(3,4),
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
-  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m), goLive:()=>goLive(),
+  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m), goLive:()=>goLive(), yahoo:m=>yhOnMsg(m),
   biz:m=>{ if(BIZ) BIZ.on(m); }, bank:m=>{ if(PH) PH.event('bank',m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });

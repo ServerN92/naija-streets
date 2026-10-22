@@ -13,7 +13,7 @@ const PROTO = 1;
 function freePort() { return new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); }); }
 before(async () => {
   port = await freePort(); dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
-  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0', LOVE_TEST: '1', LOVE_BOND_MS: '250', LOVE_NEED: '4', LOVE_DAY_CAP: '2', LOVE_DAY_MS: '3000' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0', LOVE_TEST: '1', LOVE_BOND_MS: '250', LOVE_NEED: '4', LOVE_DAY_CAP: '2', LOVE_DAY_MS: '3000', YAHOO_BAIL: '200000' }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((res, rej) => { proc.stdout.on('data', d => { const t = String(d); for (const m of t.matchAll(/MAILCODE (\S+) (\d{6})/g)) codes[m[1]] = m[2]; if (/listening/.test(t)) res(); }); proc.on('exit', c => rej(new Error('server exited ' + c))); });
 });
 after(() => { proc.kill('SIGTERM'); });
@@ -356,4 +356,24 @@ test('bank loan: take one, the work cut pays it back, repay from the app, one at
   c.send({ t: 'bk', a: 'repay', n: 'all' }); const ok = await c.next(m => m.t === 'ok' && m.w === 'bk'); assert.match(ok.m, /still owe ₦18,000/);   // (₦100,000 on hand: not enough for all)
   c.send({ t: 'bk', a: 'me' }); const b2 = await c.next(m => m.t === 'bk' && m.loan && m.loan.paid > 0); assert.equal(b2.loan.left, 18000); assert.equal(b2.loan.paid, 102000);
   c.close();
+});
+
+test('yahoo: men only, the fee, lessons one a day, graduation money, cash-outs, caught by the EFCC, bail by a friend', async () => {
+  const M = { look: { c: 'p_dayo', g: 'm' } }, F = { look: { c: 'p_dayo', g: 'f' } };
+  const [a] = await account('yahoo_a', 'secret77', M), [f] = await account('yahoo_f', 'secret77', F), [b] = await account('yahoo_b', 'secret77', M);
+  for (const c of [a, f, b]) c.send({ t: 'p', x: 10, y: 0, z: 10, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  await new Promise(r => setTimeout(r, 300));
+  f.send({ t: 'yh', a: 'start' }); assert.match((await f.next(m => m.t === 'err' && m.w === 'yh')).m, /for men/);
+  a.send({ t: 'yh', a: 'start' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'yh')).m, /200,000/);
+  a.send({ t: '$', d: 250000, s: 1 }); await a.next('$');
+  a.send({ t: 'yh', a: 'start' }); const st = await a.next(m => m.t === 'yhme' && m.m.st === 'learn'); assert.equal(st.m.days, 0);
+  a.send({ t: 'yh', a: 'lesson' }); assert.equal((await a.next(m => m.t === 'yhme' && m.m.days === 1)).m.st, 'learn');
+  a.send({ t: 'yh', a: 'lesson' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'yh')).m, /tomorrow/);
+  a.send({ t: 'yh', a: 'cash' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'yh')).m, /never graduate/);
+  // the EFCC get him while learning: the money goes, custody; a friend bails him
+  a.send({ t: 'yh', a: 'caught' }); const c = await a.next('yhcaught'); assert.equal(c.n, 50000); assert.equal((await a.next(m => m.t === '$' && m.n === 0)).n, 0);
+  b.send({ t: 'yh', a: 'bail', n: 'yahoo_a' }); assert.match((await b.next(m => m.t === 'err' && m.w === 'yh')).m, /200,000/);
+  b.send({ t: '$', d: 250000, s: 1 }); await b.next('$');
+  b.send({ t: 'yh', a: 'bail', n: 'yahoo_a' }); assert.equal((await a.next('yhbail')).n, 'yahoo_b'); assert.match((await b.next(m => m.t === 'ok' && m.w === 'yh')).m, /free/);
+  for (const c of [a, f, b]) c.close();
 });
