@@ -9971,7 +9971,7 @@ const jobPts=id=>(LIFE.jp&&LIFE.jp[id])||0;
 function jobRank(id=LIFE.job){ if(id==='police'){ const r=policeRank(); return r>=0?r:0; } const p=jobPts(id); let r=0; while(r<JOB_PTS.length-1&&p>=JOB_PTS[r+1]) r++; return r; }
 function policeRank(){ try{ const M=POLICE&&POLICE.debug().me; if(!M||!M.cop) return -1; const i=['Constable','Corporal','Sergeant','Inspector','ASP','CSP'].indexOf(M.rank); return Math.min(4,Math.max(0,i)); }catch(e){ return -1; } }
 function jobTitle(id=LIFE.job,r=jobRank(id)){ if(id==='police'){ try{ const M=POLICE&&POLICE.debug().me; if(M&&M.cop&&M.rank) return M.rank; }catch(e){} } return (JOB_RANK[id]||[])[r]||''; }
-const jobMul=id=>LIFE.job===id?JOB_PAY[jobRank(id)]*(FRESH.on?1.1:1)*(LIFE.rel&&LIFE.rel.love>=70?1.05:1):1;
+const jobMul=id=>LIFE.job===id?JOB_PAY[jobRank(id)]*(FRESH.on?1.1:1)*(LIFE.rel&&LIFE.rel.love>=70?1.05:1)*(LIFE.pen===gameDay()?.8:1):1;   // (a pay cut the day after you skip work)
 function jobPoint(id,n){ if(!id||!JOB_RANK[id]||!(n>0)||LIFE.job!==id) return; const r0=jobRank(id); LIFE.jp=LIFE.jp||{}; LIFE.jp[id]=Math.min(1e6,Math.round(((LIFE.jp[id]||0)+n)*10)/10); const r1=jobRank(id);
   if(r1>r0){ credAdd('promo',100*r1,true); lifeSave(true); const J=jobOf(id);
     toast(`🎉 PROMOTION! You be ${jobTitle(id,r1)} now. Your pay don go up (+${Math.round((JOB_PAY[r1]-1)*100)}%).${r1>=3?' You be oga now: your boys go bring you settlement every day.':''}`,7);
@@ -9998,20 +9998,28 @@ const DAY_WORK={okada:r=>({t:`Today: carry ${4+2*r} passengers (stop by people w
   police:()=>({t:'Today: patrol on duty for 10 minutes',ok:()=>HUS.dd>=600,go:()=>POLICE&&POLICE.duty&&POLICE.duty()?null:policeDesk()}),
   boss:()=>({t:'Today: run your business for 15 minutes',ok:()=>HUS.bd>=900,go:bizSpot})};
 function bizSpot(){ try{ const b=Object.values(BIZ.sites()).find(b=>b.mine); return b?{x:b.x,z:b.z,name:'Your business'}:null; }catch(e){ return null; } }
+// the week: Monday to Friday you must work; Saturday and Sunday are yours
+const WEEKDAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'], weekDay=(d=gameDay())=>WEEKDAYS[((d%7)+7)%7], weekend=(d=gameDay())=>(d%7)>=5;
 function dayStep(){ const J=myJob(), d=gameDay(); if(!J||!DAY_WORK[J.id]) return null;
-  if(LIFE.dy!==d){ LIFE.dy=d; LIFE.tkn=0; LIFE.dd=0; HUS.dd=HUS.bd=0; HUS.nag=0; lifeSave(); }
-  if(LIFE.dd===d) return null; return {...DAY_WORK[J.id](jobRank(J.id)),day:true}; }
+  if(LIFE.dy!==d){ const was=LIFE.dy; if(was&&!weekend(was)&&LIFE.dd!==was) absent(J,was); LIFE.dy=d; LIFE.tkn=0; LIFE.dd=0; HUS.dd=HUS.bd=0; HUS.nag=0; lifeSave(); }
+  if(LIFE.dd===d||weekend(d)) return null; return {...DAY_WORK[J.id](jobRank(J.id)),day:true}; }
+// you played a work day and never did the work: a query from your oga, pay cut the next day, and the second time in a row
+// you drop a rank (an oga loses the crown). Days you never opened the game don't count.
+function absent(J,day){ LIFE.miss=(LIFE.miss|0)+1; LIFE.pen=day+1; LIFE.cr=Math.max(0,(LIFE.cr|0)-40); rankHUD(); const r0=jobRank(J.id); let demo=false;   // (street cred drops too)
+  if(LIFE.miss>=2&&J.id!=='police'&&r0>0){ LIFE.jp=LIFE.jp||{}; LIFE.jp[J.id]=Math.max(0,JOB_PTS[r0]-1); LIFE.miss=0; demo=true; }
+  const x=demo?`QUERY! Two days you no come work. You don drop to ${jobTitle(J.id)}. Pay cut today too.`:`QUERY! Yesterday (${weekDay(day)}) you no do your work. Your pay is cut 20% today. Do it again and you lose your rank.`;
+  if(PH) PH.event('sms',{id:'hustle',n:'Your oga',c:'#c0392b',e:'📩',x}); setTimeout(()=>{ bigMsg(demo?'DEMOTED 📉':'QUERY 📩','jam',demo?`Now ${jobTitle(J.id)}`:'Pay cut 20% today'); toast(`📩 ${x}`,7); },1500); }
 const DAY_BONUS=r=>1000*(1+r);
 // what to do with your money next (shown when today's work is done)
 function lifeGoal(){ const h=homeNow(), r=RENT_OPTS[0][1];
   if(h==='tent') return {t:`Next: rent a room, ${naira(r)} a day · ${CASH.n>=r?'go see the landlord':'save '+naira(r-CASH.n)+' more'}`,go:()=>ROOMLET&&ROOMLET.door?{x:ROOMLET.door.x,z:ROOMLET.door.z,name:'Room to let · the landlord'}:null};
   if(h==='room') return {t:`Next: buy your own flat, ${naira(FLAT_PRICE)} · ${CASH.n>=FLAT_PRICE?'go and pay':'save '+naira(FLAT_PRICE-CASH.n)+' more'}`,go:()=>CASH.n>=FLAT_PRICE*.5?{x:APT.front.x,z:APT.front.z,name:'Flat for sale'}:null};
-  const J=myJob(), rk=J?jobRank(J.id):0, nx=J&&J.id!=='police'&&rk<JOB_PTS.length-1?JOB_PTS[rk+1]:null;
-  if(nx!=null) return {t:`Work done for today ✅ · next rank ${jobTitle(J.id,rk+1)} at ${nx} points (${Math.floor(jobPts(J.id))} now)`,go:null};
-  return {t:'Work done for today ✅ · you don make am. Chill, find love 💕, buy a motor',go:null}; }
+  const J=myJob(), rk=J?jobRank(J.id):0, nx=J&&J.id!=='police'&&rk<JOB_PTS.length-1?JOB_PTS[rk+1]:null, wk=weekend()?`${weekDay()} 😎 no work`:'Work done for today ✅';
+  if(nx!=null) return {t:`${wk} · next rank ${jobTitle(J.id,rk+1)} at ${nx} points (${Math.floor(jobPts(J.id))} now)`,go:null};
+  return {t:`${wk} · you don make am. Chill, find love 💕, buy a motor`,go:null}; }
 function JOBEV(k,n=1){ const P=JOB_EVP[k]; if(P) jobPoint(P[0],P[1]*(n|0||1)); const S=stepOf(); if(!S||S.ev!==k) return; LIFE.tkn=Math.min(1e5,(LIFE.tkn|0)+(n|0||1)); hustleCheck(); hustleHUD(); }
 function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const done=S.ok?S.ok():(LIFE.tkn|0)>=S.n; if(!done) return;
-  if(S.day){ const b=DAY_BONUS(jobRank(J.id)); LIFE.dd=gameDay(); LIFE.tkn=0; addCash(b); cashHUD(); credAdd('daywork',60,true); lifeSave(true);
+  if(S.day){ const b=DAY_BONUS(jobRank(J.id)); LIFE.dd=gameDay(); LIFE.tkn=0; LIFE.miss=0; addCash(b); cashHUD(); credAdd('daywork',60,true); lifeSave(true);
     bigMsg('WORK DONE ✅','rankup',`Bonus ${naira(b)}`); toast(`✅ Today's work done! Bonus ${naira(b)}. ${lifeGoal().t}`,6);
     if(PH) PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:`Well done today. Bonus ${naira(b)} don enter. Tomorrow we go again.`}); hustleHUD(true); return; }
   LIFE.tk++; LIFE.tkn=0; lifeSave(true); const N=stepOf(); if(N) credAdd('task',40,false); else credAdd('jobdone',150,true);
@@ -10025,8 +10033,9 @@ function hustleHUD(force=false){ const e=$('#task'); if(!e) return; const J=myJo
   const t=!J?'Pick your hustle: tap here':S?`${S.t}${S.n?` (${Math.min(LIFE.tkn|0,S.n)}/${S.n})`:''}`:lifeGoal().t; if(!force&&t===HUS.shown) return; const was=HUS.shown; HUS.shown=t;
   e.hidden=!t||!started; $('#taskE').textContent=J?J.e:'💼'; $('#taskT').textContent=t; if(was&&was!==t){ e.classList.remove('new'); void e.offsetWidth; e.classList.add('new'); } }
 // the morning text, and the nag if you never start work by noon
-function dayTexts(){ const J=myJob(), S=stepOf(); if(!J||!S||!S.day||!PH) return; const d=gameDay(), h=ENV.hour;
-  if(HUS.morn!==d&&h>=6&&h<12){ HUS.morn=d; PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:`Good morning! ${S.t}. Bonus ${naira(DAY_BONUS(jobRank(J.id)))} when you finish. Follow the yellow arrow.`}); }
+function dayTexts(){ const J=myJob(), S=stepOf(), d=gameDay(), h=ENV.hour; if(J&&PH&&weekend()&&HUS.morn!==d&&h>=6&&h<12&&LIFE.tk>=J.steps.length){ HUS.morn=d; PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:`${weekDay()}: no work today. Rest, chop well, go see your babe. Monday we go again.`}); }
+  if(!J||!S||!S.day||!PH) return;
+  if(HUS.morn!==d&&h>=6&&h<12){ HUS.morn=d; PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:`Good morning, ${weekDay()}! ${S.t}. Bonus ${naira(DAY_BONUS(jobRank(J.id)))} when you finish. Skip it and your oga go query you. Follow the yellow arrow.`}); }
   if(!HUS.nag&&h>=12&&h<20&&!(LIFE.tkn>0)&&!(S.ok&&(HUS.dd>0||HUS.bd>0))){ HUS.nag=d; PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:mpick(['Where you dey? Work dey wait o. No money for sleeping.','Afternoon don reach and you never start? Oya move!','Lagos no dey wait for anybody. Go hustle!'])}); toast(`💼 ${S.t}. Follow the yellow arrow.`,4); } }
 function hustleTick(dt){ if(!started||!LIFE) return; if(POLICE&&POLICE.duty&&POLICE.duty()) HUS.duty+=dt; if(ownBiz()){ HUS.biz+=dt; HUS.bp=(HUS.bp||0)+dt; if(HUS.bp>=60){ HUS.bp=0; jobPoint('boss',1); } }
   if(POLICE&&POLICE.duty&&POLICE.duty()) HUS.dd=(HUS.dd||0)+dt; if(ownBiz()) HUS.bd=(HUS.bd||0)+dt;
