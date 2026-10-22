@@ -95,6 +95,11 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 
 /* HUD */
 .hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+#gMark{position:fixed;left:0;top:0;z-index:9;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:1px;font:700 12px/1.15 "Barlow Semi Condensed",system-ui,sans-serif;color:#F7EFDF;will-change:transform}
+#gMark[hidden]{display:none}
+#gMark span{background:rgba(12,14,18,.62);border:1px solid rgba(242,183,5,.75);border-radius:9px;padding:2px 8px;white-space:nowrap;max-width:44vw;overflow:hidden;text-overflow:ellipsis}
+#gMark i{font-style:normal;color:#F2B705;font-size:17px;line-height:1;order:2;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+#gMark.out i{order:0;font-size:20px}
 .hud > *{z-index:3}
 .tl{position:absolute;left:calc(18px + var(--sl));top:calc(14px + var(--st));display:flex;flex-direction:column;gap:2px;max-width:46vw}
 .brand{font-family:var(--fd);font-size:15px;color:var(--danfo);text-shadow:0 2px 0 #000}
@@ -472,6 +477,12 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" data-d="joy" aria-pressed="false">Joystick</button>
     </div>
     <p class="note">Arrows: ◀ ▶ on the right steer, ▲ goes and ▼ brakes on the left (keep holding ▼ to reverse). Wheel: turn the steering wheel with your thumb. Joystick: the old way.</p></div>
+    <h3>Guide</h3>
+    <div class="seg" id="guideSeg" role="group" aria-label="Yellow guide arrow">
+      <button type="button" data-g="on" aria-pressed="true">Yellow arrow on</button>
+      <button type="button" data-g="off" aria-pressed="false">Off</button>
+    </div>
+    <p class="note">The yellow arrow shows where to go now: your next task, your route, food, the toilet or your bed when you need them.</p>
     <h3>Camera</h3>
     <label class="slide"><span>Turn speed</span><input type="range" id="camSens" min="40" max="250" step="10" value="100"><b id="camSensV">100%</b></label>
     <div class="seg" id="camFol" role="group" aria-label="Camera follows you">

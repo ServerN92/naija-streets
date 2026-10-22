@@ -133,9 +133,9 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk); scene.add(R.tag); }
-    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0); R.rk = j.rk | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
-      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
   function heardPos(R, p, now) {
@@ -244,13 +244,16 @@ export function createOnline(api) {
     sp.renderOrder = 998; sp.visible = false; sp.userData.P = P; sp.userData.ph = Math.random() * 6.3; return sp;
   }
   // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman), their stars when wanted, then their rank medal
-  function tagSprite(name, stars = 0, badge = '', rk = 0) {
+  function tagSprite(name, stars = 0, badge = '', rk = 0, jb = '') {
     const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '', H = 92, MS = 92, med = MEDAL[rk | 0], hasM = !!(med && med.complete && med.naturalWidth);
-    g.font = `700 ${fs}px ${FONT}`; const tw = Math.ceil(g.measureText(name).width), sw = st ? Math.ceil(g.measureText(st).width) : 0, pw = tw + sw + 36, w = pw + MS + 6; cv.width = w; cv.height = H;
+    const jt = jb && api.jobLabel ? api.jobLabel(jb) : '';   // an oga's title (👑 Okada oga) after the name
+    g.font = `700 ${fs}px ${FONT}`; const tw0 = Math.ceil(g.measureText(name).width); g.font = `700 ${fs * .62}px ${FONT}`; const jw = jt ? Math.ceil(g.measureText(' ' + jt).width) : 0; g.font = `700 ${fs}px ${FONT}`;
+    const tw = tw0 + jw, sw = st ? Math.ceil(g.measureText(st).width) : 0, pw = tw + sw + 36, w = pw + MS + 6; cv.width = w; cv.height = H;
     const y0 = (H - 60) / 2;
     g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, y0 + 4, pw - 4, 52, 16); g.fill();
     g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, y0 + 30, 6, 0, 6.3); g.fill();
     g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, y0 + 32);
+    if (jt) { g.font = `700 ${fs * .62}px ${FONT}`; g.fillStyle = '#F2B705'; g.fillText(' ' + jt, 29 + tw0, y0 + 33); g.font = `700 ${fs}px ${FONT}`; }
     if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, y0 + 32); }
     if (hasM) g.drawImage(med, pw + 6, 0, MS, MS);
     const sp = spriteOf(cv, .4 * TS * H / 60); sp.userData.medal = hasM; sp.userData.mx = (pw + 6 + MS / 2) / w; sp.userData.ms = MS / H; return sp;
@@ -318,7 +321,7 @@ export function createOnline(api) {
       if (R.mixer) { R.acc += dt; const k = R.d < 25 ? 1 : R.d < 60 ? 2 : 3; if ((frameN + R.slot) % k === 0) { R.mixer.update(R.acc); R.acc = 0; } }
       // the name, the same size on screen near or far
       const tagOn = R.d < TAG_FAR, sc = clamp(R.d / 11, 1, 5);
-      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk); R.tag.visible = vis; scene.add(R.tag); }
+      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb); R.tag.visible = vis; scene.add(R.tag); }
       R.tag.visible = tagOn; if (tagOn) { R.tag.position.set(s.x, topY, s.z); R.tag.scale.set(R.tag.userData.w * sc, R.tag.userData.h * sc, 1); }
       // the medal glows: each rank its own colour and beat; the top three send out turning rays
       if (R.glowRk !== R.rk) { if (R.glow) { scene.remove(R.glow); R.glow.material.dispose(); } R.glow = glowSprite(R.rk | 0); R.glowRk = R.rk; if (R.glow) scene.add(R.glow); }
@@ -465,7 +468,7 @@ export function createOnline(api) {
     targets: () => { const out = []; if (!S.me) return out; for (const R of RS.values()) { const s = R.s; if (!s || s.v || s.a === 'k' || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z }); } return out; },
     hit: (id, k) => send({ t: 'hit', i: id, k }),
     // everybody near you: where they are, what they are doing ('k': lying down), their stars and badge
-    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '' }); } return out; },
+    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '', jb: R.jb || '' }); } return out; },
     get signedIn() { return !!S.me; },
     get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },

@@ -6,7 +6,7 @@ import { createPark } from './park.js';
 import { createPvp } from './pvp.js';
 import { createLaw } from './law.js';
 import { createBank } from './bank.js';
-import { lifeOk, credCap, rankOf } from './life.js';
+import { lifeOk, credCap, rankOf, jobBadge } from './life.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
 export const PROTO = 1;
@@ -98,7 +98,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     C.seen = new Map();
     db.seen(u.id, t);
     const life = db.lifeGet(u.id);
-    if (life) C.p.rk = rankOf(life.cr);
+    if (life) { C.p.rk = rankOf(life.cr); C.p.jb = jobBadge(life); }
     send(C, { t: 'me', tok, id: C.p.id, uid: u.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, life, n: online.size });
     biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C); bank.hello(C);
     log('in', u.name, online.size);
@@ -229,7 +229,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function setLife(C, m) {
     C.lifeLim = C.lifeLim || new Bucket(6, .5); if (!C.lifeLim.take()) return;
     const d = credCap(lifeOk(m.d, now()), db.lifeGet(C.user.id), now()); if (d) db.lifePut(C.user.id, d);
-    if (d && C.p) { const r = rankOf(d.cr); if (C.p.rk !== r) { C.p.rk = r; C.p.lv++; C.p.ver++; } }
+    if (d && C.p) { const r = rankOf(d.cr), jb = jobBadge(d); if (C.p.rk !== r || (C.p.jb || '') !== jb) { C.p.rk = r; C.p.jb = jb; C.p.lv++; C.p.ver++; } }
   }
   function setLook(C, m) {
     const look = lookOk(m); if (!look) return;
@@ -307,7 +307,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       const S = C.seen, ids = new Set(), j = [], p = [], l = [];
       for (const [, Q] of near) {
         ids.add(Q.id); let s = S.get(Q.id);
-        if (!s || s.lv !== Q.lv) { j.push({ i: Q.id, n: Q.name, c: Q.look && Q.look.c, f: Q.look ? Q.look.f : 0, g: Q.look ? Q.look.g : 'm', k: Q.look && Number.isInteger(Q.look.k) ? Q.look.k : -1, b: Q.bd || '', w: Q.ws || 0, rk: Q.rk || 0 }); if (!s) S.set(Q.id, s = { v: -1, lv: Q.lv }); s.lv = Q.lv; }
+        if (!s || s.lv !== Q.lv) { j.push({ i: Q.id, n: Q.name, c: Q.look && Q.look.c, f: Q.look ? Q.look.f : 0, g: Q.look ? Q.look.g : 'm', k: Q.look && Number.isInteger(Q.look.k) ? Q.look.k : -1, b: Q.bd || '', w: Q.ws || 0, rk: Q.rk || 0, jb: Q.jb || '' }); if (!s) S.set(Q.id, s = { v: -1, lv: Q.lv }); s.lv = Q.lv; }
         if (s.v !== Q.ver) { p.push([Q.id, Q.x, Q.y, Q.z, Q.r, Q.a, Q.s, Q.v, Q.vc, Q.q]); s.v = Q.ver; }
       }
       for (const id of S.keys()) if (!ids.has(id)) { l.push(id); S.delete(id); }

@@ -83,6 +83,8 @@ const LIFE_NEW=(()=>{ try{ if(localStorage.getItem('naija-life')!==null) return 
   for(const k of ['naija-cars','naija-hotel','naija-arms','naija-fit','naija-look2']) localStorage.removeItem(k); return true; }catch(e){ return false; } })();
 // the start over takes back the farm too (once): it goes back to the farm officer, to collect again (the online businesses go back on sale on the server)
 const FARM_BACK=(()=>{ try{ if(localStorage.getItem('naija-start2')) return false; localStorage.setItem('naija-start2','1'); const f=JSON.parse(localStorage.getItem('naija-farm')||'null'); localStorage.removeItem('naija-farm'); return !!(f&&f.got); }catch(e){ return false; } })();
+// this phone's own number: spreads players over the rooming houses and the farm yards (so new players are not all in one place)
+const RID=(()=>{ try{ let r=+localStorage.getItem('naija-rid'); if(!(r>0)){ r=1+Math.floor(Math.random()*1e9); localStorage.setItem('naija-rid',String(r)); } return r; }catch(e){ return 1+Math.floor(Math.random()*1e9); } })();
 if(!QUAL[qKey]) qKey=isTouch?(GPU_TIER==='high'?'medium':'low'):GPU_TIER; const Q=QUAL[qKey];   // a phone starts on Low (Medium on the strongest chips): heat and battery come first
 if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
@@ -2259,11 +2261,14 @@ const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:1000
 // cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
 function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
   return {cr:clamp(Math.floor(+(d&&d.cr)||0),0,1e7),cd:clamp((d&&d.cd)|0,0,99991231),ca:clamp(+(d&&d.ca)||0,0,86400),cx,cs:clamp((d&&d.cs)|0,0,3650),cl:clamp((d&&d.cl)|0,0,99991231)}; }
-const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',t:Date.now()});
+const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,t:Date.now()});
+// where you were when you left (you carry on there if you come back soon), your points in each hustle (your rank in the job)
+const posClean=p=>p&&typeof p==='object'&&Number.isFinite(+p.x)&&Number.isFinite(+p.z)?{x:clamp(+p.x,-9e3,9e3),z:clamp(+p.z,-9e3,9e3),r:clamp(+p.r||0,-7,7),t:+p.t||0,st:clamp(p.st|0,0,5),car:p.car?1:0}:null;
+const jpClean=j=>{ const o={}; if(j&&typeof j==='object'&&!Array.isArray(j)) for(const [k,v] of Object.entries(j).slice(0,12)) if(/^[a-z_]{2,16}$/.test(k)&&Number.isFinite(+v)) o[k]=clamp(+v,0,1e6); return o; };
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
   const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
   const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
-  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),t:+d.t||0,u:d.u}; }
+  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,t:+d.t||0,u:d.u}; }
 const lifeRead=k=>{ try{ return lifeClean(JSON.parse(localStorage.getItem(k)||'null')); }catch(e){ return null; } };
 let LIFE=lifeRead('naija-life')||freshLife();
 // ---- street cred and ranks (like 2go: from JJC up to Eko Legend). You earn cred by playing actively (standing still
@@ -2330,7 +2335,7 @@ const homeNow=()=>LIFE.flat?'flat':roomOn()?'room':'tent';
 const ROOMLET=(()=>{ const L=houseInst.faceme, M=MODELS.faceme; if(!L||!L.length||!M) return null; const o=LIFEC?LIFEC.tent:(HOME?{x:HOME.cx,z:HOME.cz}:{x:0,z:0});
   const cand=L.map(h=>{ const f=[Math.sin(h.ry),Math.cos(h.ry)], hd=M.D*h.sz/2+.7, door={x:h.x+f[0]*hd,z:h.z+f[1]*hd}; return {h,f,door,d:Math.hypot(h.x-o.x,h.z-o.z)}; })
     .filter(c=>c.d>25&&c.d<900&&!roadAt(c.door.x,c.door.z,.25)&&onLand(c.door.x,c.door.z,.5)&&!resolveCircle({x:c.door.x,z:c.door.z},.3)).sort((a,b)=>a.d-b.d);
-  const c=cand[0]; if(!c) return null; const sd=[c.f[1],-c.f[0]], w=M.W*c.h.sx/2;
+  const c=cand[RID%Math.max(1,Math.min(8,cand.length))]; if(!c) return null; const sd=[c.f[1],-c.f[0]], w=M.W*c.h.sx/2;   // one of the 8 nearest, by this phone: women don't all share one door
   return {...c,out:{x:c.door.x,z:c.door.z,ry:c.h.ry},landlord:{x:c.door.x+sd[0]*Math.min(3,w*.4),z:c.door.z+sd[1]*Math.min(3,w*.4),ry:c.h.ry}}; })();
 // where you are when the game starts: in front of your home
 // a house of yours in an estate made your home: inside your gate, on the drive, looking at the house
@@ -2343,7 +2348,13 @@ function homeSpot(h=homeNow()){ if(!arguments.length){ const e=estHomeSpot(); if
 const HOME0=(()=>{ const h=homeSpot(); if(homeNow()!=='tent'||!LIFEC) return h;   // at the tent, not all on one spot: a few steps round the door (other players wake up there too)
   for(let i=0;i<16;i++){ const a=Math.random()*Math.PI*2, r=1.2+Math.random()*2.6, x=h.x+Math.cos(a)*r, z=h.z+Math.sin(a)*r; if(!roadAt(x,z,.4)&&onLand(x,z,.4)&&!resolveCircle({x,z},.4)) return {x,z,ry:h.ry+(Math.random()-.5)*1.2}; }
   return h; })();
-const player={x:HOME0.x,z:HOME0.z,y:SLAB,yaw:HOME0.ry,speed:0,ph:0};
+// back within 30 minutes of leaving, not wanted, on open ground: you carry on where you stopped (else you wake up at home)
+const RESUME_MS=30*60e3;
+function resumeSpot(){ const P=LIFE.pos, now=Date.now(); if(!P||P.st>0||now-P.t>RESUME_MS||P.t>now+6e4) return null;
+  for(let i=0;i<12;i++){ const a=i*2.4, r=i?.8+i*.35:0, x=P.x+Math.cos(a)*r, z=P.z+Math.sin(a)*r; if(onLand(x,z,.3)&&!resolveCircle({x,z},.35)) return {x,z,ry:P.r,car:P.car}; }
+  return null; }
+const RESUME=resumeSpot(), LEFT_WANTED=!!(LIFE.pos&&LIFE.pos.st>0&&Date.now()-LIFE.pos.t<RESUME_MS*4); if(LEFT_WANTED){ LIFE.kf=Math.min(9,(LIFE.kf||0)+1); LIFE.pos.st=0; }   // ran away from the police by leaving: your face is known better
+const player={x:RESUME?RESUME.x:HOME0.x,z:RESUME?RESUME.z:HOME0.z,y:SLAB,yaw:RESUME?RESUME.ry:HOME0.ry,speed:0,ph:0};
 let mode='walk', started=false, busy=false, T0=0;
 let rig=makeHuman({f:false,skin:skinMat('#5a3825'),top:ankMat(5),bottom:clothMat('#1a1a1c'),shoe:clothMat('#f2f2f2'),hairM:clothMat('#141110')});
 scene.add(rig.root);
@@ -2548,6 +2559,7 @@ if(homeNow()==='flat'){ const k=kerbSpot(APT.front.x+APT.nx*1.5,APT.front.z+APT.
 else { let p=null; for(const [a,b] of [[.4,-1.3],[-1.4,-1.25],[2.2,-1.3],[.4,1.4]]){ const x=HOME0.x+HOME_F[0]*a+HOME_SD[0]*b, z=HOME0.z+HOME_F[1]*a+HOME_SD[1]*b; if(!roadAt(x,z,.05)&&!resolveCircle({x,z},.55)){ p={x,z}; break; } }
   if(!p){ const k=kerbSpot(HOME0.x,HOME0.z,2.2); p=k||{x:HOME0.x+2,z:HOME0.z}; }
   Object.assign(myCar,{x:p.x,z:p.z,h:Math.atan2(-HOME_F[1],HOME_F[0]),y:0,keep:1}); }   // your okada parked by your tent
+if(RESUME&&RESUME.car){ const fx=Math.sin(RESUME.ry), fz=Math.cos(RESUME.ry); for(const [a,b] of [[0,1.8],[0,-1.8],[2.2,1.4],[-2.2,1.4]]){ const x=player.x+fx*a+fz*b, z=player.z+fz*a-fx*b; if(!resolveCircle({x,z},.6)){ Object.assign(myCar,{x,z,h:Math.atan2(-fz,fx),y:0}); break; } } }   // you were on your okada: it is right beside you
 const LOT_CARS=[{type:'sedan',color:'#c9ccd1',name:'Toyota Corolla 2010 (tokunbo)',price:180000},{type:'suv',color:'#1d1f22',name:'Toyota Highlander 2012 (tokunbo)',price:420000},
   {type:'sedan',color:'#7a1e22',name:'Toyota Camry "Muscle" 2009 (tokunbo)',price:250000},{type:'sedan',color:'#f2f2f0',name:'Honda Accord 2011 (tokunbo)',price:230000},
   {type:'suv',color:'#3b4a5a',name:'Lexus RX 350 2013 (tokunbo)',price:450000},{type:'sedan',color:'#2f5d3a',name:'Nissan Altima 2012 (tokunbo)',price:200000},
@@ -3301,7 +3313,7 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(robNear()) txt=`The man's money · ${naira(robNear().cash)} · give it back or keep it`; else if(agbCollectNear()) txt=`Collect the danfo's ticket · ${naira(AGB_FEE/2)} for you, ${naira(AGB_FEE/2)} for ${UNION.chairName()}`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(hawkNear()) txt=`Sell pure water · ₦50 (${LIFE.hk} left)`; else if(LIFE.hk<20&&kioskAt()&&!doorNear()) txt='Kiosk · buy a bag of pure water (₦300)'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(rogNear()) txt=rogWord(); else if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(robNear()) txt=`The man's money · ${naira(robNear().cash)} · give it back or keep it`; else if(agbCollectNear()) txt=`Collect the danfo's ticket · ${naira(AGB_FEE/2)} for you, ${naira(AGB_FEE/2)} for ${UNION.chairName()}`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(hawkNear()) txt=`Sell pure water · ₦50 (${LIFE.hk} left)`; else if(LIFE.hk<20&&kioskAt()&&!doorNear()) txt='Kiosk · buy a bag of pure water (₦300)'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=true; }   // (on a phone the prompt itself is the E button: one E, only when there is something to do)
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
@@ -3312,7 +3324,7 @@ function updateHUD(dt){ if(!started) return;
   if(mode!=='interior'){ mmTick=(mmTick+1)%3; if(!mmTick) drawMinimap(); } }
 
 /* ================= camera ================= */
-const camState={yaw:HOME0.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0}; camState.yaw=clearYaw(player.x,player.y,player.z,homeNow()==='tent'?HOME0.ry+2.5:HOME0.ry);   // at your door: a clear view, not your wall
+const camState={yaw:HOME0.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0}; camState.yaw=clearYaw(player.x,player.y,player.z,RESUME?RESUME.ry:homeNow()==='tent'?HOME0.ry+2.5:HOME0.ry);   // at your door: a clear view, not your wall
 const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
 let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
 function updateCamera(dt){ if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
@@ -3366,7 +3378,8 @@ addEventListener('keydown',e=>{ if(e.target&&e.target.tagName==='INPUT') return;
 addEventListener('keyup',e=>{ const k=keyOf(e); K[k]=false; if(k==='j') ARMS.trig=false; if(k==='x') crUp(); });
 addEventListener('blur',()=>{ for(const k in K) K[k]=false; joy.x=joy.y=0; });
 addEventListener('pointerdown',()=>{ if(AC&&started&&AC.state!=='running'&&!document.hidden) AC.resume(); },{passive:true});
-document.addEventListener('visibilitychange',()=>{ if(document.hidden){ for(const kk in K) K[kk]=false; joy.x=joy.y=0; touchBrake=false; if(AC&&AC.state==='running') AC.suspend(); } else { if(AC&&started) AC.resume(); lastT=performance.now(); } });
+addEventListener('pagehide',()=>{ if(started) lifeSave(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(started) lifeSave(true); for(const kk in K) K[kk]=false; joy.x=joy.y=0; touchBrake=false; if(AC&&AC.state==='running') AC.suspend(); } else { if(AC&&started) AC.resume(); lastT=performance.now(); } });
 const cvs=renderer.domElement; let dragging=false;
 // camera: how fast it turns under your finger or mouse, and whether it swings round behind you as you move (kept on this device)
 const CAMS={s:1,f:1}; try{ Object.assign(CAMS,JSON.parse(localStorage.getItem('naija-cam')||'{}')); }catch(e){}
@@ -3508,7 +3521,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 /* ================= actions ================= */
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
-function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu();
+function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu(); if(rogNear()) return rogPay();
   if(mode==='walk'){ if(CB.act) return cbPress(); if(DEALER.open) return closeShop(); if(WARD.open) return closeWard(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } { const rb=robNear(); if(rb) return robChoose(rb); } { const av=agbCollectNear(); if(av) return agbCollect(av); } if(nearDoor()) return LIFE.flat?enterApt():flatMenu(); if(nearHotel()) return enterLobby(0); if(hawkSell()) return; if(LIFE.hk<20&&kioskAt()&&!doorNear()) return kioskBuy(); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v&&v.impounded){ toast(`Impounded. Pay ${naira(LT.fee)} at the impound office (by the gate) to collect it.`,3); return; } if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(landPayNear()) return landPay(); if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(rbNear()) return void rbTalk(); if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } { const ag=!drive.ride&&agbPayNear(); if(ag) return agbPay(ag); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
@@ -3800,7 +3813,7 @@ function fareOut(paid){ const T=FARE.trip; if(!T) return; FARE.trip=null; const 
   T.pax.forEach((o,i)=>{ if(o.h&&o.h.root.parent) o.h.root.parent.remove(o.h.root); const q=freePed(); if(!q) return; wakePed(q,o.cast); const sd=i%2?-1:1, x=v.x+hz*sd*(v.c.def.W/2+.8)-hx*i*.6, z=v.z-hx*sd*(v.c.def.W/2+.8)-hz*i*.6;
     Object.assign(q,{x,z,y:groundY(x,z),yaw:Math.atan2(hz*sd,-hx*sd),state:'walk',speed:.6,startT:.8}); q.seq=(q.seq||0)+1; replanPed(q); });
   mapView.clearRoute(); if(JOB.state) jobRoute(); else if(RIDE.state==='riding') mapView.setDest(RIDE.dest.x,RIDE.dest.z,RIDE.dest);
-  if(paid){ const late=T.t>T.limit, pay=Math.round(T.each*T.pax.length*(late?.6:1)/50)*50; addCash(pay); JOBEV('fare',T.pax.length);
+  if(paid){ const late=T.t>T.limit, pay=Math.round(T.each*T.pax.length*(late?.6:1)*(T.v===myCar?jobMul('okada'):1)/50)*50; addCash(pay); JOBEV('fare',T.pax.length);
     toast(late?`You reach ${T.dest.name} but you take too long. Passengers pay only ${naira(pay)}. "Driver, you slow o!"`:`You reach ${T.dest.name}! Passengers pay ${naira(pay)}. "Thank you driver, God bless!"`,3.6); }
   else toast(mpick(['"Driver, you wan leave us for road?!" Your passengers got down without paying.','"Na wa for this driver o!" Your passengers left without paying.']),3.2); }
 function updateFare(dt){ const T=FARE.trip, v=mode==='drive'&&!drive.ride?drive.v:null;
@@ -5212,17 +5225,33 @@ function crime(p,k=1){ const civ=p.cast!=='areaboy'&&!p.cop; addHeat((civ?.15:.0
 // killings at three; only attacking the police goes higher
 const CAP={minor:1.95,kill:3.55,cop:5.4};
 let UB_ON=false; const lawless=()=>UB_ON&&inUB(player.x,player.z)||!!(UNION&&UNION.fightHere());   // Under Bridge: the police don't come in
-function addHeat(a,cap=CAP.minor){ if(lawless()) return; const s0=starCount(); if(FIGHT.heat<cap) FIGHT.heat=Math.min(cap,FIGHT.heat+a); if(PH&&starCount()>=2&&starCount()>s0) PH.event('wanted',{area:districtAt(player.x,player.z)}); FIGHT.crimeT=0; if(copsSee()) FIGHT.seen=T0; else if(starCount()>0) caseOpen(player.x,player.z); }
+function addHeat(a,cap=CAP.minor){ if(lawless()) return; const s0=starCount(); a*=1+.15*Math.min(4,LIFE.kf||0); if(FIGHT.heat<cap) FIGHT.heat=Math.min(cap,FIGHT.heat+a); if(s0===0&&starCount()>0) kfAdd(1); if(PH&&starCount()>=2&&starCount()>s0) PH.event('wanted',{area:districtAt(player.x,player.z)}); FIGHT.crimeT=0; if(copsSee()) FIGHT.seen=T0; else if(starCount()>0) caseOpen(player.x,player.z); }
 // police close enough to see it with their own eyes: then they come at once
 function copsSee(){ if(mode==='interior') return false; const f=mode==='drive'&&drive.v?drive.v:player; if(COPS.near<32) return true;
   for(const v of vehicles){ if(v.type!=='police'||v===drive.v||v.jacked||v.wreck) continue; if(Math.abs(v.x-f.x)<38&&Math.abs(v.z-f.z)<38&&Math.hypot(v.x-f.x,v.z-f.z)<38&&(v.ai||v.copsOut||v.raid)) return true; } return false; }
 /* ---- a case: somebody calls the police. They take their time, drive to where it happened and ask the people there.
    If you are still around (or they see you), they come after you; if you are long gone, they give up and your stars go. */
 const CASE={on:false,x:0,z:0,due:0,kind:'',raid:false};
-function caseOpen(x,z,kind){ if(!started||FIGHT.cop) return; const st=Math.max(1,starCount()), wait=st>=4?mrr(12,18):st===3?mrr(20,28):st===2?mrr(30,40):mrr(40,55);
+function caseOpen(x,z,kind){ if(!started||FIGHT.cop) return; const st=Math.max(1,starCount()), wait=(st>=4?mrr(12,18):st===3?mrr(20,28):st===2?mrr(30,40):mrr(40,55))*copK(x,z);
   if(!CASE.on||CASE.raid&&!RAID.v){ Object.assign(CASE,{on:true,x,z,due:T0+wait,kind:kind||CASE.kind||'crime',raid:false,next:null}); if(starCount()>0&&Math.hypot(x-player.x,z-player.z)<150&&sayT<=0){ sayT=4; toast(mpick(['Somebody don call police! Comot before dem reach.','People dey call police for you o! Hide quick.']),3); } }
   else if(!CASE.raid){ CASE.x=x; CASE.z=z; CASE.due=Math.min(CASE.due,T0+wait); if(kind) CASE.kind=kind; }
   else if(Math.hypot(x-CASE.x,z-CASE.z)>60) CASE.next={x,z,kind}; }   // the police are busy at the first place: this one waits its turn
+/* ---- the police, Naija ways: where you are and when changes how fast they come (Ikeja GRA and the estates: quick;
+   Mushin's back streets: slow; at night: slower), and they get to know your face (each time you are wanted, settle them
+   or get arrested your face sticks; it fades a little every game day): a known face gets the police faster and hotter.
+   At one or two stars an officer who catches you can be "rogered": settle him and he lets you go (at two stars he may
+   refuse). Leave the game while wanted and you wake up at home, but your face is known better. */
+function copK(x,z){ let k=1; if(GRA.in(x,z)) k*=.6; else if(EST.in(x,z,10)) k*=.7; else { const [e,d]=nearestRoad(x,z,q=>q.drive); if(!e||e.c>=6) k*=1.3; } if(ENV.night) k*=1.25;
+  return k*(1-.12*Math.min(4,LIFE.kf||0)); }
+function kfDecay(){ const day=Math.floor(CLOCK.now()/(CLOCK.DAY_MINUTES*60000)); if(LIFE.kfd===day) return; if(LIFE.kfd&&LIFE.kf>0) LIFE.kf=Math.max(0,LIFE.kf-(day-LIFE.kfd)); LIFE.kfd=day; }
+function kfAdd(n){ kfDecay(); const was=LIFE.kf||0; LIFE.kf=Math.min(9,was+n); if(Math.floor(LIFE.kf)>=3&&Math.floor(was)<3) toast('Police don know your face for Lagos now o! Dem go come quick quick when you do anything.',4.5); lifeSave(); }
+const ROG={fee:()=>starCount()>=2?5000:1500,said:-99};
+const rogNear=()=>!!(FIGHT.cop&&FIGHT.cop.ai&&FIGHT.cop.noCops&&starCount()>=1&&starCount()<=2&&FIGHT.arrestT>0&&!busy&&!FIGHT.dead);
+const rogWord=()=>`Roger the officer · ${naira(ROG.fee())}`;
+function rogPay(){ const fee=ROG.fee(), st=starCount(); if(CASH.n<fee){ toast('Officer: "You no even get money? Oya enter motor!"',3); arrest(); return; }
+  if(st>=2&&MR()<.45){ toast(mpick(['Officer: "You wan bribe me? I no dey collect! Enter motor!"','Officer: "Na wetin you do pass this one. No settlement!"']),3.2); arrest(); return; }
+  addCash(-fee); cashHUD(); FIGHT.heat=0; FIGHT.seen=-99; CASE.on=false; releaseCop(); kfAdd(.5);
+  toast(mpick([`You roger the officer ${naira(fee)}. "Oya go. Next time, behave yourself!"`,`${naira(fee)} enter the officer pocket. "We no see you. Comot!"`,`"Anything for the boys?" You settle ${naira(fee)}. He wave you go.`]),3.6); }
 function caseTick(){ if(!CASE.on) return; if(CASE.raid){ if(!RAID.v){ if(FIGHT.cop) CASE.on=false; else caseClosed(); } return; }
   if(T0<CASE.due||mode==='interior'&&starCount()===0) return; if(RAID.v||RAID.cool>0) return;
   if(!caseDispatch(CASE.x,CASE.z,CASE.kind)){ CASE.due=T0+8; return; } CASE.raid=true; }
@@ -5261,7 +5290,7 @@ function fieldTo(s){ let d=FIELDS.get(s); if(d) return d; if(!CHASE.inn){ CHASE.
   d=dijkstra(s,u=>CHASE.inn[u]).dist; FIELDS.set(s,d); if(FIELDS.size>4) FIELDS.delete(FIELDS.keys().next().value); return d; }
 // caught: into the van, and into the cell at Mushin police station for three minutes (with whoever else they picked up)
 function jailNext(){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; }catch(e){} return JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]; }
-function arrest(){ if(PH) PH.event('arrest',{place:placeNameAt(player.x,player.z)}); releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
+function arrest(){ kfAdd(1); if(PH) PH.event('arrest',{place:placeNameAt(player.x,player.z)}); releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
   arrestFine(); }
 // the fine and what the police take (done the moment you are caught, so reloading can't save your money or guns)
 function arrestFine(){ if(COPS.fined&&T0-COPS.fined<10) return; COPS.fined=T0;
@@ -5395,8 +5424,8 @@ function updateFight(dt){ FIGHT.attackers=peds.filter(p=>p.state==='fight').sort
   if(st===0&&FIGHT.cop){ releaseCop(); toast('Police don give up. You dey free.',2.6); }
   if(FIGHT.cop&&((!FIGHT.cop.ai&&!FIGHT.cop.copsOut)||FIGHT.cop===drive.v)){ FIGHT.cop=null; if(starCount()>0) FIGHT.seen=T0; }   // they know who they want: another van comes
   if(FIGHT.cop&&FIGHT.cop.ai&&FIGHT.cop.noCops){ const near=cd<(mode==='drive'?9:FIGHT.cop.ai&&FIGHT.cop.ai.near?45:26)&&Math.abs(FIGHT.cop.speed)<2.5&&!busy; FIGHT.arrestT=near?FIGHT.arrestT+dt:Math.max(0,FIGHT.arrestT-dt*.5);
-    if(near&&FIGHT.arrestT<dt*1.5&&sayT<=0){ sayT=4; toast('Police: "Stop there! Oya, enter motor!"',2.4); }
-    if(FIGHT.arrestT>1.8) arrest(); }
+    if(near&&FIGHT.arrestT<dt*1.5&&sayT<=0){ sayT=4; toast(st<=2?`Police: "Stop there!" (Settle am: ${touchUI?'tap':'press E'} to roger)`:'Police: "Stop there! Oya, enter motor!"',2.6); }
+    if(FIGHT.arrestT>(st<=2?4.2:1.8)) arrest(); }
   siren(!!FIGHT.cop&&cd<180&&mode!=='interior',1-Math.min(1,cd/180)); }
 function updateFightHUD(){ const show=started&&mode!=='interior';   // your life bar is always there on the street
   if(show){ cashHUD(); weapHUD(); touchButtons(1/30); } else if(!$('#weap').hidden) $('#weap').hidden=true;
@@ -6279,7 +6308,7 @@ function updateJob(dt){ if(!JOB.state) return; if(JOB.ring&&JOB.ring.visible){ J
   if(JOB.state==='pick'){ const k=JOB.pick; if(mode!=='interior'&&slow&&Math.hypot(f.x-k.x,f.z-k.z)<(mode==='drive'?5:2.6)){ JOB.state='drop'; JOB.t=0; jobRing(JOB.drop.x,JOB.drop.z,0x3fc27a,'DROP OFF'); jobRoute();
       toast(`You collected ${JOB.what}. Take am reach ${JOB.drop.name} in ${fmtClock(JOB.limit)}!`,3); } }
   else if(JOB.state==='drop'){ JOB.t+=dt; const k=JOB.drop;
-    if(mode!=='interior'&&slow&&Math.hypot(f.x-k.x,f.z-k.z)<(mode==='drive'?5:2.6)){ const late=JOB.t>JOB.limit, pay=late?Math.round(JOB.pay*.3/50)*50:JOB.pay; addCash(pay); JOBEV('delivery');
+    if(mode!=='interior'&&slow&&Math.hypot(f.x-k.x,f.z-k.z)<(mode==='drive'?5:2.6)){ const late=JOB.t>JOB.limit, pay=Math.round((late?JOB.pay*.3:JOB.pay)*jobMul('dispatch')/50)*50; addCash(pay); JOBEV('delivery');
       endJob(late?`Late! The customer vex. Na only ${naira(pay)} dem pay you.`:`Delivered! ${JOB.who} paid you ${naira(pay)}. "Correct person!"`,3.4); return; } }
   const left=JOB.state==='drop'?JOB.limit-JOB.t:null, txt=JOB.state==='pick'?`Pick up: ${JOB.pick.name}`:`Deliver to ${JOB.drop.name} · ${left>0?fmtClock(left):'late!'}`;
   if(txt!==JOB.shownT){ JOB.shownT=txt; const e=$('#job'); e.textContent=txt; e.hidden=mode==='interior'; e.classList.toggle('late',left!==null&&left<=15); } }
@@ -8707,6 +8736,7 @@ function graLoaded(k,S){ const J=S.json||{};
    house, the flat for sale, the public toilet and its line, the toilet bar */
 const owns=k=>k==='rags'||LIFE.own.includes(k);
 function lifeSave(now=false){ LIFE.t=Date.now();
+  if(started&&(mode==='walk'||mode==='drive')&&!FIGHT.dead&&!(JAIL.left>0)){ const f=mode==='drive'&&drive.v?drive.v:player; if((f.y||0)<1.5&&!swimZone(f.x,f.z)) LIFE.pos={x:Math.round(f.x*10)/10,z:Math.round(f.z*10)/10,r:Math.round((player.yaw||0)*100)/100,t:LIFE.t,st:starCount(),car:mode==='drive'&&drive.v===myCar?1:0}; }
   try{ localStorage.setItem(LIFE.u?'naija-life-u':'naija-life',JSON.stringify(LIFE)); }catch(e){}
   if(LIFE.u&&ON&&ON.signedIn&&(now||LIFE.t-(LIFE_SYNC.sent||0)>60000)){ LIFE_SYNC.sent=LIFE.t; ON.send({t:'life',d:LIFE}); } }
 const LIFE_SYNC={sent:0,saveT:20,warn75:false,warnT:0,ensureT:0,shown:-1,eatT:0,slT:0};
@@ -8715,7 +8745,7 @@ if(LIFE_NEW) lifeSave();
 function lifeIn(srv,uid){ let L=lifeClean(srv); const loc=lifeRead('naija-life-u'); if(loc&&loc.u===uid&&loc.t>((L&&L.t)||0)) L=loc;
   if(!L) L=freshLife(); L.u=uid; LIFE=L; lifeApplied(); lifeSave(true); }
 function lifeOut(){ LIFE=lifeRead('naija-life')||freshLife(); delete LIFE.u; lifeApplied(); }
-function lifeApplied(){ RANK.last=myRank(); RANK.shownR=-1; rankHUD(); lifePlaces(); LIFE_SYNC.ensureT=0; if(!started){ const h=homeSpot(); Object.assign(player,{x:h.x,z:h.z,y:groundY(h.x,h.z),yaw:h.ry,speed:0}); camState.yaw=clearYaw(player.x,player.y,player.z,h.ry); } }
+function lifeApplied(){ RANK.last=myRank(); RANK.shownR=-1; rankHUD(); lifePlaces(); LIFE_SYNC.ensureT=0; if(!started){ const h=resumeSpot()||homeSpot(); Object.assign(player,{x:h.x,z:h.z,y:groundY(h.x,h.z),yaw:h.ry,speed:0}); camState.yaw=clearYaw(player.x,player.y,player.z,h.ry); } }
 // how long the rent still runs, in game days and hours
 // the landlord: when the rent you paid runs out he gives you notice (two game days of play); pay before it ends or he throws
 // your load out and you sleep under the bridge. (Rent and notice only run while you play.)
@@ -8964,7 +8994,8 @@ function toiletTick(dt){ if(!TL.ok) return; const C=LIFEC, near=Math.hypot(playe
 
 // ---- every frame: the rent runs, the toilet bar fills, the clothes you have on are yours, the toilet
 function lifeTick(dt){ if(!started) return; toiletTick(dt);
-  if(!LIFE_SYNC.intro&&(LIFE_SYNC.introT=(LIFE_SYNC.introT||0)+dt)>6){ LIFE_SYNC.intro=1; if(homeNow()==='tent'&&!LIFE.rented) toast(`New life: you dey sleep for tent under the bridge, with torn clothes and ${naira(CASH.n)}. Hustle: buy clothes, rent a room, then buy back your flat.${FARM_BACK?' Your farm don go back to the farm officer: collect am again.':''}`,9); else if(FARM_BACK) toast('Start over: your farm don go back to the farm officer. Go collect am again and start small.',7); }
+  if(!LIFE_SYNC.intro&&LIFE.seen&&!FARM_BACK){ if((LIFE_SYNC.introT=(LIFE_SYNC.introT||0)+dt)>9){ LIFE_SYNC.intro=1; welcomeBack(); } }   // (after the street cred's welcome)
+  else if(!LIFE_SYNC.intro&&(LIFE_SYNC.introT=(LIFE_SYNC.introT||0)+dt)>6){ LIFE_SYNC.intro=1; LIFE.seen=1; lifeSave(); if(homeNow()==='tent'&&!LIFE.rented) toast(`New life: you dey sleep for tent under the bridge, with torn clothes and ${naira(CASH.n)}. Hustle: buy clothes, rent a room, then buy back your flat.${FARM_BACK?' Your farm don go back to the farm officer: collect am again.':''}`,9); else if(FARM_BACK) toast('Start over: your farm don go back to the farm officer. Go collect am again and start small.',7); }
   rentTick(dt);
   if(TL.inside!=='me'&&!(HL.act&&HL.act.kind==='bath')){ LIFE.ease=Math.min(1,LIFE.ease+dt/EASE_S); }
   careTick(dt);
@@ -9314,10 +9345,38 @@ const JOBS=[
     steps:[{t:'Save ₦60,000 (hustle first: okada, dispatch, pure water…)',ok:()=>CASH.n>=60000||ownBiz()},{t:'Buy a buka, barbing salon or POS stand (play online)',ok:ownBiz},
       {t:'Run your business for 30 minutes',ok:()=>HUS.biz>=1800}]}];
 const HUS={duty:0,biz:0,t:0,shown:'',first:false,open:false};
+/* ---- rising in your hustle: the work itself gives you points (a passenger dropped, a delivery, a sachet sold, a harvest,
+   a ticket, an arrest); points make your rank in the job. Every rank pays more, and from the fourth you are an oga: your
+   boys bring you settlement every game day, and people see the crown over your name. The police use the force's own ranks
+   (arrests). The top-ranked player of a hustle near you is the oga of the area (MY HUSTLE shows who). */
+const JOB_PTS=[0,15,60,160,400];
+const JOB_RANK={okada:['New okada boy','Okada rider','Senior rider','Okada oga','Okada fleet oga'],dispatch:['Errand boy','Dispatch rider','Express rider','Dispatch oga','Logistics boss'],
+  water:['Pure water seller','Hawker','Water distributor','Water oga','Pure water factory'],farmer:['Small farmer','Farmer','Big farmer','Farm oga','Agric boss'],
+  agbero:['Agbero','Ticket collector','Loader boss','Union secretary','Union elder'],police:['Constable','Corporal','Sergeant','Inspector','DPO'],boss:['Petty trader','Business owner','Big oga','Chairman','Odogwu']};
+const JOB_HOW={okada:'passengers you drop',dispatch:'deliveries',water:'sachets sold',farmer:'harvests and sales',agbero:'tickets collected',police:'arrests',boss:'time your business runs'};
+const JOB_EVP={fare:['okada',1],delivery:['dispatch',2],sachet:['water',.2],farm_harvest:['farmer',1],farm_sell:['farmer',2],ticket:['agbero',1]};
+const JOB_PAY=[1,1.05,1.1,1.2,1.3], OGA_PAY=[0,0,0,3000,8000];
+const jobPts=id=>(LIFE.jp&&LIFE.jp[id])||0;
+function jobRank(id=LIFE.job){ if(id==='police'){ const r=policeRank(); return r>=0?r:0; } const p=jobPts(id); let r=0; while(r<JOB_PTS.length-1&&p>=JOB_PTS[r+1]) r++; return r; }
+function policeRank(){ try{ const M=POLICE&&POLICE.debug().me; if(!M||!M.cop) return -1; const i=['Constable','Corporal','Sergeant','Inspector','ASP','CSP'].indexOf(M.rank); return Math.min(4,Math.max(0,i)); }catch(e){ return -1; } }
+function jobTitle(id=LIFE.job,r=jobRank(id)){ if(id==='police'){ try{ const M=POLICE&&POLICE.debug().me; if(M&&M.cop&&M.rank) return M.rank; }catch(e){} } return (JOB_RANK[id]||[])[r]||''; }
+const jobMul=id=>LIFE.job===id?JOB_PAY[jobRank(id)]:1;
+function jobPoint(id,n){ if(!id||!JOB_RANK[id]||!(n>0)||LIFE.job!==id) return; const r0=jobRank(id); LIFE.jp=LIFE.jp||{}; LIFE.jp[id]=Math.min(1e6,Math.round(((LIFE.jp[id]||0)+n)*10)/10); const r1=jobRank(id);
+  if(r1>r0){ credAdd('promo',100*r1,true); lifeSave(true); const J=jobOf(id);
+    toast(`🎉 PROMOTION! You be ${jobTitle(id,r1)} now. Your pay don go up (+${Math.round((JOB_PAY[r1]-1)*100)}%).${r1>=3?' You be oga now: your boys go bring you settlement every day.':''}`,7);
+    if(PH) PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J?J.e:'💼',x:`Promotion: ${jobTitle(id,r0)} → ${jobTitle(id,r1)}. Pay +${Math.round((JOB_PAY[r1]-1)*100)}%.${r1>=3?` Settlement ${naira(OGA_PAY[r1])} every game day.`:''}`}); } }
+// the oga's settlement: once every game day while you play
+function ogaTick(){ const r=jobRank(); if(!LIFE.job||r<3||!OGA_PAY[r]) return; const day=Math.floor(CLOCK.now()/(CLOCK.DAY_MINUTES*60000)); if(LIFE.ogd===day) return;
+  LIFE.ogd=day; addCash(OGA_PAY[r]); cashHUD(); lifeSave(true); toast(`👑 Your boys bring settlement: ${naira(OGA_PAY[r])}. Oga at the top!`,4.5); }
+// who is the oga around here: the highest rank of your hustle among the players near you (and you)
+function ogaHere(){ if(!LIFE.job) return null; let best={n:'You',r:jobRank(),me:true};
+  try{ for(const q of (ON&&ON.nearby?ON.nearby():[])){ const [j,r]=(q.jb||'').split(':'); if(j!==LIFE.job) continue; const rr=+r||0; if(rr>best.r) best={n:q.n,r:rr,me:false}; } }catch(e){}
+  return best; }
+const jobLabel=jb=>{ const [j,r]=(jb||'').split(':'), J=jobOf(j), rr=+r||0; if(!J||rr<3) return ''; return `👑 ${(JOB_RANK[j]||[])[rr]||''}`; };   // over an oga's name
 const jobOf=id=>JOBS.find(j=>j.id===id)||null;
 const myJob=()=>jobOf(LIFE.job);
 const stepOf=()=>{ const J=myJob(); return J&&LIFE.tk<J.steps.length?J.steps[LIFE.tk]:null; };
-function JOBEV(k,n=1){ const S=stepOf(); if(!S||S.ev!==k) return; LIFE.tkn=Math.min(1e5,(LIFE.tkn|0)+(n|0||1)); hustleCheck(); }
+function JOBEV(k,n=1){ const P=JOB_EVP[k]; if(P) jobPoint(P[0],P[1]*(n|0||1)); const S=stepOf(); if(!S||S.ev!==k) return; LIFE.tkn=Math.min(1e5,(LIFE.tkn|0)+(n|0||1)); hustleCheck(); }
 function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const done=S.ok?S.ok():(LIFE.tkn|0)>=S.n; if(!done) return;
   LIFE.tk++; LIFE.tkn=0; lifeSave(true); const N=stepOf(); if(N) credAdd('task',40,false); else credAdd('jobdone',150,true);
   if(N){ toast(`✅ Task done! Next: ${N.t}`,4.5); hustleGo(N,false); }
@@ -9329,8 +9388,8 @@ function hustleGo(S,say=true){ const g=S&&S.go&&S.go(); if(g&&mode!=='interior')
 function hustleHUD(force=false){ const e=$('#task'); if(!e) return; const J=myJob(), S=stepOf();
   const t=!J?'Pick your hustle: tap here':S?`${S.t}${S.n?` (${Math.min(LIFE.tkn|0,S.n)}/${S.n})`:''}`:''; if(!force&&t===HUS.shown) return; HUS.shown=t;
   e.hidden=!t||!started; $('#taskE').textContent=J?J.e:'💼'; $('#taskT').textContent=t; }
-function hustleTick(dt){ if(!started||!LIFE) return; if(POLICE&&POLICE.duty&&POLICE.duty()) HUS.duty+=dt; if(ownBiz()) HUS.biz+=dt;
-  if((HUS.t-=dt)>0) return; HUS.t=.5; hustleCheck(); hustleHUD(); }
+function hustleTick(dt){ if(!started||!LIFE) return; if(POLICE&&POLICE.duty&&POLICE.duty()) HUS.duty+=dt; if(ownBiz()){ HUS.biz+=dt; HUS.bp=(HUS.bp||0)+dt; if(HUS.bp>=60){ HUS.bp=0; jobPoint('boss',1); } }
+  if((HUS.t-=dt)>0) return; HUS.t=.5; hustleCheck(); hustleHUD(); ogaTick(); }
 // ---- choosing: the cards, then the story
 function hustleOpen(first=false){ const box=$('#hus'), L=$('#husList'); HUS.open=true; HUS.first=first; L.textContent=''; NOMOVE=true; if(document.pointerLockElement) document.exitPointerLock();
   $('#husSub').textContent=first||!LIFE.job?'Everybody starts from zero. Street jobs pay from today; the others need money or friends first. You can change later in MY HUSTLE on your phone.':'Change your hustle. Your tasks start again.';
@@ -9362,8 +9421,67 @@ function startFresh(J){ if(isF()&&ROOMLET&&!LIFE.flat){ LIFE.home='room'; LIFE.r
 function hustleApp(){ const J=myJob(), rows=[];
   if(!J) return {title:'My Hustle',sections:[{rows:[{name:'You never pick your hustle',sub:'Okada, dispatch, pure water, farm, park union, police or business',btn:'PICK',act:()=>{ closePhone(); hustleOpen(false); }}]}]};
   J.steps.forEach((S,i)=>rows.push({name:`${i<LIFE.tk?'✅':i===LIFE.tk?'👉':'⬜'} ${S.t}`,sub:i===LIFE.tk&&S.n?`${Math.min(LIFE.tkn|0,S.n)} of ${S.n}`:i<LIFE.tk?'Done':i===LIFE.tk?'Now':'Later',warn:i===LIFE.tk,btn:i===LIFE.tk&&S.go?'SHOW WAY':null,act:()=>{ hustleGo(S); closePhone(); }}));
-  return {title:'My Hustle',sections:[{h:`${J.e} ${J.n}`,rows:[{name:J.d,sub:LIFE.tk>=J.steps.length?'All tasks done. You don settle!':`Task ${LIFE.tk+1} of ${J.steps.length}`}]},{h:'Tasks',rows},
+  const r=jobRank(J.id), nx=J.id!=='police'&&r<JOB_PTS.length-1?JOB_PTS[r+1]:null, og=ogaHere();
+  const rank=[{name:`${r>=3?'👑':'⭐'} ${jobTitle(J.id)}`,sub:J.id==='police'?'Police ranks go up with arrests (the force keeps the book)':`Pay +${Math.round((JOB_PAY[r]-1)*100)}%${OGA_PAY[r]?` · settlement ${naira(OGA_PAY[r])} every day`:''}`},
+    ...(nx!=null?[{name:`Next: ${jobTitle(J.id,r+1)}`,sub:`${Math.floor(jobPts(J.id))} of ${nx} points · from ${JOB_HOW[J.id]}${r+1>=3?' · then you are an oga':''}`}]:[]),
+    ...(og?[{name:og.me?(r>=3?'👑 You be the oga for this area':'No oga around: rise and become one'):`👑 Oga for this area: ${og.n}`,sub:og.me?'Nobody of your hustle near you has a higher rank':`${jobTitle(J.id,og.r)} · respect the oga, or out-hustle am`}]:[])];
+  return {title:'My Hustle',sections:[{h:`${J.e} ${J.n}`,rows:[{name:J.d,sub:LIFE.tk>=J.steps.length?'All tasks done. You don settle!':`Task ${LIFE.tk+1} of ${J.steps.length}`}]},{h:'Your rank in this hustle',rows:rank},{h:'Tasks',rows},
     {rows:[{name:'Change your hustle',sub:'Your tasks start again',btn:'CHANGE',act:()=>{ closePhone(); hustleOpen(false); }}]}]}; }
+// coming back: where you are and what to do now
+function welcomeBack(){ const S=stepOf(), J=myJob(), back=RESUME&&Math.hypot(player.x-RESUME.x,player.z-RESUME.z)<40;
+  const where=back?`You dey ${locationName()}, where you stop.`:LEFT_WANTED?'Police been dey find you when you comot, so you sleep for house (and dem know your face better now).':`You wake up for ${homeNow()==='tent'?'your tent under the '+(LIFEC?LIFEC.fo.name:'bridge'):homeNow()==='room'?'your room':'your house'}.`;
+  toast(`Welcome back! ${where} ${J?(S?`${J.e} Next: ${S.t}. Follow the yellow arrow.`:`${J.e} ${jobTitle(J.id)}: keep the money coming.`):'Pick your hustle: tap the line at the top.'}`,7); }
+
+/* ================= the yellow arrow: where to go now =================
+   A new player always sees where the next thing is: a yellow arrow standing over the place, and a marker on the screen
+   (at the edge when the place is out of view) with how far it is. It follows your body when it is urgent (toilet, food,
+   sleep), then the route on your map, then your hustle's task (the waving passenger, the nearest bus stop, someone to sell
+   pure water to, the kiosk, the motor park…). The farm shows its own arrows. Settings can turn it off. */
+const WAY={on:true,tg:null,t:0,mk:null,el:null,ar:null,lb:null,key:''};
+try{ WAY.on=localStorage.getItem('naija-arrow')!=='off'; }catch(e){}
+const nearestOf=(L,x,z)=>{ let b=null,bd=1e18; for(const q of L){ if(!q) continue; const d=(q.x-x)**2+(q.z-z)**2; if(d<bd){ bd=d; b=q; } } return b; };
+function foodSpots(){ const L=[]; try{ if(BIZ&&BIZ.sites) for(const b of Object.values(BIZ.sites())) if(b&&b.kind==='buka') L.push({x:b.x,z:b.z,t:'Buka · chop here'}); }catch(e){}
+  if(homeNow()!=='tent'){ const h=homeSpot(); L.push({x:h.x,z:h.z,t:'Your house · cook'}); } return L; }
+function toiletSpots(){ const L=[]; for(const C of CAMPS) if(C.door) L.push({x:C.door.x,z:C.door.z,t:'Public toilet · ₦50'}); if(homeNow()!=='tent'){ const h=homeSpot(); L.push({x:h.x,z:h.z,t:'Your toilet'}); } return L; }
+const HAWK_OK=new Set(['walk','idle','spot','react']);
+function wayTarget(){ if(!started||busy||mode==='interior'||mode==='enter'||JAIL.left>0||FIGHT.dead) return null;
+  const f=mode==='drive'&&drive.v?drive.v:player, x=f.x, z=f.z;
+  if(FARM&&(FARM.inYard()||FARM.nearSettlement())) return null;   // the farm has its own arrows
+  if(LIFE.ease>=.9){ const q=nearestOf(toiletSpots(),x,z); if(q) return {...q,y:3}; }
+  if(LIFE.eat>=.9){ const q=nearestOf(foodSpots(),x,z); if(q) return {...q,y:3}; }
+  if(LIFE.sleep>=.95){ const h=homeSpot(); return {x:h.x,z:h.z,y:3,t:homeNow()==='tent'?'Your tent · sleep':'Home · sleep'}; }
+  if(mapView.dest){ const d=mapView.dest; return {x:d.x,z:d.z,y:3.2,t:(d.place&&d.place.name)||'Where you are going'}; }
+  const S=stepOf(); if(!S) return null;
+  const g=S.go&&S.go(); if(g) return {x:g.x,z:g.z,y:3,t:g.name||S.t};
+  if(S.ev==='fare'){ if(mode==='drive'&&drive.v){ for(const p of peds) if(p.fareHail===drive.v&&p.state==='react') return {x:p.x,z:p.z,y:2.6,t:'Passenger waving · stop by am'}; }
+    const st=nearestOf(SPOTS.filter(sp=>sp.type==='stop'),x,z); if(st) return {x:st.x,z:st.z,y:3,t:'Bus stop · people wait here'}; }
+  if(S.ev==='sachet'&&LIFE.hk>0&&mode==='walk'){ let b=null, bd=35; for(const p of peds){ if(!HAWK_OK.has(p.state)||p.cop||p.carried||p.crook||HAWK.sold.has(p)) continue; const d=Math.hypot(p.x-x,p.z-z); if(d<bd){ bd=d; b=p; } }
+    if(b) return {x:b.x,z:b.z,y:2.5,t:'Sell pure water to this person',ped:b}; }
+  if(S.ev==='sachet'&&!(LIFE.hk>0)){ const k=KIOSK_NEAR(x,z); if(k){ const fr=kioskFront(k); return {x:fr.x,z:fr.z,y:3,t:'Kiosk · buy another bag'}; } }
+  if(S.ev==='ticket'&&SITES.park) return {x:SITES.park.cx,z:SITES.park.cz,y:4,t:'Mushin Motor Park'};
+  return null; }
+function wayMake(){ const m=new THREE.MeshBasicMaterial({color:0xF2B705,fog:false}), g=new THREE.Group();
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(.42,.8,18),m); cone.rotation.x=Math.PI; cone.position.y=.4; const stem=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.7,12),m); stem.position.y=1.1; g.add(cone,stem);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(.8,1.05,32),new THREE.MeshBasicMaterial({color:0xF2B705,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false,fog:false})); ring.rotation.x=-Math.PI/2; ring.position.y=.06;
+  const root=new THREE.Group(); root.add(g,ring); root.userData={g,ring}; root.visible=false; scene.add(root); WAY.mk=root;
+  const el=document.createElement('div'); el.id='gMark'; el.hidden=true; const ar=document.createElement('i'); ar.textContent='▼'; const lb=document.createElement('span'); el.append(ar,lb); document.body.append(el); WAY.el=el; WAY.ar=ar; WAY.lb=lb; }
+const _gv=new THREE.Vector3();
+function wayTick(dt){ if(!WAY.mk) wayMake(); const M=WAY.mk, el=WAY.el;
+  if((WAY.t-=dt)<=0){ WAY.t=.3; WAY.tg=WAY.on?wayTarget():null; }
+  const T=WAY.tg, f=mode==='drive'&&drive.v?drive.v:player, hide=!T||PHONE.open||MENU.open||WARD.open||BL.edit||mapView.isOpen||!$('#settings').hidden;
+  if(!T){ M.visible=false; el.hidden=true; return; }
+  const tx=T.ped?T.ped.x:T.x, tz=T.ped?T.ped.z:T.z, d=Math.hypot(tx-f.x,tz-f.z);
+  M.visible=d<90&&d>.8; if(M.visible){ M.position.set(tx,0,tz); const {g,ring}=M.userData; g.position.y=(d<12?Math.min(T.y||3,2.1):(T.y||3))+Math.abs(Math.sin(T0*3.4))*.35; g.rotation.y+=dt*2.2; const k=(T0*.9)%1; ring.scale.setScalar(.7+k*.8); ring.material.opacity=.85*(1-k); }
+  if(hide||d<6){ el.hidden=true; return; }
+  _gv.set(tx,(T.y||3)+.8,tz).project(camera); let x=_gv.x, y=_gv.y; const behind=_gv.z>1; if(behind){ x=-x; y=-y; }
+  const W=innerWidth, H=innerHeight, mx=1-110/W, my=1-90/H, out=behind||Math.abs(x)>mx||Math.abs(y)>my;
+  if(out){ const k=Math.max(Math.abs(x)/mx,Math.abs(y)/my,1e-3); x/=k; y/=k; }   // onto the edge of the screen, toward it
+  const sx=(x*.5+.5)*W, sy=(-y*.5+.5)*H; el.style.transform=`translate(${Math.round(sx)}px,${Math.round(sy)}px) translate(-50%,-100%)`;
+  const key=(out?Math.round(Math.atan2(-y,x)*12):'d')+'|'+Math.round(d/5)+'|'+T.t;
+  if(key!==WAY.key){ WAY.key=key; WAY.ar.style.transform=out?`rotate(${Math.atan2(-y,x)*180/Math.PI-90}deg)`:''; WAY.lb.textContent=`${T.t} · ${d>=1000?(d/1000).toFixed(1)+' km':Math.round(d)+' m'}`; el.classList.toggle('out',out); }
+  el.hidden=false; }
+function waySettings(){ document.querySelectorAll('#guideSeg button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.g==='on')===WAY.on))); try{ localStorage.setItem('naija-arrow',WAY.on?'on':'off'); }catch(e){} WAY.t=0; }
+document.querySelectorAll('#guideSeg button').forEach(b=>b.addEventListener('click',()=>{ WAY.on=b.dataset.g==='on'; waySettings(); })); waySettings();
 // ---- the pure water hawker: buy a bag (20 sachets) at any kiosk, sell to people on the street
 const HAWK={sold:new WeakSet(),t:0};
 const kioskAt=()=>{ if(mode!=='walk') return null; const k=KIOSK_NEAR(player.x,player.z); if(!k) return null; const lx=(player.x-k.x)*k.c+(player.z-k.z)*k.s, lz=-(player.x-k.x)*k.s+(player.z-k.z)*k.c;
@@ -9374,7 +9492,7 @@ function kioskBuy(){ if(LIFE.hk>=20){ toast('Your bag still full. Sell the ones 
 const HAWK_BAD=new Set(['off','down','dead','getup','takedown','arrest','fight','hurt','flee']);
 function hawkNear(){ if(mode!=='walk'||!(LIFE.hk>0)) return null; let best=null, bd=2.4; for(const p of peds){ if(HAWK_BAD.has(p.state)||p.cop||p.carried||p.robber||p.crook||HAWK.sold.has(p)) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
 function hawkSell(){ const p=hawkNear(); if(!p) return false; HAWK.sold.add(p);
-  if(MR()<.62){ LIFE.hk--; addCash(50); cashHUD(); JOBEV('sachet'); if(LIFE.hk%5===0) lifeSave(); toast(mpick(['"Give me one pure water." +₦50','"Abeg, one sachet. E cold?" +₦50','"Pure water! Oya give me." +₦50','"Two minutes, make I find change… here." +₦50'])+(LIFE.hk?` · ${LIFE.hk} left`:' · your bag don finish!'),2.4); }
+  if(MR()<.62){ LIFE.hk--; const pr=Math.round(50*jobMul('water')/5)*5; addCash(pr); cashHUD(); JOBEV('sachet'); if(LIFE.hk%5===0) lifeSave(); toast(mpick(['"Give me one pure water."','"Abeg, one sachet. E cold?"','"Pure water! Oya give me."','"Two minutes, make I find change… here."'])+` +${naira(pr)}`+(LIFE.hk?` · ${LIFE.hk} left`:' · your bag don finish!'),2.4); }
   else toast(mpick(['"I no need am, thank you."','"I don drink water now now."','"No change for my hand."','"Comot for road abeg."']),2.2);
   return true; }
 /* ================= main loop ================= */
@@ -9395,7 +9513,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started) wayTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -9467,7 +9585,10 @@ const FARM_MARKET=(()=>{ let best=null,bd=1e18; for(const m of MARKETS){ if(m.st
   if(!best) return null; const k=kerbPoint(best.cx,best.cz), dx=best.cx-k.x, dz=best.cz-k.z, L=Math.hypot(dx,dz)||1, x=k.x+dx/L*4.5, z=k.z+dz/L*4.5;
   return {x,z,ry:Math.atan2(k.x-x,k.z-z),name:best.m.name||'Mushin Market'}; })();
 const farmSpots=[];
-FARM=createFarm({ ev:(k,n)=>JOBEV(k,n), THREE, scene, zone:FARMZ, Q, CullSet, addOB, naira, dirtMat:MAT.dirt, clone:o=>SkeletonUtils.clone(o),
+// several yards in the settlement: each new farmer gets one (by this phone), so farmers are not all in one yard; a farm you already have stays put
+const FARM_YARDS=[{x:1350,z:-1550},{x:1335,z:-1450},{x:1385,z:-1360},{x:1575,z:-1400}];
+{ let S={}; try{ S=JSON.parse(localStorage.getItem('naija-farm'))||{}; }catch(e){} let i=S.slot; if(!(i>=0&&i<FARM_YARDS.length)){ i=S.got?0:RID%FARM_YARDS.length; S.slot=i; try{ localStorage.setItem('naija-farm',JSON.stringify(S)); }catch(e){} } FARMZ.yard=FARM_YARDS[i]; }
+FARM=createFarm({ ev:(k,n)=>JOBEV(k,n), jobMul:()=>jobMul('farmer'), THREE, scene, zone:FARMZ, Q, CullSet, addOB, naira, dirtMat:MAT.dirt, clone:o=>SkeletonUtils.clone(o),
   glb:farmGlb, skinned:name=>fetchBuf(murl(name)).then(b=>GLL.parseAsync(b,'')), registerTruck:farmTruckType,
   started:()=>started&&!busy, player:()=>mode==='drive'&&drive.v?{x:drive.v.x,z:drive.v.z}:{x:player.x,z:player.z}, playerName:()=>PROFILE&&PROFILE.name||'',
   teleport:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; },
@@ -9535,7 +9656,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   loadCast:id=>loadV2(isV2(id)&&v2Of(id)?id:'p_dayo'), moves:onlineMoves, clone:o=>SkeletonUtils.clone(o), setOutfit:(o,i)=>C2.setOutfit(o,i),
   makeCar:(type,color)=>{ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; try{ return makeCar(type,color,true); }catch(e){ return null; } },
   seats:t=>SEATS[t], ride:t=>HERO_RIDE[t], maxBodies:()=>Q===QUAL.low?6:Q===QUAL.medium?10:16,
-  getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(),
+  getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(), jobLabel,
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
   pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); },

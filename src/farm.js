@@ -57,7 +57,7 @@ export function createFarm(api) {
   const stored = () => Object.values(S.store).reduce((a, b) => a + b, 0);
   const day = () => api.day();
   const hash = (a, b) => { const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return n - Math.floor(n); };
-  const price = k => Math.round(GOODS[k].price * (.8 + .45 * hash(day(), Object.keys(GOODS).indexOf(k) + 1)) / 10) * 10;
+  const price = k => Math.round(GOODS[k].price * (.8 + .45 * hash(day(), Object.keys(GOODS).indexOf(k) + 1)) * (api.jobMul ? api.jobMul() : 1) / 10) * 10;   // (a bigger farmer gets better prices)
   const valueOf = load => Object.entries(load).reduce((a, [k, n]) => a + price(k) * n, 0);
   const fmtT = s => { s = Math.max(0, Math.ceil(s)); return s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`; };
   const list = load => Object.entries(load).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${GOODS[k].n.toLowerCase()}`).join(', ');
