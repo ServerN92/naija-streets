@@ -13,22 +13,22 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=ca72f3b1e6';
-import * as C2 from './char2.js?v=ca72f3b1e6';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=ca72f3b1e6';
-import { createPhone } from './phone.js?v=ca72f3b1e6';
-import { createGuide } from './guide.js?v=ca72f3b1e6';
+import * as CLOCK from './clock.js?v=e5b8998b48';
+import * as C2 from './char2.js?v=e5b8998b48';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=e5b8998b48';
+import { createPhone } from './phone.js?v=e5b8998b48';
+import { createGuide } from './guide.js?v=e5b8998b48';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=ca72f3b1e6';
-import { createFarm } from './farm.js?v=ca72f3b1e6';
-import { createBusiness } from './business.js?v=ca72f3b1e6';
-import { createOnline } from './online.js?v=ca72f3b1e6';
-import { createPolice } from './police.js?v=ca72f3b1e6';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=ca72f3b1e6';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=ca72f3b1e6';
+import { createFootball } from './football.js?v=e5b8998b48';
+import { createFarm } from './farm.js?v=e5b8998b48';
+import { createBusiness } from './business.js?v=e5b8998b48';
+import { createOnline } from './online.js?v=e5b8998b48';
+import { createPolice } from './police.js?v=e5b8998b48';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=e5b8998b48';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=e5b8998b48';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='ca72f3b1e6';
+const BUILD='e5b8998b48';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -1058,7 +1058,7 @@ function roadWide(x,z,R){ let best=null, bd=1e9; const seen=new Set();
 function openGround(o,rMin,rMax,hw,hd,step=25,far=16,keep=true){ if(!o) return null; let best=null, bs=1e18;
   const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school'||a.k==='farmland'||a.k==='npcfarm');   // the LUTH grounds are fine: real playing fields lie inside (not the farms)
   for(let gx=o.cx-rMax;gx<=o.cx+rMax;gx+=step) for(let gz=o.cz-rMax;gz<=o.cz+rMax;gz+=step){ const dd=Math.hypot(gx-o.cx,gz-o.cz); if(dd<rMin||dd>rMax) continue;
-    if(!onLand(gx,gz,Math.max(hw,hd)+6)||EST.in(gx,gz,Math.hypot(hw,hd))||inFarmZone(gx,gz,Math.hypot(hw,hd)+10)||NPC_FARMS.some(f=>Math.hypot(f.x-gx,f.z-gz)<Math.hypot(hw,hd)+70)) continue;   // not on the estates or the farms
+    if(!onLand(gx,gz,Math.max(hw,hd)+6)||EST.in(gx,gz,Math.hypot(hw,hd))||inFarmZone(gx,gz,Math.hypot(hw,hd)+10)||inBSite(gx,gz,Math.hypot(hw,hd))||NPC_FARMS.some(f=>Math.hypot(f.x-gx,f.z-gz)<Math.hypot(hw,hd)+70)) continue;   // not on the estates or the farms
     const [e,de]=roadWide(gx,gz,hd+far+30); if(!e) continue; const A0=nodes[e.a], t=clamp((gx-A0.x)*e.fx+(gz-A0.z)*e.fz,0,e.len), px=A0.x+e.fx*t, pz=A0.z+e.fz*t;
     let nx=-e.fz, nz=e.fx; if((px-gx)*nx+(pz-gz)*nz<0){ nx=-nx; nz=-nz; }   // the front faces the road
     const sep=(px-gx)*nx+(pz-gz)*nz-e.hw; if(sep<hd+2||sep>hd+far) continue;   // close to the road, not on it
@@ -1071,7 +1071,7 @@ function openGround(o,rMin,rMax,hw,hd,step=25,far=16,keep=true){ if(!o) return n
   if(best&&keep) keepOut({cx:best.cx,cz:best.cz,hw:best.hw+2,hd:best.hd+2,ang:-best.ry}); return best; }
 const PITCH_SITE=HOUSES?openGround(UNI_SITE,30,500,36.5,24.5):null;
 // the two big stadiums (Blender: stadium.blend, 142 x 126 m): Mushin Township Stadium (where the old one stood) and one by Diamond Court Estate
-const STADIUM_SITE=HOUSES?(openGround(UNI_SITE,100,900,72,63,20,40)||openGround(UNI_SITE,100,1600,72,63,25,90)):null;
+const STADIUM_SITE=HOUSES?(openGround({cx:38,cz:-1562},0,90,72,63,15,120)||(HOME&&openGround(HOME,200,1800,72,63,30,120))):null;   // (searched once: south Mushin has the room; the search is slow, so it starts there)
 const DIAMOND_E=EST.list.find(E=>/Diamond/.test(E.name)), DIAMOND_SITE=HOUSES&&DIAMOND_E?(openGround({cx:DIAMOND_E.cx,cz:DIAMOND_E.cz},150,900,72,63,25,60)||openGround({cx:DIAMOND_E.cx,cz:DIAMOND_E.cz},150,1800,72,63,30,120)):null;
 const BIG_SITES=[[STADIUM_SITE,'Mushin Township Stadium'],[DIAMOND_SITE,'Diamond Court Stadium']].filter(x=>x[0]);
 for(const [g] of BIG_SITES){ SCAT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2}); SPORT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2}); }
