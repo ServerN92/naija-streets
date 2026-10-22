@@ -40,6 +40,7 @@ export function lifeOk(d, now = Date.now()) {
     jp: jpOk(d.jp),                                       // points in each hustle: your rank in the job
     kf: num(d.kf, 0, 9),                                  // how well the police know your face (it fades day by day)
     kfd: num(d.kfd, 0, 99991231) | 0, ogd: num(d.ogd, 0, 99991231) | 0, seen: d.seen ? 1 : 0,
+    ffd: num(d.ffd, 0, 1e8) | 0, tips: num(d.tips, 0, 99) | 0,   // the day you last took free food (church/mosque), Mama's tips sent
   };
 }
 function posOk(p, now) {

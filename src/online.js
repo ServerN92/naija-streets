@@ -135,8 +135,8 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb); scene.add(R.tag); }
-    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
       if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
@@ -147,7 +147,7 @@ export function createOnline(api) {
     else if (L && now - L.t > .35) b.push({ ...L, t: now - SEND_MS / 1000 });                // standing still a while, then off again
     b.push(s); if (b.length > 10) b.splice(0, b.length - 10);
   }
-  function gone(id) { const R = RS.get(id); if (!R) return; RS.delete(id); dropBody(R); dropCar(R); for (const sp of [R.tag, R.bub, R.glow]) if (sp) { scene.remove(sp); sp.material.map.dispose(); sp.material.dispose(); } }
+  function gone(id) { const R = RS.get(id); if (!R) return; RS.delete(id); dropBody(R); dropCar(R); if (R.stk) { R.stk.remove(); R.stk = null; } for (const sp of [R.tag, R.bub, R.glow]) if (sp) { scene.remove(sp); sp.material.map.dispose(); sp.material.dispose(); } }
   function dropAll() { for (const id of [...RS.keys()]) gone(id); }
 
   async function makeBody(R) {
@@ -325,6 +325,8 @@ export function createOnline(api) {
       const tagOn = R.d < TAG_FAR, sc = clamp(R.d / 11, 1, 5);
       if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb); R.tag.visible = vis; scene.add(R.tag); }
       R.tag.visible = tagOn; if (tagOn) { R.tag.position.set(s.x, topY, s.z); R.tag.scale.set(R.tag.userData.w * sc, R.tag.userData.h * sc, 1); }
+      // they smell (their bath bar is full): the green haze, the stink and the flies, for everybody near to see
+      { const on = !!R.sm && R.d < 45 && R.root && R.root.visible && !s.v; if (on && !R.stk && api.stink) R.stk = api.stink(); if (R.stk) R.stk.update(s.x, s.y, s.z, dt, on); }
       // the medal glows: each rank its own colour and beat; the top three send out turning rays
       if (R.glowRk !== R.rk) { if (R.glow) { scene.remove(R.glow); R.glow.material.dispose(); } R.glow = glowSprite(R.rk | 0); R.glowRk = R.rk; if (R.glow) scene.add(R.glow); }
       if (R.glow) { const on = tagOn && R.tag.userData.medal; R.glow.visible = on;

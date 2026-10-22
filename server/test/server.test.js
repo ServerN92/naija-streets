@@ -290,3 +290,13 @@ test('the oga takes a part of the work money of his hustle near him, nothing fro
   o.send({ t: '$', d: 1000, s: 5, j: 'okada' }); assert.equal(o.got.some(m => m.t === 'oga'), false, 'the oga pays nobody');
   o.close(); b.close(); f.close();
 });
+
+test('a player who smells: everybody near sees it (sm in the player list), and it clears after a bath', async () => {
+  const [a] = await account('stinker'), [b] = await account('nose');
+  a.send({ t: 'p', x: 50, y: 0, z: 50, r: 0, a: 'i', s: 0, v: '', q: 0 }); b.send({ t: 'p', x: 55, y: 0, z: 50, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  a.send({ t: 'life', d: { dirt: 1, t: Date.now() } });
+  const w = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'stinker' && j.sm === 1), 5000); assert.ok(w);
+  await new Promise(r => setTimeout(r, 2100)); a.send({ t: 'life', d: { dirt: 0, t: Date.now() } });
+  const w2 = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'stinker' && j.sm === 0), 5000); assert.ok(w2);
+  a.close(); b.close();
+});
