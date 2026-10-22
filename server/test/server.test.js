@@ -103,8 +103,8 @@ test('two players near each other see each other move, far ones do not; chat nea
 });
 
 test('money: spending works, earning is capped by time, the server number is the real one', async () => {
-  const [c, me] = await account('Cash_Man'); assert.equal(me.cash, 1000, 'a new life starts with ₦1,000'); assert.equal(me.life, null);
-  c.send({ t: '$', d: -1000, s: 0 }); assert.equal((await c.next('$')).n, 0);
+  const [c, me] = await account('Cash_Man'); assert.equal(me.cash, 5000, 'a new life starts with ₦5,000'); assert.equal(me.life, null);
+  c.send({ t: '$', d: -5000, s: 0 }); assert.equal((await c.next('$')).n, 0);
   c.send({ t: '$', d: 5000, s: 1 }); assert.deepEqual(await c.next('$'), { t: '$', n: 5000, s: 1 });
   c.send({ t: '$', d: -7000, s: 2 }); assert.equal((await c.next('$')).n, 0, 'never below zero');
   c.send({ t: '$', d: 4000000, s: 3 }); const big = await c.next('$'); assert.ok(big.n <= 250100 && big.n >= 245000, 'held at the cap: ' + big.n);
