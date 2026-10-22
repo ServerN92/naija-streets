@@ -60,15 +60,15 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .lerr{color:#ffb4a6;font-size:15px}
 .lnote{font-size:13px;color:var(--muted);margin:0}
 /* the lobby: who you are (left), you on the danfo stand under the street light (middle), how you play (right) */
-.loading.lob{place-items:stretch;background:radial-gradient(38% 60% at 50% 8%,rgba(255,157,60,.22) 0%,transparent 70%),radial-gradient(60% 40% at 50% 100%,rgba(242,183,5,.07) 0%,transparent 70%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink)}
-.loading.lob .ld{width:min(1180px,100%);margin:0 auto;gap:8px;min-height:100%}
+.loading.lob{display:flex;flex-direction:column;background:radial-gradient(38% 60% at 50% 8%,rgba(255,157,60,.22) 0%,transparent 70%),radial-gradient(60% 40% at 50% 100%,rgba(242,183,5,.07) 0%,transparent 70%),radial-gradient(80% 60% at 0% 0%,#0d2a22 0%,transparent 55%),var(--ink)}
+.loading.lob .ld{width:min(1180px,100%);margin:0 auto;gap:8px;flex:1 0 auto}
 .loading.lob .ld h1{font-size:clamp(22px,4.2vh,34px);line-height:1}
 .loading.lob .ld h1 span{display:inline}.loading.lob .ld h1 .b{margin-left:.3em}.loading.lob .ld h1 .c{display:none}
 .loading.lob .ld>p,.loading.lob .lbar,.loading.lob .ltxt,.loading.lob .lnote{display:none}
-.lobby{flex:1;display:grid;grid-template-columns:minmax(220px,1fr) minmax(240px,1.15fr) minmax(230px,1fr);gap:clamp(10px,2.4vw,28px);align-items:center;min-height:0}
+.lobby{flex:1;display:grid;grid-template-columns:minmax(220px,1fr) minmax(240px,1.15fr) minmax(230px,1fr);gap:clamp(10px,2.4vw,28px);align-items:stretch;min-height:0}
 .lobby.back{grid-template-columns:1fr minmax(240px,1.15fr) 1fr}
 .lobby.back .lb-go{grid-column:3}.lobby.back .lb-stage{grid-column:2}
-.lb-pick{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lb-pick{display:flex;flex-direction:column;gap:12px;min-width:0;align-self:center}
 .pg{display:flex;padding:4px;gap:4px;background:rgba(255,255,255,.06);border-radius:14px;width:max-content}
 .pgb{font:700 17px/1 var(--fb);color:var(--muted);background:none;border:0;border-radius:10px;padding:11px 22px;min-height:44px;cursor:pointer}
 .pgb[aria-pressed="true"]{background:var(--cream);color:var(--ink)}
@@ -85,12 +85,12 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .pskb.own{position:relative}.pskb.own::after{content:'★';position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:rgba(255,255,255,.85)}
 .pskb[aria-pressed="true"]{border-color:var(--danfo);transform:scale(1.12)}
 .pnote{color:var(--muted);font-size:13px;margin:0;max-width:34ch}
-.lb-stage{margin:0;position:relative;height:100%;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+.lb-stage{margin:0;position:relative;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
 .lb-stage::before{content:'';position:absolute;left:50%;top:-6%;width:62%;height:96%;transform:translateX(-50%);background:linear-gradient(180deg,rgba(255,190,110,.20),rgba(255,190,110,0) 85%);clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);pointer-events:none}
 .lb-stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 .lb-stage canvas:active{cursor:grabbing}
-.lb-stage figcaption{position:relative;color:var(--muted);font-size:13px;font-weight:600;padding:6px 12px;border-radius:12px;background:rgba(14,16,20,.55);margin-bottom:2px;pointer-events:none}
-.lb-go{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lb-stage figcaption{position:relative;color:var(--cream);font-size:13px;font-weight:600;padding:6px 12px;border-radius:12px;background:rgba(14,16,20,.6);margin-top:6px;pointer-events:none}
+.lb-go{display:flex;flex-direction:column;gap:12px;min-width:0;align-self:center}
 .pname{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:14px;font-weight:600}
 .pname input{font:inherit;font-size:18px;color:var(--cream);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 14px;min-height:48px;width:100%;box-sizing:border-box}
 .pname input:focus{outline:2px solid var(--danfo);outline-offset:1px}
@@ -129,8 +129,8 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
   .loading.lob{padding-top:calc(10px + var(--st));padding-bottom:calc(10px + var(--sb))}
   .lb-pick{gap:8px}.lb-go{gap:8px}
   .pgb{min-height:38px;padding:8px 18px;font-size:15px}
-  .ppl{grid-template-columns:repeat(4,52px);gap:6px}
-  .pskb{width:26px;height:26px}.psb{min-height:32px}
+  .ppl{grid-template-columns:repeat(5,46px);gap:6px}
+  .pskb{width:24px;height:24px;border-width:2px}.pshape{gap:6px}.psb{min-height:32px}
   .pnote{display:none}
   .pname span{display:none}.pname input{min-height:42px;padding:8px 12px;font-size:16px}
   .go-live{padding:11px 14px 20px}.go-live b{font-size:22px}.go-live small{font-size:13px}
@@ -761,7 +761,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
         <figcaption id="stageCap">Pick man or woman to start</figcaption>
       </figure>
       <section class="lb-go">
-        <label class="pname" id="profNameF" hidden><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="e.g. Tunde or Ada"></label>
+        <label class="pname" id="profNameF" hidden><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name, e.g. Tunde"></label>
         <div class="pwho" id="pwho" hidden></div>
         <div class="onl" id="onlRow" hidden>
           <button type="button" class="go-live" id="onlBtn"><span class="gl-top"><i class="dot" aria-hidden="true"></i><b>Lagos Live</b></span><small id="onlSub">Play with real people</small><span class="stripes" aria-hidden="true"></span></button>

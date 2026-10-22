@@ -10653,9 +10653,9 @@ function stageInit(){ const cv=$('#stageCv'); if(!cv||STAGE.R) return;
     const sc=new THREE.Scene(), hemi=new THREE.HemisphereLight(0xc8d0ff,0x3a2a1e,1.15), key=new THREE.DirectionalLight(0xffd7a8,2.6), rim=new THREE.DirectionalLight(0x8fb2ff,1.8), fill=new THREE.DirectionalLight(0xffffff,.45);
     key.position.set(1.1,4,2.4); key.castShadow=true; key.shadow.mapSize.set(1024,1024); Object.assign(key.shadow.camera,{left:-1.2,right:1.2,top:2.3,bottom:-.4,near:.5,far:9}); key.shadow.bias=-.0005; key.shadow.normalBias=.02;
     rim.position.set(-1.6,2.2,-2.4); fill.position.set(-2,1,3); sc.add(hemi,key,rim,fill);
-    const sh=document.createElement('canvas'); sh.width=sh.height=128; const g=sh.getContext('2d'), gr=g.createRadialGradient(64,64,8,64,64,64); gr.addColorStop(0,'rgba(0,0,0,.62)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128);
-    const blob=new THREE.Mesh(new THREE.PlaneGeometry(2.5,2.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sh),transparent:true,depthWrite:false})); blob.rotation.x=-Math.PI/2; blob.position.y=-.004; sc.add(blob);
-    STAGE.R=R; STAGE.sc=sc; STAGE.cam=new THREE.PerspectiveCamera(24,1,.1,30);
+    const sh=document.createElement('canvas'); sh.width=sh.height=128; const g=sh.getContext('2d'), gr=g.createRadialGradient(64,64,6,64,64,62); gr.addColorStop(0,'rgba(0,0,0,.6)'); gr.addColorStop(.6,'rgba(0,0,0,.22)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128);
+    const blob=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sh),transparent:true,depthWrite:false})); blob.rotation.x=-Math.PI/2; blob.position.y=-.004; sc.add(blob);
+    STAGE.R=R; STAGE.sc=sc; STAGE.cam=new THREE.PerspectiveCamera(24,1,.1,30); STAGE.cam.layers.enableAll();   // (the people live on their own layers)
     GLL.load('assets/models/stage.glb',gl=>{ if(!STAGE.sc) return; const p=gl.scene; p.traverse(o=>{ if(o.isMesh){ o.receiveShadow=true; o.castShadow=true; } }); STAGE.ped=p; STAGE.sc.add(p); },undefined,()=>{});
     // turn it with a finger or the mouse
     cv.addEventListener('pointerdown',e=>{ STAGE.drag={x:e.clientX,ry:STAGE.ry}; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
@@ -10675,8 +10675,8 @@ function stageClear(){ if(STAGE.body&&STAGE.sc) STAGE.sc.remove(STAGE.body); STA
 function stageTick(dt){ const S=STAGE; if(!S.R) return; const cv=S.R.domElement, w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
   const pr=S.R.getPixelRatio(); if(cv.width!==Math.round(w*pr)||cv.height!==Math.round(h*pr)) S.R.setSize(w,h,false);
   // the stand (1.4 m across) and a person (up to 2 m) always in the picture
-  const asp=w/h, half=Math.tan(THREE.MathUtils.degToRad(S.cam.fov/2)), d=Math.max(1.14/half,.86/(half*asp));
-  S.cam.aspect=asp; S.cam.position.set(0,1.3,d); S.cam.lookAt(0,1.0,0); S.cam.updateProjectionMatrix();
+  const asp=w/h, half=Math.tan(THREE.MathUtils.degToRad(S.cam.fov/2)), d=Math.max(1.07/half,.84/(half*asp));
+  S.cam.aspect=asp; S.cam.position.set(0,1.3,d); S.cam.lookAt(0,1.02,0); S.cam.updateProjectionMatrix();
   if(!S.drag){ if(S.idle>0) S.idle-=dt; else S.ry+=dt*.3; }
   if(S.body) S.body.rotation.y=S.ry; if(S.ped) S.ped.rotation.y=S.ry;
   if(S.mx) S.mx.update(dt); S.R.render(S.sc,S.cam); }
