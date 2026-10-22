@@ -6,6 +6,7 @@ import { createPark } from './park.js';
 import { createPvp } from './pvp.js';
 import { createLaw } from './law.js';
 import { createBank } from './bank.js';
+import { createCbn } from './cbn.js';
 import { lifeOk, credCap, rankOf, jobBadge } from './life.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
@@ -65,6 +66,9 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   const law = createLaw({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, spend, badge } });
   // the banks: an account number for everyone, transfers between players
   const bank = createBank({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), spend, credit, clean: cleanChat } });
+  // the Central Bank: applications, the Governor, shifts and ranks
+  const cbn = createCbn({ db, now, log, ctx: { online, send: (C, o) => send(C, o), err: (C, w, m) => err(C, w, m), ok: (C, w, m) => ok(C, w, m), give, clean: cleanChat,
+    stars: uid => { const C = online.get(uid); return C && C.user ? law.stars(C) : 0; } } });
   const pvp = createPvp({ now, log, ctx: { online, send: (C, o) => send(C, o), spend, give, onKo: (A, D) => { park.pvpKo(A, D); law.ko(A, D); }, onHit: (A, D) => law.hit(A, D), noRob: A => law.noRob(A) } });
 
   const send = (C, o) => { if (C.ws.open) C.ws.send(JSON.stringify(o)); };
@@ -100,7 +104,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     const life = db.lifeGet(u.id);
     if (life) { C.p.rk = rankOf(life.cr); C.p.jb = jobBadge(life); C.p.sm = life.dirt >= 1 ? 1 : 0; }
     send(C, { t: 'me', tok, id: C.p.id, uid: u.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, life, n: online.size });
-    biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C); bank.hello(C);
+    biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C); bank.hello(C); cbn.hello(C);
     log('in', u.name, online.size);
   }
   function leaveWorld(C) {
@@ -284,8 +288,9 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function pk(C, m) { C.pkLim = C.pkLim || new Bucket(10, 2); if (!C.pkLim.take()) return; if (typeof m.a === 'string') park.handle(C, m); }
   function hit(C, m) { C.hitLim = C.hitLim || new Bucket(8, 4); if (!C.hitLim.take()) return; pvp.hit(C, m); }
   function lawMsg(C, m) { C.lawLim = C.lawLim || new Bucket(10, 2); if (!C.lawLim.take()) return; if (typeof m.a === 'string') law.handle(C, m); }
+  function cb(C, m) { C.cbLim = C.cbLim || new Bucket(8, 1); if (!C.cbLim.take()) return; if (typeof m.a === 'string') cbn.handle(C, m); }
   function bk(C, m) { C.bkLim = C.bkLim || new Bucket(10, 2); if (!C.bkLim.take()) return; if (typeof m.a === 'string') bank.handle(C, m); }
-  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, del: deleteAccount, out: logout, bz, mk, pk, hit, law: lawMsg, bk };
+  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, del: deleteAccount, out: logout, bz, mk, pk, hit, law: lawMsg, bk, cbn: cb };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw', 'del']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };
@@ -349,10 +354,10 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       let bt = now();
       timers = [setInterval(tick, TICK), setInterval(slow, 5000), setInterval(pings, 25000), setInterval(prune, 10 * 60e3),
         setInterval(() => { const t = now(); biz.tick((t - bt) / 1000); bt = t; }, 5000), setInterval(() => biz.flush(), 15000), setInterval(() => biz.pushAll(), 2000),
-        setInterval(() => park.tick(), 1000), setInterval(() => park.flush(), 15000), setInterval(() => law.tick(), 2000)];
+        setInterval(() => park.tick(), 1000), setInterval(() => park.flush(), 15000), setInterval(() => law.tick(), 2000), setInterval(() => cbn.tick(), 60e3)];
     },
     stop() { timers.forEach(clearInterval); timers = []; biz.flush(); park.flush(); for (const C of conns) { flushCash(C); C.ws.close(1012, 'server restarting'); } },
-    biz, park, pvp, law,
+    biz, park, pvp, law, cbn,
     tick, slow,
     get online() { return online.size; },
     isOnline: uid => online.has(uid),
