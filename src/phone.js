@@ -731,6 +731,7 @@ export function createPhone(api) {
     if (kind === 'cash') { const t = { d: d.d, t: Date.now(), w: d.why || api.where() }; S.tx.unshift(t); if (S.tx.length > 40) S.tx.length = 40; save(); cashQ += d.d; cashW = t.w; clearTimeout(cashT);
       cashT = setTimeout(() => { if (Math.abs(cashQ) >= 100) bkAlert(null, `${cashQ > 0 ? 'Credit' : 'Debit'} Alert! Acct: ••${BK.me ? BK.me.acct.slice(-4) : '4521'}\nAmt: ${api.naira(Math.abs(cashQ))}\nDesc: ${cashW}\nBal: ${api.naira(api.cash())}`); cashQ = 0; }, 2500); if (R.app === 'wallet' && (BK.view === 'home' || !BK.me)) openApp('wallet'); refreshHome(); return; }
     if (kind === 'bank') { bankMsg(d); return; }
+    if (kind === 'loveup') { if (R.open && R.app === 'love') openApp('love'); return; }   // the Love app changed from outside (a player answered)
     if (kind === 'cbn') { if (R.open && R.app === 'cbn') openApp('cbn'); return; }
     if (kind === 'sms') { sms(d.id, d.n, d.c, d.e, d.x); return; }
     if (kind === 'ride') { sms('oyaride', 'Oya Ride', '#f2b705', '🚕', `Your ${d.bike ? 'okada' : 'car'} to ${d.name} don book. Driver: ${d.who}. Fare: ${api.naira(d.fare)}, pay cash. Safe journey!`); return; }

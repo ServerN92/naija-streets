@@ -63,14 +63,15 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
-      case 'ok': if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
+      case 'err': if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'ok': if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzlost': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'bk': case 'bkname': case 'bksent': case 'bktx': api.bank && api.bank(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
       case 'cbnme': case 'cbnshift': case 'cbnpaid': api.cbn && api.cbn(m); break;
+      case 'romme': case 'romask': case 'romok': case 'romno': case 'romend': case 'kissfx': api.rom && api.rom(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'oga': api.toast(`Your oga ${m.n} collect ₦${(+m.c || 0).toLocaleString('en-NG')} settlement from your work. Rise, and you go be oga too.`, 3.6); if (api.ogaNews) api.ogaNews(m, false); break;
       case 'ogaget': api.toast(`👑 ${m.n} bring you ₦${(+m.c || 0).toLocaleString('en-NG')} settlement.`, 3.2); if (api.ogaNews) api.ogaNews(m, true); break;
@@ -136,9 +137,9 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb); scene.add(R.tag); }
-    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
-      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, pt: j.pt || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb, R.pt); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || '') || R.pt !== (j.pt || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.pt = j.pt || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
   function heardPos(R, p, now) {
@@ -247,15 +248,16 @@ export function createOnline(api) {
     sp.renderOrder = 998; sp.visible = false; sp.userData.P = P; sp.userData.ph = Math.random() * 6.3; return sp;
   }
   // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman), their stars when wanted, then their rank medal
-  function tagSprite(name, stars = 0, badge = '', rk = 0, jb = '') {   // one small pill: dot, name, (oga title), stars, and the rank medal inside it
+  function tagSprite(name, stars = 0, badge = '', rk = 0, jb = '', pt = '') {   // pt: they have a partner (a pink heart after the name)   // one small pill: dot, name, (oga title), stars, and the rank medal inside it
     const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '', H = 60, med = MEDAL[rk | 0], hasM = !!(med && med.complete && med.naturalWidth), MS = hasM ? 50 : 0;
     const jt = jb && api.jobLabel ? api.jobLabel(jb) : '';   // an oga's title (👑 Okada oga) after the name
     g.font = `700 ${fs}px ${FONT}`; const tw0 = Math.ceil(g.measureText(name).width); g.font = `700 ${fs * .62}px ${FONT}`; const jw = jt ? Math.ceil(g.measureText(' ' + jt).width) : 0; g.font = `700 ${fs}px ${FONT}`;
-    const tw = tw0 + jw, sw = st ? Math.ceil(g.measureText(st).width) : 0, mx0 = 29 + tw + sw + 6, pw = hasM ? mx0 + MS + 6 : 29 + tw + sw + 14, w = pw + 2; cv.width = w; cv.height = H;
+    const hw = pt ? 34 : 0, tw = tw0 + jw + hw, sw = st ? Math.ceil(g.measureText(st).width) : 0, mx0 = 29 + tw + sw + 6, pw = hasM ? mx0 + MS + 6 : 29 + tw + sw + 14, w = pw + 2; cv.width = w; cv.height = H;
     g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, 4, pw - 2, 52, 16); g.fill();
     g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, 30, 6, 0, 6.3); g.fill();
     g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, 32);
     if (jt) { g.font = `700 ${fs * .62}px ${FONT}`; g.fillStyle = '#F2B705'; g.fillText(' ' + jt, 29 + tw0, 33); g.font = `700 ${fs}px ${FONT}`; }
+    if (pt) heart(g, 29 + tw0 + jw + 17, 31, 13);
     if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, 32); }
     if (hasM) g.drawImage(med, mx0, 5, MS, MS);
     const sp = spriteOf(cv, .4 * TS * H / 60); sp.userData.medal = hasM; sp.userData.mx = (mx0 + MS / 2) / w; sp.userData.ms = Math.max(MS, 1) / H; return sp;
@@ -273,6 +275,7 @@ export function createOnline(api) {
     g.fillStyle = '#0E1014'; g.textBaseline = 'top'; lines.forEach((l, i) => g.fillText(l, pad, pad + i * 44 - 2));
     return spriteOf(cv, cv.height / 60 * .36 * TS);
   }
+  function heart(g, x, y, r) { g.fillStyle = '#ff4f8b'; g.beginPath(); g.moveTo(x, y + r); g.bezierCurveTo(x - r * 1.6, y - r * .2, x - r * .7, y - r * 1.3, x, y - r * .45); g.bezierCurveTo(x + r * .7, y - r * 1.3, x + r * 1.6, y - r * .2, x, y + r); g.fill(); }
   function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
   // ---- every frame
@@ -323,7 +326,7 @@ export function createOnline(api) {
       if (R.mixer) { R.acc += dt; const k = R.d < 25 ? 1 : R.d < 60 ? 2 : 3; if ((frameN + R.slot) % k === 0) { R.mixer.update(R.acc); R.acc = 0; } }
       // the name, the same size on screen near or far
       const tagOn = R.d < TAG_FAR, sc = clamp(R.d / 11, 1, 5);
-      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb); R.tag.visible = vis; scene.add(R.tag); }
+      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt); R.tag.visible = vis; scene.add(R.tag); }
       R.tag.visible = tagOn; if (tagOn) { R.tag.position.set(s.x, topY, s.z); R.tag.scale.set(R.tag.userData.w * sc, R.tag.userData.h * sc, 1); }
       // they smell (their bath bar is full): the green haze, the stink and the flies, for everybody near to see
       { const on = !!R.sm && R.d < 45 && R.root && R.root.visible && !s.v; if (on && !R.stk && api.stink) R.stk = api.stink(); if (R.stk) R.stk.update(s.x, s.y, s.z, dt, on); }
@@ -398,10 +401,11 @@ export function createOnline(api) {
     if (w === 'pw') { $('#olOld').value = ''; $('#olNew').value = ''; }
     buttons();
   }
+  const dobOk = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return !!m && +m[1] >= 1900 && Date.parse(v) <= Date.now(); };
   function buttons() { for (const b of document.querySelectorAll('#onlinePanel button[type=submit]')) b.disabled = S.busy; }
   function setTab(k) {
     S.tab = k; for (const b of document.querySelectorAll('#olTabs button')) b.setAttribute('aria-pressed', String(b.dataset.k === k));
-    $('#olMailF').hidden = k !== 'new'; $('#olGo').textContent = k === 'new' ? 'CREATE ACCOUNT' : 'SIGN IN';
+    $('#olMailF').hidden = k !== 'new'; $('#olDobF').hidden = k !== 'new'; $('#olGo').textContent = k === 'new' ? 'CREATE ACCOUNT' : 'SIGN IN';
     $('#olPass').autocomplete = k === 'new' ? 'new-password' : 'current-password'; $('#olForgotF').hidden = true; $('#olForgot').hidden = k === 'new';
     if (k === 'new') { const u = $('#olUser'); if (!u.value) { const p = api.profile(); if (p && p.name) u.value = p.name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_]/g, '').slice(0, 16); } }
     hideMsg();
@@ -439,8 +443,10 @@ export function createOnline(api) {
       if (u.length < 3) return showErr('login', 'Type your username (at least 3 letters).');
       if (p.length < 6) return showErr('login', 'Password: at least 6 characters.');
       if (S.st !== 'guest' || !S.ws) { connect(); return showErr('login', 'Not connected yet. Try again in a moment.'); }
+      const dob = $('#olDob').value;
+      if (S.tab === 'new' && !dobOk(dob)) return showErr('login', 'Put your date of birth.');
       S.busy = true; buttons();
-      if (S.tab === 'new') { const L = api.look(); send({ t: 'reg', u, p, e: em || undefined, cash: api.getCash(), look: L || undefined, life: api.getLife ? api.getLife() : undefined }); }
+      if (S.tab === 'new') { const L = api.look(); send({ t: 'reg', u, p, e: em || undefined, dob, cash: api.getCash(), look: L || undefined, life: api.getLife ? api.getLife() : undefined }); }
       else send({ t: 'login', u, p });
     });
     $('#olForgot').addEventListener('click', () => { const f = $('#olForgotF'); f.hidden = !f.hidden; $('#olResetF').hidden = true; if (!f.hidden) $('#olFUser').value = $('#olUser').value; hideMsg(); });
@@ -472,7 +478,9 @@ export function createOnline(api) {
     targets: () => { const out = []; if (!S.me) return out; for (const R of RS.values()) { const s = R.s; if (!s || s.v || s.a === 'k' || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z }); } return out; },
     hit: (id, k) => send({ t: 'hit', i: id, k }),
     // everybody near you: where they are, what they are doing ('k': lying down), their stars and badge
-    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '', jb: R.jb || '' }); } return out; },
+    nearby: () => { const out = []; for (const R of RS.values()) { const s = R.s; if (!s || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z, a: s.a, v: s.v, w: R.w | 0, b: R.b || '', jb: R.jb || '', pt: R.pt || '' }); } return out; },
+    spot: id => { const R = RS.get(id); return R && R.s ? { x: R.s.x, y: R.s.y, z: R.s.z } : null; },
+    get myId() { return S.me ? S.me.id : -1; },
     get signedIn() { return !!S.me; },
     get myName() { return S.me ? S.me.name : ''; },
     get count() { return RS.size; },

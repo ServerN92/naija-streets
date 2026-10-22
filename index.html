@@ -123,6 +123,12 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .toast.show{transform:translate(-50%,0);opacity:1}
 .carecard{z-index:46;max-width:min(470px,calc(100vw - 20px));font-size:13px;padding:10px 14px 9px 12px;border-left-color:#7be0a0}
 .carecard h4{margin:0 0 5px;font:800 12px/1 'Barlow Semi Condensed',sans-serif;letter-spacing:.08em;color:#F2B705}
+.romcard{z-index:47;max-width:min(430px,calc(100vw - 20px));border-left-color:#ff4f8b;padding:11px 14px 11px 13px}
+.romcard p{margin:0 0 9px;font-weight:700}.romcard .rb{display:flex;gap:8px;flex-wrap:wrap}
+.romcard button{flex:1 1 auto;min-width:78px;font:800 14px/1 'Barlow Semi Condensed',sans-serif;letter-spacing:.06em;padding:10px 12px;border-radius:10px;border:0;cursor:pointer;background:rgba(255,255,255,.12);color:#fff}
+.romcard button.y{background:#ff4f8b}.romcard button.k{background:transparent;color:rgba(255,255,255,.6);flex:0 0 auto}
+.romcard input{width:100%;box-sizing:border-box;margin:0 0 9px;padding:9px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font:600 15px system-ui,sans-serif;color-scheme:dark}
+.romcard small{display:block;margin:-3px 0 9px;color:rgba(255,255,255,.55);font-weight:500;font-size:11.5px}
 .carecard p{margin:3px 0;font-weight:500}.carecard b{font-weight:800}.carecard small{display:block;margin-top:6px;color:rgba(255,255,255,.55);font-weight:500;font-size:11px}
 .toast.out{transform:translate(-50%,-160%);opacity:0;transition:transform .36s cubic-bezier(.5,0,.75,0),opacity .3s ease}   /* drops in from the top, slides back up */
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translateX(-50%)}}
@@ -452,6 +458,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
   <div class="speedo" id="speedo" hidden><b id="spd">0</b><small>KM/H</small></div>
   <div class="toast" id="toast" hidden></div>
   <div class="toast carecard" id="careCard" hidden role="dialog" aria-label="Your care bars"></div>
+  <div class="toast romcard" id="romCard" hidden role="dialog" aria-label="Love request"></div>
   <div class="chatlog" id="chatLog" hidden aria-live="polite"></div>
   <form class="chatbar" id="chatBar" hidden autocomplete="off">
     <div class="seg" id="chatSeg" role="group" aria-label="Who hears you"><button type="button" data-ch="n" aria-pressed="true">Near</button><button type="button" data-ch="a" aria-pressed="false">All Lagos</button></div>
@@ -655,6 +662,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
         <label class="ofield"><span>Username</span><input id="olUser" name="username" autocomplete="username" maxlength="16" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="e.g. Tunde_99"></label>
         <label class="ofield"><span>Password</span><input id="olPass" name="password" type="password" autocomplete="current-password" maxlength="72" placeholder="6 or more characters"></label>
         <label class="ofield" id="olMailF" hidden><span>Email <i>(optional)</i></span><input id="olMail" name="email" type="email" autocomplete="email" maxlength="120" placeholder="you@example.com"><small>Only used to send you a code if you forget your password.</small></label>
+        <label class="ofield" id="olDobF" hidden><span>Date of birth</span><input id="olDob" name="bday" type="date" autocomplete="bday" min="1900-01-01"><small>Only to know if you are 18+. Nobody sees it, and it can’t be changed.</small></label>
         <p class="oerr" id="olErr" hidden></p>
         <button type="submit" class="ogo" id="olGo">SIGN IN</button>
       </form>
