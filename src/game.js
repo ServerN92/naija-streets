@@ -9986,9 +9986,34 @@ function ogaHere(){ if(!LIFE.job) return null; const mine=jobRank(); let best=mi
 const jobLabel=jb=>{ const [j,r]=(jb||'').split(':'), J=jobOf(j), rr=+r||0; if(!J||rr<3) return ''; return `👑 ${(JOB_RANK[j]||[])[rr]||''}`; };   // over an oga's name
 const jobOf=id=>JOBS.find(j=>j.id===id)||null;
 const myJob=()=>jobOf(LIFE.job);
-const stepOf=()=>{ const J=myJob(); return J&&LIFE.tk<J.steps.length?J.steps[LIFE.tk]:null; };
-function JOBEV(k,n=1){ const P=JOB_EVP[k]; if(P) jobPoint(P[0],P[1]*(n|0||1)); const S=stepOf(); if(!S||S.ev!==k) return; LIFE.tkn=Math.min(1e5,(LIFE.tkn|0)+(n|0||1)); hustleCheck(); }
+const stepOf=()=>{ const J=myJob(); if(!J) return null; return LIFE.tk<J.steps.length?J.steps[LIFE.tk]:dayStep(); };
+// ---- every day has work. Once your first tasks are done, your hustle sets today's target (the line at the top, the arrow
+// pointing where the work is; harder as you rise). Done: a bonus, and the line shows the next big thing in your life. A new
+// day, a new target. Your oga texts you in the morning, and again if you never start by noon.
+const DAY_WORK={okada:r=>({t:`Today: carry ${4+2*r} passengers (stop by people who wave)`,ev:'fare',n:4+2*r}),
+  dispatch:r=>({t:`Today: ${2+r} deliveries · OYA WORK on your phone`,ev:'delivery',n:2+r}),
+  water:r=>({t:`Today: sell ${15+5*r} sachets of pure water`,ev:'sachet',n:15+5*r}),
+  farmer:()=>({t:'Today: harvest and sell your produce',ev:'farm_sell',n:1,go:()=>FARM&&FARM.pos?{...FARM.pos(),name:'Your farm'}:null}),
+  agbero:r=>({t:`Today: collect ${4+r} tickets from danfos`,ev:'ticket',n:4+r,go:()=>SITES.park?{x:SITES.park.cx,z:SITES.park.cz,name:'Mushin Motor Park'}:null}),
+  police:()=>({t:'Today: patrol on duty for 10 minutes',ok:()=>HUS.dd>=600,go:()=>POLICE&&POLICE.duty&&POLICE.duty()?null:policeDesk()}),
+  boss:()=>({t:'Today: run your business for 15 minutes',ok:()=>HUS.bd>=900,go:bizSpot})};
+function bizSpot(){ try{ const b=Object.values(BIZ.sites()).find(b=>b.mine); return b?{x:b.x,z:b.z,name:'Your business'}:null; }catch(e){ return null; } }
+function dayStep(){ const J=myJob(), d=gameDay(); if(!J||!DAY_WORK[J.id]) return null;
+  if(LIFE.dy!==d){ LIFE.dy=d; LIFE.tkn=0; LIFE.dd=0; HUS.dd=HUS.bd=0; HUS.nag=0; lifeSave(); }
+  if(LIFE.dd===d) return null; return {...DAY_WORK[J.id](jobRank(J.id)),day:true}; }
+const DAY_BONUS=r=>1000*(1+r);
+// what to do with your money next (shown when today's work is done)
+function lifeGoal(){ const h=homeNow(), r=RENT_OPTS[0][1];
+  if(h==='tent') return {t:`Next: rent a room, ${naira(r)} a day · ${CASH.n>=r?'go see the landlord':'save '+naira(r-CASH.n)+' more'}`,go:()=>ROOMLET&&ROOMLET.door?{x:ROOMLET.door.x,z:ROOMLET.door.z,name:'Room to let · the landlord'}:null};
+  if(h==='room') return {t:`Next: buy your own flat, ${naira(FLAT_PRICE)} · ${CASH.n>=FLAT_PRICE?'go and pay':'save '+naira(FLAT_PRICE-CASH.n)+' more'}`,go:()=>CASH.n>=FLAT_PRICE*.5?{x:APT.front.x,z:APT.front.z,name:'Flat for sale'}:null};
+  const J=myJob(), rk=J?jobRank(J.id):0, nx=J&&J.id!=='police'&&rk<JOB_PTS.length-1?JOB_PTS[rk+1]:null;
+  if(nx!=null) return {t:`Work done for today ✅ · next rank ${jobTitle(J.id,rk+1)} at ${nx} points (${Math.floor(jobPts(J.id))} now)`,go:null};
+  return {t:'Work done for today ✅ · you don make am. Chill, find love 💕, buy a motor',go:null}; }
+function JOBEV(k,n=1){ const P=JOB_EVP[k]; if(P) jobPoint(P[0],P[1]*(n|0||1)); const S=stepOf(); if(!S||S.ev!==k) return; LIFE.tkn=Math.min(1e5,(LIFE.tkn|0)+(n|0||1)); hustleCheck(); hustleHUD(); }
 function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const done=S.ok?S.ok():(LIFE.tkn|0)>=S.n; if(!done) return;
+  if(S.day){ const b=DAY_BONUS(jobRank(J.id)); LIFE.dd=gameDay(); LIFE.tkn=0; addCash(b); cashHUD(); credAdd('daywork',60,true); lifeSave(true);
+    bigMsg('WORK DONE ✅','rankup',`Bonus ${naira(b)}`); toast(`✅ Today's work done! Bonus ${naira(b)}. ${lifeGoal().t}`,6);
+    if(PH) PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:`Well done today. Bonus ${naira(b)} don enter. Tomorrow we go again.`}); hustleHUD(true); return; }
   LIFE.tk++; LIFE.tkn=0; lifeSave(true); const N=stepOf(); if(N) credAdd('task',40,false); else credAdd('jobdone',150,true);
   if(N){ toast(`✅ Task done! Next: ${N.t}`,4.5); hustleGo(N,false); }
   else toast(mpick([`🎉 You don settle as ${J.n.toLowerCase()}! Keep the money coming: rent a better place, then buy back your flat.`,`🎉 Correct ${J.n.toLowerCase()}! Lagos dey see you now. Save, rent a room, buy back your flat.`]),7);
@@ -9997,10 +10022,15 @@ function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const do
 function hustleGo(S,say=true){ const g=S&&S.go&&S.go(); if(g&&mode!=='interior'){ mapView.setDest(g.x,g.z,{name:g.name||'Your task',x:g.x,z:g.z,work:true}); if(say) toast(`Your map don show the way to ${g.name||'your task'}.`,2.6); } }
 // the line on the screen: what to do now
 function hustleHUD(force=false){ const e=$('#task'); if(!e) return; const J=myJob(), S=stepOf();
-  const t=!J?'Pick your hustle: tap here':S?`${S.t}${S.n?` (${Math.min(LIFE.tkn|0,S.n)}/${S.n})`:''}`:''; if(!force&&t===HUS.shown) return; HUS.shown=t;
-  e.hidden=!t||!started; $('#taskE').textContent=J?J.e:'💼'; $('#taskT').textContent=t; }
+  const t=!J?'Pick your hustle: tap here':S?`${S.t}${S.n?` (${Math.min(LIFE.tkn|0,S.n)}/${S.n})`:''}`:lifeGoal().t; if(!force&&t===HUS.shown) return; const was=HUS.shown; HUS.shown=t;
+  e.hidden=!t||!started; $('#taskE').textContent=J?J.e:'💼'; $('#taskT').textContent=t; if(was&&was!==t){ e.classList.remove('new'); void e.offsetWidth; e.classList.add('new'); } }
+// the morning text, and the nag if you never start work by noon
+function dayTexts(){ const J=myJob(), S=stepOf(); if(!J||!S||!S.day||!PH) return; const d=gameDay(), h=ENV.hour;
+  if(HUS.morn!==d&&h>=6&&h<12){ HUS.morn=d; PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:`Good morning! ${S.t}. Bonus ${naira(DAY_BONUS(jobRank(J.id)))} when you finish. Follow the yellow arrow.`}); }
+  if(!HUS.nag&&h>=12&&h<20&&!(LIFE.tkn>0)&&!(S.ok&&(HUS.dd>0||HUS.bd>0))){ HUS.nag=d; PH.event('sms',{id:'hustle',n:'Your hustle',c:'#b8860b',e:J.e,x:mpick(['Where you dey? Work dey wait o. No money for sleeping.','Afternoon don reach and you never start? Oya move!','Lagos no dey wait for anybody. Go hustle!'])}); toast(`💼 ${S.t}. Follow the yellow arrow.`,4); } }
 function hustleTick(dt){ if(!started||!LIFE) return; if(POLICE&&POLICE.duty&&POLICE.duty()) HUS.duty+=dt; if(ownBiz()){ HUS.biz+=dt; HUS.bp=(HUS.bp||0)+dt; if(HUS.bp>=60){ HUS.bp=0; jobPoint('boss',1); } }
-  if((HUS.t-=dt)>0) return; HUS.t=.5; hustleCheck(); hustleHUD(); ogaTick(); }
+  if(POLICE&&POLICE.duty&&POLICE.duty()) HUS.dd=(HUS.dd||0)+dt; if(ownBiz()) HUS.bd=(HUS.bd||0)+dt;
+  if((HUS.t-=dt)>0) return; HUS.t=.5; hustleCheck(); hustleHUD(); ogaTick(); dayTexts(); }
 // ---- choosing: the cards, then the story
 function hustleOpen(first=false){ const box=$('#hus'), L=$('#husList'); HUS.open=true; HUS.first=first; L.textContent=''; NOMOVE=true; if(document.pointerLockElement) document.exitPointerLock();
   $('#husSub').textContent=first||!LIFE.job?'Everybody starts from zero. Street jobs pay from today; the others need money or friends first. You can change later in MY HUSTLE on your phone.':'Change your hustle. Your tasks start again.';
@@ -10036,7 +10066,8 @@ function hustleApp(){ const J=myJob(), rows=[];
   const rank=[{name:`${r>=3?'👑':'⭐'} ${jobTitle(J.id)}`,sub:J.id==='police'?'Police ranks go up with arrests (the force keeps the book)':`Pay +${Math.round((JOB_PAY[r]-1)*100)}%${OGA_PAY[r]?` · settlement ${naira(OGA_PAY[r])} every day`:''}`},
     ...(nx!=null?[{name:`Next: ${jobTitle(J.id,r+1)}`,sub:`${Math.floor(jobPts(J.id))} of ${nx} points · from ${JOB_HOW[J.id]}${r+1>=3?' · then you are an oga':''}`}]:[]),
     ...(og?[{name:og.me?(r>=3?'👑 You be the oga for this area':'No oga around: rise and become one'):`👑 Oga for this area: ${og.n}`,sub:og.me?(r>=3?'Players of your hustle near you pay you settlement from their work':'Nobody of your hustle near you has a higher rank'):r>=3?`${jobTitle(J.id,og.r)} · a bigger oga than you (ogas pay nobody)`:`${jobTitle(J.id,og.r)} · takes ${r>=2?5:10}% of your work pay while you work near am. Rise to oga and you pay nobody`}]:[])];
-  return {title:'My Hustle',sections:[{h:`${J.e} ${J.n}`,rows:[{name:J.d,sub:LIFE.tk>=J.steps.length?'All tasks done. You don settle!':`Task ${LIFE.tk+1} of ${J.steps.length}`}]},{h:'Your rank in this hustle',rows:rank},{h:'Tasks',rows},
+  const D=LIFE.tk>=J.steps.length?stepOf():null, today=LIFE.tk>=J.steps.length?[{h:'Today',rows:[D?{name:`👉 ${D.t}`,sub:`${D.n?`${Math.min(LIFE.tkn|0,D.n)} of ${D.n} · `:''}bonus ${naira(DAY_BONUS(jobRank(J.id)))} when you finish`,warn:true,btn:D.go&&D.go()?'SHOW WAY':null,act:()=>{ hustleGo(D); closePhone(); }}:{name:'✅ Work done for today',sub:lifeGoal().t}]}]:[];
+  return {title:'My Hustle',sections:[{h:`${J.e} ${J.n}`,rows:[{name:J.d,sub:LIFE.tk>=J.steps.length?'First tasks done. Every day: today\'s target, then your bonus.':`Task ${LIFE.tk+1} of ${J.steps.length}`}]},...today,{h:'Your rank in this hustle',rows:rank},{h:'First tasks',rows},
     {rows:[{name:'Change your hustle',sub:'Your tasks start again',btn:'CHANGE',act:()=>{ closePhone(); hustleOpen(false); }}]}]}; }
 // coming back: where you are and what to do now
 function welcomeBack(){ const S=stepOf(), J=myJob(), back=RESUME&&Math.hypot(player.x-RESUME.x,player.z-RESUME.z)<40;
@@ -10063,7 +10094,7 @@ function wayTarget(){ if(!started||busy||mode==='interior'||mode==='enter'||JAIL
   if(LIFE.sleep>=.95){ const h=homeSpot(); return {x:h.x,z:h.z,y:3,t:homeNow()==='tent'?'Your tent · sleep':'Home · sleep'}; }
   if(LIFE.dirt>=1){ const L=CAMPS.filter(C=>C.door).map(C=>{ const b=bathSpot(C); return b&&{...b,y:3,t:'Public bathroom · ₦100'}; }); if(homeNow()!=='tent'){ const h=homeSpot(); L.push({x:h.x,z:h.z,y:3,t:'Your shower'}); } const q=nearestOf(L,x,z); if(q) return q; }
   if(mapView.dest){ const d=mapView.dest; return {x:d.x,z:d.z,y:3.2,t:(d.place&&d.place.name)||'Where you are going'}; }
-  const S=stepOf(); if(!S) return null;
+  const S=stepOf(); if(!S){ if(!myJob()) return null; const G=lifeGoal(), g=G.go&&G.go(); return g?{x:g.x,z:g.z,y:3,t:g.name||G.t}:null; }
   const g=S.go&&S.go(); if(g) return {x:g.x,z:g.z,y:3,t:g.name||S.t};
   if(S.ev==='fare'){ if(mode==='drive'&&drive.v){ for(const p of peds) if(p.fareHail===drive.v&&p.state==='react') return {x:p.x,z:p.z,y:2.6,t:'Passenger waving · stop by am'}; }
     const st=nearestOf(SPOTS.filter(sp=>sp.type==='stop'),x,z); if(st) return {x:st.x,z:st.z,y:3,t:'Bus stop · people wait here'}; }

@@ -351,8 +351,8 @@ body.btnedit .zone{pointer-events:none}body.btnedit #touch::before{content:'';po
 .hpbar.ease i.full{background:#d9534f;animation:easeP 1s infinite alternate}
 @keyframes easeP{from{opacity:1}to{opacity:.45}}
 .vitals{flex-wrap:wrap;row-gap:5px}.vitals .care{flex-basis:100%}
-.task{margin-top:6px;display:flex;align-items:center;gap:6px;width:max-content;max-width:min(380px,48vw);padding:4px 10px 4px 7px;border-radius:10px;background:rgba(10,12,16,.5);border:1px solid rgba(255,255,255,.14);color:#fff;font:600 12.5px/1.25 'Barlow Semi Condensed',sans-serif;pointer-events:auto;cursor:pointer}
-.task[hidden]{display:none}.task em{font-style:normal;font-size:14px}
+.task{margin-top:6px;display:flex;align-items:center;gap:6px;width:max-content;max-width:min(420px,52vw);padding:5px 11px 5px 8px;border-radius:10px;background:rgba(10,12,16,.62);border:1px solid rgba(242,183,5,.55);border-left:3px solid var(--danfo);color:#fff;font:700 13px/1.25 'Barlow Semi Condensed',sans-serif;pointer-events:auto;cursor:pointer}
+.task[hidden]{display:none}.task.new{animation:taskNew 1.6s ease-out 2}@keyframes taskNew{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px rgba(242,183,5,.5),0 0 18px rgba(242,183,5,.6)}}.task em{font-style:normal;font-size:14px}
 .hus{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(8,9,12,.74);padding:14px calc(14px + var(--sr)) 14px calc(14px + var(--sl))}
 .hus[hidden]{display:none}
 .hus-card{width:min(680px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#17191e,#0d0f13);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px 18px 14px;color:var(--cream);box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;flex-direction:column}
