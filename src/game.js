@@ -2292,14 +2292,14 @@ const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:1000
 // cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
 function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
   return {cr:clamp(Math.floor(+(d&&d.cr)||0),0,1e7),cd:clamp((d&&d.cd)|0,0,99991231),ca:clamp(+(d&&d.ca)||0,0,86400),cx,cs:clamp((d&&d.cs)|0,0,3650),cl:clamp((d&&d.cl)|0,0,99991231)}; }
-const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,t:Date.now()});
+const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,t:Date.now()});
 // where you were when you left (you carry on there if you come back soon), your points in each hustle (your rank in the job)
 const posClean=p=>p&&typeof p==='object'&&Number.isFinite(+p.x)&&Number.isFinite(+p.z)?{x:clamp(+p.x,-9e3,9e3),z:clamp(+p.z,-9e3,9e3),r:clamp(+p.r||0,-7,7),t:+p.t||0,st:clamp(p.st|0,0,5),car:p.car?1:0}:null;
 const jpClean=j=>{ const o={}; if(j&&typeof j==='object'&&!Array.isArray(j)) for(const [k,v] of Object.entries(j).slice(0,12)) if(/^[a-z_]{2,16}$/.test(k)&&Number.isFinite(+v)) o[k]=clamp(+v,0,1e6); return o; };
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
   const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
   const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
-  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,t:+d.t||0,u:d.u}; }
+  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,t:+d.t||0,u:d.u}; }
 const lifeRead=k=>{ try{ return lifeClean(JSON.parse(localStorage.getItem(k)||'null')); }catch(e){ return null; } };
 let LIFE=lifeRead('naija-life')||freshLife();
 // ---- street cred and ranks (like 2go: from JJC up to Eko Legend). You earn cred by playing actively (standing still
@@ -3291,7 +3291,24 @@ function dijkstra(s,next,N=nodes.length){ const dist=new Float64Array(N).fill(1e
   while(H.length){ const [d,u]=H[0]; const last=H.pop(); if(H.length){ H[0]=last; down(0); } if(d>dist[u]) continue;
     for(const w of next(u)){ const nd=d+Math.hypot(nodes[w].x-nodes[u].x,nodes[w].z-nodes[u].z); if(nd<dist[w]){ dist[w]=nd; prev[w]=u; H.push([nd,w]); up(H.length-1); } } }
   return {dist,prev}; }
-function routeTo(x0,z0,x1,z1){ const s=nearestNode(x0,z0), t=nearestNode(x1,z1), {prev}=dijkstra(s,u=>nodes[u].adj);
+/* ---- the GPS: smart routes. Driving: only roads a car can use, one-way streets the right way, the quick way (big roads are
+   faster, bad roads and dirt slower, every junction costs a little), starting from the junction in front of you (so it never
+   says "turn back" through the middle of the road: the dividers). On foot: the shortest way on any street or path. */
+const RT_SPEED=[22,20,17,14,12,10,8,6,6,5];
+function driveCost(e){ let v=RT_SPEED[e.c]||8; if(e.cond==='bad') v*=.75; else if(e.cond==='dirt') v*=.6; return e.len/v; }
+let DRV_OUT=null; function drvOut(u){ if(!DRV_OUT){ DRV_OUT=nodes.map(()=>[]); for(const e of ROADS){ if(!e.drive) continue; const c=driveCost(e)+(nodes[e.b].deg>=3?2:0), c2=driveCost(e)+(nodes[e.a].deg>=3?2:0); DRV_OUT[e.a].push([e.b,c]); if(!e.ow) DRV_OUT[e.b].push([e.a,c2]); } } return DRV_OUT[u]; }
+function dijkstraW(s,next,N=nodes.length){ const dist=new Float64Array(N).fill(1e18), prev=new Int32Array(N).fill(-1), H=[]; dist[s]=0; H.push([0,s]);
+  const up=i=>{ while(i>0){ const p=(i-1)>>1; if(H[p][0]<=H[i][0]) break; [H[p],H[i]]=[H[i],H[p]]; i=p; } }, down=i=>{ for(;;){ let m=i; const l=2*i+1, r=l+1; if(l<H.length&&H[l][0]<H[m][0]) m=l; if(r<H.length&&H[r][0]<H[m][0]) m=r; if(m===i) break; [H[m],H[i]]=[H[i],H[m]]; i=m; } };
+  while(H.length){ const [d,u]=H[0]; const last=H.pop(); if(H.length){ H[0]=last; down(0); } if(d>dist[u]) continue;
+    for(const [w,c] of next(u)){ const nd=d+c; if(nd<dist[w]){ dist[w]=nd; prev[w]=u; H.push([nd,w]); up(H.length-1); } } }
+  return {dist,prev}; }
+// the junction to start from when you drive: on the road you are on, the end in front of you (if you may go that way)
+function driveStart(v){ const [e,d]=nearestRoad(v.x,v.z,q=>q.drive); if(!e||d>8) return nearestNode(v.x,v.z); const fx=Math.cos(v.h), fz=-Math.sin(v.h), along=fx*e.fx+fz*e.fz;
+  if(along>=0) return e.b; if(!e.ow) return e.a; return e.b; }
+function driveEnd(x,z){ const [e]=nearestRoad(x,z,q=>q.drive); if(!e) return nearestNode(x,z); const A=nodes[e.a], B=nodes[e.b]; return Math.hypot(A.x-x,A.z-z)<Math.hypot(B.x-x,B.z-z)?e.a:e.b; }
+function routeTo(x0,z0,x1,z1){ const car=mode==='drive'&&drive.v&&!drive.ride&&drive.v.type!=='skate'; let s, t, prev;
+  if(car){ s=driveStart(drive.v); t=driveEnd(x1,z1); ({prev}=dijkstraW(s,drvOut)); if(prev[t]<0&&s!==t){ s=nearestNode(x0,z0); ({prev}=dijkstraW(s,drvOut)); } }
+  if(!car||(prev[t]<0&&s!==t)){ s=nearestNode(x0,z0); t=nearestNode(x1,z1); ({prev}=dijkstra(s,u=>nodes[u].wadj.length?nodes[u].wadj:nodes[u].adj)); if(prev[t]<0&&s!==t) ({prev}=dijkstra(s,u=>nodes[u].adj)); }
   const path=[]; for(let u=t;u>=0;u=prev[u]){ path.unshift([nodes[u].x,nodes[u].z]); if(u===s) break; } path.unshift([x0,z0]); path.push([x1,z1]); return path; }
 // street names for the big map: one label per named street, along the road
 const STREETS=[]; { const byWay=new Map(); for(const e of ROADS){ if(!e.name||e.len<25) continue; const k=e.name; if(!byWay.has(k)) byWay.set(k,[]); byWay.get(k).push(e); }
@@ -3326,7 +3343,7 @@ function drawMinimap(){ if(!mmCW) mmCW=mm.clientWidth||190; const S=mm.width, R0
   const phi=Math.atan2(Math.cos(camState.yaw),Math.sin(camState.yaw)), th=-Math.PI/2-phi;
   mg.translate(R0,R0); mg.rotate(th); mg.scale(sc,sc); mg.translate(-px,-pz);
   mg.drawImage(MINI.c,MINI.x-MINI.R,MINI.z-MINI.R,MINI.R*2,MINI.R*2);
-  const rt=mapView.route; if(rt&&rt.length>1){ const wk=isWork(mapView.dest&&mapView.dest.place); mg.lineJoin='round'; mg.lineCap='round'; mg.strokeStyle=wk?'rgba(0,40,10,.75)':'rgba(40,0,0,.75)'; mg.lineWidth=10.5; mg.beginPath(); rt.forEach(([x,z],i)=>i?mg.lineTo(x,z):mg.moveTo(x,z)); mg.stroke(); mg.strokeStyle=wk?GPS_GREEN:GPS_RED; mg.lineWidth=7; mg.stroke(); }
+  const rt=mapView.route; if(rt&&rt.length>1){ const wk=isWork(mapView.dest&&mapView.dest.place); mg.lineJoin='round'; mg.lineCap='round'; mg.globalAlpha=wk?.7:1; mg.strokeStyle=wk?'rgba(0,40,10,.6)':'rgba(40,0,0,.75)'; mg.lineWidth=wk?8:10.5; mg.beginPath(); rt.forEach(([x,z],i)=>i?mg.lineTo(x,z):mg.moveTo(x,z)); mg.stroke(); mg.strokeStyle=wk?GPS_GREEN:GPS_RED; mg.lineWidth=wk?5:7; mg.stroke(); mg.globalAlpha=1; }
   for(const v of vehicles){ if(v===drive.v) continue; if(Math.abs(v.x-px)>200||Math.abs(v.z-pz)>200) continue; mg.save(); mg.translate(v.x,v.z); mg.rotate(-v.h); mg.fillStyle=v.type==='police'?'#7fa6ff':'#e7e1d3'; mg.fillRect(-2.6,-1.1,5.2,2.2); mg.restore(); }
   mg.restore();
   const c=Math.cos(th), s=Math.sin(th);
@@ -3819,7 +3836,7 @@ function killPed(p,ux,uz,push,how){ if(p.state==='dead') return; if(p.brawl&&!p.
   for(const q of peds){ if(q===p||!(q.state==='walk'||q.state==='idle'||q.state==='spot'||q.state==='react')) continue; const d=Math.hypot(q.x-p.x,q.z-p.z); if(d>28) continue;
     if(MR()<.65){ q.state='flee'; q.timer=mrr(4,8); q.yaw=Math.atan2(q.x-p.x,q.z-p.z)+mrr(-.5,.5); } else react(q,MR()<.5?'no':'argue',p.x,p.z,mrr(3,5)); }
   const near=Math.hypot(p.x-player.x,p.z-player.z)<60;
-  if(how==='car'||how==='fight'||how==='gun'||how==='blast'||how==='fire'){ if(p.cop){ addHeat(1.3,CAP.cop); FIGHT.heat=Math.max(FIGHT.heat,2.65); } else addHeat(p.cast==='areaboy'?.6:1,CAP.kill); incident(p.x,p.z,'kill'); }
+  if(how==='car'||how==='fight'||how==='gun'||how==='blast'||how==='fire'){ if(OFF.cp&&starCount()>0) OFF.kills++; if(p.cop){ addHeat(1.3,CAP.cop); FIGHT.heat=Math.max(FIGHT.heat,2.65); } else addHeat(p.cast==='areaboy'?.6:1,CAP.kill); incident(p.x,p.z,'kill'); }
   if(how==='fight'||how==='gun'||how==='blast') lootPed(p,1.2);
   if(near&&sayT<=0){ sayT=6; toast(mpick(['"Ah! Dem don kill person o!"','"Jesus! Somebody call ambulance!"','"Blood of Jesus! E don die!"']),3); } }
 let NPCF=0, NWALK=0;
@@ -3859,7 +3876,7 @@ function updateFare(dt){ const T=FARE.trip, v=mode==='drive'&&!drive.ride?drive.
   // someone by the road waves at you now and then
   if((FARE.hailT-=dt)<=0){ FARE.hailT=mrr(10,22); const sp=Math.abs(drive.speed); if(sp<2||sp>15) return; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
     let best=null, bd=1e9; for(const p of peds){ if(p.state!=='walk'||p.cop||p.carried||p.fareHail) continue; const dx=p.x-v.x, dz=p.z-v.z, ah=dx*fx+dz*fz, lat=Math.abs(-dx*fz+dz*fx); if(ah<18||ah>45||lat>9) continue; if(ah<bd){ bd=ah; best=p; } }
-    if(best){ react(best,'hail',v.x,v.z,14); best.fareHail=v; best.cool=20; if(sayT<=0){ sayT=5; toast(mpick(['"Driver! Driver! Abeg stop!" Someone dey wave you.','"Owa! Owa!" A passenger dey wave you down.']),2.6); } } }
+    if(best&&!(SMELL()&&BIKE[v.type]&&MR()<.6)){ react(best,'hail',v.x,v.z,14); best.fareHail=v; best.cool=20; if(sayT<=0){ sayT=5; toast(mpick(['"Driver! Driver! Abeg stop!" Someone dey wave you.','"Owa! Owa!" A passenger dey wave you down.']),2.6); } } }
   for(const p of peds) if(p.fareHail){ if(p.fareHail!==v||p.state!=='react'){ p.fareHail=null; continue; } p.ry=Math.atan2(v.x-p.x,v.z-p.z); const dx=p.x-v.x, dz=p.z-v.z; if(dx*Math.cos(v.h)+dz*-Math.sin(v.h)<-25){ p.fareHail=null; p.timer=.3; } } }
 // stopped by people who waved you down: they walk over and get in
 function fareBoard(v){ const n=(FARE.trip?FARE.trip.pax.length:0)+peds.filter(p=>p.state==='board'&&p.fare&&p.bv===v).length; let room=FARE_V[v.type]-n; if(room<=0) return;
@@ -5322,12 +5339,20 @@ function fieldTo(s){ let d=FIELDS.get(s); if(d) return d; if(!CHASE.inn){ CHASE.
   d=dijkstra(s,u=>CHASE.inn[u]).dist; FIELDS.set(s,d); if(FIELDS.size>4) FIELDS.delete(FIELDS.keys().next().value); return d; }
 // caught: into the van, and into the cell at Mushin police station for three minutes (with whoever else they picked up)
 function jailNext(){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; }catch(e){} return JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]; }
-function arrest(){ kfAdd(1); if(PH) PH.event('arrest',{place:placeNameAt(player.x,player.z)}); releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(jailNext())); localStorage.setItem('naija-jail-new','1'); } }catch(e){}   // reload now and you still go to the cell
-  arrestFine(); }
+/* ---- running a police checkpoint is serious: three stars at once and the vans come straight for you. Caught: a fine of
+   ₦5,000 to ₦20,000 (the longer you ran, the more), and every life you take while they chase you is ₦20,000–30,000 more,
+   straight. What you can't pay you sit out in the cell (30 s for every ₦5,000). */
+const OFF={cp:0,t0:0,kills:0};
+function ranCheckpoint(){ if(lawless()) return; if(!OFF.cp){ OFF.cp=1; OFF.t0=T0; OFF.kills=0; } addHeat(2.75,CAP.kill); FIGHT.heat=Math.max(FIGHT.heat,2.65); FIGHT.seen=T0; FIGHT.crimeT=0;
+  if(PH) PH.event('wanted',{area:districtAt(player.x,player.z)}); }
+function offenseFine(){ if(!OFF.cp) return null; const run=Math.round(clamp(5000+(T0-OFF.t0)*80,5000,20000)/500)*500; let kill=0; for(let i=0;i<OFF.kills;i++) kill+=Math.round(mrr(20000,30000)/1000)*1000;
+  return {run,kill,kills:OFF.kills}; }
+function arrest(){ kfAdd(1); if(PH) PH.event('arrest',{place:placeNameAt(player.x,player.z)}); releaseCop(); clearCops(); FIGHT.heat=0; CASE.on=false; carryDrop(true); arrestRest(); const extra=arrestFine(); JAIL.extra=extra; try{ if(!jailSaved()){ localStorage.setItem('naija-jail',String(Math.min(600,jailNext()+extra))); localStorage.setItem('naija-jail-new','1'); } }catch(e){} }   // reload now and you still go to the cell
 // the fine and what the police take (done the moment you are caught, so reloading can't save your money or guns)
-function arrestFine(){ if(COPS.fined&&T0-COPS.fined<10) return; COPS.fined=T0;
-  { const fine=Math.round(CASH.n*.15/50)*50, lost=[]; if(fine>0){ addCash(-fine); lost.push(naira(fine)); } if(ARMS.own.ak){ delete ARMS.own.ak; ARMS.mag=0; ARMS.ammo=0; lost.push('your AK-47'); } if(ARMS.own.gren||ARMS.own.molo){ delete ARMS.own.gren; delete ARMS.own.molo; lost.push('your bombs'); } if(ARMS.own.katana&&MR()<.5){ delete ARMS.own.katana; lost.push('your katana'); }
-    if(!ARMS.own[ARMS.cur]) ARMS.cur='fists'; ARMS.aim=false; ARMS.trig=false; saveArms(); if(lost.length) setTimeout(()=>toast('Police seized '+lost.join(' and ')+'.',3.2),2600); } }
+function arrestFine(){ if(COPS.fined&&T0-COPS.fined<10) return 0; COPS.fined=T0; let extra=0;
+  { const O=offenseFine(); OFF.cp=0; const base=Math.round(CASH.n*.15/50)*50, want=O?Math.max(base,O.run+O.kill):base, fine=Math.min(CASH.n,want), lost=[]; if(fine>0){ addCash(-fine); lost.push(naira(fine)); }
+    if(O){ const unpaid=want-fine; extra=Math.min(240,Math.ceil(unpaid/5000)*30); setTimeout(()=>toast(`Fine: ${naira(O.run)} for running the checkpoint${O.kills?` + ${naira(O.kill)} for the ${O.kills>1?O.kills+' lives':'life'} you took`:''}. ${unpaid>0?`You no get the rest (${naira(unpaid)}): extra ${extra} s for cell.`:'You don pay am.'}`,6),900); } if(ARMS.own.ak){ delete ARMS.own.ak; ARMS.mag=0; ARMS.ammo=0; lost.push('your AK-47'); } if(ARMS.own.gren||ARMS.own.molo){ delete ARMS.own.gren; delete ARMS.own.molo; lost.push('your bombs'); } if(ARMS.own.katana&&MR()<.5){ delete ARMS.own.katana; lost.push('your katana'); }
+    if(!ARMS.own[ARMS.cur]) ARMS.cur='fists'; ARMS.aim=false; ARMS.trig=false; saveArms(); if(lost.length) setTimeout(()=>toast('Police seized '+lost.join(' and ')+'.',3.2),2600); } return extra; }
 function arrestRest(){
   for(const p of FIGHT.attackers||[]) if(Math.hypot(p.x-player.x,p.z-player.z)<25){ JAIL.add(p.cast); offPed(p); }
   if(RAID.v){ for(const p of RAID.sus) if(p.state==='arrest'){ JAIL.add(p.cast); offPed(p); } leaveRaid(true); }
@@ -5454,6 +5479,7 @@ function updateFight(dt){ FIGHT.attackers=peds.filter(p=>p.state==='fight').sort
   if(st>=1&&!FIGHT.cop&&mode!=='interior'&&T0-(FIGHT.seen??-99)<12){ CASE.on=false; FIGHT.cop=dispatchCop(); if(FIGHT.cop&&FIGHT.warned<T0-20){ FIGHT.warned=T0; toast('Police don see you! Run!',3); } }   // they saw it: they come now
   caseTick();
   if(st===0&&FIGHT.cop){ releaseCop(); toast('Police don give up. You dey free.',2.6); }
+  if(st===0) OFF.cp=0;
   if(FIGHT.cop&&((!FIGHT.cop.ai&&!FIGHT.cop.copsOut)||FIGHT.cop===drive.v)){ FIGHT.cop=null; if(starCount()>0) FIGHT.seen=T0; }   // they know who they want: another van comes
   if(FIGHT.cop&&FIGHT.cop.ai&&FIGHT.cop.noCops){ const near=cd<(mode==='drive'?9:FIGHT.cop.ai&&FIGHT.cop.ai.near?45:26)&&Math.abs(FIGHT.cop.speed)<2.5&&!busy; FIGHT.arrestT=near?FIGHT.arrestT+dt:Math.max(0,FIGHT.arrestT-dt*.5);
     if(near&&FIGHT.arrestT<dt*1.5&&sayT<=0){ sayT=4; toast(st<=2?`Police: "Stop there!" (Settle am: ${touchUI?'tap':'press E'} to roger)`:'Police: "Stop there! Oya, enter motor!"',2.6); }
@@ -5837,7 +5863,7 @@ function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.lea
     if(A.cookT>=14){ HL.food=1; toast('Jollof don ready! Go chop am for the dining table.',4); homeStop(); } }
   if(A.kind==='bath'&&A.faded) bathTick(A.bathB,A);
   if(A.kind==='bath'&&A.t>=1&&!A.leaving){ A.bathT+=dt; showerWater(true,dt); const R=INT.home; steamAt({x:R.shower.c.x,y:1.2,z:R.shower.c.z,w:.4,h:1.1,s0:.3,s1:.7,a:.22},dt,.35);
-    if(A.bathT>=12&&!A.told){ A.told=1; LIFE.ease=0; LIFE_SYNC.warn75=false; lifeSave(); toast(mpick(['You don baff! You dey fresh like new money.','Clean body, clean mind. You dey shine!']),3.5); } }
+    if(A.bathT>=12&&!A.told){ A.told=1; LIFE.ease=0; LIFE.dirt=0; LIFE_SYNC.warn75=false; LIFE_SYNC.warnDirt=false; lifeSave(); toast(mpick(['You don baff! You dey fresh like new money.','Clean body, clean mind. You dey shine!']),3.5); } }
   if(A.kind==='bed'&&A.t>=1&&!A.leaving){ A.sleepT+=dt; if(A.sleepT>=4&&!A.told){ A.told=1; FIGHT.hp=100; careSleep(0); toast('You sleep well. Body don rest!',3.5); } }
   if(A.kind==='dance'&&!A.leaving){ A.danceT+=dt; if(!HL.music){ homeStop(); } else if(A.danceT>9){ const C=homeClips(), next=C.dance[HL.danceI++%C.dance.length]; if(next&&next!==A.clip){ const na=hero.mixer.clipAction(next); na.reset().play(); A.action.crossFadeTo(na,.5,false); A.action=na; A.clip=next; } A.danceT=0; } }
   if(A.leaving&&!A.fade&&A.lt>=.3&&A.doneSoon){ const d=A.doneSoon; A.doneSoon=null; d(); } }
@@ -9184,18 +9210,59 @@ function lifeTick(dt){ if(!started) return; toiletTick(dt);
   if(LIFE.ease>=1){ LIFE_SYNC.warnT-=dt; if(LIFE_SYNC.warnT<=0){ LIFE_SYNC.warnT=55; toast(mpick(['Toilet dey catch you! You no fit run. Find a toilet sharp sharp.','Ah! Belle dey turn. Find toilet before wahala!']),4); } }
   if((LIFE_SYNC.ensureT-=dt)<=0){ LIFE_SYNC.ensureT=1; lifeWear(); if(LIFE_MK.room&&roomOn()) doorMarkText(LIFE_MK.room,roomText()); }
   if((LIFE_SYNC.saveT-=dt)<=0){ LIFE_SYNC.saveT=20; lifeSave(); }
-  for(const [f,id] of [['ease','easeFill'],['eat','eatFill'],['sleep','sleepFill']]){ const k=Math.round(LIFE[f]*100); if(k!==LIFE_SYNC['sh_'+f]){ LIFE_SYNC['sh_'+f]=k; const e=$('#'+id); if(e){ e.style.width=k+'%'; e.className=k>=100?'full':k>=75?'mid':''; } } } }
+  for(const [f,id] of [['ease','easeFill'],['eat','eatFill'],['sleep','sleepFill'],['dirt','bathFill']]){ const k=Math.round(LIFE[f]*100); if(k!==LIFE_SYNC['sh_'+f]){ LIFE_SYNC['sh_'+f]=k; const e=$('#'+id); if(e){ e.style.width=k+'%'; e.className=k>=100?'full':k>=75?'mid':''; } } } }
 const easeFull=()=>LIFE.ease>=1||LIFE.sleep>=1;
 $('#care').addEventListener('click',()=>careHelp());   // bursting for the toilet, or dead tired: no running
 // ---- the care bars: EAT, SLEEP and TOILET fill as you play. Full: hunger wears your health down, tiredness and the toilet stop you running.
 // Eat at a buka, at Mama Put by the bridge, at home or in a restaurant; sleep in your tent (the mosquitoes!), your room or a bed.
-function careTick(dt){ const sl=(HL.act&&HL.act.kind==='bed')||(CB.act); if(!sl) LIFE.sleep=Math.min(1,LIFE.sleep+dt/SLEEP_S); LIFE.eat=Math.min(1,LIFE.eat+dt/EAT_S);
+function careTick(dt){ const sl=(HL.act&&HL.act.kind==='bed')||(CB.act); if(!sl) LIFE.sleep=Math.min(1,LIFE.sleep+dt/SLEEP_S); LIFE.eat=Math.min(1,LIFE.eat+dt/EAT_S); hygieneTick(dt); faintTick(dt);
   if(LIFE.eat>=.75&&!LIFE_SYNC.warnEat){ LIFE_SYNC.warnEat=true; toast('Hunger don start. Chop something: buka, Mama Put by the bridge, or cook for house.',4.5); }
   if(LIFE.sleep>=.75&&!LIFE_SYNC.warnSleep){ LIFE_SYNC.warnSleep=true; toast(`Your eye don dey heavy. Go sleep soon (${homeNow()==='tent'?'your tent':homeNow()==='room'?'your room':'your bed'}).`,4.5); }
   if(LIFE.eat>=1&&mode!=='interior'){ if(FIGHT.hp>25&&!FIGHT.dead) FIGHT.hp=Math.max(25,FIGHT.hp-dt*.12); if((LIFE_SYNC.eatT-=dt)<=0){ LIFE_SYNC.eatT=60; toast(mpick(['Hunger dey wound you! Your health dey go down. Find food.','Belle dey shout! Chop something before you faint.']),4); } }
   if(LIFE.sleep>=1&&(LIFE_SYNC.slT-=dt)<=0){ LIFE_SYNC.slT=70; toast(mpick(['You dey tire well well. You no fit run. Go sleep.','Sleep dey catch you for road! Go lie down small.']),4); }
   if(!LIFE_SYNC.careTip&&(LIFE_SYNC.careTipT=(LIFE_SYNC.careTipT||0)+dt)>22){ LIFE_SYNC.careTip=1; let seen=false; try{ seen=!!localStorage.getItem('naija-care-tip'); localStorage.setItem('naija-care-tip','1'); }catch(e){} if(!seen) careHelp(); } }
-function careHelp(){ toast('Your care bars, under your health: 🍲 EAT, 😴 SLEEP and 🚽 TOILET. They fill as you play. Full EAT hurts your health; full SLEEP or TOILET and you can\'t run. Eat, sleep and use the toilet to empty them.',8); }
+/* ---- your body: the bath and hunger.
+   BATH fills over one game day of play (faster when you run or fight). At three quarters you are told; full, you smell:
+   green stink rises off you, flies circle your head, people say so and step back, fewer buy your pure water and fewer
+   passengers wave you down. A bucket bath at the public bathroom by the toilet (₦100), the shower at home, or a swim fix it.
+   Hungry for too long (the EAT bar full for a minute): you faint as you walk, and every few steps again, until you eat. */
+const DIRT_S=DAY_S, SMELL=()=>LIFE.dirt>=1;
+const STK={sp:[],fl:[],aura:null,t:0,sayT:0};
+function stkTex(kind){ const c=document.createElement('canvas'); c.width=64; c.height=128; const g=c.getContext('2d');
+  if(kind==='line'){ g.strokeStyle='rgba(130,190,40,.95)'; g.lineWidth=7; g.lineCap='round'; g.beginPath(); for(let y=118;y>8;y-=4){ const x=32+Math.sin(y/14)*14; y===118?g.moveTo(x,y):g.lineTo(x,y); } g.stroke(); g.strokeStyle='rgba(200,240,90,.6)'; g.lineWidth=3; g.stroke(); }
+  else if(kind==='fly'){ c.width=c.height=32; g.fillStyle='rgba(20,20,20,.95)'; g.beginPath(); g.ellipse(16,17,5,4,0,0,7); g.fill(); g.fillStyle='rgba(220,230,240,.55)'; g.beginPath(); g.ellipse(10,11,5,3,-.5,0,7); g.ellipse(22,11,5,3,.5,0,7); g.fill(); }
+  else { c.width=c.height=64; const gr=g.createRadialGradient(32,32,2,32,32,31); gr.addColorStop(0,'rgba(110,170,20,.75)'); gr.addColorStop(.6,'rgba(110,170,20,.3)'); gr.addColorStop(1,'rgba(110,170,20,0)'); g.fillStyle=gr; g.fillRect(0,0,64,64); }
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false,fog:false}); }
+function stinkFx(dt){ const on=SMELL()&&started&&mode!=='interior'&&!(mode==='drive'&&drive.v&&!BIKE[drive.v.type]), f=mode==='drive'&&drive.v?drive.v:player;
+  if(!STK.aura&&on){ STK.mLine=stkTex('line'); STK.mFly=stkTex('fly'); STK.aura=new THREE.Sprite(stkTex('aura')); STK.aura.scale.set(1.5,2.3,1); STK.aura.renderOrder=1; scene.add(STK.aura);
+    for(let i=0;i<6;i++){ const s=new THREE.Sprite(STK.mLine.clone()); s.scale.set(.34,.68,1); s.visible=false; scene.add(s); STK.sp.push({s,t:9,life:1.6,ox:0,oz:0}); }
+    for(let i=0;i<5;i++){ const s=new THREE.Sprite(STK.mFly); s.scale.setScalar(.15); scene.add(s); STK.fl.push({s,a:Math.random()*6.3,r:.3+Math.random()*.3,h:1.45+Math.random()*.45,w:2.5+Math.random()*3,ph:Math.random()*6}); } }
+  if(!STK.aura) return; STK.aura.visible=on; for(const q of STK.fl) q.s.visible=on; if(!on){ for(const q of STK.sp) q.s.visible=false; return; }
+  const y0=f.y||0; STK.aura.position.set(f.x,y0+1,f.z); STK.aura.material.opacity=.8+.2*Math.sin(T0*3);
+  if((STK.t-=dt)<=0){ STK.t=.28; const q=STK.sp.find(q=>q.t>=q.life); if(q){ q.t=0; q.ox=(Math.random()-.5)*.6; q.oz=(Math.random()-.5)*.6; q.y=y0+.9+Math.random()*.5; q.s.visible=true; } }
+  for(const q of STK.sp){ if(q.t>=q.life){ q.s.visible=false; continue; } q.t+=dt; const k=q.t/q.life; q.s.position.set(f.x+q.ox+Math.sin(T0*4+q.ox*9)*.08,q.y+k*.9,f.z+q.oz); q.s.material.opacity=Math.sin(Math.PI*Math.min(1,k)); }
+  for(const q of STK.fl){ q.a+=dt*q.w*(1+.4*Math.sin(T0*7+q.ph)); const r=q.r+.08*Math.sin(T0*9+q.ph); q.s.position.set(f.x+Math.cos(q.a)*r,y0+q.h+.12*Math.sin(T0*6+q.ph),f.z+Math.sin(q.a)*r); } }
+function hygieneTick(dt){ const busyBody=player.speed>WALK_V+.3||FIGHT.near||T0-FIGHT.lastAtk<6; if(!(HL.act&&HL.act.kind==='bath')) LIFE.dirt=Math.min(1,LIFE.dirt+dt/DIRT_S*(busyBody?1.6:1));
+  if(SWIM.on) LIFE.dirt=Math.max(0,LIFE.dirt-dt*.02);
+  if(LIFE.dirt>=.75&&!LIFE_SYNC.warnDirt){ LIFE_SYNC.warnDirt=true; toast('Your body don dey smell small. Go baff: the public bathroom by the toilet (₦100), or your shower for house.',5); }
+  if(LIFE.dirt<.7) LIFE_SYNC.warnDirt=false;
+  if(SMELL()&&mode==='walk'&&(STK.sayT-=dt)<=0){ let near=null; for(const p of peds){ if(p.cop||p.state!=='walk'&&p.state!=='idle'&&p.state!=='spot') continue; if(Math.hypot(p.x-player.x,p.z-player.z)<2.6){ near=p; break; } }
+    if(near){ STK.sayT=9; react(near,'no',player.x,player.z,2.5); toast(mpick(['"Haba! Who dey smell like this?"','"Bros, abeg go baff! Your body dey talk."','"Ewo! Na you dey smell like dead rat?"','"Aunty/Uncle, water dey o. Use am!"','"Flies don follow you like say you be refuse dump!"']),3); } else STK.sayT=2; } }
+const smellyNo=()=>SMELL()&&MR()<.6;   // a buyer or a passenger who won't, because of the smell
+// a bucket bath at the public bathroom by the toilet
+function campBath(){ if(busy) return; if(CASH.n<100){ toast('Attendant: "Bath na ₦100. No money, no water!"',3); return; } addCash(-100); cashHUD();
+  burst(1.4,900,.12,1.1); fadeSwap(()=>{ LIFE.dirt=0; LIFE_SYNC.warnDirt=false; FIGHT.hp=Math.min(100,FIGHT.hp+5); lifeSave(); });
+  toast(mpick(['Bucket bath for ₦100: cold water and Joy soap. You dey fresh like new money!','You don baff! Flies don japa. Body clean, mind clean.']),3.6); }
+const bathLabel=()=>LIFE.dirt<.15?'Public bathroom · ₦100 (you dey clean)':SMELL()?'Public bathroom · take bath ₦100 (you dey smell!)':'Public bathroom · take bath · ₦100';
+function bathSpot(C){ const d=C.door, yaw=d.yaw!=null?d.yaw:(C.tent?C.tent.ry:0), tx=Math.cos(yaw), tz=-Math.sin(yaw);
+  for(const k of [2.6,-2.6,3.4,-3.4]){ const x=d.x+tx*k, z=d.z+tz*k; if(onLand(x,z,.3)&&!resolveCircle({x,z},.35)&&!roadAt(x,z,.3)) return {x,z}; } return null; }
+// hungry too long: you faint as you walk
+const FAINT={starve:0,walk:0,next:25,n:0};
+function faintTick(dt){ if(LIFE.eat<1){ FAINT.starve=0; FAINT.walk=0; FAINT.n=0; return; } FAINT.starve+=dt; if(FAINT.starve<60||mode!=='walk'||busy||FIGHT.ko||FIGHT.dead||!hero) return;
+  FAINT.walk+=player.speed*dt; if(FAINT.walk<FAINT.next) return; FAINT.walk=0; FAINT.next=14+Math.random()*16; FAINT.n++;
+  FIGHT.ko=true; FIGHT.koT=0; player.speed=0; heroDo('uppercut',{force:true,ts:1,onEnd:()=>heroDo('lie',{force:true,pause:true})});
+  toast(FAINT.n===1?'You don faint! Hunger don finish you. Chop something sharp sharp: a buka, Mama Put, or cook for house.':mpick(['You faint again! Food, food, food!','Your eye don dark again. You need food now now!','"Somebody help am! E don faint!" Go chop!']),4); }
+function careHelp(){ toast('Your care bars, under your health: 🍲 EAT, 😴 SLEEP, 🚽 TOILET and 🚿 BATH. They fill as you play. Full EAT: your health goes down and you start fainting. Full SLEEP or TOILET: you can\'t run. Full BATH: you smell, flies follow you, people avoid you and buy less. Eat, sleep, use the toilet and bath to empty them.',9); }
 function careEat(k){ LIFE.eat=Math.max(0,LIFE.eat-k); if(LIFE.eat<.75) LIFE_SYNC.warnEat=false; lifeSave(); }
 function careSleep(to){ LIFE.sleep=Math.min(LIFE.sleep,to); if(LIFE.sleep<.75) LIFE_SYNC.warnSleep=false; lifeSave(); }
 // what you wear must be yours: rags until you buy better (the police uniform goes on by itself on duty)
@@ -9205,6 +9272,7 @@ if(LIFEC){ const C=LIFEC;
   if(C.tentDoor) DOORS.push({x:C.tentDoor.x,z:C.tentDoor.z,r:1.8,label:()=>homeNow()==='tent'?'Your tent · sleep, change clothes':'Your old tent',act:tentMenu});
   if(C.buy) DOORS.push({x:C.buy.x,z:C.buy.z,r:1.8,label:'Bend-down boutique · buy clothes',act:boutiqueMenu});
   if(TL.ok) DOORS.push({x:C.door.x,z:C.door.z,r:1.7,label:toiletLabel,act:toiletAct}); }
+for(const C of CAMPS){ if(!C.door) continue; const b=bathSpot(C); if(b) DOORS.push({x:b.x,z:b.z,r:1.4,label:bathLabel,act:campBath}); }
 if(ROOMLET) DOORS.push({x:ROOMLET.door.x,z:ROOMLET.door.z,r:2.0,label:()=>LIFE.ntc>0?'Your room · RENT DUE · talk to the landlord':roomOn()?'Your room · talk to the landlord':'Room to let · talk to the landlord',act:roomMenu});
 // the other camps: their boutique and toilet work for you too (one in, one out: no line); the tents there are other people's
 function campToilet(){ if(busy) return; if(CASH.n<50){ toast('Attendant: "No money, no toilet! Go find ₦50."',3); return; } addCash(-50); cashHUD();
@@ -9394,7 +9462,7 @@ function rbTalk(){ const r=rbNear(); if(!r) return false; r.talked=T0;
       openMenu('YOUR PAPERS','Officer: "Your papers don expire o. And where your fire extinguisher?"',()=>[
         {name:'Settle the matter',sub:'"Officer, how we go do am?"',price:1000,act(){ pass('Officer: "Next time, renew am. Go."'); }},
         {name:'Argue with them',sub:'Maybe they let you go…',btn:'ARGUE',price:0,act(){ if(MR()<.5) pass('Officer: "Hmm. Oya go, before I change my mind."'); else { closeMenu(); r.passT=T0+20; addHeat(.35); toast('Officer: "You dey argue with police? Oya, come down!"',2.6); } }}]); }},
-    {name:'Drive off',sub:'They will chase you',btn:'GO',price:0,act(){ closeMenu(); r.passT=T0+5; addHeat(.9); toast('Police: "Hey! Stop that motor!"',2.2); }}]);
+    {name:'Drive off',sub:'A serious chase: ₦5,000–20,000 if they catch you',btn:'GO',price:0,act(){ closeMenu(); r.passT=T0+5; ranCheckpoint(); toast('Police: "Hey! Stop that motor! Radio the others!"',2.4); }}]);
   return true; }
 function updateRoadblocks(dt){ if(!CPB.ready) return; const f=mode==='drive'&&drive.v?drive.v:player;
   for(const r of CPB.list){ const d=Math.hypot(f.x-r.x,f.z-r.z);
@@ -9410,7 +9478,7 @@ function updateRoadblocks(dt){ if(!CPB.ready) return; const f=mode==='drive'&&dr
       if(Math.abs(u)<32&&Math.abs(u)>12&&T0-r.said>12){ r.said=T0; for(const q of r.guards){ q.act='hail'; q.actT=2.5; } toast(mpick(['Police: "Stop! Park for side!"','Police: "Oga, stop there! Checkpoint!"']),2.2); }
       const sideNow=Math.sign(u)||1;
       if(r.side&&sideNow!==r.side&&Math.abs(drive.speed)>3&&T0-r.talked>3){   // through without stopping
-        r.passT=T0+8; addHeat(.9); for(const q of r.guards){ q.act='argue'; q.actT=3; }
+        r.passT=T0+8; ranCheckpoint(); for(const q of r.guards){ q.act='argue'; q.actT=3; }
         if(w<4.2&&Math.abs(drive.speed)>9){ crashDamage(drive.v,18); drive.speed*=.55; drive.v.speed=drive.speed; thud(); toast('Bang! The nails don burst your tyre! Police: "Stop that motor!"',2.8); }
         else toast(mpick(['Police: "Hey! You no stop! Catch am!"','Police: "Na wa o! Stop that motor!"']),2.4); }
       r.side=Math.abs(u)<40?sideNow:0;
@@ -9481,7 +9549,7 @@ function enterJail(resume=0){ const PR=INTS.int_police&&INTS.int_police.room; le
   Object.assign(player,{x:0,z:1.6,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.24,dist:2.8}); setScene(R.scene); }
   let left=resume, fresh=false; try{ fresh=localStorage.getItem('naija-jail-new')==='1'; localStorage.removeItem('naija-jail-new'); }catch(e){}
   if(resume&&fresh){ try{ localStorage.setItem('naija-arrests',String((+localStorage.getItem('naija-arrests')||0)+1)); }catch(e){} }   // caught, then reloaded before the cell: it still counts
-  if(!left){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; localStorage.setItem('naija-arrests',String(n)); }catch(e){} left=JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]; JAIL.n=n; }
+  if(!left){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; localStorage.setItem('naija-arrests',String(n)); }catch(e){} left=Math.min(600,JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]+(JAIL.extra||0)); JAIL.extra=0; JAIL.n=n; }
   JAIL.left=left; JAIL.saveT=1; JAIL.talkT=6; jailSave(); $('#jailBox').hidden=false; { const s2=Math.ceil(left); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`; }
   toast(resume?`You never finish your time o! Back to cell: ${jailWords(left)} left.`:`Police don lock you for cell. Wait ${jailWords(left)} and they go release you.`+(JAIL.n>1?` (Arrest number ${JAIL.n}: the time dey increase.)`:''),5); }
 function leaveJail(){ JAIL.left=0; jailSave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:0,yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3});
@@ -9634,6 +9702,7 @@ function wayTarget(){ if(!started||busy||mode==='interior'||mode==='enter'||JAIL
   if(LIFE.ease>=.9){ const q=nearestOf(toiletSpots(),x,z); if(q) return {...q,y:3}; }
   if(LIFE.eat>=.9){ const q=nearestOf(foodSpots(),x,z); if(q) return {...q,y:3}; }
   if(LIFE.sleep>=.95){ const h=homeSpot(); return {x:h.x,z:h.z,y:3,t:homeNow()==='tent'?'Your tent · sleep':'Home · sleep'}; }
+  if(LIFE.dirt>=1){ const L=CAMPS.filter(C=>C.door).map(C=>{ const b=bathSpot(C); return b&&{...b,y:3,t:'Public bathroom · ₦100'}; }); if(homeNow()!=='tent'){ const h=homeSpot(); L.push({x:h.x,z:h.z,y:3,t:'Your shower'}); } const q=nearestOf(L,x,z); if(q) return q; }
   if(mapView.dest){ const d=mapView.dest; return {x:d.x,z:d.z,y:3.2,t:(d.place&&d.place.name)||'Where you are going'}; }
   const S=stepOf(); if(!S) return null;
   const g=S.go&&S.go(); if(g) return {x:g.x,z:g.z,y:3,t:g.name||S.t};
@@ -9658,7 +9727,7 @@ function wayTick(dt){ if(!WAY.mk) wayMake(); const M=WAY.mk, el=WAY.el;
   M.visible=d<90&&d>.8; if(M.visible){ M.position.set(tx,0,tz); const {g,ring}=M.userData; g.position.y=(d<12?Math.min(T.y||3,2.1):(T.y||3))+Math.abs(Math.sin(T0*3.4))*.35; g.rotation.y+=dt*2.2; const k=(T0*.9)%1; ring.scale.setScalar(.7+k*.8); ring.material.opacity=.85*(1-k); }
   if(hide||d<6){ el.hidden=true; return; }
   _gv.set(tx,(T.y||3)+.8,tz).project(camera); let x=_gv.x, y=_gv.y; const behind=_gv.z>1; if(behind){ x=-x; y=-y; }
-  const W=innerWidth, H=innerHeight, mx=1-130/W, myT=.42, myB=-(1-110/H), out=behind||Math.abs(x)>mx||y>myT||y<myB;
+  const W=innerWidth, H=innerHeight, mx=1-170/W, myT=.05, myB=-(1-120/H), out=behind||Math.abs(x)>mx||y>myT||y<myB;
   if(out){ const k=Math.max(Math.abs(x)/mx,y>0?y/myT:y/myB,1e-3); x/=k; y/=k; }   // onto the edge of the screen, toward it (never up in the corner over the money and the map)
   const sx=(x*.5+.5)*W, sy=(-y*.5+.5)*H; el.style.transform=`translate(${Math.round(sx)}px,${Math.round(sy)}px) translate(-50%,-100%)`;
   const key=(out?Math.round(Math.atan2(-y,x)*12):'d')+'|'+Math.round(d/5)+'|'+T.t;
@@ -9674,10 +9743,10 @@ function roadGuideMake(){ const sh=new THREE.Shape(); sh.moveTo(-.85,-.4); sh.li
 const _rq=new THREE.Quaternion(), _rp=new THREE.Vector3(), _rs=new THREE.Vector3(1,1,1), _rm=new THREE.Matrix4();
 function roadGuideTick(dt){ if(!RGD.m) roadGuideMake(); const m=RGD.m, rt=mapView.route;
   if(!WAY.on||!rt||rt.length<2||mode==='interior'||!started){ if(m.count){ m.count=0; } return; }
-  m.material.opacity=.62+.25*Math.abs(Math.sin(T0*2.2));
+  m.material.opacity=.3+.06*Math.sin(T0*1.6);
   if((RGD.t-=dt)>0) return; RGD.t=.12;
   const wk=isWork(mapView.dest&&mapView.dest.place); if(wk!==RGD.wk){ RGD.wk=wk; m.material.color.set(wk?GPS_GREEN:GPS_RED); }
-  const f=mode==='drive'&&drive.v?drive.v:player, sc=mode==='drive'?1:.65, step=mode==='drive'?5.5:3.2, far=mode==='drive'?150:70;
+  const f=mode==='drive'&&drive.v?drive.v:player, sc=mode==='drive'?.8:.5, step=mode==='drive'?8:4.5, far=mode==='drive'?110:50;
   // from the point of the route nearest to you, forward
   let bi=0, bd=1e18; for(let i=0;i<Math.min(rt.length-1,40);i++){ const [ax,az]=rt[i],[bx,bz]=rt[i+1], L=Math.hypot(bx-ax,bz-az)||1, t=clamp(((f.x-ax)*(bx-ax)+(f.z-az)*(bz-az))/(L*L),0,1), d=(ax+(bx-ax)*t-f.x)**2+(az+(bz-az)*t-f.z)**2; if(d<bd){ bd=d; bi=i; } }
   let n=0, walked=0, acc=4;
@@ -9698,6 +9767,7 @@ function kioskBuy(){ if(LIFE.hk>=20){ toast('Your bag still full. Sell the ones 
 const HAWK_BAD=new Set(['off','down','dead','getup','takedown','arrest','fight','hurt','flee']);
 function hawkNear(){ if(mode!=='walk'||!(LIFE.hk>0)) return null; let best=null, bd=2.4; for(const p of peds){ if(HAWK_BAD.has(p.state)||p.cop||p.carried||p.robber||p.crook||HAWK.sold.has(p)) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
 function hawkSell(){ const p=hawkNear(); if(!p) return false; HAWK.sold.add(p);
+  if(smellyNo()){ toast(mpick(['"Comot! You dey smell. I no go buy anything from you."','"Ewo! Go baff first, then come sell."']),2.6); return true; }
   if(MR()<.62){ LIFE.hk--; const pr=Math.round(50*jobMul('water')/5)*5; addCash(pr,LIFE.job==='water'?'water':''); cashHUD(); JOBEV('sachet'); if(LIFE.hk%5===0) lifeSave(); toast(mpick(['"Give me one pure water."','"Abeg, one sachet. E cold?"','"Pure water! Oya give me."','"Two minutes, make I find change… here."'])+` +${naira(pr)}`+(LIFE.hk?` · ${LIFE.hk} left`:' · your bag don finish!'),2.4); }
   else toast(mpick(['"I no need am, thank you."','"I don drink water now now."','"No change for my hand."','"Comot for road abeg."']),2.2);
   return true; }
@@ -9719,7 +9789,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
