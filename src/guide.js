@@ -73,7 +73,7 @@ const TIPS = [
     ] },
   { id: 'phone', tour: true, ctx: 'phone', when: s => s.phoneHome,
     steps: [
-      { t: 'Your apps', at: '[data-g=apps]', k: 'Oya Ride books a car or okada. Oya Work gives you jobs that pay. Oya Farm runs your farm. Maps, Photos, Wallet, Weather, and Police to call 112.' },
+      { t: 'Your apps', at: '[data-g=apps]', k: 'Oya Ride books a car or okada. Oya Work gives you jobs that pay. Oya Farm runs your farm. Naija Home sells furniture for your house. Maps, Photos, Wallet, Weather, and Police to call 112.' },
       { t: 'Calls, chats and Gist', at: '[data-g=dock]', k: 'Phone calls people. Messages has your texts. Gist shows wetin people dey post around you. Camera snaps photos and selfies.' },
       { t: 'Home button', at: '[data-g=home]', k: 'Inside any app, tap <<HOME>> to come back to this home screen. The white bar at the bottom of the phone does the same.', ping: true },
       { t: 'Back button', at: '[data-g=back]', k: '<<BACK>> takes you one step back inside an app, like from a chat to all your messages.' },

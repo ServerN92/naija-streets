@@ -158,7 +158,7 @@ test('password change signs other phones out; reset says email is off when not s
 
 test('a big message closes the line', async () => {
   const c = client(); await c.open; const closed = new Promise(r => { c.ws.onclose = e => r(e.code); });
-  c.ws.send(JSON.stringify({ t: 'say', m: 'x'.repeat(10000) })); assert.equal(await closed, 1009);
+  c.ws.send(JSON.stringify({ t: 'say', m: 'x'.repeat(40000) })); assert.equal(await closed, 1009);
 });
 
 test('forgot password: a code by email sets a new one; wrong codes run out', async () => {
@@ -259,6 +259,16 @@ test('a life over the line: kept with the account, checked for sense, back at th
   await new Promise(r => setTimeout(r, 200)); c.close();
   const d = client(); await d.open; d.send({ t: 'login', u: 'life_man', p: 'secret77' }); const me2 = await d.next('me');
   assert.equal(me2.life.home, 'flat'); assert.equal(me2.life.flat, true); assert.equal(me2.life.rented, 3); assert.deepEqual(me2.life.own, ['rags', 'suit']); assert.equal(me2.life.ease, 1);
+  d.close();
+});
+
+test('a big life over the line: a house full of furniture (more than 4 KB) is kept', async () => {
+  const [c] = await account('Deco_Man');
+  const deco = { A07: Array.from({ length: 150 }, (_, i) => ['sofa_grey', i % 2, i / 10, -i / 10, 1.571]) };
+  c.send({ t: 'life', d: { home: 'tent', est: ['A07'], estHome: 'A07', deco, store: { A07: ['bed_king'] }, boxes: [['fridge', 'A07', Date.now() + 60000, 'door']], t: 1 } });
+  await new Promise(r => setTimeout(r, 250)); c.close();
+  const d = client(); await d.open; d.send({ t: 'login', u: 'deco_man', p: 'secret77' }); const me = await d.next('me');
+  assert.equal(me.life.deco.A07.length, 150); assert.deepEqual(me.life.store.A07, ['bed_king']); assert.equal(me.life.boxes[0][0], 'fridge');
   d.close();
 });
 

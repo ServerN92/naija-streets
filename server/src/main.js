@@ -50,7 +50,7 @@ server.on('upgrade', (req, socket, head) => {
   if (!originOk(req.headers.origin)) { socket.end('HTTP/1.1 403 Forbidden\r\n\r\n'); return; }
   const ip = ipOf(req), n = perIp.get(ip) || 0;
   if (world.conns >= MAX_CONNS || n >= MAX_PER_IP) { socket.end('HTTP/1.1 503 Service Unavailable\r\n\r\n'); return; }
-  const ws = accept(req, socket, head, { maxMsg: 4096 });
+  const ws = accept(req, socket, head, { maxMsg: 32768 });   // a life record with your furniture can pass 4 KB
   if (!ws) return;
   perIp.set(ip, n + 1);
   ws.on('close', () => { const k = (perIp.get(ip) || 1) - 1; if (k > 0) perIp.set(ip, k); else perIp.delete(ip); });

@@ -74,3 +74,13 @@ test('life: where you left off, your hustle points and the oga badge are kept, c
   assert.equal(jobRankOf({ okada: 170 }, 'okada'), 3); assert.equal(jobRankOf({}, 'okada'), 0);
   assert.equal(jobBadge(d), 'okada:3'); assert.equal(jobBadge({ job: 'police', jp: {} }), ''); assert.equal(jobBadge({ job: '' }), '');
 });
+
+test('furniture in the life record: placed pieces, the store and boxes are checked', () => {
+  const now = 1e12;
+  const L = lifeOk({ deco: { A07: [['sofa_grey', 0, 1.234, -2, 1.5708], ['<b>', 0, 1, 1, 0], ['tv_55', 1, 'x', 0, 0]], Z99: [['sofa_grey', 0, 0, 0, 0]], flat: [['rug_beige', 0, 99, 0, 0]] },
+    store: { A07: ['bed_king', 7, 'bad id!'], hack: ['x'] }, boxes: [['fridge', 'A07', now + 60000, 'door'], ['fridge', 'A07', now, 'roof'], ['fridge', 'Q1', now, 'in']] }, now);
+  assert.deepEqual(L.deco, { A07: [['sofa_grey', 0, 1.23, -2, 1.571]], flat: [['rug_beige', 0, 60, 0, 0]] });
+  assert.deepEqual(L.store, { A07: ['bed_king'] });
+  assert.deepEqual(L.boxes, [['fridge', 'A07', now + 60000, 'door']]);
+  const N = lifeOk({}); assert.deepEqual(N.deco, {}); assert.deepEqual(N.store, {}); assert.deepEqual(N.boxes, []);
+});

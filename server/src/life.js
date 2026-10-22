@@ -32,6 +32,7 @@ export function lifeOk(d, now = Date.now()) {
     est,                                                  // houses bought in the estates
     estAll,                                               // whole estates bought
     estHome,                                              // the estate house you live in ('' = none)
+    ...homeOk(d, now),                                    // your furniture: placed per house, kept in your store, boxes on the way
     t: Math.round(num(d.t, 0, now + DAY_MS)),
     // street cred (the rank): points, the day being counted (yyyymmdd), active seconds counted that day, what each deed paid that day, the streak
     cr: Math.floor(num(d.cr, 0, 1e7)), cd: num(d.cd, 0, 99991231) | 0, ca: Math.round(num(d.ca, 0, 86400)),
@@ -43,6 +44,23 @@ export function lifeOk(d, now = Date.now()) {
     ffd: num(d.ffd, 0, 1e8) | 0, tips: num(d.tips, 0, 99) | 0,   // the day you last took free food (church/mosque), Mama's tips sent
     rel: relOk(d.rel, now), relNo: relNoOk(d.relNo), relHype: num(d.relHype, 0, 1e8) | 0,   // your babe (or guy) in the game: who, how much love, a money request; who you broke up with today
   };
+}
+const FUR = /^[a-z0-9_]{2,24}$/, HOUSEID = k => k === 'flat' || HOUSE.test(k);
+function homeOk(d, now) {
+  const fin = v => typeof v === 'number' && Number.isFinite(v), c = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const deco = {}, store = {};
+  if (d.deco && typeof d.deco === 'object' && !Array.isArray(d.deco)) for (const [k, L] of Object.entries(d.deco).slice(0, 120)) {
+    if (!HOUSEID(k) || !Array.isArray(L)) continue;
+    deco[k] = L.filter(r => Array.isArray(r) && typeof r[0] === 'string' && FUR.test(r[0]) && fin(r[2]) && fin(r[3]) && fin(r[4])).slice(0, 150)
+      .map(r => [r[0], c(r[1] | 0, 0, 3), Math.round(c(r[2], -60, 60) * 100) / 100, Math.round(c(r[3], -60, 60) * 100) / 100, Math.round(c(r[4], -7, 7) * 1000) / 1000]);
+  }
+  if (d.store && typeof d.store === 'object' && !Array.isArray(d.store)) for (const [k, L] of Object.entries(d.store).slice(0, 120)) {
+    if (HOUSEID(k) && Array.isArray(L)) store[k] = L.filter(x => typeof x === 'string' && FUR.test(x)).slice(0, 200);
+  }
+  const boxes = Array.isArray(d.boxes) ? d.boxes.filter(b => Array.isArray(b) && typeof b[0] === 'string' && FUR.test(b[0]) && typeof b[1] === 'string' && HOUSEID(b[1]) && fin(b[2]) && (b[3] === 'door' || b[3] === 'in'))
+    .slice(0, 60).map(b => [b[0], b[1], Math.round(c(b[2], 0, now + DAY_MS)), b[3]]) : [];
+  let n = 0; for (const k of Object.keys(deco)) { deco[k] = deco[k].slice(0, Math.max(0, 300 - n)); n += deco[k].length; if (!deco[k].length) delete deco[k]; }   // 300 pieces in all your houses
+  return { deco, store, boxes };
 }
 function relOk(r, now) {
   if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.id !== 'string' || !/^[a-z]{2,12}$/.test(r.id)) return null;

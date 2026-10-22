@@ -13,22 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=c8e522a67e';
-import * as C2 from './char2.js?v=c8e522a67e';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=c8e522a67e';
-import { createPhone } from './phone.js?v=c8e522a67e';
-import { createGuide } from './guide.js?v=c8e522a67e';
+import * as CLOCK from './clock.js?v=1e72daf741';
+import * as C2 from './char2.js?v=1e72daf741';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=1e72daf741';
+import { createPhone } from './phone.js?v=1e72daf741';
+import { createGuide } from './guide.js?v=1e72daf741';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=c8e522a67e';
-import { createFarm } from './farm.js?v=c8e522a67e';
-import { createBusiness } from './business.js?v=c8e522a67e';
-import { createOnline } from './online.js?v=c8e522a67e';
-import { createPolice } from './police.js?v=c8e522a67e';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=c8e522a67e';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=c8e522a67e';
+import { createFootball } from './football.js?v=1e72daf741';
+import { createHome } from './home.js?v=1e72daf741';
+import { createFarm } from './farm.js?v=1e72daf741';
+import { createBusiness } from './business.js?v=1e72daf741';
+import { createOnline } from './online.js?v=1e72daf741';
+import { createPolice } from './police.js?v=1e72daf741';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=1e72daf741';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=1e72daf741';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='c8e522a67e';
+const BUILD='1e72daf741';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -757,7 +758,8 @@ const GRA={poly:(a=>{ const p=[]; for(let i=0;i<a.length;i+=2) p.push([a[i],a[i+
   sites:{hotel:{name:'set_gra_hotel',x:-2237.54,z:-550.92,ry:2.7873,hx:157,hz0:-130,hz1:135,drive:[[0,7.5,126,162]]},
     motors:{name:'set_gra_motors',x:-1940.34,z:-507.5,ry:2.4159,hx:28,hz0:-25,hz1:23,drive:[[-18,2.8,21.6,37],[18,2.8,21.6,37]]},
     garage:{name:'set_gra_garage',x:-1981.92,z:-563.05,ry:2.4171,hx:16,hz0:-17,hz1:11,drive:[[0,3.6,10,23]]},
-    boutique:{name:'set_gra_boutique',x:-1883.36,z:-481.33,ry:2.4157,hx:11,hz0:-7,hz1:8,drive:[[0,6,6.6,19]]}},
+    boutique:{name:'set_gra_boutique',x:-1883.36,z:-481.33,ry:2.4157,hx:11,hz0:-7,hz1:8,drive:[[0,6,6.6,19]]},
+    naijahome:{name:'set_gra_naijahome',x:-1866.15,z:-457.78,ry:2.4159,hx:14,hz0:-24.5,hz1:12,drive:[[0,3.2,12,25.5]]}},   // NAIJA HOME furniture showroom (lib/showroom.py)
   sign:{x:-1844.0,z:-459.3,ry:2.422}};
 GRA.in=(x,z)=>inPoly(GRA.poly,x,z);
 GRA.loc=(S,x,z)=>{ const dx=x-S.x, dz=z-S.z, c=Math.cos(S.ry), s=Math.sin(S.ry); return {lx:dx*c-dz*s,lz:dx*s+dz*c}; };
@@ -1713,7 +1715,7 @@ function setPlants(S){ const L=(S.json&&S.json.inst)||[]; if(!L.length) return; 
 PLACES.push({name:'Apapa-Oworonshoki Expressway',sub:'Expressway · Mushin west',kind:'place',x:-1570,z:-830},{name:'Agege Motor Road (dual carriageway)',sub:'Expressway look',kind:'place',x:743,z:124});
 // ---- Ikeja GRA, outside: lawns (the four places cut out), driveways to the road, palms along Kudirat Abiola Way and in the
 // gardens, the IKEJA G.R.A. sign, and the four Blender sets (they load when you come near)
-{ const holes=[['hotel',-160,160,-128,127],['motors',-26.8,26.8,2.1,21.5],['garage',-14.9,14.9,-15.9,9.9],['boutique',-11,11,4.6,8.2]].map(([k,x0,x1,z0,z1])=>{ const S=GRA.sites[k];
+{ const holes=[['hotel',-160,160,-128,127],['motors',-26.8,26.8,2.1,21.5],['garage',-14.9,14.9,-15.9,9.9],['boutique',-11,11,4.6,8.2],['naijahome',-14,14,-24.2,12]].map(([k,x0,x1,z0,z1])=>{ const S=GRA.sites[k];
     return [[x0,z0],[x1,z0],[x1,z1],[x0,z1]].map(([lx,lz])=>setPt(S,lx,lz)); });
   const all=[...GRA.poly,...holes.flat().map(p=>[p.x,p.z])];
   let tris=[]; try{ tris=THREE.ShapeUtils.triangulateShape(GRA.poly.map(([x,z])=>new THREE.Vector2(x,z)),holes.map(h=>h.map(p=>new THREE.Vector2(p.x,p.z)))); }catch(e){ console.warn('gra lawn',e); }
@@ -2324,14 +2326,23 @@ const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:1000
 // cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
 function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
   return {cr:clamp(Math.floor(+(d&&d.cr)||0),0,1e7),cd:clamp((d&&d.cd)|0,0,99991231),ca:clamp(+(d&&d.ca)||0,0,86400),cx,cs:clamp((d&&d.cs)|0,0,3650),cl:clamp((d&&d.cl)|0,0,99991231)}; }
-const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,ffd:0,tips:0,rel:null,relNo:{},relHype:0,t:Date.now()});
+const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',deco:{},store:{},boxes:[],pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,ffd:0,tips:0,rel:null,relNo:{},relHype:0,t:Date.now()});
 // where you were when you left (you carry on there if you come back soon), your points in each hustle (your rank in the job)
 const posClean=p=>p&&typeof p==='object'&&Number.isFinite(+p.x)&&Number.isFinite(+p.z)?{x:clamp(+p.x,-9e3,9e3),z:clamp(+p.z,-9e3,9e3),r:clamp(+p.r||0,-7,7),t:+p.t||0,st:clamp(p.st|0,0,5),car:p.car?1:0}:null;
 const jpClean=j=>{ const o={}; if(j&&typeof j==='object'&&!Array.isArray(j)) for(const [k,v] of Object.entries(j).slice(0,12)) if(/^[a-z_]{2,16}$/.test(k)&&Number.isFinite(+v)) o[k]=clamp(+v,0,1e6); return o; };
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
   const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
   const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
-  return {v:LIFE_V,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,ffd:clamp(d.ffd|0,0,1e8),tips:clamp(d.tips|0,0,99),rel:relClean(d.rel),relNo:relNoClean(d.relNo),relHype:clamp(d.relHype|0,0,1e8),t:+d.t||0,u:d.u}; }
+  const {deco,store,boxes}=homeClean(d);
+  return {v:LIFE_V,deco,store,boxes,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,ffd:clamp(d.ffd|0,0,1e8),tips:clamp(d.tips|0,0,99),rel:relClean(d.rel),relNo:relNoClean(d.relNo),relHype:clamp(d.relHype|0,0,1e8),t:+d.t||0,u:d.u}; }
+// your furniture (src/home.js): placed pieces per house [id, floor, x, z, turn], unboxed pieces kept in your store, boxes on the way
+function homeClean(d){ const FID=/^[a-z0-9_]{2,24}$/, HID=k=>k==='flat'||!!EST.byId[k], deco={}, store={};
+  if(d.deco&&typeof d.deco==='object'&&!Array.isArray(d.deco)) for(const [k,L] of Object.entries(d.deco).slice(0,120)){ if(!HID(k)||!Array.isArray(L)) continue;
+    deco[k]=L.filter(r=>Array.isArray(r)&&typeof r[0]==='string'&&FID.test(r[0])&&[2,3,4].every(i=>Number.isFinite(+r[i]))).slice(0,150).map(r=>[r[0],clamp(r[1]|0,0,3),+(+r[2]).toFixed(2),+(+r[3]).toFixed(2),+(+r[4]).toFixed(3)]); }
+  if(d.store&&typeof d.store==='object'&&!Array.isArray(d.store)) for(const [k,L] of Object.entries(d.store).slice(0,120)){ if(!HID(k)||!Array.isArray(L)) continue; store[k]=L.filter(x=>typeof x==='string'&&FID.test(x)).slice(0,200); }
+  const boxes=Array.isArray(d.boxes)?d.boxes.filter(b=>Array.isArray(b)&&typeof b[0]==='string'&&FID.test(b[0])&&typeof b[1]==='string'&&HID(b[1])&&Number.isFinite(+b[2])&&(b[3]==='door'||b[3]==='in')).slice(0,60).map(b=>[b[0],b[1],+b[2],b[3]]):[];
+  let n=0; for(const k of Object.keys(deco)){ deco[k]=deco[k].slice(0,Math.max(0,300-n)); n+=deco[k].length; if(!deco[k].length) delete deco[k]; }   // 300 pieces in all your houses
+  return {deco,store,boxes}; }
 function relClean(r){ if(!r||typeof r!=='object'||typeof r.id!=='string'||!/^[a-z]{2,12}$/.test(r.id)) return null; const ask=r.ask&&Number.isFinite(+r.ask.n)?{n:clamp(+r.ask.n,0,50000),until:+r.ask.until||0}:null; return {id:r.id,love:clamp(+r.love||0,0,100),since:r.since|0,dates:clamp(r.dates|0,0,1e5),last:+r.last||0,ask,nx:0}; }
 function relNoClean(o){ const out={}; if(o&&typeof o==='object') for(const [k,v] of Object.entries(o).slice(0,12)) if(/^[a-z]{2,12}$/.test(k)) out[k]=v|0; return out; }
 const lifeRead=k=>{ try{ return lifeClean(JSON.parse(localStorage.getItem(k)||'null')); }catch(e){ return null; } };
@@ -3410,7 +3421,8 @@ function updateHUD(dt){ if(!started) return;
 const camState={yaw:HOME0.ry,pitch:.26,zoom:1,last:-10,dist:4.3,shake:0}; camState.yaw=clearYaw(player.x,player.y,player.z,RESUME?RESUME.ry:homeNow()==='tent'?HOME0.ry+2.5:HOME0.ry);   // at your door: a clear view, not your wall
 const _t=new THREE.Vector3(), _d=new THREE.Vector3(), _c=new THREE.Vector3();
 let DEVCAM=null;   // test helper only (window.__ns.look): a fixed camera
-function updateCamera(dt){ if(mode==='foot'&&FOOT&&!DEVCAM&&FOOT.cam(dt)) return; if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
+let HOMEX=null;   // Naija Home: furniture and arranging your house (src/home.js), made after the estates
+function updateCamera(dt){ if(mode==='foot'&&FOOT&&!DEVCAM&&FOOT.cam(dt)) return; if(HOMEX&&!DEVCAM&&HOMEX.cam(dt)) return; if(DEVCAM){ camera.position.copy(DEVCAM.p); camera.lookAt(DEVCAM.t); return; } let dist;
   if(mode==='drive'){ const v=drive.v, sk=v.type==='skate'; _t.set(v.x,v.y+(sk?1.3+(v.lift||0)*.5:1.5),v.z); dist=sk?4.4+Math.abs(drive.speed)*.1:7.8+Math.abs(drive.speed)*.04;   // on the board the camera stays close, like on foot
     if(T0-camState.last>1.0){ const want=Math.atan2(Math.cos(v.h),-Math.sin(v.h)), k=Math.abs(drive.speed)>1?2.6:.6; camState.yaw=lerpA(camState.yaw,want,1-Math.exp(-k*dt)); camState.pitch+=(.2-camState.pitch)*(1-Math.exp(-2*dt)); } }
   else { camFollow(dt); _t.set(player.x+FIGHT.cx,player.y+(WARD.open?1.02:HL.act?HL.act.camH:CB.act&&CB.act.camH?CB.act.camH:1.55-.42*CR.w-.5*CR.pw),player.z+FIGHT.cz); dist=WARD.open?2.3:mode==='interior'?ROOM.camDist:gunOut()&&ARMS.aim?2.1:4.3; }
@@ -3674,7 +3686,7 @@ function exitCar(){ const v=drive.v, hx=Math.cos(v.h), hz=-Math.sin(v.h); let pl
 async function enterApt(){ if(busy) return;
   if(!MYROOM.ready&&!MYROOM.failed&&MANIFEST['assets/models/room.glb']){ toast('Opening your room…',4); busy=true; try{ await loadMyRoom(); }catch(e){} busy=false; }
   fadeSwap(()=>{ ROOM=INT; mode='interior'; enteredAt=T0; INT.scene.add(rig.root); const s=INT.spawn||{x:0,z:3.3,ry:Math.PI};
-    Object.assign(player,{x:s.x,z:s.z,y:0,yaw:s.ry,speed:0}); Object.assign(camState,{yaw:s.ry,pitch:.22,dist:INT.camDist}); setScene(INT.scene); if(INT.home) homeDirt(); toast(INT.home&&HL.dirt.length>2?'Home sweet home. The house don dirty small: the broom dey near the bucket.':'Home sweet home'); }); }
+    Object.assign(player,{x:s.x,z:s.z,y:0,yaw:s.ry,speed:0}); Object.assign(camState,{yaw:s.ry,pitch:.22,dist:INT.camDist}); setScene(INT.scene); if(HOMEX&&INT.grid) HOMEX.enterFlat(INT); if(INT.home) homeDirt(); toast(INT.home&&HL.dirt.length>2?'Home sweet home. The house don dirty small: the broom dey near the bucket.':'Home sweet home'); }); }
 function exitApt(){ closeWard(); homeLeave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:groundY(o.x,o.z),yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3}); setScene(scene); }); }
 function bump(s){ camState.shake=Math.min(1.2,camState.shake+s*.04); if(s>6) thud(); }
 
@@ -6249,7 +6261,7 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
@@ -8192,7 +8204,7 @@ function buildSimsRoom(name,g){
       S.environmentIntensity=.35; for(const l of S.children) if(l.isDirectionalLight){ l.intensity=.5; l.castShadow=false; } else if(l.isHemisphereLight) l.intensity=.7; R.lit=true; }); }
   if(baked){ S.environmentIntensity=.45; for(const l of S.children) if(l.isDirectionalLight){ l.intensity=.9; l.castShadow=false; } else if(l.isHemisphereLight) l.intensity=1.1; }
   const R={name,scene:S,marks:MK,free,sims:false,baked,own,label:'',camDist:2.8,exit:{x:1e9,z:1e9},cols:[],spots:[],folk:[],lights,signs,tick:null,walls:W,
-    bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:bb.min.x+.2,x1:bb.max.x-.2,z0:bb.min.z+.2,z1:bb.max.z-.2,y0:.5,y1:2.9},
+    bounds:{x0:bb.min.x,x1:bb.max.x,z0:bb.min.z,z1:bb.max.z},cam:{x0:bb.min.x+.2,x1:bb.max.x-.2,z0:bb.min.z+.2,z1:bb.max.z-.2,y0:.5,y1:2.9},grid:{grid,gw,gd,x0,z0,CS},
     camHit(t,d,dist){ for(let q=.25;q<dist;q+=.08){ const x=t.x+d.x*q, z=t.z+d.z*q, i=Math.floor((x-x0)/CS), j=Math.floor((z-z0)/CS); if(i<0||j<0||i>=gw||j>=gd||tall[j*gw+i]) return q; } return dist; },out:()=>STATION.front,
     move(nx,nz){ if(free(nx,nz)){ player.x=nx; player.z=nz; } else if(free(nx,player.z)) player.x=nx; else if(free(player.x,nz)) player.z=nz; player.y=0; },
     nearFree(x,z){ if(free(x,z,.3)) return {x,z}; for(let r=.2;r<4;r+=.2) for(let q=0;q<16;q++){ const px=x+Math.sin(q/16*6.283)*r, pz=z+Math.cos(q/16*6.283)*r; if(free(px,pz,.3)) return {x:px,z:pz}; } return {x,z}; },
@@ -8396,7 +8408,7 @@ function spawnOwned(o,near){ const k=kerbSpot(near.x,near.z,2.2)||{x:near.x+3,z:
    VELVET club, ten rooms and suites), NAIJA MOTORS showroom, Adunni's Fashion House. All made and lit in the user's Blender:
    the light is baked into each room's picture, so they look like the Blender renders. */
 const gp=(k,lx,lz,yaw=0)=>{ const S=GRA.sites[k], c=Math.cos(S.ry), s=Math.sin(S.ry); return {x:S.x+lx*c+lz*s,z:S.z-lx*s+lz*c,yaw:S.ry+yaw,ry:S.ry+yaw}; };
-const GRA_DOOR={motors:gp('motors',0,3.4),garage:gp('garage',0,12.2),boutique:gp('boutique',0,5.8)};
+const GRA_DOOR={motors:gp('motors',0,3.4),garage:gp('garage',0,12.2),boutique:gp('boutique',0,5.8),naijahome:gp('naijahome',0,-.3)};
 // big baked pictures: keep the lobby, let the other Eko rooms go when you move on (phones have little memory)
 function intDrop(name){ const I=INTS[name]; if(!I||!I.room||ROOM===I.room) return; for(const o of I.room.own||[]){ o.geometry&&o.geometry.dispose(); for(const m of [].concat(o.material||[])){ m.map&&m.map.dispose(); m.dispose(); } } delete INTS[name]; }
 function ekoDrop(keep){ for(const k of Object.keys(INTS)) if(/^int_eko_(r\d+|cellar|velvet)$/.test(k)&&k!==keep) intDrop(k); }
@@ -8505,6 +8517,14 @@ function buyNmCar(s){ if(!rankGate(carRank(s.price),'This car')) return; if(CASH
 
 // ---- Adunni's Fashion House: designer clothes on the rails, the tailor sews native wear to measure
 const NATIVE=new Set(['ankara','kaftan','senator','iro_buba','gown','agbada','buba']);
+async function enterNaijaHome(){ if(busy) return; const R=await intGet('int_naija_home','Opening NAIJA HOME…'); if(!R) return; setupNaijaHome(R); R.label='NAIJA HOME · Ikeja GRA';
+  goRoom(R,'door','Welcome to NAIJA HOME! Walk round, check the price tags, buy what you like. E dey reach your house in 5 minutes, no delivery fee.'); }
+function setupNaijaHome(R){ if(R.ready){ fillRoom(R); return; } R.ready=true; const M=R.marks; R.camDist=3.4;
+  R.fill=R=>{ folk(R.scene,'suit_lady',M.staff_1,['idle_suit','f_talk'],R.folk); folk(R.scene,'p_tunde',M.staff_2,['idle_1','talk'],R.folk); roomGuests(R,3,[-11,-11,11,11],91,TALK,[M.door,M.till,M.staff_2]); };
+  R.spot(M.door,'Go back outside',()=>leaveRoom(GRA_DOOR.naijahome),1.3);
+  R.spot(M.till,'Talk to the cashier',()=>toast(mpick(['"Welcome! Find what you like, press E for front of am and pay. We go carry am go your house."','"Cash, POS or transfer, all dey work."','"Buy here, e cheap pass the app. No delivery fee!"']),3.4),1.3);
+  R.spot(M.staff_2,'Talk to the salesman',()=>toast(mpick(['"That emerald sofa? Original velvet. E go fine for your parlour."','"Once you pay, the box go dey inside your house. Open am and arrange am the way you like."','"You fit also order for the NAIJA HOME app, but delivery fee dey."']),3.4),1.3);
+  if(HOMEX) HOMEX.showroom(R).then(()=>fillRoom(R)).catch(()=>fillRoom(R)); else fillRoom(R); }
 async function enterAdunni(){ if(busy) return; if(!rankGate(3,'Adunni\'s Fashion House')) return; const R=await intGet('int_adunni','Opening Adunni\'s Fashion House…'); if(!R) return; setupAdunni(R); R.label='Adunni\'s Fashion House'; goRoom(R,'spawn','Adunni\'s Fashion House. Designer clothes and native wear.'); }
 function setupAdunni(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=2.8;
   R.fill=R=>{ folk(R.scene,'p_amaka',M.owner,['f_talk','idle_3'],R.folk); folk(R.scene,'suit_lady',M.sales,['idle_suit','f_talk'],R.folk); folk(R.scene,'baba',M.tailor,['idle_baba','talk'],R.folk);
@@ -8674,6 +8694,7 @@ if(VENUES.carstand) doorMark(VENUES.carstand.door.x,VENUES.carstand.door.z,'#2fb
 // ---- Ikeja GRA, outside: doors, door marks, places on the map, people at the gates, the pool bar, golf, cars
 DOORS.push({x:GRA_DOOR.motors.x,z:GRA_DOOR.motors.z,r:2.2,label:'Enter NAIJA MOTORS showroom',act:enterMotors});
 DOORS.push({x:GRA_DOOR.boutique.x,z:GRA_DOOR.boutique.z,r:2,label:'Enter Adunni\'s Fashion House',act:enterAdunni});
+DOORS.push({x:GRA_DOOR.naijahome.x,z:GRA_DOOR.naijahome.z,r:2.2,label:'Enter NAIJA HOME furniture showroom',act:enterNaijaHome});
 { const m=gp('garage',-3,1); DOORS.push({x:m.x,z:m.z,r:3.4,label:()=>garageCar()?'Talk to the mechanic · fix your car':'Talk to the mechanic',act:garageMenu}); doorMark(m.x,m.z,'#f28c28','MECHANIC · FIX YOUR CAR'); }
 DOORS.push({x:EKO.back.x,z:EKO.back.z,r:2,label:'Go into the hotel lobby',act:()=>enterEko('pool')});
 { const m=gp('hotel',28,-61.6); DOORS.push({x:m.x,z:m.z,r:2.2,label:'Pool bar · buy a drink',act:()=>openMenu('POOL BAR · EKO GRAND','Cold drinks by the water',[['Chapman',3000,'With ice and cucumber'],['Coconut water',2000,'Fresh from the tree'],['Cocktail',6000,'Pina colada'],['Chilled beer',2500,'Very cold'],['Club sandwich',6000,'With chips']].map(([n,p,sub])=>({name:n,sub,price:p,act:()=>{ closeMenu(); toast(mpick([`${n} by the pool. Soft life!`,`${n}. The sun, the water, the music. Enjoy!`]),3); }})))}); }
@@ -8682,7 +8703,7 @@ DOORS.push({x:EKO.back.x,z:EKO.back.z,r:2,label:'Go into the hotel lobby',act:()
   const m2=gp('hotel',-95,13.6); DOORS.push({x:m2.x,z:m2.z,r:3,label:'Jump into the long pool',act:dive(-95,21)});
   PLACES.push({name:'Eko Grand swimming pool',sub:'70 m pool · swim for free',kind:'place',x:m2.x,z:m2.z,minor:true}); }
 { const m=gp('hotel',70,39.6); DOORS.push({x:m.x,z:m.z,r:2.4,label:'Golf club · play 6 holes (₦15,000)',act:()=>{ if(!rankGate(4,'The golf club')) return; if(CASH.n<15000){ toast('"Green fee na ₦15,000. Come back."',2.8); return; } addCash(-15000); cashHUD(); golfRound(); }}); }
-doorMark(GRA_DOOR.motors.x,GRA_DOOR.motors.z,'#2fbf71','ENTER · NAIJA MOTORS'); doorMark(GRA_DOOR.boutique.x,GRA_DOOR.boutique.z,'#e85d9b','ENTER · ADUNNI\'S FASHION HOUSE');
+doorMark(GRA_DOOR.motors.x,GRA_DOOR.motors.z,'#2fbf71','ENTER · NAIJA MOTORS'); doorMark(GRA_DOOR.boutique.x,GRA_DOOR.boutique.z,'#e85d9b','ENTER · ADUNNI\'S FASHION HOUSE'); doorMark(GRA_DOOR.naijahome.x,GRA_DOOR.naijahome.z,'#d9824f','ENTER · NAIJA HOME FURNITURE');
 // the new places on the map, their doors, and the gatemen at the luxury gates (they greet you, and turn back rags)
 for(const P of LUXP){ const K=P.K;
   PLACES.push({name:P.title,sub:K.street?`Street salon · ${K.sub} · ${P.area}`:`${K.sub} · ${P.area}`,kind:K.kind,x:P.x,z:P.z});
@@ -8693,6 +8714,7 @@ for(const P of LUXP){ const K=P.K;
         toast(wearId()==='rags'?`Gateman: "Hey! Where you dey go with this rags? This na ${K.name}."`:mpick([`Gateman: "Welcome to ${K.name}, ${isF()?'madam':'oga'}! Enter, enter."`,`Gateman: "Good day ${isF()?'ma':'sir'}! Park inside, I go watch your car."`,'Gateman: "You look sharp today! Welcome."']),3.2); } }; }); }
 PLACES.push({name:'NAIJA MOTORS',sub:'Car showroom · Ikeja GRA · brand new and tokunbo',kind:'cars',x:GRA.sites.motors.x,z:GRA.sites.motors.z},
   {name:'Adunni\'s Fashion House',sub:'Boutique and tailor · Ikeja GRA',kind:'shop',x:GRA.sites.boutique.x,z:GRA.sites.boutique.z},
+  {name:'NAIJA HOME',sub:'Furniture showroom · Ikeja GRA · cheaper than the app, no delivery fee',kind:'shop',x:GRA.sites.naijahome.x,z:GRA.sites.naijahome.z},
   {name:'Baba Sule Mechanic',sub:'Mechanic · fix your car · Ikeja GRA',kind:'service',x:GRA.sites.garage.x,z:GRA.sites.garage.z},
   {name:'Eko Grand Golf Course',sub:'Golf · Eko Grand Hotel',kind:'place',x:gp('hotel',100,30).x,z:gp('hotel',100,30).z,minor:true});
 /* ---- the estates (see EST): the mansions, their plot gates and the palms load when you come near (est_S1..S10.glb, a lighter
@@ -8782,6 +8804,7 @@ function estBuyAll(E){ if(!LIFE.estAll.includes(E.id)) LIFE.estAll.push(E.id); L
 function plotMenu(p){ const E=p.E;
   openMenu(p.name.toUpperCase(),`House ${p.id} · ${E.name}`,()=>{ if(estOwns(p.id)){ const home=LIFE.estHome===p.id; return [
       {name:home?'This is your home':'Make this your home',sub:home?'You wake up here when you come back.':'Wake up here when you come back to the game.',btn:home?'Home':'Move in',off:home,act:()=>{ LIFE.estHome=p.id; lifeSave(true); estOwned(); toast(`House ${p.id} is your home now.`,3); }},
+      {name:'Go inside',sub:'Arrange it your way: furniture from the NAIJA HOME app or the showroom.',btn:'Enter',act:()=>{ closeMenu(); if(HOMEX) HOMEX.enterEst(p); }},
       {name:'Your gate',sub:'It opens for you and your car. Security knows you.',btn:'OK',act:closeMenu}]; }
     return [{name:'Buy this house',sub:estWhat(p),price:p.price,rank:5,act:()=>estBuy(p)},
       {name:'The estate office',sub:`At the gate: every house for sale here, or the whole estate for ${naira(estWhole(E))}`,btn:'OK',act:closeMenu}]; }); }
@@ -8794,7 +8817,7 @@ function officeMenu(E){ openMenu('ESTATE OFFICE',`${E.name} · Agent: "Welcome, 
 // the doors: each plot's gate (and the house's own door once its size is known), the estate office in both gatehouses
 for(const p of EST.plots) DOORS.push({x:p.gate.x,z:p.gate.z,r:3.2,label:()=>estOwns(p.id)?`Your house · ${p.name} (${p.id})`:`${p.name} for sale · ${naira(p.price)}`,act:()=>plotMenu(p)});
 function estDoors(){ for(const p of EST.plots){ const S=ESTM.J.styles[p.st]; if(!S||!S.door) continue; const w=EST.pt(p,S.door[0],S.door[1]+2.2);
-  DOORS.push({x:w.x,z:w.z,r:3,label:()=>estOwns(p.id)?`Your house · ${p.name}`:`${p.name} · for sale ${naira(p.price)}`,act:()=>plotMenu(p)}); } }
+  DOORS.push({x:w.x,z:w.z,r:3,label:()=>estOwns(p.id)?`Enter your house · ${p.name}`:`${p.name} · for sale ${naira(p.price)}`,act:()=>estOwns(p.id)&&HOMEX?HOMEX.enterEst(p):plotMenu(p)}); } }
 for(const E of EST.list){ E.marks=[]; for(const s of [-1,1]){ const o=EST.at(E,s*27,EST.VG+12.4); DOORS.push({x:o.x,z:o.z,r:3,label:()=>`Estate office · ${E.name}`,act:()=>officeMenu(E)}); E.marks.push(doorMark(o.x,o.z,'#d4af37','ESTATE OFFICE · HOUSES FOR SALE')); }
   const g=EST.at(E,0,EST.VG-14); PLACES.push(E.place={name:E.name,sub:'',kind:'place',x:g.x,z:g.z});
   // the name on the gate beam (both faces) and on the wing walls
@@ -8805,6 +8828,19 @@ for(const E of EST.list){ E.marks=[]; for(const s of [-1,1]){ const o=EST.at(E,s
     folk(scene,'suit_lady',P(27,EST.VG+11.2,E.ry),['idle_suit','f_talk'],G.list); });
   estBoards(E); }
 estOwned();
+// ---- Naija Home (src/home.js): the furniture you buy and arranging it in your house (estate mansions and your flat)
+HOMEX=createHome({ THREE, scene, camera, canvas:cvs, touch:()=>touchUI,
+  glb:n=>{ const u=murl(n); DL.exp[u]=MANIFEST[`assets/models/${n}.glb`]||8000; return fetchBuf(u).then(b=>GLL.parseAsync(b,'')); },
+  json:p=>{ const k=AV[p]||MANIFEST[p]; return fetch(k?p+'?v='+k:p).then(r=>{ if(!r.ok) throw new Error(p+' '+r.status); return r.json(); }); },
+  assetUrl:f=>{ const p='assets/models/'+f, k=AV[p]||MANIFEST[p]; return k?p+'?v='+k:p; },
+  intGet, goRoom, leaveRoom, room:()=>ROOM, mode:()=>mode, player, camState, rigRoot:()=>rig&&rig.root, busy:()=>busy, fade:fadeSwap,
+  toast, naira, cash:()=>CASH.n, pay:n=>{ if(CASH.n<n) return false; addCash(-n); cashHUD(); return true; }, openMenu, closeMenu, life:()=>LIFE, save:now=>lifeSave(now),
+  addDoor:d=>DOORS.push(d), delDoor:d=>{ const i=DOORS.indexOf(d); if(i>=0) DOORS.splice(i,1); },
+  houses:()=>{ const out=[]; for(const p of EST.plots) if(estOwns(p.id)) out.push({id:p.id,kind:'est',st:p.st,p,name:`${p.name} · house ${p.id}, ${p.E.name}`,short:`your ${p.name} (${p.id})`});
+    if(LIFE.flat) out.push({id:'flat',kind:'flat',name:'Your flat · Mushin',short:'your flat'}); return out; },
+  doorOut:id=>{ if(id==='flat') return {x:APT.door.x+APT.nx*1.3,z:APT.door.z+APT.nz*1.3,ry:APT.ry}; const p=EST.byId[id]; if(!p) return null; const S=ESTM.J&&ESTM.J.styles[p.st], d=S&&S.door||[0,-13];
+    const w=EST.pt(p,d[0],d[1]+1.9); return {x:w.x,z:w.z,ry:p.ry}; },
+  estOut:p=>{ const S=ESTM.J&&ESTM.J.styles[p.st], d=S&&S.door||[0,-13], w=EST.pt(p,d[0],d[1]+2.3); return {x:w.x,z:w.z,ry:p.ry}; } });
 function estTick(dt){ if((EST.tk=(EST.tk||0)-dt)>0) return; EST.tk=.4; const px=mode==='drive'&&drive.v?drive.v.x:player.x, pz=mode==='drive'&&drive.v?drive.v.z:player.z;
   if(ESTM.mat) ESTM.mat.glow.emissiveIntensity=ENV.lamp*1.3;
   for(const E of EST.list){ const d=Math.hypot(px-E.cx,pz-E.cz); if(!ESTM.st&&d<1300) estLoad(); if(ESTM.st===2&&!E.cols&&d<600) estSolid(E); if(E.board) E.board.visible=d<520&&mode!=='interior'; } }
@@ -9180,6 +9216,8 @@ function swimTick(dt,Z,moving){ if(!SWIM.on){ SWIM.on=true; if(CR.on) crReset();
 function swimPose(){ const r=rig.root; if(SWIM.p<.002&&!SWIM.on){ if(r.rotation.x){ r.rotation.x=0; } SWIM.p=0; return; }
   r.rotation.order='YXZ'; r.rotation.x=SWIM.p*1.32; const back=SWIM.p*.85; r.position.x-=Math.sin(player.yaw)*back; r.position.z-=Math.cos(player.yaw)*back; }
 function graLoaded(k,S){ const J=S.json||{};
+  if(k==='naijahome'){ const rnd=mulberry32(919), B=(J.bays||[]).slice(), cols=['#101114','#e9e7e2','#6b6e72','#8c1d1d','#c9ccd1'];   // customers' cars on the forecourt
+    for(let i=0;i<3&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(['v_camry','v_rangerover','v_accord','v_hilux','v_sclass'][(rnd()*5)|0],cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:.1,h:carYaw(S.ry+yw),keep:1,parked:true}); } }
   if(k==='hotel'){ const rnd=mulberry32(808), B=(J.bays||[]).slice(); const cols=['#101114','#e9e7e2','#6b6e72','#1b2a44','#8c1d1d','#c9ccd1','#2f3f5a'];
     for(let i=0;i<16&&B.length;i++){ const [lx,lz,yw]=B.splice((rnd()*B.length)|0,1)[0], w=setPt(S,lx,lz), v=newVehicle(['v_gwagon','v_rangerover','v_sclass','v_landcruiser','v_camry','v_accord','v_rolls','v_hilux'][(rnd()*8)|0],cols[(rnd()*cols.length)|0],true); Object.assign(v,{x:w.x,z:w.z,y:.1,h:carYaw(S.ry+yw),keep:1,parked:true}); }
     hotelWater(S,J); }
@@ -9197,7 +9235,7 @@ if(LIFE_NEW) lifeSave();
 function lifeIn(srv,uid){ let L=lifeClean(srv); const loc=lifeRead('naija-life-u'); if(loc&&loc.u===uid&&loc.t>((L&&L.t)||0)) L=loc;
   if(!L) L=freshLife(); L.u=uid; LIFE=L; lifeApplied(); lifeSave(true); }
 function lifeOut(){ LIFE=lifeRead('naija-life')||freshLife(); delete LIFE.u; lifeApplied(); }
-function lifeApplied(){ RANK.last=myRank(); RANK.shownR=-1; rankHUD(); lifePlaces(); LIFE_SYNC.ensureT=0; if(!started){ const h=resumeSpot()||homeSpot(); Object.assign(player,{x:h.x,z:h.z,y:groundY(h.x,h.z),yaw:h.ry,speed:0}); camState.yaw=clearYaw(player.x,player.y,player.z,h.ry); } }
+function lifeApplied(){ if(HOMEX) HOMEX.lifeChanged(); RANK.last=myRank(); RANK.shownR=-1; rankHUD(); lifePlaces(); LIFE_SYNC.ensureT=0; if(!started){ const h=resumeSpot()||homeSpot(); Object.assign(player,{x:h.x,z:h.z,y:groundY(h.x,h.z),yaw:h.ry,speed:0}); camState.yaw=clearYaw(player.x,player.y,player.z,h.ry); } }
 // how long the rent still runs, in game days and hours
 // the landlord: when the rent you paid runs out he gives you notice (two game days of play); pay before it ends or he throws
 // your load out and you sleep under the bridge. (Rent and notice only run while you play.)
@@ -10280,12 +10318,12 @@ let warm=0, perfAcc=0, perfN=0, prCool=3, errShown=0;
 function applyPR(){ renderer.setPixelRatio(PR); renderer.setSize(innerWidth,innerHeight); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } }
 function reportErr(e){ console.error(e); if(errShown++<1&&started) toast('Small hitch. The game kept running.'); }
 function simulate(dt){
-  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else if(CBW.on) cbWorkTick(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else if(mode==='foot'){ if(FOOT) FOOT.update(dt); } else updateDrive(dt); }
+  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HOMEX&&HOMEX.active()){} else if(HL.act) updateHomeAct(dt); else if(CBW.on) cbWorkTick(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else if(mode==='foot'){ if(FOOT) FOOT.update(dt); } else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); loveTick(dt); romTick(); } heartTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); loveTick(dt); romTick(); } heartTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); if(HOMEX) HOMEX.tick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -10624,7 +10662,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
-    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },

@@ -288,6 +288,30 @@ walls you bump into are made only for an estate you come near. Bought houses are
 `estAll`, `estHome`; checked by `server/src/life.js`); the server takes spends of any size (a house is more than one
 ₦5M message).
 
+## Naija Home: furnish and arrange your house
+Your flat in Mushin and every estate house you own can be furnished the way you like. 48 pieces (sofas, armchairs,
+rugs, TVs, beds, wardrobes, dining sets, fridge and cooker, piano, pool table, aquarium, gaming corner...) from ₦45k
+to ₦4.5M.
+- **The NAIJA HOME app** on your phone: pick a piece, pick the house, pay. The price is 20% more than the showroom plus
+  a delivery fee (₦15k + 8%). In about 3 minutes a big NAIJA HOME box stands by the door of that house: press E to carry
+  it inside.
+- **The NAIJA HOME showroom** in Ikeja GRA, next to Adunni's Fashion House (near NAIJA MOTORS): every piece on show with
+  its price tag. Press E in front of one to buy it at the showroom price, no delivery fee; the box waits inside the house
+  you pick in about 5 minutes.
+- **Open the box** inside your house (E) and you are in design mode: the walls between you and the room drop, you see
+  the floor from above. Drag a piece to move it (it keeps to the rooms and won't sit on another piece; rugs can go under
+  things), ⟲ Turn by 45°, 📦 Pack away into your store, 🧺 Your store to bring a piece back, 🛒 Buy more to order from
+  the app without leaving. **🛋 Arrange** starts design mode any time you are inside.
+- Up to 150 pieces in a house and 300 in all your houses, 60 boxes waiting. Kept in the life record (`deco`: piece,
+  storey, x, z, turn per house; `store`; `boxes`), checked by `server/src/life.js` (messages up to 32 KB).
+
+Made in the user's Blender (`Documents/naija_homes`): `lib/catalogue.py` builds each piece (`assets/models/fur_<id>.glb`,
+`furniture.json` with names, sizes and prices, the pictures in `fur_thumbs.webp`) and the delivery box; `lib/int_export.py`
+exports every estate house type empty, storey by storey (`int_est_<type>_<storey>.glb`: one `WALL_n` per wall so it can
+drop, `ROOM`, the stairs and door marks; `int_est.json` has the rooms); `lib/showroom.py` builds the showroom
+(`set_gra_naijahome.glb` outside, `int_naija_home.glb` the hall with a `MARK_slot_<id>` for every piece). The game side
+is `src/home.js` (store, boxes, design mode) and the Naija Home app in `src/phone.js`.
+
 ## Money
 Cash is at the top left (kept on the device; a new life starts with ₦1,000). People you floor or kill drop their money: walk
 over it to take it. With a weapon in your hand, G next to someone is a robbery: hands up, money on the floor, then they

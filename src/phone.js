@@ -183,6 +183,20 @@ body.ph-cam #mmWrap,body.ph-cam #phoneBtn,body.ph-cam #touch .tbtns{visibility:h
 @keyframes pbBump{0%,100%{transform:none}25%{transform:scale(1.15) rotate(-8deg)}55%{transform:scale(.95) rotate(5deg)}80%{transform:rotate(-2deg)}}
 @keyframes pbPop{0%{transform:scale(.3)}70%{transform:scale(1.25)}100%{transform:none}}
 @media (max-height:420px){.iph-wrap{bottom:calc(6px + var(--sb))}}
+.hm-ban{background:linear-gradient(135deg,#f8e7d8,#f1cdb2);color:#5a2a14;border-radius:3.6cqw;padding:3cqw 3.4cqw;font-size:3.3cqw;margin:0 0 3cqw;line-height:1.38}.hm-ban b{display:block;font-size:4.2cqw;margin-bottom:.6cqw;color:#8e3b22}
+.hm-cats{display:flex;gap:1.6cqw;overflow-x:auto;margin:0 0 3cqw;padding-bottom:.6cqw;scrollbar-width:none}.hm-cats::-webkit-scrollbar{display:none}
+.hm-cats button,.hm-hs button{flex:none;padding:1.7cqw 3.2cqw;border-radius:5cqw;background:rgba(120,120,128,.14);font-size:3.3cqw;font-weight:600;color:#333}.hm-cats button.on,.hm-hs button.on{background:#b4532a;color:#fff}
+.hm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.6cqw;margin-bottom:4cqw}
+.hm-card{background:#fff;border-radius:3.6cqw;padding:2.2cqw;text-align:left;display:flex;flex-direction:column;gap:.8cqw;box-shadow:0 1px 3px rgba(0,0,0,.07);color:#111}
+.hm-th{background:#f5efe8;border-radius:2.6cqw;display:flex;justify-content:center;align-items:center;aspect-ratio:1/.82;overflow:hidden}.hm-th i{display:block;flex:none}
+.hm-card b{font-size:3.3cqw;font-weight:600;line-height:1.22;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:8cqw}
+.hm-card .pr{font-size:3.7cqw;font-weight:800;color:#b4532a}.hm-card small{font-size:2.8cqw;opacity:.55}
+.hm-big{background:#fff;border-radius:4cqw;display:flex;justify-content:center;align-items:center;padding:3cqw;margin:0 0 3cqw}.hm-big i{display:block}
+.hm-name{font-size:5cqw;font-weight:700;margin:0 1cqw 1cqw}.hm-sz{font-size:3.3cqw;opacity:.6;margin:0 1cqw 3cqw}
+.hm-rc{background:#fff;border-radius:3.6cqw;padding:1cqw 3.6cqw;margin:0 0 3cqw}.hm-rc div{display:flex;justify-content:space-between;gap:3cqw;font-size:3.5cqw;padding:2cqw 0;border-bottom:1px solid rgba(0,0,0,.07)}.hm-rc div:last-child{border-bottom:none}.hm-rc span{opacity:.6}.hm-rc .tot b{color:#b4532a;font-size:4cqw}
+.hm-hs{display:flex;flex-wrap:wrap;gap:1.6cqw;margin:0 0 3cqw}
+.hm-go{display:block;width:100%;padding:3.3cqw;border-radius:3.6cqw;background:#b4532a;color:#fff!important;font-size:4cqw;font-weight:700;text-align:center;margin:1cqw 0 3cqw}.hm-go.off{background:rgba(120,120,128,.22);color:#555!important}
+.hm-ok{color:#1e8e3e!important}.hm-way{color:#b4532a!important}
 `;
 
 /* ---- icons (simple glyphs drawn here) */
@@ -201,6 +215,7 @@ const ICONS = {
   settings: ['linear-gradient(180deg,#a2a2a8,#6e6e75)', '#fff', SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')],
   hustle: ['linear-gradient(180deg,#ff9f43,#e8590c)', '#fff', SV('<rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="rgba(255,255,255,.18)"/><path d="M9 8V6.2A1.7 1.7 0 0 1 10.7 4.5h2.6A1.7 1.7 0 0 1 15 6.2V8M3.5 13h17"/><path d="M12 12v2.4" stroke-width="2.4"/>')],
   farm: ['linear-gradient(180deg,#8fd14f,#3e8e1f)', '#fff', SV('<path d="M3 20h18" stroke="#fff"/><path d="M12 20V9" stroke="#fff" stroke-width="2.2"/><path d="M12 13c-3.5 0-5.5-2.2-5.5-5.5 3.3 0 5.5 2 5.5 5.5zM12 11c0-3.6 2.2-6 6-6 0 3.8-2.4 6-6 6z" fill="#fff" stroke="none"/>')],
+  home: ['linear-gradient(180deg,#d9825c,#9a4322)', '#fff', SV('<path d="M3.5 11 12 4.2l8.5 6.8" stroke-width="2.2"/><path d="M5.5 10v9.5h13V10" fill="rgba(255,255,255,.16)"/><path d="M7.6 17.6v-2.4a1.3 1.3 0 0 1 2.6 0v.4h3.6v-.4a1.3 1.3 0 0 1 2.6 0v2.4z" fill="#fff" stroke="none"/><path d="M9.4 14.6v-1.3a1 1 0 0 1 1-1h3.2a1 1 0 0 1 1 1v1.3" stroke-width="1.5"/>')],
   love: ['linear-gradient(180deg,#ff7aa8,#d6336c)', '#fff', SV('<path d="M12 20.5s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.9a4.3 4.3 0 0 1 7.5 2.6c0 5.4-7.5 10-7.5 10z" fill="rgba(255,255,255,.9)" stroke="none"/>')],
   cbn: ['linear-gradient(180deg,#14804f,#073d27)', '#f3d27a', SV('<path d="M3 9.5 12 4l9 5.5z" fill="#f3d27a" stroke="#f3d27a" stroke-width="1.2"/><path d="M5.5 11.5v6M9.8 11.5v6M14.2 11.5v6M18.5 11.5v6" stroke="#fff" stroke-width="2"/><path d="M3.5 20h17" stroke="#f3d27a" stroke-width="2"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
@@ -323,7 +338,7 @@ export function createPhone(api) {
   const bar = h('div', 'iph-bar'), barHit = btn('iph-barhit', [], () => toHome(), 'Home'); scr.append(bar, barHit);
 
   const APPS = [
-    ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['love', 'Love', () => openApp('love')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
+    ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['home', 'Naija Home', () => openApp('home')], ['love', 'Love', () => openApp('love')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
     ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')], ['cbn', 'CBN', () => openApp('cbn')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
@@ -369,7 +384,7 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, home: homeApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
   function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
@@ -380,6 +395,46 @@ export function createPhone(api) {
         if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.app === 'farm') openApp('farm'); }, 60); }); row.append(bb); }
         L.append(row); }
       b.append(L); } }
+  // ---------------------------------------------------------------- Naija Home: buy furniture for your house (src/home.js has the store, the boxes and the arranging)
+  function homeApp(arg) {
+    clearTimeout(R.homeT); const d = api.home && api.home();
+    if (arg && arg.item && d) return homeItem(d, arg.item);
+    const b = frameApp('Naija Home', { light: true }); R.view.querySelector('h1').style.color = '#9a4322';
+    if (!d) { b.append(h('div', 'iph-note', 'The store is opening… one moment.')); R.homeT = setTimeout(() => { if (R.open && R.app === 'home') openApp('home'); }, 900); return; }
+    const N = api.naira, px = Math.round(scr.clientWidth * .3);
+    b.append(h('div', 'hm-ban', h('b', null, 'Furnish your house your way'), 'Order here and we deliver the box to your door in about 3 minutes (delivery fee applies). Buy at the NAIJA HOME showroom in Ikeja GRA to pay less, no delivery fee.'));
+    if (d.boxes.length) {
+      b.append(h('div', 'iph-h', 'Your boxes')); const L = h('div', 'iph-list');
+      for (const x of d.boxes) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); const st = !x.ready ? `On the way · ${x.mins} min` : x.where === 'door' ? 'At your door · carry it inside' : 'Inside, ready to open';
+        const sm = h('small', x.ready ? 'hm-ok' : 'hm-way', st); tx.append(h('b', null, x.name), h('small', null, x.house), sm); row.append(tx); L.append(row); }
+      b.append(L); R.homeT = setTimeout(() => { if (R.open && R.app === 'home' && R.view && R.view.dataset.app === 'home:Naija Home') openApp('home'); }, 15000);
+    }
+    if (!d.houses.length) b.append(h('div', 'iph-note', 'You need your own house first: rent the flat in Mushin, or buy a house in one of the estates. Then come back to furnish it.'));
+    const cat = R.homeCat || 'all', cats = h('div', 'hm-cats');
+    for (const c of [{ k: 'all', name: 'All' }, ...d.cats]) cats.append(btn(c.k === cat ? 'on' : '', [c.name], () => { R.homeCat = c.k; openApp('home'); }));
+    b.append(cats);
+    const g = h('div', 'hm-grid');
+    for (const it of d.items) { if (cat !== 'all' && it.cat !== cat) continue;
+      const th = h('div', 'hm-th'), im = h('i'); im.style.cssText = it.css(px) + `;width:${px}px;height:${px}px`; th.append(im);
+      g.append(btn('hm-card', [th, h('b', null, it.name), h('span', 'pr', N(it.app)), h('small', null, `+ ${N(it.fee)} delivery`)], () => openApp('home', { item: it.id }), it.name)); }
+    b.append(g);
+  }
+  function homeItem(d, id) {
+    const it = d.items.find(x => x.id === id); if (!it) return openApp('home'); const N = api.naira;
+    const b = frameApp('Item', { light: true, back: ['Store', () => openApp('home')] }); const px = Math.round(scr.clientWidth * .62);
+    const big = h('div', 'hm-big'), im = h('i'); im.style.cssText = it.css(px) + `;width:${px}px;height:${px}px`; big.append(im); b.append(big);
+    b.append(h('div', 'hm-name', it.name), h('div', 'hm-sz', `${it.w.toFixed(1)} m × ${it.d.toFixed(1)} m · comes in a big box`));
+    const rc = h('div', 'hm-rc'), row = (k, v, c) => { const r = h('div', c); r.append(h('span', null, k), h('b', null, v)); rc.append(r); };
+    row('Price in the app', N(it.app)); row('Delivery to your door', N(it.fee)); row('You pay', N(it.total), 'tot'); b.append(rc);
+    b.append(h('div', 'iph-note', `At the showroom in Ikeja GRA: ${N(it.shop)}, and it waits inside your house for you.`));
+    if (!d.houses.length) { b.append(h('div', 'iph-note', 'You need your own house first (the flat in Mushin, or an estate house).')); return; }
+    if (!d.houses.some(x => x.id === R.homeHouse)) R.homeHouse = d.houses[0].id;
+    b.append(h('div', 'iph-h', 'Deliver to'));
+    const hs = h('div', 'hm-hs'); for (const x of d.houses) hs.append(btn(x.id === R.homeHouse ? 'on' : '', [x.short], () => { R.homeHouse = x.id; openApp('home', { item: id }); })); b.append(hs);
+    const poor = api.cash() < it.total;
+    b.append(btn('hm-go' + (poor ? ' off' : ''), [poor ? `You need ${N(it.total)}` : `Order · ${N(it.total)}`], () => {
+      if (poor) { phToast('Not enough money'); return; } const r = api.homeOrder(id, R.homeHouse); phToast(r && r.ok ? 'Order placed! 📦' : (r && r.msg) || 'Order failed'); if (r && r.ok) setTimeout(() => { if (R.open && R.app === 'home') openApp('home'); }, 700); }));
+  }
   function loveApp() {   // Love: your babe (or guy), the love meter, money, gifts and dates (the game makes the rows)
     const d = api.love && api.love(); const b = frameApp('Love', { light: true }); R.view.querySelector('h1').style.color = '#d6336c';
     if (!d) { b.append(h('div', 'iph-note', 'Loading…')); return; }
