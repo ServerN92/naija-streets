@@ -13,22 +13,22 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=bccf34b057';
-import * as C2 from './char2.js?v=bccf34b057';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=bccf34b057';
-import { createPhone } from './phone.js?v=bccf34b057';
-import { createGuide } from './guide.js?v=bccf34b057';
+import * as CLOCK from './clock.js?v=ef1c643fdb';
+import * as C2 from './char2.js?v=ef1c643fdb';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=ef1c643fdb';
+import { createPhone } from './phone.js?v=ef1c643fdb';
+import { createGuide } from './guide.js?v=ef1c643fdb';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=bccf34b057';
-import { createFarm } from './farm.js?v=bccf34b057';
-import { createBusiness } from './business.js?v=bccf34b057';
-import { createOnline } from './online.js?v=bccf34b057';
-import { createPolice } from './police.js?v=bccf34b057';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=bccf34b057';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=bccf34b057';
+import { createFootball } from './football.js?v=ef1c643fdb';
+import { createFarm } from './farm.js?v=ef1c643fdb';
+import { createBusiness } from './business.js?v=ef1c643fdb';
+import { createOnline } from './online.js?v=ef1c643fdb';
+import { createPolice } from './police.js?v=ef1c643fdb';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=ef1c643fdb';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=ef1c643fdb';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='bccf34b057';
+const BUILD='ef1c643fdb';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -3395,7 +3395,7 @@ function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
   let txt=''; if(!busy){ if(rogNear()) txt=rogWord(); else if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(robNear()) txt=`The man's money · ${naira(robNear().cash)} · give it back or keep it`; else if(agbCollectNear()) txt=`Collect the danfo's ticket · ${naira(AGB_FEE/2)} for you, ${naira(AGB_FEE/2)} for ${UNION.chairName()}`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(hawkNear()) txt=`Sell pure water · ₦50 (${LIFE.hk} left)`; else if(begStop()) txt='Beg for money (your pocket dry)'; else if(LIFE.hk<20&&kioskAt()&&!doorNear()) txt='Kiosk · buy a bag of pure water (₦300)'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
-    else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
+    else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(CBW.on) txt=cbWorkPrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=true; }   // (on a phone the prompt itself is the E button: one E, only when there is something to do)
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; const t=$('#toast'); if(toastT<.4){ t.classList.add('out'); t.classList.remove('show'); } if(toastT<=0) t.hidden=true; }   // (slides back up)
@@ -3615,7 +3615,7 @@ function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return clo
   if(mode==='walk'){ if(CB.act) return cbPress(); if(DEALER.open) return closeShop(); if(WARD.open) return closeWard(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } { const rb=robNear(); if(rb) return robChoose(rb); } { const av=agbCollectNear(); if(av) return agbCollect(av); } if(nearDoor()) return LIFE.flat?enterApt():flatMenu(); if(nearHotel()) return enterLobby(0); if(hawkSell()) return; if(begStop()) return begStart(); if(LIFE.hk<20&&kioskAt()&&!doorNear()) return kioskBuy(); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v&&v.impounded){ toast(`Impounded. Pay ${naira(LT.fee)} at the impound office (by the gate) to collect it.`,3); return; } if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(landPayNear()) return landPay(); if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(rbNear()) return void rbTalk(); if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } { const ag=!drive.ride&&agbPayNear(); if(ag) return agbPay(ag); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
-  else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
+  else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(CBW.on) cbWorkStop(true); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
 const OPEN_RIDE={okada:1,keke:1,bike2:1,sbike:1,skate:1};
 function fleeFrom(v,n){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), lx=hz, lz=-hx; const far=peds.filter(p=>p.state!=='off'&&!p.spot).sort((a,b)=>Math.hypot(b.x-player.x,b.z-player.z)-Math.hypot(a.x-player.x,a.z-player.z));
   for(let i=0;i<n&&i<far.length;i++){ const p=far[i], side=i%2?-1:1; Object.assign(p,{x:v.x+lx*1.6*side+hx*mrr(-1,1),z:v.z+lz*1.6*side+hz*mrr(-1,1),y:SLAB,state:'flee',timer:mrr(4,6),fall:0,phone:false,yaw:Math.atan2(lx*side,lz*side)+mrr(-.6,.6)}); } }
@@ -6251,6 +6251,8 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
   setDest:pl=>{ mapView.setDest(pl.x,pl.z,pl); if(!PHONE.open) toast(`Your map don show the way to ${pl.name}.`,2.6); },
   denPlace:()=>DEN&&DEN.ok?{name:'Oga Shege corner',x:DEN.x,z:DEN.z}:null, reopen:()=>openPhone(),
+  cbn:()=>({signed:!!(ON&&ON.signedIn)||!!CBNO.fake,me:CBNO.me}), cbnSend:o=>{ if(ON&&ON.signedIn) ON.send({t:'cbn',...o}); }, openSignIn:()=>{ closePhone(); if(ON) ON.openPanel(); },
+  typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
   online:()=>!!(ON&&ON.signedIn), bankSend:o=>!!(ON&&ON.send({t:'bk',...o})), openOnline:()=>{ closePhone(); if(ON) ON.openPanel(); } });
 // the guide: what is happening now, so it knows when a first-time tip is due
 GD=createGuide({ touch:()=>touchUI, click:()=>phoneBeep(1500,.02,.12), closeSettings:()=>{ $('#settings').hidden=true; },
@@ -8911,7 +8913,8 @@ function cbnCCTV(S,L){ if(!L.length) return; const parts=[], body=new THREE.BoxG
   for(const [g,m] of [[gW,mW],[gD,mD]]){ const M=new THREE.Mesh(mergeGeometries(g.map(x=>x.index?x.toNonIndexed():x),false),m); M.castShadow=false; scene.add(M); } }
 // the guards on the ground: real people of the street (they fight back), posted where Blender marked them, AK slung
 const CBN_POSTS=['door_guard_1','door_guard_2','kiosk_guard','kiosk_guard_2','gate_guard_1','gate_guard_2','gate_guard_3','insp_guard','insp_guard_2','soldier_1','plaza_guard','bay_guard_1','bay_guard_2'];
-function cbnUpdate(dt){ if(!CBN.S||CBN.S.state!==2||!CBN.W) return; const d=Math.hypot(player.x-CBN_AT.x,player.z-CBN_AT.z);
+function cbnUpdate(dt){ if(CBW.on&&!(mode==='interior'&&ROOM&&ROOM.name==='int_cbn_office')) cbWorkStop(true);
+  if(!CBN.S||CBN.S.state!==2||!CBN.W) return; const d=Math.hypot(player.x-CBN_AT.x,player.z-CBN_AT.z);
   // the men in the towers turn slowly, their guns on their backs
   if(d<260){ if(!ARMS.lib.ak) loadWeapon('ak'); for(const f of CBN.tower){ f.mixer.update(dt); f.ph+=dt*.25; f.root.rotation.y=f.base+Math.sin(f.ph)*.9; if(ARMS.lib.ak&&!f.w){ f.w=cloneWeapon('ak'); if(f.w) scene.add(f.w); } if(f.w) slingOn(f.w,f.inner,f.wc,f.root.rotation.y); } }
   const calm=T0-CBN.alarmT>90;
@@ -8956,47 +8959,104 @@ async function enterCBN(){ if(busy) return; if(!MANIFEST['assets/models/int_cbn_
   const R=await intGet('int_cbn_hall','Security is checking you in…'); if(!R) return; setupCbnHall(R); CBN.cleared=false; CBN.in=true;
   goRoom(R,'spawn','Central Bank of Nigeria. Every visitor passes through security.'); }
 function cbnOut(){ const e=CBN.W&&CBN.W('enter'); CBN.in=false; leaveRoom(e?{x:e.x+Math.sin(e.yaw)*-1.6,z:e.z+Math.cos(e.yaw)*-1.6,ry:e.yaw+Math.PI}:STATION.front); if(CBN.box) setTimeout(cbnGiveBack,900); }
-function cbnLift(here){ const ding=()=>{ phoneBeep(1046,.25,.4); setTimeout(()=>phoneBeep(784,.35,.4),260); };
+function cbnLift(here){ const ding=()=>{ phoneBeep(1046,.25,.4); setTimeout(()=>phoneBeep(784,.35,.4),260); }, me=CBNO.me, staff=!!(me&&me.on);
   openMenu('LIFT','Central Bank tower · choose a floor',()=>[
     {name:'Ground floor',sub:'Banking hall · security · reception · way out',btn:here==='hall'?'HERE':'GO',price:0,act(){ closeMenu(); if(here==='hall') return; intGet('int_cbn_hall').then(R=>{ if(!R) return; setupCbnHall(R); ding(); goRoom(R,'lift_2','Ground floor.'); }); }},
-    {name:'12th floor',sub:'Banking Supervision Department · your unit',btn:here==='office'?'HERE':'GO',price:0,act(){ closeMenu(); if(here==='office') return;
+    {name:'12th floor',sub:staff?`Banking Supervision · your unit (${me.title})`:'Staff only · apply on the CBN app on your phone',btn:here==='office'?'HERE':staff?'GO':'STAFF',price:0,off:!staff&&here!=='office',act(){ closeMenu(); if(here==='office') return;
+      if(!staff){ toast(ON&&ON.signedIn?'Lift: "Staff card please." Only CBN staff go up. Apply on the CBN app on your phone.':'Lift: "Staff card please." Sign in and apply on the CBN app on your phone.',3.4); return; }
       if(!MANIFEST['assets/models/int_cbn_office.glb']){ toast('The lift is under maintenance.',2.4); return; }
-      intGet('int_cbn_office','Going up…').then(R=>{ if(!R) return; setupCbnOffice(R); ding(); goRoom(R,'spawn','12th floor · Banking Supervision Department.'); }); }}]); }
+      intGet('int_cbn_office','Going up…').then(R=>{ if(!R) return; setupCbnOffice(R); ding(); goRoom(R,'spawn',`12th floor · Banking Supervision. Good morning, ${me.title}.`); }); }}]); }
+// people who walk about inside (visitors, a guard on patrol, staff going to the printer): a path of points, a wait at some
+// [x,z,wait]; at the end they go round again (or, 'jump', start again from the first point out of sight)
+function cbnWalker(R,id,pts,{fit=['office','suit'],speed=1.15,jump=false,guard=false}={}){ const C=PEOPLE.casts[id]; if(!C||!pts.length) return null;
+  const idle=C.clips.idle_1||C.clips[C.idle0], walk=C.clips.walk||C.clips.walk2; if(!walk||!idle) return null;
+  const f=guard?cbnGuard(R.scene,{x:pts[0][0],z:pts[0][1],yaw:0},R.folk,false,['idle_1']):cbnPerson(R.scene,id,{x:pts[0][0],z:pts[0][1],yaw:0},idle,R.folk,fit); if(!f) return null;
+  const W={f,pts,i:1,wait:pts[0][2]||0,speed,jump,aw:f.mixer.clipAction(f.C.clips.walk||f.C.clips.walk2||walk),ai:f.mixer.clipAction(f.C.clips.idle_1||f.C.clips[f.C.idle0]||idle),walking:false};
+  W.aw.play(); W.aw.setEffectiveWeight(0); W.ai.play(); (R.walkers||(R.walkers=[])).push(W); return W; }
+function cbnWalkTick(R,dt){ for(const W of R.walkers||[]){ const r=W.f.root;
+  if(W.wait>0){ W.wait-=dt; if(W.walking){ W.walking=false; W.ai.setEffectiveWeight(1); W.aw.setEffectiveWeight(0); } continue; }
+  const [tx,tz,tw]=W.pts[W.i], dx=tx-r.position.x, dz=tz-r.position.z, d=Math.hypot(dx,dz);
+  if(!W.walking){ W.walking=true; W.aw.setEffectiveWeight(1); W.ai.setEffectiveWeight(0); }
+  if(d<.15){ W.wait=tw||0; W.i++; if(W.i>=W.pts.length){ W.i=W.jump?1:0; if(W.jump){ r.position.set(W.pts[0][0],0,W.pts[0][1]); W.wait=(W.pts[0][2]||0)+4; } } continue; }
+  const st=Math.min(d,W.speed*dt); r.position.x+=dx/d*st; r.position.z+=dz/d*st; r.rotation.y=lerpA(r.rotation.y,Math.atan2(dx,dz),Math.min(1,dt*7)); } }
 function setupCbnHall(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3.4; R.label='Central Bank · banking hall';
-  R.fill=R=>{ const off=cbnOffice(), any=townCasts();
+  R.fill=R=>{ const off=cbnOffice(), any=townCasts(), pick=(L,i)=>L.length?L[i%L.length]:null;
     for(const [k,fem] of [['guard_xray',false],['guard_det',false],['guard_det_2',true],['guard_search',false],['guard_desk',true],['guard_gates',false]]){ const f=cbnGuard(R.scene,M[k],R.folk,fem); if(k==='guard_det') R.gd=f; }
     for(const k of ['receptionist','receptionist_2']){ const id=off.filter(i=>PEOPLE.casts[i].f)[k==='receptionist'?0:1]||off[0]||'suit_lady'; const C=PEOPLE.casts[id]; if(C) cbnPerson(R.scene,id,M[k],C.clips.f_talk||C.clips.idle_suit||C.clips[C.idle0],R.folk); }
-    for(const k of ['wait_1','wait_2']){ const id=any[(MR()*any.length)|0], cl=id&&castSit(id); if(cl&&M[k]) cbnPerson(R.scene,id,{...M[k]},cl,R.folk,['senator','kaftan','gown','office','suit']); } };
+    for(const k of ['wait_1','wait_2']){ const id=any[(MR()*any.length)|0], cl=id&&castSit(id); if(cl&&M[k]) cbnPerson(R.scene,id,{...M[k]},cl,R.folk,['senator','kaftan','gown','office','suit']); }
+    // people about: staff and visitors in the hall, one coming in through security, a guard walking the line of the gates
+    cbnWalker(R,pick(off,1),[[-3,-15.4,5],[-6,-8],[-12.6,-4,7],[-4,-1],[6,-1],[10.4,-5.5,6],[6,-12],[3,-15.4,5]]);
+    cbnWalker(R,pick(off,4),[[9,-15.4,8],[8,-9],[1,-6],[-6,-1],[-12.4,-2.6,6],[-7,-10],[-9,-15.4,6]],{speed:1.05});
+    cbnWalker(R,pick(any,3),[[6.6,13.2,3],[6.6,12],[2,10.4,1],[2,7.4,2.5],[2.5,5.2],[2.5,2.6],[4,-1],[10.4,-4.4,8],[3,-15.4,3]],{fit:['senator','kaftan','gown','jeans','tee_jeans','polo'],jump:true,speed:1.1});
+    const cop=cbnCops(false)[0]||cbnCops()[0]; if(cop) cbnWalker(R,cop,[[-12,1.6,3],[12,1.6,3]],{guard:true,speed:.9}); };
   fillRoom(R);
-  R.spot(M.exit,'Leave the bank',()=>cbnOut(),1.8);
+  // out: the inner glass doors (the airlock behind them is the street)
+  R.spot({x:0,z:(M.spawn?M.spawn.z:12.8)+.95},'Leave the bank',()=>cbnOut(),.9);
   R.spot(M.xray_put,'Put your things on the X-ray belt',()=>{ phoneBeep(520,.3,.25); toast('Your bag rolls through the X-ray. The officer watches the screen…',2.4); },1.2);
   R.spot(M.reception,'Talk to reception',()=>openMenu('RECEPTION','Central Bank of Nigeria · Visitors and staff',()=>[
-    {name:'"I work upstairs"',sub:'Banking Supervision, 12th floor: your desk is there',btn:'OK',price:0,act(){ closeMenu(); toast(CBN.cleared?'Receptionist: "Good morning! Lifts are at the back. Have a nice day."':'Receptionist: "Good morning. Please pass through security first."',3); }},
-    {name:'"I want to see the Governor"',sub:'Maybe…',btn:'ASK',price:0,act(){ closeMenu(); toast('Receptionist: "Do you have an appointment? No? Please sit down at the lounge."',3); }}]),1.6);
+    {name:'"I work upstairs"',sub:'Staff: your desk is on the 12th floor',btn:'OK',price:0,act(){ closeMenu(); const me=CBNO.me; toast(!CBN.cleared?'Receptionist: "Good morning. Please pass through security first."':me&&me.on?`Receptionist: "Good morning, ${me.title}! Lifts are at the back."`:'Receptionist: "Sorry, I don\'t have you on the staff list. Apply on the CBN app."',3); }},
+    {name:'"I want a job here"',sub:'The CBN app on your phone',btn:'ASK',price:0,act(){ closeMenu(); toast('Receptionist: "All applications go through the CBN app on your phone. Write a good letter: the Governor reads every one."',3.6); }},
+    {name:'"I want to see the Governor"',sub:'Maybe…',btn:'ASK',price:0,act(){ closeMenu(); const g=CBNO.me&&CBNO.me.gov; toast(g?`Receptionist: "Governor ${g} is a very busy person. Do you have an appointment?"`:'Receptionist: "The Governor\'s seat is empty for now. The Board runs the bank."',3.4); }}]),1.6);
   for(const k of ['lift_1','lift_2','lift_3','lift_4']) R.spot(M[k],'Take the lift',()=>{ if(!CBN.cleared){ toast('Guard: "Oga, security first!"',2); return; } cbnLift('hall'); },1.5);
   // the speed gates: not past them before the detector says you are clean
   const base=R.move.bind(R), gz=M.gates?M.gates.z-.75:4.05;
   R.move=(nx,nz)=>{ if(!CBN.cleared&&nz<gz&&player.z>=gz){ if(T0-CBN.saidT>2.5){ CBN.saidT=T0; toast('Guard: "Oga! You no fit pass the gate like that. Go through the scanner."',2.6); } return; } base(nx,nz); };
   const dets=[M.scan?{x:M.scan.x,z:M.scan.z-1.4}:null,M.scan?{x:-M.scan.x,z:M.scan.z-1.4}:null].filter(Boolean);
-  const tk=R.tick; R.tick=dt=>{ if(tk) tk(dt); if(!CBN.cleared) for(const p of dets) if(Math.abs(player.x-p.x)<.55&&Math.abs(player.z-p.z)<.45) cbnScan('hall'); }; }
+  const tk=R.tick; R.tick=dt=>{ if(tk) tk(dt); cbnWalkTick(R,dt); if(!CBN.cleared) for(const p of dets) if(Math.abs(player.x-p.x)<.55&&Math.abs(player.z-p.z)<.45) cbnScan('hall'); }; }
 function setupCbnOffice(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks; R.camDist=3; R.label='CBN · Banking Supervision, 12th floor';
   R.fill=R=>{ const off=cbnOffice(), ids=off.length?off:townCasts(), rnd=mulberry32(1212); let n=0;
     for(let i=0;i<14;i++){ const m=M['worker_'+i]; if(!m) continue; const id=ids[(i*5+3)%ids.length], cl=castType(id); if(cl&&cbnPerson(R.scene,id,{x:m.x,z:m.z,yaw:m.yaw},cl,R.folk)) n++; }
     const man=ids.find(i=>!PEOPLE.casts[i].f)||ids[0]; if(M.manager){ const cl=castType(man); if(cl) R.boss=cbnPerson(R.scene,man,M.manager,cl,R.folk,['suit','senator']); }
     const sec=ids.find(i=>PEOPLE.casts[i].f)||ids[0], C=PEOPLE.casts[sec]; if(C&&M.secretary) cbnPerson(R.scene,sec,M.secretary,C.clips.f_talk||C.clips.idle_suit||C.clips[C.idle0],R.folk);
-    const w=ids[(ids.length*rnd())|0], CW=PEOPLE.casts[w]; if(CW&&M.water) cbnPerson(R.scene,w,M.water,CW.clips.phone||CW.clips[CW.idle0],R.folk);
+    // two of the staff on their feet: to the printer and the water cooler, to the meeting room and back
+    cbnWalker(R,ids[(ids.length*rnd())|0],[[200.5,1,2],[206.6,8.8,7],[200,1],[188.2,8.6,6],[196,1],[200.5,1,4]]);
+    cbnWalker(R,ids[(ids.length*rnd())|0],[[204,1,5],[192.5,1],[192.5,-6.4,9],[192.5,1],[185.6,1,4],[204,1,3]],{speed:1.05});
     R.count=n; };
   fillRoom(R);
   for(const k of ['lift','lift_2']) R.spot(M[k],'Take the lift',()=>cbnLift('office'),1.5);
-  R.spot(M.my_desk||M.my_chair,'Sit at your desk · work a shift',()=>cbnShift(),1.3);
+  R.spot(M.my_desk||M.my_chair,()=>CBW.on?'Stand up':CBNO.me&&CBNO.me.today?'Your desk · shift done today':'Sit at your desk · work your shift',()=>CBW.on?cbWorkStop(true):cbnShift(),1.3);
   R.spot(M.water,'Drink water',()=>{ toast('Cold water from the dispenser. Refreshing.',2.2); if(typeof hpAdd==='function') hpAdd(8); },1.2);
   R.spot(M.printer,'Print your report',()=>{ for(let i=0;i<6;i++) setTimeout(()=>phoneBeep(240+(i%2)*40,.09,.2),i*160); toast('The copier hums and pushes out your report.',2.2); },1.3);
-  R.spot(M.manager_door,'Talk to the head of unit',()=>{ const st=CBN.shiftDay===dayOf()?'"Good work today. Your report is on my desk."':'"You are late. The examination reports are due this week. Sit down and work."'; toast('Head of unit: '+st,3.4); },1.6);
-  R.spot(M.meeting,'Meeting room',()=>toast('The 2 pm meeting: "Q3 bank examinations". The chairs are still empty.',2.6),1.6); }
-const dayOf=()=>Math.floor(Date.now()/864e5);
-function cbnShift(){ if(CBN.shiftDay===dayOf()){ toast('You have done your shift for today. Come back tomorrow.',2.6); return; }
-  fadeSwap(()=>{ CBN.shiftDay=dayOf(); const pay=15000+Math.min(6,myRank())*2500; addCash(pay); cashHUD(); credAdd('work',30,false,'shift at the Central Bank');
-    toast(`You type through the examination reports for hours. Salary paid: ${naira(pay)}.`,3.6); }); }
+  R.spot(M.manager_door,()=>CBNO.me&&CBNO.me.isGov?'Your office, Governor':'Talk to the head of unit',()=>{ const me=CBNO.me; if(me&&me.isGov){ toast(`Head of unit: "Good morning, Governor! ${(me.queue||[]).length} letters are waiting for you on the CBN app."`,3.6); return; } const st=me&&me.today?'"Good work today. Your report is on my desk."':'"The examination reports are due this week. Sit down and work."'; toast('Head of unit: '+st,3.4); },1.6);
+  R.spot(M.meeting,'Meeting room',()=>toast('The 2 pm meeting: "Q3 bank examinations". The chairs are still empty.',2.6),1.6);
+  const tk=R.tick; R.tick=dt=>{ if(tk) tk(dt); cbnWalkTick(R,dt); }; }
+// ---- the CBN online (server/src/cbn.js): your position, the shift at your desk
+const CBNO={me:null};
+function cbnOn(m){
+  if(m.t==='cbnme'){ CBNO.me=m.m; if(PH) PH.event('cbn'); return; }
+  if(m.t==='cbnshift'){ cbWorkStart(m.ms); return; }
+  if(m.t==='cbnpaid'){ credAdd('work',40,false,'shift at the Central Bank'); toast(`🏦 Shift done. CBN salary ${naira(m.pay)} paid.${m.up?` PROMOTED: you are now ${m.up}!`:''}`,4.2); if(PH) PH.event('cbn'); return; }
+  if(m.t==='err'||m.t==='ok'){ toast(m.m,3.4); if(m.t==='err'&&CBW.on) cbWorkStop(false,true); if(PH) PH.event('cbn'); } }
+function cbnShift(){ const me=CBNO.me;
+  if(!(ON&&ON.signedIn)){ toast('This desk is for CBN staff. Sign in and apply on the CBN app on your phone.',3); return; }
+  if(!me||!me.on){ toast('This desk is for CBN staff. Apply on the CBN app on your phone.',3); return; }
+  if(me.today){ toast('You have worked your shift today. Come back tomorrow.',2.6); return; }
+  ON.send({t:'cbn',a:'start'}); }
+// sitting at your desk, typing, for the length of the shift (walk off and the shift is lost)
+const CBW={on:false};
+function cbWorkStart(ms){ const R=ROOM, M=R&&R.marks, s=M&&(M.my_desk||M.my_chair); if(!s||!hero){ ON.send({t:'cbn',a:'end'}); return; }
+  const C=homeClips(), base=C.sit; if(!base){ toast('Sit down… (the move is still loading)',2); return; }
+  let clip=base; try{ const D=C.info||HL.clips.info, keys=[], U=(f,x=0)=>[x,1,f], dur=base.duration||2;
+    for(let i=0,t=0;t<=dur+1e-3;i++,t+=.16){ const a=i%2?.06:-.05, b=-a; keys.push({t,d:{LeftArm:[.22,-.86,.42],LeftForeArm:[-.2,-.12+a,1],LeftHand:[-.1,-.3+a*2,1],RightArm:[-.22,-.86,.42],RightForeArm:[.2,-.12+b,1],RightHand:[.1,-.3+b*2,1],Neck:U(.22),Head:U(.16)}}); }
+    const P=C2.poseClip(D,'cbn_typearm',keys,{loop:false}), re=/(LeftArm|RightArm|LeftForeArm|RightForeArm|LeftHand|RightHand|Neck|Head)\.quaternion$/;
+    clip=new THREE.AnimationClip('cbn_type',dur,base.tracks.filter(t=>!re.test(bname(t.name))).concat(P.tracks.filter(t=>re.test(bname(t.name))))); }catch(e){ console.warn('cbn type',e); }
+  heroQuiet(); if(PHONE.open) closePhone();
+  const m=homeMeasure(clip,0), cs=Math.cos(s.yaw), sn=Math.sin(s.yaw);
+  Object.assign(CBW,{on:true,t0:T0,ms,sent:false,s,clip,lift:clamp(.55-m.hips.y,-.12,.16),seatY:m.hips.y,standY:m.hips.y,p1:new THREE.Vector3(s.x-(m.hips.x*cs+m.hips.z*sn),0,s.z-(-m.hips.x*sn+m.hips.z*cs)),at:{x:player.x,z:player.z}});
+  fadeSwap(()=>{ if(!CBW.on) return; CBW.action=hero.mixer.clipAction(clip); CBW.action.reset().play(); CBW.action.setEffectiveWeight(1); CBW.t=0;
+    for(const k of ['idle','walk','walk2','run','text','phone','fight_idle']) if(hero.act[k]) hero.act[k].setEffectiveWeight(0);
+    rig.root.position.copy(CBW.p1); rig.root.rotation.y=s.yaw; camState.yaw=s.yaw+Math.PI+.7; camState.pitch=.3; camState.last=T0;
+    toast(`You sit down and open the examination reports. Shift: ${Math.round(ms/60000)} minutes. Walk off and you lose the day.`,3.6); }); }
+function cbWorkTick(dt){ if(!CBW.action) return; CBW.t+=dt; const [f,s]=inputVec();
+  if(CBW.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)){ cbWorkStop(true); return; }
+  rig.root.position.copy(CBW.p1); rig.root.rotation.y=CBW.s.yaw; player.x=CBW.p1.x; player.z=CBW.p1.z; player.y=0; player.speed=0;
+  hero.mixer.update(dt); seatLegs({lift:CBW.lift,action:CBW.action,seatY:CBW.seatY,standY:CBW.standY}); heroWeapon();
+  if(!CBW.sent&&(T0-CBW.t0)*1000>=CBW.ms+1500){ CBW.sent=true; ON.send({t:'cbn',a:'end'}); } }
+const cbWorkPrompt=()=>{ const left=Math.max(0,CBW.ms/1000-(T0-CBW.t0)); return CBW.sent?'Shift done · move to stand up':`Working… ${Math.floor(left/60)}:${String(Math.floor(left%60)).padStart(2,'0')} left · move and you lose the shift`; };
+function cbWorkStop(byYou,quiet){ if(!CBW.on) return; const done=CBW.sent; CBW.on=false;
+  if(!done&&byYou&&!quiet){ ON.send({t:'cbn',a:'end'}); }
+  if(CBW.action){ CBW.action.stop(); CBW.action=null; } if(hero&&hero.act.idle){ hero.w.idle=1; hero.act.idle.setEffectiveWeight(1); }
+  const q=ROOM&&ROOM.nearFree?ROOM.nearFree(CBW.at.x,CBW.at.z):CBW.at; Object.assign(player,{x:q.x,z:q.z,y:0,speed:0}); rig.root.position.set(q.x,0,q.z); camState.pitch=.22; }
 // how far left of the line a point is, at distance s
 function raceLat(x,z,s){ const p=racePt(s); return (x-p.x)*Math.sin(p.h)+(z-p.z)*Math.cos(p.h); }
 // a point on the racing line at distance s, off metres to the left
@@ -10039,7 +10099,7 @@ let warm=0, perfAcc=0, perfN=0, prCool=3, errShown=0;
 function applyPR(){ renderer.setPixelRatio(PR); renderer.setSize(innerWidth,innerHeight); if(composer){ composer.setPixelRatio(PR); composer.setSize(innerWidth,innerHeight); } }
 function reportErr(e){ console.error(e); if(errShown++<1&&started) toast('Small hitch. The game kept running.'); }
 function simulate(dt){
-  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else if(mode==='foot'){ if(FOOT) FOOT.update(dt); } else updateDrive(dt); }
+  if(started&&!busy&&!mapView.isOpen){ if(mode==='walk'){ if(CB.act) cbUpdate(dt); else updateWalk(dt,false); } else if(mode==='interior'){ if(HL.act) updateHomeAct(dt); else if(CBW.on) cbWorkTick(dt); else updateWalk(dt,true); homeTick(dt); } else if(mode==='enter') updateEnter(dt); else if(mode==='foot'){ if(FOOT) FOOT.update(dt); } else updateDrive(dt); }
   else if(mapView.isOpen&&mode==='drive'){ drive.speed=0; drive.v.speed=0; }
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
@@ -10190,7 +10250,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(), jobLabel, stink:()=>makeStink(3,4),
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
-  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); },
+  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m),
   biz:m=>{ if(BIZ) BIZ.on(m); }, bank:m=>{ if(PH) PH.event('bank',m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
@@ -10383,7 +10443,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
-    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnScan,enterCBN,cbnLift,cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
