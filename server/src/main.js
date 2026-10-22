@@ -9,6 +9,7 @@ import { createWorld, PROTO } from './world.js';
 import { createMail } from './mail.js';
 import { tune } from './park.js';
 import { tunePvp } from './pvp.js';
+import { createAdmin } from './admin.js';
 
 const PORT = +process.env.PORT || 8080;
 const DB_PATH = process.env.DB_PATH || './data/naija.db';
@@ -23,6 +24,8 @@ const mail = createMail({ key: process.env.RESEND_API_KEY, from: process.env.MAI
 if (process.env.PARK_TEST === '1') { tune(process.env); tunePvp(process.env); console.log('park test settings', process.env.PARK_EVERY_MS, process.env.PARK_RANKS); }
 const world = createWorld({ db, mail, log, regPerHour: +process.env.REG_PER_HOUR || 20 });
 const perIp = new Map();
+const admin = createAdmin({ db, world, token: process.env.ADMIN_TOKEN, log });
+if (!process.env.ADMIN_TOKEN) log('no ADMIN_TOKEN secret: /admin is off');
 
 function ipOf(req) {
   if (TRUST_PROXY) { const f = req.headers['fly-client-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0].trim(); if (f) return f; }
@@ -32,6 +35,7 @@ function originOk(o) { return !o || ORIGINS.includes(o) || LOCAL.test(o) || ORIG
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname.startsWith('/admin') && admin.handle(req, res, url, ipOf(req))) return;
   const cors = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
   if (url.pathname === '/health') { res.writeHead(200, { ...cors, 'Content-Type': 'text/plain' }); return res.end('ok'); }
   if (url.pathname === '/stats') { res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ online: world.online, proto: PROTO })); }

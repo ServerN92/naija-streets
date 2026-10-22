@@ -355,6 +355,8 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     biz, park, pvp, law,
     tick, slow,
     get online() { return online.size; },
+    isOnline: uid => online.has(uid),
+    kick(uid, why) { const C = online.get(uid); if (!C) return false; send(C, { t: 'kick', m: why || 'Signed out by the server.' }); leaveWorld(C); C.tok = C.th = null; C.ws.close(4002, 'blocked'); return true; },
     get conns() { return conns.size; },
   };
 }

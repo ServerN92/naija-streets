@@ -177,6 +177,7 @@ export function openDb(file) {
         db.exec('COMMIT');
       } catch (e) { db.exec('ROLLBACK'); throw e; }
     },
+    raw: db,
     close: () => db.close(),
   };
 }
