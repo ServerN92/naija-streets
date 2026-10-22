@@ -63,8 +63,8 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
-      case 'ok': if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
+      case 'err': if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'ok': if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzlost': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'bk': case 'bkname': case 'bksent': case 'bktx': case 'bkloan': api.bank && api.bank(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
@@ -72,6 +72,7 @@ export function createOnline(api) {
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
       case 'cbnme': case 'cbnshift': case 'cbnpaid': api.cbn && api.cbn(m); break;
       case 'romme': case 'romask': case 'romok': case 'rompart': case 'romno': case 'romend': case 'kissfx': api.rom && api.rom(m); break;
+      case 'yhme': case 'yhgrad': case 'yhcash': case 'yhcaught': case 'yhbail': case 'yhdrop': api.yahoo && api.yahoo(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'oga': api.toast(`Your oga ${m.n} collect ₦${(+m.c || 0).toLocaleString('en-NG')} settlement from your work. Rise, and you go be oga too.`, 3.6); if (api.ogaNews) api.ogaNews(m, false); break;
       case 'ogaget': api.toast(`👑 ${m.n} bring you ₦${(+m.c || 0).toLocaleString('en-NG')} settlement.`, 3.2); if (api.ogaNews) api.ogaNews(m, true); break;

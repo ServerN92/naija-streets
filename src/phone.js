@@ -217,6 +217,7 @@ const ICONS = {
   hustle: ['linear-gradient(180deg,#ff9f43,#e8590c)', '#fff', SV('<rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="rgba(255,255,255,.18)"/><path d="M9 8V6.2A1.7 1.7 0 0 1 10.7 4.5h2.6A1.7 1.7 0 0 1 15 6.2V8M3.5 13h17"/><path d="M12 12v2.4" stroke-width="2.4"/>')],
   farm: ['linear-gradient(180deg,#8fd14f,#3e8e1f)', '#fff', SV('<path d="M3 20h18" stroke="#fff"/><path d="M12 20V9" stroke="#fff" stroke-width="2.2"/><path d="M12 13c-3.5 0-5.5-2.2-5.5-5.5 3.3 0 5.5 2 5.5 5.5zM12 11c0-3.6 2.2-6 6-6 0 3.8-2.4 6-6 6z" fill="#fff" stroke="none"/>')],
   home: ['linear-gradient(180deg,#d9825c,#9a4322)', '#fff', SV('<path d="M3.5 11 12 4.2l8.5 6.8" stroke-width="2.2"/><path d="M5.5 10v9.5h13V10" fill="rgba(255,255,255,.16)"/><path d="M7.6 17.6v-2.4a1.3 1.3 0 0 1 2.6 0v.4h3.6v-.4a1.3 1.3 0 0 1 2.6 0v2.4z" fill="#fff" stroke="none"/><path d="M9.4 14.6v-1.3a1 1 0 0 1 1-1h3.2a1 1 0 0 1 1 1v1.3" stroke-width="1.5"/>')],
+  laptop: ['linear-gradient(180deg,#3a3f4b,#15171c)', '#9fe3ff', SV('<rect x="3" y="5" width="18" height="11" rx="1.5" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.9)" stroke-width="1.6"/><path d="M2 19h20" stroke="rgba(255,255,255,.9)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 9l2 1.5L7 12M11 12h4" stroke="#9fe3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>')],
   love: ['linear-gradient(180deg,#ff7aa8,#d6336c)', '#fff', SV('<path d="M12 20.5s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.9a4.3 4.3 0 0 1 7.5 2.6c0 5.4-7.5 10-7.5 10z" fill="rgba(255,255,255,.9)" stroke="none"/>')],
   cbn: ['linear-gradient(180deg,#14804f,#073d27)', '#f3d27a', SV('<path d="M3 9.5 12 4l9 5.5z" fill="#f3d27a" stroke="#f3d27a" stroke-width="1.2"/><path d="M5.5 11.5v6M9.8 11.5v6M14.2 11.5v6M18.5 11.5v6" stroke="#fff" stroke-width="2"/><path d="M3.5 20h17" stroke="#f3d27a" stroke-width="2"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
@@ -340,7 +341,7 @@ export function createPhone(api) {
 
   const APPS = [
     ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['home', 'Naija Home', () => openApp('home')], ['love', 'Love', () => openApp('love')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
-    ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')], ['cbn', 'CBN', () => openApp('cbn')],
+    ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')], ['cbn', 'CBN', () => openApp('cbn')], ['laptop', 'Laptop', () => openApp('laptop')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
   const badges = {};
@@ -386,7 +387,7 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, home: homeApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, home: homeApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp, laptop: laptopApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
   function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
@@ -443,6 +444,14 @@ export function createPhone(api) {
     for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
       for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#d6336c'; row.append(tx);
         if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.open && R.app === 'love') openApp('love'); }, 60); }); row.append(bb); }
+        L.append(row); }
+      b.append(L); } }
+  function laptopApp() {   // Laptop: the yahoo story (the game makes the rows)
+    const d = api.yahoo && api.yahoo(); const b = frameApp('Laptop', { light: true }); R.view.querySelector('h1').style.color = '#2b7de9';
+    if (!d) { b.append(h('div', 'iph-note', 'Loading…')); return; }
+    for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
+      for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#d6336c'; row.append(tx);
+        if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.open && R.app === 'laptop') openApp('laptop'); }, 60); }); row.append(bb); }
         L.append(row); }
       b.append(L); } }
   function hustleApp() {   // My Hustle: the job you picked and its tasks (the game makes the rows)
@@ -727,6 +736,8 @@ export function createPhone(api) {
     card.append(h('div', 'bk-top', bk.name, h('i', null, 'Savings')), h('div', 'ph-big', api.naira(api.cash())), h('small', null, me.name + ' · Available balance'), ac); b.append(card);
     const row = h('div', 'bk-row'); row.append(btn('iph-btn', ['↗ Send money'], () => { BK.f = { acct: '', bank: '', name: null, n: '', note: '' }; BK.view = 'send'; openApp('wallet'); }), btn('iph-btn gray', ['↙ Receive'], () => { BK.view = 'receive'; openApp('wallet'); })); b.append(row);
     loanRows(b);
+    b.append(h('div', 'iph-h', 'EFCC bail')); b.append(h('div', 'iph-note', 'A friend in EFCC custody? Bail is ₦500,000, paid here to the EFCC. Type their player name.'));
+    { const row = h('div', 'bk-row'), inp = h('input'); inp.placeholder = 'Player name'; inp.maxLength = 16; inp.className = 'iph-in'; inp.style.flex = '1.4'; inp.addEventListener('keydown', e => e.stopPropagation()); row.append(inp, btn('iph-btn gray', ['Pay bail'], () => { const n = inp.value.trim(); if (n.length < 3) { phToast('Type the player name.'); return; } if (confirm(`Pay ₦500,000 bail for ${n}?`)) api.yahooBail && api.yahooBail(n); })); b.append(row); }
     b.append(h('div', 'iph-h', 'Transfers')); if (!BK.hist.length) b.append(h('div', 'iph-note', 'No transfer yet. Send your account number to your guys!'));
     const L = h('div', 'iph-list');
     for (const x of BK.hist.slice(0, 25)) { const r = h('div', 'iph-li'), tx = h('div', 'tx'), inn = x.d > 0; tx.append(h('b', null, (inn ? 'From ' : 'To ') + x.who), h('small', null, `${bankOf(x.bank).name}${x.note ? ' · ' + x.note : ''} · ${ago(x.t)}`));
