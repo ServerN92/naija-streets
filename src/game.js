@@ -13,22 +13,22 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=0f59f2504a';
-import * as C2 from './char2.js?v=0f59f2504a';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=0f59f2504a';
-import { createPhone } from './phone.js?v=0f59f2504a';
-import { createGuide } from './guide.js?v=0f59f2504a';
+import * as CLOCK from './clock.js?v=ca72f3b1e6';
+import * as C2 from './char2.js?v=ca72f3b1e6';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=ca72f3b1e6';
+import { createPhone } from './phone.js?v=ca72f3b1e6';
+import { createGuide } from './guide.js?v=ca72f3b1e6';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=0f59f2504a';
-import { createFarm } from './farm.js?v=0f59f2504a';
-import { createBusiness } from './business.js?v=0f59f2504a';
-import { createOnline } from './online.js?v=0f59f2504a';
-import { createPolice } from './police.js?v=0f59f2504a';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=0f59f2504a';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=0f59f2504a';
+import { createFootball } from './football.js?v=ca72f3b1e6';
+import { createFarm } from './farm.js?v=ca72f3b1e6';
+import { createBusiness } from './business.js?v=ca72f3b1e6';
+import { createOnline } from './online.js?v=ca72f3b1e6';
+import { createPolice } from './police.js?v=ca72f3b1e6';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=ca72f3b1e6';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=ca72f3b1e6';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='0f59f2504a';
+const BUILD='ca72f3b1e6';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
