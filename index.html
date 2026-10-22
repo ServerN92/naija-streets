@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="f71357263e">
+<meta name="ns-build" content="3f63ca7a25">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -165,7 +165,7 @@ body.touchui .ward .kb{display:none}
 .ph-btn.go{background:var(--danfo);color:var(--ink)}.ph-btn.no{background:rgba(255,255,255,.1);color:var(--cream)}
 .iconbtn[aria-pressed="true"]{background:var(--danfo);color:var(--ink)}
 .vitals2{display:flex;align-items:center;gap:8px;margin-top:4px;pointer-events:auto}
-.rank{position:relative;width:40px;height:40px;padding:0;border:0;background:none;cursor:pointer;pointer-events:auto}.rank img{width:40px;height:40px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+.rank{position:relative;width:52px;height:52px;padding:0;border:0;background:none;cursor:pointer;pointer-events:auto}.rank img{width:52px;height:52px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .rank::before{content:'';position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle,var(--gl,transparent) 0,transparent 68%);opacity:0;animation:rkGlow var(--gs,2s) ease-in-out infinite;pointer-events:none}
 .rank.r2{--gl:#4fc3f7aa;--gs:2.2s}.rank.r3{--gl:#26c6a0aa;--gs:2s}.rank.r4{--gl:#c77dffbb;--gs:1.8s}.rank.r5{--gl:#ff9f43bb;--gs:1.6s}.rank.r6{--gl:#ff5d5dcc;--gs:1.4s}
 .rank.r7{--gl:#ffd54acc;--gs:1.6s}.rank.r8{--gl:#ffd54add;--gs:1.3s}.rank.r9{--gl:#7fe3ffee;--gs:1.1s}
@@ -384,7 +384,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <span class="cb"><em aria-hidden="true">😴</em><b>SLEEP</b><span class="hpbar ease"><i id="sleepFill"></i></span></span>
       <span class="cb"><em aria-hidden="true">🚽</em><b>TOILET</b><span class="hpbar ease"><i id="easeFill"></i></span></span></div><span class="stars" id="stars" hidden aria-label="Police wanted level"></span></div>
     <div class="task" id="task" role="button" tabindex="-1" hidden><em id="taskE" aria-hidden="true">💼</em><span id="taskT"></span></div>
-    <div class="vitals2"><span class="cash" id="cash">₦0</span><button type="button" class="rank r0" id="rank" aria-label="Your rank medal: tap to see your rank"><img alt="" src="assets/ui/rank_0.png" width="40" height="40"></button><span class="onlN" id="onlN" hidden></span><button type="button" class="weap" id="weap" hidden aria-label="Change weapon">Fists</button></div>
+    <div class="vitals2"><span class="cash" id="cash">₦0</span><button type="button" class="rank r0" id="rank" aria-label="Your rank medal: tap to see your rank"><img alt="" src="assets/ui/rank_0.png?v=2" width="40" height="40"></button><span class="onlN" id="onlN" hidden></span><button type="button" class="weap" id="weap" hidden aria-label="Change weapon">Fists</button></div>
     <div class="jobhud" id="job" hidden></div>
     <div class="foe" id="foe" hidden><span id="foeName">AREA BOY</span><div class="hpbar"><i id="foeFill"></i></div></div></div>
   <div class="tr">
@@ -429,7 +429,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
   <div class="panel" id="settings" hidden>
     <h2>SETTINGS</h2>
     <h3>Your rank</h3>
-    <div class="rkset" id="rkSet"><img id="rkSetImg" alt="" src="assets/ui/rank_0.png"><div><b id="rkSetName">JJC</b><small id="rkSetCr">0 street cred</small></div></div>
+    <div class="rkset" id="rkSet"><img id="rkSetImg" alt="" src="assets/ui/rank_0.png?v=2"><div><b id="rkSetName">JJC</b><small id="rkSetCr">0 street cred</small></div></div>
     <span class="rkbar" id="rkSetBar"><i></i></span>
     <p class="note" id="rkSetNext"></p>
     <p class="note">How to rank up: play and move about (standing still does not count, up to 4 hours a day), finish your hustle tasks, earn money, buy clothes, cars and houses, and come back every day (the streak pays more). Doing the same thing again and again in one day pays less, so mix it up. Higher ranks open luxury places, houses, cars and clothes.</p>
@@ -657,7 +657,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=f71357263e"></script>
+<script type="module" src="src/game.js?v=3f63ca7a25"></script>
 
 </body>
 </html>
