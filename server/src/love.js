@@ -1,0 +1,118 @@
+// Romance between real players, for grown-ups only.
+//
+// Your date of birth is asked when you make an account (and once, for accounts made before); only the day you turn 18
+// is kept, it is set once and can't be changed by the player. Romance is OFF until you turn it on, and only players who
+// are 18+ and have it on can be asked or ask. Then: ask a player standing near you to be your partner (they accept, say
+// no or block you); partners standing together can ask for a kiss (the other accepts or says no). Everybody near sees the
+// hearts (a man and a woman only). A "no" keeps you from asking that player again for half an hour; a block for good. Either partner can end it.
+// A yes is only the talking stage: no kiss yet. You become partners by spending time together: every minute the two of you
+// are close (chilling, riding together, gisting) is a point, at most 30 a day, 60 to be partners, so two days at least.
+export const LOVE = { near: 12, kissNear: 3.2, askCd: 20e3, kissCd: 15e3, noCd: 30 * 60e3, pend: 60e3, fxR: 60, blockMax: 200,
+  bondEvery: 60e3, bondNear: 10, need: 60, dayCap: 30, day: 864e5 };
+export function tuneLove(env) {   // tests: a short day and a quick clock
+  for (const [k, e] of [['bondEvery', 'LOVE_BOND_MS'], ['need', 'LOVE_NEED'], ['dayCap', 'LOVE_DAY_CAP'], ['day', 'LOVE_DAY_MS']]) if (env[e]) LOVE[k] = +env[e];
+}
+// the moment somebody born on dob (YYYY-MM-DD) turns 18 (Lagos time), or null if it is not a real date of birth
+export function adultAtFrom(dob, t = Date.now()) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dob || '')); if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3], born = Date.UTC(y, mo - 1, d) - 3600e3;
+  const back = new Date(born + 3600e3); if (back.getUTCFullYear() !== y || back.getUTCMonth() !== mo - 1 || back.getUTCDate() !== d) return null;   // 2001-02-30 and the like
+  if (born > t || y < 1900) return null;
+  return Date.UTC(y + 18, mo - 1, d) - 3600e3;
+}
+export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) {
+  const raw = db.raw;
+  raw.exec('CREATE TABLE IF NOT EXISTS rom(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL);');
+  const S = { get: raw.prepare('SELECT data FROM rom WHERE uid=?'), put: raw.prepare('INSERT INTO rom(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data') };
+  const blank = () => ({ adultAt: 0, on: 0, partner: 0, pname: '', since: 0, stage: '', bond: 0, bday: -1, bdayN: 0, block: [] });
+  const dayOf = t => Math.floor((t + 3600e3) / LOVE.day);   // a Lagos day
+  function get(uid) { let d = null; try { const r = S.get.get(uid); d = r ? JSON.parse(r.data) : null; } catch (e) { d = null; } d = { ...blank(), ...(d || {}) };
+    if (d.partner && !db.userById(d.partner)) single(d);   // the partner's account is gone
+    if (d.partner && !d.stage) d.stage = 'part';
+    return d; }
+  const single = d => Object.assign(d, { partner: 0, pname: '', since: 0, stage: '', bond: 0, bday: -1, bdayN: 0 });
+  const put = (uid, d) => S.put.run(uid, JSON.stringify(d));
+  const adult = d => !!d.adultAt && now() >= d.adultAt;
+  const byPid = pid => { for (const D of ctx.online.values()) if (D.p && D.user && D.p.id === pid) return D; return null; };
+  const sex = C => C && C.p && C.p.look ? C.p.look.g : '';   // 'm' or 'f' (from the look you picked)
+  const pair = (A, B) => !!sex(A) && !!sex(B) && sex(A) !== sex(B);   // a man and a woman only
+  const dist = (A, B) => (A.p && B.p && A.p.has && B.p.has) ? Math.hypot(A.p.x - B.p.x, A.p.z - B.p.z) : 1e9;
+  const noUntil = new Map();   // "asker:target" -> until (after a no)
+  function tag(C, d) { if (!C || !C.p) return; const pt = d.partner ? d.pname : ''; if ((C.p.pt || '') !== pt) { C.p.pt = pt; C.p.lv++; C.p.ver++; } }
+  function me(C, d = get(C.user.id)) {
+    const today = d.bday === dayOf(now()) ? d.bdayN : 0;
+    ctx.send(C, { t: 'romme', m: { known: !!d.adultAt, adult: adult(d), on: !!d.on, partner: d.partner ? d.pname : '', stage: d.partner ? d.stage : '', bond: d.bond | 0, need: LOVE.need, today, cap: LOVE.dayCap } }); tag(C, d); }
+  function hello(C) { me(C); }
+  function setDob(uid, dob) { const d = get(uid); if (d.adultAt) return false; const a = adultAtFrom(dob, now()); if (!a) return false; d.adultAt = a; put(uid, d); return true; }
+  function handle(C, m) {
+    const uid = C.user.id, d = get(uid), t = now(), err = s => ctx.err(C, 'rom', s);
+    switch (m.a) {
+      case 'me': return me(C, d);
+      case 'age': {
+        if (d.adultAt) return err('Your date of birth is set already.');
+        const a = adultAtFrom(m.dob, t); if (!a) return err('Check the date of birth.');
+        d.adultAt = a; put(uid, d); me(C, d); return ctx.ok(C, 'rom', t >= a ? 'Thank you. Romance with players is there for you (turn it on in the Love app).' : 'Romance with players is for 18+ only.');
+      }
+      case 'on': { if (!adult(d)) return err('Romance with players is for 18+ only.'); d.on = m.on ? 1 : 0; put(uid, d); return me(C, d); }
+      case 'ask': case 'kiss': {
+        const kiss = m.a === 'kiss', D = byPid(m.i | 0);
+        if (!adult(d) || !d.on) return err('Turn on romance in the Love app first (18+).');
+        if (!D || D === C) return err('That player is not here.');
+        if (!pair(C, D)) return err('Romance here is between a man and a woman.');
+        const e = get(D.user.id);
+        if (kiss) { if (d.partner !== D.user.id) return err('You can only kiss your partner.'); if (d.stage !== 'part') return err(`You and ${D.user.name} are still talking. Chill together more first.`); if (dist(C, D) > LOVE.kissNear) return err('Stand close to your partner first.');
+          if (t - (C.romKiss || 0) < LOVE.kissCd) return err('Wait small.'); C.romKiss = t; }
+        else { if (d.partner) return err('You have a partner already.'); if (dist(C, D) > LOVE.near) return err('Go closer to that player.');
+          if (t - (C.romAsk || 0) < LOVE.askCd) return err('Wait small before you ask again.');
+          if (!adult(e) || !e.on || e.partner || (e.block || []).includes(uid) || (noUntil.get(uid + ':' + D.user.id) || 0) > t) return err(`${D.user.name} can't take requests now.`);
+          C.romAsk = t; }
+        if (kiss && (!adult(e) || !e.on || e.partner !== uid)) return err(`${D.user.name} can't take requests now.`);
+        D.romPend = { from: uid, pid: C.p.id, k: kiss ? 'kiss' : 'rel', t };
+        ctx.send(D, { t: 'romask', k: kiss ? 'kiss' : 'rel', i: C.p.id, n: C.user.name });
+        return ctx.ok(C, 'rom', kiss ? `You lean in… waiting for ${D.user.name}.` : `You asked ${D.user.name}. Wait for the answer.`);
+      }
+      case 'yes': case 'no': case 'block': {
+        const P = C.romPend; if (!P || P.pid !== (m.i | 0) || t - P.t > LOVE.pend) return err('That request is over.');
+        C.romPend = null; const A = byPid(P.pid);
+        if (m.a === 'block') { d.block = [...new Set([...(d.block || []), P.from])].slice(-LOVE.blockMax); put(uid, d); }
+        if (m.a !== 'yes') { if (P.k === 'rel') noUntil.set(P.from + ':' + uid, t + LOVE.noCd); if (A) ctx.send(A, { t: 'romno', k: P.k, n: C.user.name }); return ctx.ok(C, 'rom', m.a === 'block' ? 'Blocked. They can\'t ask you again.' : 'You said no.'); }
+        if (!A) return err('They are gone.');
+        if (!pair(A, C)) return err('Romance here is between a man and a woman.');
+        const a = get(P.from);
+        if (P.k === 'rel') {
+          if (!adult(d) || !d.on || d.partner || !adult(a) || !a.on || a.partner) return err('That can\'t happen now.');
+          Object.assign(single(d), { partner: P.from, pname: A.user.name, since: t, stage: 'talk' }); Object.assign(single(a), { partner: uid, pname: C.user.name, since: t, stage: 'talk' }); put(uid, d); put(P.from, a);
+          ctx.send(A, { t: 'romok', n: C.user.name }); ctx.send(C, { t: 'romok', n: A.user.name }); me(A, a); me(C, d); log('couple', A.user.name, C.user.name); return;
+        }
+        if (d.partner !== P.from || d.stage !== 'part' || dist(A, C) > LOVE.kissNear + 1.5) return err('Too far now.');
+        const fx = JSON.stringify({ t: 'kissfx', a: A.p.id, b: C.p.id, n: [A.user.name, C.user.name] });
+        for (const D of ctx.online.values()) if (D.p && D.p.has && Math.hypot(D.p.x - C.p.x, D.p.z - C.p.z) <= LOVE.fxR) D.ws.send(fx);
+        return;
+      }
+      case 'end': {
+        if (!d.partner) return err('You have no partner.');
+        const other = d.partner, o = get(other), n = d.pname; single(d); put(uid, d);
+        if (o.partner === uid) { single(o); put(other, o); }
+        const O = ctx.online.get(other); if (O) { ctx.send(O, { t: 'romend', n: C.user.name }); me(O, o); }
+        me(C, d); return ctx.ok(C, 'rom', `You and ${n} are not together any more.`);
+      }
+    }
+  }
+  // every minute: two people in the talking stage, online and close together, get a point (up to the day's limit)
+  function tick() {
+    const t = now(), day = dayOf(t), done = new Set();
+    for (const C of ctx.online.values()) {
+      if (!C.user || done.has(C.user.id)) continue;
+      const d = get(C.user.id); if (!d.partner || d.stage !== 'talk') continue;
+      const D = ctx.online.get(d.partner); if (!D || !D.user) continue;
+      done.add(C.user.id); done.add(D.user.id);
+      const e = get(D.user.id); if (e.partner !== C.user.id || dist(C, D) > LOVE.bondNear) continue;
+      if (d.bday !== day) { d.bday = day; d.bdayN = 0; }
+      if (d.bdayN >= LOVE.dayCap) continue;
+      d.bond = (d.bond | 0) + 1; d.bdayN++; Object.assign(e, { bond: d.bond, bday: d.bday, bdayN: d.bdayN });
+      if (d.bond >= LOVE.need) { d.stage = e.stage = 'part'; for (const [X, x] of [[C, d], [D, e]]) ctx.send(X, { t: 'rompart', n: x.pname }); log('partners', C.user.name, D.user.name); }
+      put(C.user.id, d); put(D.user.id, e); me(C, d); me(D, e);
+    }
+  }
+  return { hello, handle, setDob, get, tick };
+}

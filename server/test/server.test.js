@@ -13,7 +13,7 @@ const PROTO = 1;
 function freePort() { return new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); }); }
 before(async () => {
   port = await freePort(); dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
-  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0', LOVE_TEST: '1', LOVE_BOND_MS: '250', LOVE_NEED: '4', LOVE_DAY_CAP: '2', LOVE_DAY_MS: '3000' }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((res, rej) => { proc.stdout.on('data', d => { const t = String(d); for (const m of t.matchAll(/MAILCODE (\S+) (\d{6})/g)) codes[m[1]] = m[2]; if (/listening/.test(t)) res(); }); proc.on('exit', c => rej(new Error('server exited ' + c))); });
 });
 after(() => { proc.kill('SIGTERM'); });
@@ -299,4 +299,36 @@ test('a player who smells: everybody near sees it (sm in the player list), and i
   await new Promise(r => setTimeout(r, 2100)); a.send({ t: 'life', d: { dirt: 0, t: Date.now() } });
   const w2 = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'stinker' && j.sm === 0), 5000); assert.ok(w2);
   a.close(); b.close();
+});
+
+test('romance between players: 18+ only, opt-in, ask/accept, kiss seen by people near, no/block, end', async () => {
+  const M = { look: { c: 'p_dayo', g: 'm' } }, F = { look: { c: 'p_dayo', g: 'f' } };
+  const [a] = await account('lover_a', 'secret77', M), [b] = await account('lover_b', 'secret77', F), [k] = await account('kid_c', 'secret77', F), [w] = await account('kiss_watch'), [d] = await account('lover_d', 'secret77', M);
+  d.send({ t: 'rom', a: 'age', dob: '1997-03-03' }); await d.next(m => m.t === 'romme' && m.m.known); d.send({ t: 'rom', a: 'on', on: true }); await d.next(m => m.t === 'romme' && m.m.on);
+  a.send({ t: 'rom', a: 'age', dob: '1998-05-01' }); assert.equal((await a.next(m => m.t === 'romme' && m.m.known)).m.adult, true);
+  b.send({ t: 'rom', a: 'age', dob: '1999-11-20' }); await b.next(m => m.t === 'romme' && m.m.known);
+  const kidYear = new Date().getUTCFullYear() - 15; k.send({ t: 'rom', a: 'age', dob: `${kidYear}-01-01` }); assert.equal((await k.next(m => m.t === 'romme' && m.m.known)).m.adult, false);
+  a.send({ t: 'rom', a: 'age', dob: '1980-01-01' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /set already/);
+  k.send({ t: 'rom', a: 'on', on: true }); assert.match((await k.next(m => m.t === 'err' && m.w === 'rom')).m, /18\+/);
+  for (const [c, x] of [[a, 100], [b, 102], [k, 104], [w, 110], [d, 101]]) c.send({ t: 'p', x, y: 0, z: 100, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  await new Promise(r => setTimeout(r, 300));
+  const pid = async (c, name) => { for (let i = 0; i < 20; i++) { const j = c.got.flatMap(m => m.t === 'w' && m.j ? m.j : []).find(j => j.n === name); if (j) return j.i; await new Promise(r => setTimeout(r, 150)); } return null; };
+  const bId = await pid(a, 'lover_b'), kId = await pid(a, 'kid_c'), aId = await pid(b, 'lover_a');
+  a.send({ t: 'rom', a: 'ask', i: bId }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /Turn on romance/);
+  a.send({ t: 'rom', a: 'on', on: true }); b.send({ t: 'rom', a: 'on', on: true }); await a.next(m => m.t === 'romme' && m.m.on); await b.next(m => m.t === 'romme' && m.m.on);
+  a.send({ t: 'rom', a: 'ask', i: kId }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /can't take requests/);
+  const dId = await pid(a, 'lover_d'); a.send({ t: 'rom', a: 'ask', i: dId }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /a man and a woman/);
+  a.send({ t: 'rom', a: 'ask', i: bId }); const ask = await b.next('romask'); assert.deepEqual([ask.k, ask.n], ['rel', 'lover_a']);
+  b.send({ t: 'rom', a: 'yes', i: ask.i }); assert.equal((await a.next('romok')).n, 'lover_b'); await b.next('romok');
+  // the talking stage: no kiss yet; time close together makes them partners (2 points a "day", 4 needed)
+  a.send({ t: 'rom', a: 'kiss', i: bId }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /still talking/);
+  const capped = await a.next(m => m.t === 'romme' && m.m.bond >= 2, 4000); assert.equal(capped.m.stage, 'talk');
+  assert.ok(a.got.every(m => m.t !== 'romme' || m.m.today <= 2), 'the day limit holds');
+  assert.equal((await a.next('rompart', 9000)).n, 'lover_b'); await b.next('rompart', 3000); assert.ok(a.got.every(m => m.t !== 'romme' || m.m.today <= 2), 'the day limit holds');
+  a.send({ t: 'rom', a: 'kiss', i: bId }); const kq = await b.next(m => m.t === 'romask' && m.k === 'kiss');
+  b.send({ t: 'rom', a: 'yes', i: kq.i }); 
+  const fx = await w.next('kissfx'); assert.deepEqual(fx.n, ['lover_a', 'lover_b']);
+  const tag = await w.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'lover_a' && j.pt === 'lover_b'), 4000); assert.ok(tag);
+  b.send({ t: 'rom', a: 'end' }); assert.equal((await a.next('romend')).n, 'lover_b');
+  for (const c of [a, b, k, w, d]) c.close();
 });

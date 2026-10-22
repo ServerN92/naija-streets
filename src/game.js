@@ -3396,7 +3396,7 @@ let locTick=0, mmTick=0, lastPrompt='', routeTick=0, lastMode=''; const SPEEDO=$
 function updateHUD(dt){ if(!started) return;
   locTick-=dt; if(locTick<=0){ locTick=.3; $('#loc').textContent=locationName(); }
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
-  let txt=''; if(!busy){ if(rogNear()) txt=rogWord(); else if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(robNear()) txt=`The man's money · ${naira(robNear().cash)} · give it back or keep it`; else if(agbCollectNear()) txt=`Collect the danfo's ticket · ${naira(AGB_FEE/2)} for you, ${naira(AGB_FEE/2)} for ${UNION.chairName()}`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(hawkNear()) txt=`Sell pure water · ₦50 (${LIFE.hk} left)`; else if(begStop()) txt='Beg for money (your pocket dry)'; else if(dateNear()) txt=`💕 Your date: ${DATES[LOVE.date.kind].n} with ${myLove()?myLove().n:''}`; else if(loverNear()) txt=lovePrompt(loverNear()); else if(LIFE.hk<20&&kioskAt()&&!doorNear()) txt='Kiosk · buy a bag of pure water (₦300)'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
+  let txt=''; if(!busy){ if(rogNear()) txt=rogWord(); else if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(robNear()) txt=`The man's money · ${naira(robNear().cash)} · give it back or keep it`; else if(agbCollectNear()) txt=`Collect the danfo's ticket · ${naira(AGB_FEE/2)} for you, ${naira(AGB_FEE/2)} for ${UNION.chairName()}`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(hawkNear()) txt=`Sell pure water · ₦50 (${LIFE.hk} left)`; else if(begStop()) txt='Beg for money (your pocket dry)'; else if(dateNear()) txt=`💕 Your date: ${DATES[LOVE.date.kind].n} with ${myLove()?myLove().n:''}`; else if(romKissNear()) txt=`Kiss ${ROM.partner} 💋`; else if(loverNear()) txt=lovePrompt(loverNear()); else if(LIFE.hk<20&&kioskAt()&&!doorNear()) txt='Kiosk · buy a bag of pure water (₦300)'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(CBW.on) txt=cbWorkPrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
   if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=true; }   // (on a phone the prompt itself is the E button: one E, only when there is something to do)
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
@@ -3614,7 +3614,7 @@ $('#rotateOk').addEventListener('click',()=>{ rotateSeen=true; checkRotate(); })
 let enteredAt=0;
 async function fadeSwap(fn){ busy=true; $('#fade').classList.add('on'); await new Promise(r=>setTimeout(r,380)); fn(); await frameWait(); $('#fade').classList.remove('on'); busy=false; }
 function action(){ if(busy||!started||CLIMB.on) return; if(MENU.open) return closeMenu(); if(rogNear()) return rogPay();
-  if(mode==='walk'){ if(CB.act) return cbPress(); if(DEALER.open) return closeShop(); if(WARD.open) return closeWard(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } { const rb=robNear(); if(rb) return robChoose(rb); } { const av=agbCollectNear(); if(av) return agbCollect(av); } if(nearDoor()) return LIFE.flat?enterApt():flatMenu(); if(nearHotel()) return enterLobby(0); if(hawkSell()) return; if(begStop()) return begStart(); if(dateNear()) return doDate(); { const LV=loverNear(); if(LV) return loveAct(LV); } if(LIFE.hk<20&&kioskAt()&&!doorNear()) return kioskBuy(); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v&&v.impounded){ toast(`Impounded. Pay ${naira(LT.fee)} at the impound office (by the gate) to collect it.`,3); return; } if(v) return v.ai?carjack(v):enterCar(v); }
+  if(mode==='walk'){ if(CB.act) return cbPress(); if(DEALER.open) return closeShop(); if(WARD.open) return closeWard(); if(BT.st==='carry'&&BT.carrier) return btStruggle(); if(KID.tied>0) return kidStruggle(); if(rbNear()) return void rbTalk(); if(nearBox()) return takeBox(); if(nearHostage()) return freeHostage(); { const B=capoNear(); if(B) return capoMenu(B); } if(CROOK.demand&&crookPay()) return; if(gateNear()) return gatePay(); if(rideHere()) return rideEnter(); if(FARM&&FARM.action()) return; if(BIZ&&BIZ.action()) return; if(UNION&&UNION.action()) return; if(POLICE&&POLICE.action()) return; if(nearDealer()) return openShop(); if(nearChair()) return openChair(); { const tg=nearToll(); if(tg) return payToll(tg); } { const rb=robNear(); if(rb) return robChoose(rb); } { const av=agbCollectNear(); if(av) return agbCollect(av); } if(nearDoor()) return LIFE.flat?enterApt():flatMenu(); if(nearHotel()) return enterLobby(0); if(hawkSell()) return; if(begStop()) return begStart(); if(dateNear()) return doDate(); { const RK=romKissNear(); if(RK) return romKiss(RK); } { const LV=loverNear(); if(LV) return loveAct(LV); } if(LIFE.hk<20&&kioskAt()&&!doorNear()) return kioskBuy(); { const dr=doorNear(); if(dr) return dr.act(); } if(JACK.go||(hero&&hero.ov&&hero.ov.name==='threaten')) return; if(ARMS.cur==='board'&&mySkate&&mySkate.carried) return boardRide(); const v=nearestVehicle(); if(v&&v===RIDE.v){ if(RIDE.state==='waiting'||Math.abs(v.speed)<1.5) rideEnter(); return; } if(v&&v.forSale) return buyLotCar(v); if(v&&v.impounded){ toast(`Impounded. Pay ${naira(LT.fee)} at the impound office (by the gate) to collect it.`,3); return; } if(v) return v.ai?carjack(v):enterCar(v); }
   else if(mode==='drive'){ if(landPayNear()) return landPay(); if(BT.st==='ride'&&drive.v===BT.v){ toast('Your hands are tied in the back of the truck.',1.6); return; } if(rbNear()) return void rbTalk(); if(!drive.ride&&gateNear()) return gatePay(); if(!drive.ride&&nearChop()) return chopSell(); { const tg=nearToll(); if(tg&&!drive.ride) return payToll(tg); } { const ag=!drive.ride&&agbPayNear(); if(ag) return agbPay(ag); }
     if(!drive.ride&&(drive.v.fh||0)>1.2){ toast('You no fit come down for the flyover. Drive off am first.',2); return; } if(drive.ride){ if(Math.abs(drive.speed)<3) rideExit(true); else toast('Tell am to stop first, or skip the ride on your phone'); return; } if(Math.abs(drive.speed)<3) exitCar(); else toast('Slow down first'); }
   else if(mode==='interior'){ if(MENU.open) closeMenu(); else if(WARD.open) closeWard(); else if(HL.act) homeAction(); else if(CBW.on) cbWorkStop(true); else if(roomSpot()&&T0-enteredAt>.6) roomSpot().act(); else if(nearExit()&&T0-enteredAt>.8) exitApt(); else if(nearWard()) openWard(); else homeAction(); } }
@@ -6139,17 +6139,19 @@ function applySavedLook(){ if(!PROFILE) return; let id=savedLook();
       if((v2||(L2&&L2.file))&&id!==baseLook()){ id=baseLook(); WARD.want=id; } setTimeout(go,400); }); };
   go(); }
 // a woman never shows up as the man you start with: her body has to be on first
-const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; } };
+let GO_PEND=null;   // Lagos Live or Solo Hustle pressed while your body was still loading: go when it is ready
+const bodyReady=()=>{ if(rig&&rig.root) rig.root.visible=true; const eb=$('#enterBtn'); if(eb&&eb.dataset.wait){ delete eb.dataset.wait; eb.disabled=false; eb.textContent=eb.dataset.label||'ENTER LAGOS'; if(GO_PEND){ const f=GO_PEND; GO_PEND=null; setTimeout(f,0); } } };
 function wardUI(){ const box=$('#looks'); box.textContent=''; const f=isF()?1:0, h=t=>{ const e=document.createElement('h3'); e.textContent=t; box.appendChild(e); };
   const cur=WARD.cur, mine=isV2(cur);
   h('Who you are');
-  for(const P of pickable(f)){ const b=document.createElement('button'); b.type='button'; b.className='lookb who';
-    const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; const sp=document.createElement('span'); sp.textContent=P.name; b.append(im,sp);
+  const grid=document.createElement('div'); grid.className='ppl ward'; box.appendChild(grid); let n=0;   // faces only, no names
+  for(const P of pickable(f)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-label',`${f?'Woman':'Man'} ${++n}`);
+    const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; b.append(im);
     b.setAttribute('aria-pressed',P.id===cur?'true':'false');
-    b.addEventListener('click',async()=>{ if(WARD.busy||P.id===WARD.cur) return; if(!V2.casts[P.id]) toast(`Getting ${P.name} ready…`,5);
+    b.addEventListener('click',async()=>{ if(WARD.busy||P.id===WARD.cur) return; if(!V2.casts[P.id]) toast('Getting your new look ready…',5);
       const done=await wearLook(P.id); if(done&&PROFILE){ PROFILE.c=P.id; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} }
-      toast(done?`You are ${P.name}.`:'Not ready yet. Try again soon.'); wardUI(); });
-    box.appendChild(b); }
+      toast(done?'New look. You fresh!':'Not ready yet. Try again soon.'); wardUI(); });
+    grid.appendChild(b); }
   const P0=v2Of(cur), mx=!!(P0&&P0.mx);
   if(mine&&!mx){ h('Skin'); const r=document.createElement('div'); r.className='pshape pskin'; toneRow(r,toneOf(),cur,k=>{ setTone(k); wardUI(); }); box.appendChild(r); }
   if(mine&&P0.shape){ h('Body shape'); const r=document.createElement('div'); r.className='swatches';
@@ -10103,9 +10105,13 @@ const heShe=L=>L.g==='f'?'she':'he', himHer=L=>L.g==='f'?'her':'him';
     for(const k of [2.6,3.4,1.8,4.2]){ const x=s.x+nx*k+(i%2?1:-1)*1.2, z=s.z+nz*k; if(onLand(x,z,.35)&&!roadAt(x,z,.4)&&!resolveCircle({x,z},.4)){ at={x,z}; break; } }
     if(!at) at={x:s.x+1.5,z:s.z+1.5}; L.x=at.x; L.z=at.z; L.ry=Math.atan2(-nx,-nz);
     lifeSpot(L.cast,{x:L.x,z:L.z,ry:L.ry},L.g==='f'?['f_idle','text','f_talk','idle_3']:['idle_1','phone','talk']);
-    PLACES.push({name:`💕 ${L.n}`,sub:`${L.job} · toast ${himHer(L)} (rank ${RANKS[L.need]?RANKS[L.need][0]:''}+)`,kind:'place',x:L.x,z:L.z}); });
+    L.place={name:`💕 ${L.n}`,sub:`${L.job} · toast ${himHer(L)} (rank ${RANKS[L.need]?RANKS[L.need][0]:''}+)`,kind:'place',x:L.x,z:L.z,lover:L.id}; });
   LOVE.ready=LOVERS.some(L=>L.x!=null); }
-const loverNear=()=>{ if(mode!=='walk'||!LOVE.ready) return null; for(const L of LOVERS){ if(L.x==null) continue; if(Math.abs(L.x-player.x)<2.6&&Math.abs(L.z-player.z)<2.6&&Math.hypot(L.x-player.x,L.z-player.z)<2.4) return L; } return null; };
+// a man and a woman only: you see (and can toast) the lovers of the other gender
+const loverOk=L=>!!PROFILE&&L.g!==(PROFILE.g==='f'?'f':'m');
+function loverPlaces(){ for(let i=PLACES.length-1;i>=0;i--) if(PLACES[i].lover) PLACES.splice(i,1); for(const L of LOVERS) if(L.place&&loverOk(L)) PLACES.push(L.place); }
+loverPlaces();
+const loverNear=()=>{ if(mode!=='walk'||!LOVE.ready) return null; for(const L of LOVERS){ if(L.x==null||!loverOk(L)) continue; if(Math.abs(L.x-player.x)<2.6&&Math.abs(L.z-player.z)<2.6&&Math.hypot(L.x-player.x,L.z-player.z)<2.4) return L; } return null; };
 const LOVE_LINES={win:['"Hmm, you sabi talk o. Okay, take my number."','"You funny! Oya, save my number. No dey disappear o."','"I go think am… okay, call me tonight."'],
   lose:['"Abeg, I get boyfriend."','"Na this one you wan use toast me? Try again."','"Ehn ehn, I no dey for this kind thing now."','"Abeg, comot for road."'],
   loseM:['"Abeg, I get babe."','"Na this one you wan use toast me? Try again."','"I no dey for this kind thing now."','"Abeg, comot for road."'],
@@ -10113,8 +10119,10 @@ const LOVE_LINES={win:['"Hmm, you sabi talk o. Okay, take my number."','"You fun
   rags:'"With this torn cloth? Go buy better cloth first."'};
 const lovePrompt=L=>{ const R=LIFE.rel; if(R&&R.id===L.id) return `💕 ${L.n} · your ${L.g==='f'?'babe':'guy'}${LOVE.cook?' · chop the food':''}`; return `Toast ${L.n} 💬 (${L.job})${R?' · you get somebody o!':''}`; };
 function loveAct(L){ const R=LIFE.rel;
-  if(R&&R.id===L.id){ if(LOVE.cook){ LOVE.cook=0; fadeSwap(()=>{ careEat(1); FIGHT.hp=Math.min(100,FIGHT.hp+25); }); loveAdd(6); toast(`${L.n} serve you hot egusi and pounded yam. "Chop well, my love!" 💕`,4); return; }
-    toast(mpick([`${L.n}: "My love! You come see me? 💕"`,`${L.n}: "Na you dey my mind now now."`,`${L.n}: "When you go take me out?"`]),3); loveAdd(1); return; }
+  if(R&&R.id===L.id){ const rows=[{name:'💋 Kiss',sub:R.love>=60?`${L.n} dey miss you`:R.love>=30?`${heShe(L)==='she'?'She':'He'} fit gree, fit no gree`:`${L.n} dey vex small… e fit no gree`,btn:'KISS',act:()=>{ closeMenu(); npcKiss(L); }},
+      {name:'💬 Gist',sub:'Talk small',btn:'TALK',act:()=>{ closeMenu(); toast(mpick([`${L.n}: "My love! You come see me? 💕"`,`${L.n}: "Na you dey my mind now now."`,`${L.n}: "When you go take me out?"`]),3); loveAdd(1); }}];
+    if(LOVE.cook) rows.unshift({name:'🍲 Chop the food',sub:`${L.n} cook for you`,btn:'CHOP',act:()=>{ closeMenu(); LOVE.cook=0; fadeSwap(()=>{ careEat(1); FIGHT.hp=Math.min(100,FIGHT.hp+25); }); loveAdd(6); toast(`${L.n} serve you hot egusi and pounded yam. "Chop well, my love!" 💕`,4); }});
+    openMenu(`💕 ${L.n}`,`Love ${Math.round(R.love)}%`,rows); return; }
   if(T0-(LOVE.said[L.id]||-999)<90){ toast(`${L.n}: "You again? I don talk my own."`,2.6); return; }
   LOVE.said[L.id]=T0;
   if(LIFE.relNo&&LIFE.relNo[L.id]===gameDay()){ toast(`${L.n}: "After wetin you do me? Comot!"`,3); return; }
@@ -10170,9 +10178,9 @@ function doDate(){ const D=LOVE.date, L=myLove(), K=D&&DATES[D.kind]; if(!K||!L)
   toast(K.line.replace('{n}',L.n)+` (Love +${K.love})`,5); }
 function R_dates(){ if(LIFE.rel) LIFE.rel.dates=(LIFE.rel.dates|0)+1; }
 const GIFTS=[['🌹','Flowers and chocolate',3000,5],['🧴','Perfume',8000,9],['💇🏾','Human hair (wig)',20000,16,'f'],['⌚','Wristwatch',20000,16,'m'],['📱','New phone',80000,32]];
-function loveApp(){ const L=myLove(), R=LIFE.rel;
-  if(!L) return {title:'Love',sections:[{h:'You never get anybody',rows:[{name:'Toast somebody',sub:'Look for 💕 on your map: Chioma, Kemi, Tunde, Dayo… Walk up to them and press E. Baff, wear better cloth and rise your rank first.',btn:'MAP',act:()=>{ closePhone(); if(mode!=='interior') openMap(); }}]},
-    {h:'Who dey around',rows:LOVERS.filter(q=>q.x!=null).map(q=>({name:`💕 ${q.n}`,sub:`${q.job} · wants ${RANKS[q.need][0]} or higher${LIFE.relNo&&LIFE.relNo[q.id]===gameDay()?' · still vexing for you':''}`,btn:'SHOW WAY',act:()=>{ mapView.setDest(q.x,q.z,{name:q.n,x:q.x,z:q.z}); closePhone(); }}))}]};
+function loveAppNpc(){ const L=myLove(), R=LIFE.rel;
+  if(!L) return {title:'Love',sections:[{h:'You never get anybody',rows:[{name:'Toast somebody',sub:`Look for 💕 on your map: ${LOVERS.filter(loverOk).slice(0,3).map(q=>q.n).join(', ')}… Walk up to them and press E. Baff, wear better cloth and rise your rank first.`,btn:'MAP',act:()=>{ closePhone(); if(mode!=='interior') openMap(); }}]},
+    {h:'Who dey around',rows:LOVERS.filter(q=>q.x!=null&&loverOk(q)).map(q=>({name:`💕 ${q.n}`,sub:`${q.job} · wants ${RANKS[q.need][0]} or higher${LIFE.relNo&&LIFE.relNo[q.id]===gameDay()?' · still vexing for you':''}`,btn:'SHOW WAY',act:()=>{ mapView.setDest(q.x,q.z,{name:q.n,x:q.x,z:q.z}); closePhone(); }}))}]};
   const hearts='❤️'.repeat(Math.max(1,Math.round(R.love/20)))+'🤍'.repeat(5-Math.max(1,Math.round(R.love/20)));
   const rows=[{name:`${hearts}  ${Math.round(R.love)}%`,sub:R.love>=70?`${L.n} dey happy with you: +5% work pay, and ${heShe(L)} dey hype you`:R.love<30?`${L.n} dey vex small. Do something before breakfast reach you!`:`${L.n} · ${L.job} · ${R.dates|0} dates`,warn:R.love<30}];
   if(R.ask) rows.push({name:`🙏 "Urgent ${naira(R.ask.n)}"`,sub:`Send am before ${Math.max(1,Math.ceil((R.ask.until-Date.now())/60e3))} min, or ${heShe(L)} go vex`,warn:true,btn:'SEND',off:CASH.n<R.ask.n,act:()=>{ const n=R.ask.n; addCash(-n); cashHUD(); R.ask=null; loveAdd(n>=10000?14:n>=5000?10:7); toast(`${L.n}: "Thank you my love! God bless you 😘"`,3); }});
@@ -10181,6 +10189,70 @@ function loveApp(){ const L=myLove(), R=LIFE.rel;
     {h:'Gifts',rows:GIFTS.filter(G=>!G[4]||G[4]===L.g).map(([e,n,p,lv])=>({name:`${e} ${n}`,sub:`${naira(p)} · Love +${lv}`,btn:'BUY',off:CASH.n<p,act:()=>{ addCash(-p); cashHUD(); loveAdd(lv); toast(`${L.n}: "Awww! ${n}? You too much! 😍" (Love +${lv})`,3.4); }}))},
     {h:'Send money',rows:[2000,5000].map(n=>({name:`💸 Send ${naira(n)}`,sub:`"Just because" · Love +${n>=5000?6:3}`,btn:'SEND',off:CASH.n<n,act:()=>{ addCash(-n); cashHUD(); loveAdd(n>=5000?6:3); toast(`${L.n}: "Ahn ahn, wetin I do? Thank you baby 😘"`,3); }}))},
     {rows:[{name:'End the relationship',sub:'You go break up with am',btn:'END',act:()=>{ LIFE.relNo=LIFE.relNo||{}; LIFE.relNo[L.id]=gameDay(); LIFE.rel=null; LOVE.date=null; lifeSave(true); toast(`You don break up with ${L.n}. ${heShe(L)==='she'?'She':'He'} block you everywhere. 😂`,3.6); }}]}]}; }
+function loveApp(){ const o=loveAppNpc(); o.sections.push(romSection()); return o; }
+// ---- hearts that fly up (a kiss): small pink sprites, a few at a time
+const HFX={tex:null,list:[]};
+function heartTexture(){ const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d'), x=32, y=30, r=22, gr=g.createLinearGradient(0,8,0,58); gr.addColorStop(0,'#ff9cbe'); gr.addColorStop(1,'#e8174f'); g.fillStyle=gr;
+  g.beginPath(); g.moveTo(x,y+r); g.bezierCurveTo(x-r*1.6,y-r*.2,x-r*.7,y-r*1.3,x,y-r*.45); g.bezierCurveTo(x+r*.7,y-r*1.3,x+r*1.6,y-r*.2,x,y+r); g.fill(); const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t; }
+function heartFx(x,y,z,n=10,big=false){ if(!HFX.tex) HFX.tex=heartTexture();
+  for(let i=0;i<n;i++){ let q=HFX.list.find(q=>q.t>=q.life); if(!q){ if(HFX.list.length>=48) break; const s=new THREE.Sprite(new THREE.SpriteMaterial({map:HFX.tex,transparent:true,depthWrite:false})); s.visible=false; s.renderOrder=2; scene.add(s); q={s,t:9,life:1}; HFX.list.push(q); }
+    q.t=-i*.07; q.life=1.7+Math.random(); q.x=x+(Math.random()-.5)*.5; q.y=y+(Math.random()-.5)*.3; q.z=z+(Math.random()-.5)*.5; q.vx=(Math.random()-.5)*.5; q.vz=(Math.random()-.5)*.5; q.vy=.5+Math.random()*.6; q.sz=big&&i===0?.5:.15+Math.random()*.15; q.ph=Math.random()*6; } }
+function heartTick(dt){ for(const q of HFX.list){ if(q.t>=q.life){ q.s.visible=false; continue; } q.t+=dt; if(q.t<0||q.t>=q.life){ q.s.visible=false; continue; } const k=q.t/q.life, sc=q.sz*Math.min(1,k/.15);
+  q.s.visible=true; q.s.position.set(q.x+q.vx*q.t+Math.sin(T0*3+q.ph)*.06,q.y+q.vy*q.t,q.z+q.vz*q.t); q.s.scale.set(sc,sc,1); q.s.material.opacity=k<.7?1:1-(k-.7)/.3; } }
+// ---- kissing your babe (or guy) in the game: they accept or turn their face, by how much love dey
+function npcKiss(L){ const R=LIFE.rel; if(!R) return; player.yaw=Math.atan2(L.x-player.x,L.z-player.z);
+  if(T0-(LOVE.kissT??-99)<45){ toast(`${L.n}: "Ahn ahn, again? Na small small o 😂"`,2.6); return; }
+  LOVE.kissT=T0;
+  if(SMELL()){ loveAdd(-3); toast(`${L.n} push you back: "Ewo! Go baff and brush first! 🤢" (Love −3)`,3.4); return; }
+  const p=R.love>=60?.92:R.love>=30?.5:.1;
+  if(MR()>=p){ toast(`${L.n} turn face: ${mpick(R.love<30?['"Kiss ke? You no dey even call me!"','"Settle me first, then we talk kiss."']:['"Not here, people dey look 🙈"','"Hmm… next time."','"You think say na so e easy? 😏"'])}`,3.4); return; }
+  const d=gameDay(); if(LOVE.kissDay!==d){ LOVE.kissDay=d; LOVE.kissN=0; } const add=LOVE.kissN++<2?3:0; if(add) loveAdd(add);
+  heartFx((L.x+player.x)/2,(player.y||0)+1.65,(L.z+player.z)/2,14,true);
+  toast(`💋 ${L.n} kiss you! ${mpick(['"I love you die!"','"You be my person 💕"','"No go far o."'])}${add?` (Love +${add})`:''}`,3.6); }
+// ---- romance with real players (server/src/love.js): 18+ only (date of birth asked when you make the account), OFF until you turn it on.
+// Ask a player near you to be your partner: they accept, say no or block you. Partners standing close can ask for a kiss: the other accepts or says no.
+// Everybody near sees the hearts. (For now the two face each other and the hearts fly; a real kiss move can come from Blender later.)
+const ROM={known:false,adult:false,on:false,partner:'',stage:'',bond:0,need:60,today:0,cap:30,req:null,kissT:-99};
+const romSend=o=>!!(ON&&ON.send({t:'rom',...o}));
+function romOn(m){
+  if(m.t==='romme'){ const d=m.m||{}; Object.assign(ROM,{known:!!d.known,adult:!!d.adult,on:!!d.on,partner:d.partner||'',stage:d.stage||'',bond:d.bond|0,need:d.need||60,today:d.today|0,cap:d.cap||30}); if(PH) PH.event('loveup'); return; }
+  if(m.t==='err'||m.t==='ok'){ toast(m.m,3.2); if(PH) PH.event('loveup'); return; }
+  if(m.t==='romask'){ ROM.req={k:m.k,i:m.i,n:m.n,t:Date.now()}; romCard(); return; }
+  if(m.t==='romok'){ bigMsg('TALKING STAGE 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} dey talk now. Chill together (stay close) for a day or two to become partners.`,5); return; }
+  if(m.t==='rompart'){ bigMsg('PARTNERS 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} are partners now! Stand close and press E to ask for a kiss.`,5); return; }
+  if(m.t==='romno'){ toast(m.k==='kiss'?`${m.n} no gree for the kiss now. 😅`:`${m.n} said no. 💔`,3); return; }
+  if(m.t==='romend'){ toast(`💔 ${m.n} ended it with you.`,4); return; }
+  if(m.t==='kissfx') kissFx(m); }
+function kissFx(m){ if(!ON) return; const me=ON.myId, sp=id=>id===me?{x:player.x,y:player.y||0,z:player.z}:ON.spot(id), A=sp(m.a), B=sp(m.b); if(!A&&!B) return;
+  const P=A&&B?{x:(A.x+B.x)/2,y:Math.max(A.y,B.y),z:(A.z+B.z)/2}:(A||B); heartFx(P.x,P.y+1.65,P.z,16,true);
+  if(m.a===me||m.b===me){ const o=m.a===me?B:A, who=(m.n||[])[m.a===me?1:0]||''; if(o&&mode==='walk') player.yaw=Math.atan2(o.x-player.x,o.z-player.z); toast(`💋 You and ${who} kiss. Love dey air! 💕`,3.2); } }
+const romKissNear=()=>{ if(!ROM.partner||ROM.stage!=='part'||mode!=='walk'||!ON) return null; for(const o of ON.nearby()) if(o.n===ROM.partner&&!o.v&&o.a!=='k'&&Math.hypot(o.x-player.x,o.z-player.z)<3) return o; return null; };
+function romKiss(o){ if(T0-ROM.kissT<15){ toast('Wait small 😅',2); return; } ROM.kissT=T0; player.yaw=Math.atan2(o.x-player.x,o.z-player.z); romSend({a:'kiss',i:o.id}); }
+function romTick(){ if(ROM.req&&Date.now()-ROM.req.t>58e3){ ROM.req=null; romCardClose(); } }   // the server forgets a request after 60 s
+function romCardShow(c){ c.hidden=false; c.classList.remove('out'); requestAnimationFrame(()=>c.classList.add('show')); if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} }
+function romCardClose(){ const c=$('#romCard'); if(c.hidden) return; c.classList.remove('show'); c.classList.add('out'); setTimeout(()=>{ if(!c.classList.contains('show')) c.hidden=true; },380); }
+const romEl=(t,x,cls)=>{ const e=document.createElement(t); if(x!=null) e.textContent=x; if(cls) e.className=cls; return e; };
+function romCard(){ const c=$('#romCard'), R=ROM.req; if(!R){ romCardClose(); return; } const b=romEl('div',null,'rb');
+  const mk=(t,cls,a)=>{ const e=romEl('button',t,cls); e.type='button'; e.addEventListener('click',()=>{ romSend({a,i:R.i}); ROM.req=null; romCardClose(); }); b.append(e); };
+  mk(R.k==='kiss'?'KISS 💋':'YES 💕','y','yes'); mk('NO','','no'); if(R.k!=='kiss') mk('BLOCK','k','block');
+  c.replaceChildren(romEl('p',R.k==='kiss'?`💋 ${R.n} wants to kiss you`:`💕 ${R.n} is asking you out. Be their partner?`),b); romCardShow(c); }
+function romDob(){ const c=$('#romCard'); ROM.req=null; closePhone(); const i=romEl('input'); i.type='date'; i.min='1900-01-01'; i.max=new Date().toISOString().slice(0,10); const b=romEl('div',null,'rb');
+  const ok=romEl('button','SAVE','y'), no=romEl('button','CANCEL','k'); ok.type=no.type='button';
+  ok.addEventListener('click',()=>{ if(!/^\d{4}-\d\d-\d\d$/.test(i.value)){ toast('Pick your date of birth.',2.4); return; } romSend({a:'age',dob:i.value}); romCardClose(); }); no.addEventListener('click',romCardClose); b.append(ok,no);
+  c.replaceChildren(romEl('p','Your date of birth'),romEl('small','Romance with real players is for 18+ only. You set it once and it can’t be changed. Nobody sees it.'),i,b); romCardShow(c); }
+$('#romCard').addEventListener('keydown',e=>e.stopPropagation());
+function romSection(){ const H='Real players (18+)';
+  if(!ON||!ON.signedIn) return {h:H,rows:[{name:'Find love with real players',sub:'Sign in online first. For 18+ only.',btn:'SIGN IN',act:()=>{ closePhone(); if(ON) ON.openPanel(); }}]};
+  if(!ROM.known) return {h:H,rows:[{name:'Confirm your age',sub:'Romance with real players is for 18+ only. Put your date of birth once (nobody sees it).',btn:'SET',act:romDob}]};
+  if(!ROM.adult) return {h:H,rows:[{name:'Romance with players',sub:'This one na for 18+ only.'}]};
+  const rows=[{name:`Romance with players: ${ROM.on?'ON':'OFF'}`,sub:ROM.on?'Players near you can ask you out':'Nobody can ask you out or kiss you',btn:ROM.on?'TURN OFF':'TURN ON',act:()=>romSend({a:'on',on:!ROM.on})}];
+  if(ROM.partner){ const end=()=>{ if(confirm(`End it with ${ROM.partner}?`)) romSend({a:'end'}); };
+    if(ROM.stage==='part') rows.push({name:`💕 ${ROM.partner} · partners`,sub:'Stand close to them and press E to ask for a kiss.',btn:'END',act:end});
+    else rows.push({name:`💕 ${ROM.partner} · talking stage`,sub:`Bond ${ROM.bond}/${ROM.need} · today ${ROM.today}/${ROM.cap}. Chill together: hang out, ride together, gist. Every minute close counts. ${ROM.today>=ROM.cap?'Enough for today, come back tomorrow.':'Partners can kiss.'}`,btn:'END',act:end}); }
+  else if(ROM.on){ const f=mode==='drive'&&drive.v?drive.v:player, myG=PROFILE&&PROFILE.g==='f'?'f':'m', near=ON.nearby().filter(o=>!o.pt&&o.g!==myG&&Math.hypot(o.x-f.x,o.z-f.z)<12);
+    if(!near.length) rows.push({name:'Nobody near you',sub:`Stand near a ${myG==='f'?'man':'woman'} (12 steps) to ask them out. They must turn on romance too.`});
+    for(const o of near.slice(0,6)) rows.push({name:o.n,sub:'Near you',btn:'ASK OUT',act:()=>romSend({a:'ask',i:o.id})}); }
+  return {h:H,rows}; }
 // ---- the pure water hawker: buy a bag (20 sachets) at any kiosk, sell to people on the street
 const HAWK={sold:new WeakSet(),t:0};
 const kioskAt=()=>{ if(mode!=='walk') return null; const k=KIOSK_NEAR(player.x,player.z); if(!k) return null; const lx=(player.x-k.x)*k.c+(player.z-k.z)*k.s, lz=-(player.x-k.x)*k.s+(player.z-k.z)*k.c;
@@ -10213,7 +10285,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(FOOT) FOOT.tick(dt,player.x,player.z); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); loveTick(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); cbnUpdate(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); stinkFx(dt); loveTick(dt); romTick(); } heartTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -10242,7 +10314,7 @@ const perfIv=[];
 function loop(ts){ const t=typeof ts==='number'?ts:performance.now(), raw=t-lastT;
   if(raw<(FPS.cap===30?29:10.5)) return;   // phones: 30 fps (cool and steady); 60 if you choose it (120 Hz+ screens never go past ~60)
   lastT=t; const dt=Math.min(raw/1000,.05);
-  if(!started&&warm>8){ warm++; return; }   // nothing to draw behind the title screen
+  if(!started&&warm>8){ warm++; stageTick(dt); return; }   // nothing to draw behind the title screen (only you on the stand)
   T0+=dt; warm++;
   try{ simulate(dt); }catch(e){ reportErr(e); }
   if(ON&&started) try{ ON.frame(dt); }catch(e){ reportErr(e); }
@@ -10359,7 +10431,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(), jobLabel, stink:()=>makeStink(3,4),
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
-  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m),
+  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m), goLive:()=>goLive(),
   biz:m=>{ if(BIZ) BIZ.on(m); }, bank:m=>{ if(PH) PH.event('bank',m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
@@ -10571,35 +10643,87 @@ window.__nsReady=true;
 setTimeout(loadPeople,200);   // the real people arrive while the title screen shows (the walkers are look-alikes until then)
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
 const eb=$('#enterBtn');
-// ---- profile: the first time, you choose a name and man or woman (kept on this device; it cannot be changed later)
-{ const PF=$('#prof'), PN=$('#profName'), PW=$('#pwho'); let pickG=null, pickC=null, pickK=-1;
-  const who=()=>{ PW.textContent=`${PROFILE.name} · ${(v2Of(myPerson())||{}).name||(PROFILE.g==='f'?'Woman':'Man')}`; PW.hidden=false; PF.hidden=true; };
-  const ok=()=>{ eb.disabled=!(pickG&&pickC&&PN.value.trim().length>=2); };
-  if(PROFILE) who();
-  else { PF.hidden=false; $('#loading').classList.add('pf'); eb.dataset.label=eb.textContent='CREATE & ENTER'; eb.disabled=true;
-    // first man or woman, then the people of that kind (their faces), then (for some women) a body shape
-    const PL=$('#ppl'), PS=$('#pshape');
+// ---- the lobby (the start page): who you are on the left, you on the danfo stand in the middle (the stand from Blender:
+// tools/blender_stage.py), the two ways to play on the right. The stand has its own little renderer, gone when you enter.
+const STAGE={R:null,sc:null,cam:null,ped:null,body:null,mx:null,ry:-.45,drag:null,idle:0,id:'',k:-1,seq:0};
+const STAGE_TOP=.252;   // the concrete top of the stand: the feet go here
+function stageInit(){ const cv=$('#stageCv'); if(!cv||STAGE.R) return;
+  try{ const R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true,powerPreference:'low-power'}); R.setPixelRatio(Math.min(devicePixelRatio||1,2)); R.outputColorSpace=THREE.SRGBColorSpace; R.toneMapping=renderer.toneMapping; R.toneMappingExposure=1.05;
+    R.shadowMap.enabled=true; R.shadowMap.type=THREE.PCFSoftShadowMap;
+    const sc=new THREE.Scene(), hemi=new THREE.HemisphereLight(0xc8d0ff,0x3a2a1e,1.15), key=new THREE.DirectionalLight(0xffd7a8,2.6), rim=new THREE.DirectionalLight(0x8fb2ff,1.8), fill=new THREE.DirectionalLight(0xffffff,.45);
+    key.position.set(1.1,4,2.4); key.castShadow=true; key.shadow.mapSize.set(1024,1024); Object.assign(key.shadow.camera,{left:-1.2,right:1.2,top:2.3,bottom:-.4,near:.5,far:9}); key.shadow.bias=-.0005; key.shadow.normalBias=.02;
+    rim.position.set(-1.6,2.2,-2.4); fill.position.set(-2,1,3); sc.add(hemi,key,rim,fill);
+    const sh=document.createElement('canvas'); sh.width=sh.height=128; const g=sh.getContext('2d'), gr=g.createRadialGradient(64,64,6,64,64,62); gr.addColorStop(0,'rgba(0,0,0,.6)'); gr.addColorStop(.6,'rgba(0,0,0,.22)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,128,128);
+    const blob=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1.8),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sh),transparent:true,depthWrite:false})); blob.rotation.x=-Math.PI/2; blob.position.y=-.004; sc.add(blob);
+    STAGE.R=R; STAGE.sc=sc; STAGE.cam=new THREE.PerspectiveCamera(24,1,.1,30); STAGE.cam.layers.enableAll();   // (the people live on their own layers)
+    GLL.load('assets/models/stage.glb',gl=>{ if(!STAGE.sc) return; const p=gl.scene; p.traverse(o=>{ if(o.isMesh){ o.receiveShadow=true; o.castShadow=true; } }); STAGE.ped=p; STAGE.sc.add(p); },undefined,()=>{});
+    // turn it with a finger or the mouse
+    cv.addEventListener('pointerdown',e=>{ STAGE.drag={x:e.clientX,ry:STAGE.ry}; try{ cv.setPointerCapture(e.pointerId); }catch(_){} });
+    cv.addEventListener('pointermove',e=>{ if(STAGE.drag) STAGE.ry=STAGE.drag.ry+(e.clientX-STAGE.drag.x)*.012; });
+    const up=()=>{ if(STAGE.drag){ STAGE.drag=null; STAGE.idle=2.5; } }; cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  }catch(e){ console.warn('stage',e); STAGE.R=null; } }
+function stageCap(t,hideAfter){ const c=$('#stageCap'); c.textContent=t; c.hidden=!t; clearTimeout(stageCap.t); if(hideAfter) stageCap.t=setTimeout(()=>{ c.hidden=true; },hideAfter); }
+function stageShow(id,k){ const my=++STAGE.seq; STAGE.id=id; STAGE.k=k;
+  if(!id){ stageClear(); stageCap('Pick man or woman to start'); return; }
+  if(!STAGE.body) stageCap('Getting ready…');
+  loadV2(id).then(C=>{ if(my!==STAGE.seq||!STAGE.sc) return; if(!C){ stageCap('This one no load. Pick another.'); return; }
+    stageClear(); const inner=SkeletonUtils.clone(C.tpl); C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,k); inner.position.y=STAGE_TOP;
+    inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
+    const cl=C.clips&&C.clips[C.idle0]; if(cl){ STAGE.mx=new THREE.AnimationMixer(inner); STAGE.mx.clipAction(cl).play(); }
+    STAGE.sc.add(inner); STAGE.body=inner; stageCap('Drag to turn',2600); }).catch(()=>{ if(my===STAGE.seq) stageCap('This one no load. Pick another.'); }); }
+function stageClear(){ if(STAGE.body&&STAGE.sc) STAGE.sc.remove(STAGE.body); STAGE.body=null; if(STAGE.mx) STAGE.mx.stopAllAction(); STAGE.mx=null; }
+function stageTick(dt){ const S=STAGE; if(!S.R) return; const cv=S.R.domElement, w=cv.clientWidth, h=cv.clientHeight; if(!w||!h) return;
+  const pr=S.R.getPixelRatio(); if(cv.width!==Math.round(w*pr)||cv.height!==Math.round(h*pr)) S.R.setSize(w,h,false);
+  // the stand (1.4 m across) and a person (up to 2 m) always in the picture
+  const asp=w/h, half=Math.tan(THREE.MathUtils.degToRad(S.cam.fov/2)), d=Math.max(1.13/half,.86/(half*asp));
+  S.cam.aspect=asp; S.cam.position.set(0,1.28,d); S.cam.lookAt(0,.98,0); S.cam.updateProjectionMatrix();
+  if(!S.drag){ if(S.idle>0) S.idle-=dt; else S.ry+=dt*.3; }
+  if(S.body) S.body.rotation.y=S.ry; if(S.ped) S.ped.rotation.y=S.ry;
+  if(S.mx) S.mx.update(dt); S.R.render(S.sc,S.cam); }
+function stageDone(){ const S=STAGE; if(!S.R) return; stageClear(); try{ S.R.dispose(); S.R.forceContextLoss(); }catch(e){} S.R=null; S.sc=null; S.ped=null; }
+const goHint=t=>{ $('#goHint').textContent=t||''; };
+// a new player: keep the profile and dress them (her body arrives in a moment)
+function makeMe(){ if(PROFILE) return; eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }
+function goWhy(){ if(eb.dataset.wait) return 'wait'; if(!eb.disabled) return '';
+  if(!PROFILE){ if(!document.querySelector('.pgb[aria-pressed="true"]')) return 'Pick man or woman first.'; if($('#profName').value.trim().length<2){ if(!touchUI) $('#profName').focus(); return 'Type your name first (2 letters or more).'; } }
+  return 'Wait small…'; }
+// Lagos Live: with real people (sign in or make an account first; then straight in)
+function goLive(){ const why=goWhy(); if(why==='wait'){ GO_PEND=goLive; goHint('Getting you ready…'); return; } if(why){ goHint(why); return; } goHint('');
+  if(!ON){ goHint('Online no dey work now. Play Solo Hustle.'); return; }
+  if(ON.signedIn){ eb.click(); return; }
+  makeMe(); ON.openLive(); }
+// Solo Hustle: just you, on this phone (signed in? that signs you out: tap twice)
+function goSolo(){ const why=goWhy(); if(why==='wait'){ GO_PEND=goSolo; goHint('Getting you ready…'); return; } if(why){ goHint(why); return; } goHint('');
+  const sb=$('#soloBtn'); if(ON&&ON.hasAccount){ if(!sb.classList.contains('warn')){ sb.classList.add('warn'); $('#soloSub').textContent='Tap again: you go sign out and play alone.'; clearTimeout(goSolo.t); goSolo.t=setTimeout(()=>{ sb.classList.remove('warn'); if(ON) ON.lobbyText(); },3500); return; }
+    sb.classList.remove('warn'); ON.goSolo(()=>eb.click()); return; }
+  eb.click(); }
+$('#soloBtn').addEventListener('click',goSolo);
+// ---- profile: the first time, you choose man or woman, your person (faces, no names), skin, and your name (kept on this device; man or woman can't change later)
+{ const PF=$('#prof'), PN=$('#profName'), PNF=$('#profNameF'), PW=$('#pwho'), LB=$('#lobby'); let pickG=null, pickC=null, pickK=-1;
+  $('#loading').classList.add('lob'); LB.hidden=false; stageInit();
+  const who=()=>{ const b=document.createElement('span'), sm=document.createElement('small'); b.textContent=`Welcome back, ${PROFILE.name}`; sm.textContent='Change clothes and colours at home.'; PW.replaceChildren(b,sm); PW.hidden=false; PF.hidden=true; PNF.hidden=true; LB.classList.add('back'); };
+  const ok=()=>{ eb.disabled=!(pickG&&pickC&&PN.value.trim().length>=2); if(!eb.disabled) goHint(''); };
+  if(PROFILE){ who(); stageShow(isV2(savedLook())?savedLook():myPerson(),PROFILE.k??-1); }
+  else { PF.hidden=false; PNF.hidden=false; eb.dataset.label='ENTER LAGOS'; eb.disabled=true; stageShow('',-1);
+    const PL=$('#ppl'), PS=$('#pshape'), PK=$('#pskin');
     const shapes=P=>{ PS.textContent=''; PS.hidden=!P.shape; if(!P.shape) return; const l=document.createElement('span'); l.textContent='Body'; PS.appendChild(l);
       for(const [k,name] of SHAPES){ const b=document.createElement('button'); b.type='button'; b.className='psb'; b.textContent=name; b.setAttribute('aria-pressed',(V2.shape[P.id]||'curvy')===k?'true':'false');
-        b.addEventListener('click',()=>{ setShape(P.id,k); for(const c of PS.querySelectorAll('button')) c.setAttribute('aria-pressed',c===b?'true':'false'); }); PS.appendChild(b); } };
-    // the skin colour: the faces above change with it
-    let pseq=0; const PK=$('#pskin'), face=()=>{ const b=PL.querySelector('.ppc[aria-pressed="true"]'); for(const c of PL.querySelectorAll('.ppc')){ const im=c.querySelector('img'); if(c!==b&&im.dataset.src) im.src=im.dataset.src; } if(!b||!pickC) return;
-        const im=b.querySelector('img'), my=++pseq, id=pickC; im.dataset.src=im.dataset.src||im.src; b.classList.add('busy'); portrait(id,pickK).then(u=>{ if(my!==pseq) return; b.classList.remove('busy'); if(u) im.src=u; }); };   // the one you picked, drawn in your skin
-    const skins=P=>{ PK.hidden=false; toneRow(PK,pickK,P.id,k=>{ pickK=k; face(); }); };
-    const people=()=>{ PL.textContent=''; PS.hidden=true; PK.hidden=true;
-      for(const P of pickable(pickG==='f'?1:0)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-pressed','false');
-        const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; const sp=document.createElement('span'); sp.textContent=P.name; b.append(im,sp);
-        b.addEventListener('click',()=>{ pickC=P.id; for(const c of PL.children) c.setAttribute('aria-pressed',c===b?'true':'false'); shapes(P); skins(P); ok(); loadV2(P.id); if(pickK>=0) face(); });   // start bringing them in
-        PL.appendChild(b); }
-      PL.hidden=false; };
+        b.addEventListener('click',()=>{ setShape(P.id,k); for(const c of PS.querySelectorAll('button')) c.setAttribute('aria-pressed',c===b?'true':'false'); stageShow(P.id,pickK); }); PS.appendChild(b); } };
+    const skins=P=>{ PK.hidden=false; toneRow(PK,pickK,P.id,k=>{ pickK=k; stageShow(pickC,pickK); }); };
+    const pick=(P,b)=>{ pickC=P.id; for(const c of PL.children) c.setAttribute('aria-pressed',c===b?'true':'false'); shapes(P); skins(P); ok(); stageShow(P.id,pickK); };
+    const people=()=>{ PL.textContent=''; PS.hidden=true; PK.hidden=true; let i=0, first=null;
+      for(const P of pickable(pickG==='f'?1:0)){ const b=document.createElement('button'); b.type='button'; b.className='ppc'; b.setAttribute('aria-pressed','false'); b.setAttribute('aria-label',`${pickG==='f'?'Woman':'Man'} ${++i}`);
+        const im=document.createElement('img'); im.src=`assets/people/face_${P.id.slice(2)}.jpg`; im.alt=''; b.append(im);
+        b.addEventListener('click',()=>pick(P,b)); PL.appendChild(b); if(!first) first=[P,b]; }
+      PL.hidden=false; if(first) pick(...first); };
     for(const b of document.querySelectorAll('.pgb')) b.addEventListener('click',()=>{ if(pickG===b.dataset.g) return; pickG=b.dataset.g; pickC=null; for(const c of document.querySelectorAll('.pgb')) c.setAttribute('aria-pressed',c===b?'true':'false'); people(); ok(); });
-    PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!eb.disabled) eb.click(); }); }
-  eb.makeProfile=()=>{ if(PROFILE) return; eb.fresh=true; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,k:pickK,camp:CAMP_I,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who();
+    PN.addEventListener('input',ok); PN.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') goLive(); }); }
+  eb.makeProfile=()=>{ if(PROFILE) return; eb.fresh=true; PROFILE={name:PN.value.trim().slice(0,16),g:pickG,c:pickC,k:pickK,camp:CAMP_I,t:Date.now()}; try{ localStorage.setItem('naija-profile',JSON.stringify(PROFILE)); }catch(e){} who(); loverPlaces();
     if(CAST[pickC]) CAST[pickC].w=0;   // no copies of you on the street
   }; }
-if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent=isV2(savedLook())?`GETTING ${(v2Of(savedLook()).name).toUpperCase()} READY…`:(isF()?'GETTING HER READY…':'GETTING READY…'); setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
-eb.hidden=false; if(PROFILE) eb.focus(); else $('#profName').focus();
-eb.addEventListener('click',()=>{ portraitDone(); if(!PROFILE){ eb.makeProfile(); if(WARD.cur!==savedLook()){ rig.root.visible=false; applySavedLook(); setTimeout(()=>{ rig.root.visible=true; },12000); } }   // her body arrives in a moment
+if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent='GETTING READY…'; setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
+if(!touchUI){ if(PROFILE) $('#onlBtn').focus(); }
+eb.addEventListener('click',()=>{ portraitDone(); stageDone(); makeMe();
   if(touchUI) goFull(); started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); if(LIFE.job) toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);
