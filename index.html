@@ -308,6 +308,13 @@ body.fbon #loc,body.fbon #tHorn,body.fbon #tRadio,body.fbon #tGrab,body.fbon #tJ
 body.drvround #tGas,body.drvround #tRev{width:calc(70px * var(--bs));height:calc(70px * var(--bs));border-radius:50%}
 body.drvround .tbtns .tdrv.pedal::before,body.drvround .tbtns .tdrv .lbl{display:none}
 body.drvround #tGas:not(.free){bottom:calc(46vh - 35px)}body.drvround #tRev:not(.free){left:calc(40px + var(--sl));bottom:calc(20vh - 35px)}
+/* the skateboard: two buttons only (TRICK and OLLIE), in glass, just above the steering arrows */
+body.onskate .tbtns :is(#tSk1,#tSk2){background:linear-gradient(160deg,rgba(255,255,255,.26),rgba(255,255,255,.07) 48%,rgba(255,255,255,.02)),rgba(16,18,24,.42);border:1.5px solid rgba(255,255,255,.45);box-shadow:0 8px 20px rgba(0,0,0,.32),inset 0 1.5px 0 rgba(255,255,255,.5),inset 0 -10px 16px rgba(0,0,0,.22);font-size:12px;color:#fff;transition:transform .08s ease,box-shadow .12s ease}
+body.onskate .tbtns :is(#tSk1,#tSk2).on{transform:scale(.93);color:#15171c;border-color:var(--danfo);background:radial-gradient(circle at 50% 32%,#F2B705,rgba(242,183,5,.8));box-shadow:0 0 0 4px rgba(242,183,5,.28),0 0 24px rgba(242,183,5,.6)}
+body.onskate.drvpad #tSk1:not(.free){position:fixed;right:calc(132px + var(--sr));bottom:calc(25vh + 46px)}
+body.onskate.drvpad #tSk2:not(.free){position:fixed;right:calc(32px + var(--sr));bottom:calc(25vh + 46px)}
+body.onskate.drvwheel #tSk1:not(.free){position:fixed;right:calc(104px + var(--sr));bottom:calc(168px + var(--sb))}
+body.onskate.drvwheel #tSk2:not(.free){position:fixed;right:calc(18px + var(--sr));bottom:calc(168px + var(--sb))}
 @media (max-height:380px){ #tGas{height:calc(96px * var(--bs));bottom:calc(40vh - 54px)} #tRev{height:calc(68px * var(--bs));bottom:calc(16vh - 42px)} }   /* small phones: the gas starts under the money line */
 body.touchui:is(.drvpad,.drvwheel) #weap{display:none}   /* no fists in a motor */
 :is(body.drvpad,body.drvwheel) :is(#tHorn,#tRadio){background:linear-gradient(160deg,rgba(255,255,255,.24),rgba(255,255,255,.06) 48%,rgba(255,255,255,.02)),rgba(16,18,24,.42);border:1.5px solid rgba(255,255,255,.42);box-shadow:0 6px 16px rgba(0,0,0,.3),inset 0 1.5px 0 rgba(255,255,255,.45)}
