@@ -13,21 +13,21 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=76104b7e82';
-import * as C2 from './char2.js?v=76104b7e82';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=76104b7e82';
-import { createPhone } from './phone.js?v=76104b7e82';
-import { createGuide } from './guide.js?v=76104b7e82';
+import * as CLOCK from './clock.js?v=740cd8c46a';
+import * as C2 from './char2.js?v=740cd8c46a';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=740cd8c46a';
+import { createPhone } from './phone.js?v=740cd8c46a';
+import { createGuide } from './guide.js?v=740cd8c46a';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFarm } from './farm.js?v=76104b7e82';
-import { createBusiness } from './business.js?v=76104b7e82';
-import { createOnline } from './online.js?v=76104b7e82';
-import { createPolice } from './police.js?v=76104b7e82';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=76104b7e82';
-import { MapView, GPS_RED } from './mapview.js?v=76104b7e82';
+import { createFarm } from './farm.js?v=740cd8c46a';
+import { createBusiness } from './business.js?v=740cd8c46a';
+import { createOnline } from './online.js?v=740cd8c46a';
+import { createPolice } from './police.js?v=740cd8c46a';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=740cd8c46a';
+import { MapView, GPS_RED } from './mapview.js?v=740cd8c46a';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='76104b7e82';
+const BUILD='740cd8c46a';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -2528,7 +2528,7 @@ function kerbSpot(x,z,len,filter=e=>e.c>=4&&e.c<9){ const [e]=nearestRoad(x,z,fi
 let mySkate=null;
 const LATE_MIX={car2:.1,benz:.035,tanker:.045,bike2:.04,sbike:.025}, LATE={want:{},t:0,started:false};
 async function loadLate(){ if(LATE.started) return; LATE.started=true;
-  for(const e of Object.entries(LATE_FILES)){ try{ const [k,out]=await loadModelEntry(e); MODELS[k]=out; lateReady(k); }catch(err){ console.warn('late model',e[0],err); } await new Promise(r=>setTimeout(r,400)); } }
+  for(const e of Object.entries(LATE_FILES)){ if(MODELS[e[0]]) continue; try{ const [k,out]=await loadModelEntry(e); MODELS[k]=out; lateReady(k); }catch(err){ console.warn('late model',e[0],err); } await new Promise(r=>setTimeout(r,400)); } }
 function lateReady(k){ newvReady(k); for(const f of (MODEL_WAIT[k]||[])) try{ f(MODELS[k]); }catch(e){ console.warn('whenModel',k,e); } delete MODEL_WAIT[k]; for(const v of vehicles) if(v.want===k){ retype(v,k); v.want=null; }   // your own car bought before its model came in
   if(k==='skate'){ const atFlat=homeNow()==='flat', rx=atFlat?-APT.nz:HOME_SD[0], rz=atFlat?APT.nx:HOME_SD[1], p=atFlat?{x:APT.front.x+rx*3.2-APT.nx*.3,z:APT.front.z+rz*3.2-APT.nz*.3}:nearHome(1.3); mySkate=newVehicle('skate','#ffffff',true); Object.assign(mySkate,{x:p.x,z:p.z,y:0,h:Math.atan2(-rz,rx),keep:1}); return; }   // by your door
   if(k==='benz'&&HOTEL_SITE){ const q=kerbSpot(HOTEL_SITE.door.x-6,HOTEL_SITE.door.z,6,e=>e.c<9); if(q&&!vehicles.some(o=>Math.hypot(o.x-q.x,o.z-q.z)<6)){ const v=newVehicle('benz','#111214',true); Object.assign(v,{x:q.x,z:q.z,h:q.h,y:0,keep:1}); } }   // a big man's car at the hotel
@@ -3614,7 +3614,7 @@ function updateWalk(dt,inside){
   if(hero) crTick(dt,player.speed);
   rig.root.position.set(player.x,player.y+(hero?CR.yo:0),player.z); rig.root.rotation.y=player.yaw; if(SWIM.on||SWIM.p>0||rig.root.rotation.x) swimPose();
   if(hero){ heroAnim(dt,player.speed); return; } const sn=player.speed<.05?0:(player.speed<=2.6?player.speed/2.6:1+(player.speed-2.6)/3.6); animHuman(rig,player.ph,sn,T0,false); }
-function updateDrive(dt){ drvTick(dt); const v=drive.v, [f,s]=inputVec(), hb=K[' ']||touchBrake; let sp=drive.speed;
+function updateDrive(dt){ drvTick(dt); const v=drive.v, [f,s]=RACE.hold?[0,0]:inputVec(), hb=RACE.hold||K[' ']||touchBrake; let sp=drive.speed;
   if(drive.ride){ drive.speed=v.speed; player.x=v.x; player.z=v.z; headSpot.intensity=0; BEAM.visible=false; return; }   // in a booked ride the driver drives
   if(v.type==='skate'){ updateSkate(dt); return; }
   const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker'||v.type==='v_tipper', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
@@ -8673,6 +8673,126 @@ function estTick(dt){ if((EST.tk=(EST.tk||0)-dt)>0) return; EST.tk=.4; const px=
 worldGroup(GRA.sites.motors.x,GRA.sites.motors.z,G=>{ folk(scene,'baba',gp('motors',-6,8.5,Math.PI),['talk','idle_baba'],G.list); folk(scene,'police_m',gp('motors',-24,20.6),['idle_1','phone'],G.list); });
 worldGroup(GRA.sites.garage.x,GRA.sites.garage.z,G=>{ folk(scene,'areaboy',gp('garage',-8.6,-3.2,Math.PI),['idle_1','talk'],G.list); folk(scene,'p_tunde',gp('garage',.8,-2.2,.6),['idle_2','idle_1'],G.list); folk(scene,'baba',gp('garage',9.8,-1.2,-2.6),['idle_baba','talk'],G.list); });
 // when a set has loaded: cars parked at the hotel, the new cars seen through the showroom glass
+// ---- EKO RACEWAY at the airport (tools: naija_rooms/raceway, Blender): a 2.95 km circuit east of the terminal. Sign up at the
+// pits, the game gives you a race car on the grid with five rivals, the lights count down, 3 or 4 laps, positions and lap
+// times on screen, no cutting (checkpoints), a winner's celebration, prize money and street cred, your best lap kept.
+const RACE={on:false,S:null,cl:null,L:0,hold:false};
+const RACE_KINDS=[{id:'sprint',n:'Sprint · 3 laps',laps:3,fee:5000,prize:[40000,15000,6000],rank:0,skill:[.86,.9,.93,.95,.97]},
+  {id:'gp',n:'Eko Grand Prix · 4 laps',laps:4,fee:25000,prize:[200000,70000,30000],rank:4,skill:[.92,.95,.97,.99,1.01]}];
+const RACE_RIVALS=[['Tobi','#e53935'],['Chidi','#1e88e5'],['Femi','#fdd835'],['Sade','#8e24aa'],['Musa','#fb8c00']];
+const RACE_POS=AIRPORT?{x:AIRPORT.TX-1040,z:AIRPORT.TZ+120}:null;   // west of the terminal and the hangars (east of it the land ends at the lagoon)
+if(RACE_POS){ const g=new THREE.PlaneGeometry(1000,640).rotateX(-Math.PI/2), uv=g.attributes.uv; for(let i=0;i<uv.count;i++) uv.setXY(i,uv.getX(i)*1000/8,uv.getY(i)*640/8);   // the track's own lawn (wins over the ground under it)
+  const lm=MAT.lawn.clone(); lm.polygonOffsetFactor=lm.polygonOffsetUnits=1;   // behind the track (the town lawn is pulled forward, which hid the asphalt)
+  const m=new THREE.Mesh(g,lm); m.position.set(RACE_POS.x,.025,RACE_POS.z); m.receiveShadow=true; scene.add(m);
+  LAND_EXTRA.push({x0:RACE_POS.x-520,x1:RACE_POS.x+520,z0:RACE_POS.z-330,z1:RACE_POS.z+330}); }
+if(RACE_POS&&MANIFEST['assets/models/set_raceway.glb']){
+  const S=addSet('set_raceway',RACE_POS.x,RACE_POS.z,0,{near:1500,detailDist:260}); RACE.S=S;
+  PLACES.push({name:'Eko Raceway',sub:'Race track · sign up at the pits',kind:'place',x:RACE_POS.x,z:RACE_POS.z+181});
+  S.onLoad=S2=>{ const J=S2.json||{}; if(!J.cl) return;
+    RACE.cl=J.cl.map(([lx,lz])=>setPt(S2,lx,lz)); const n=RACE.cl.length; RACE.cs=[0]; for(let i=1;i<=n;i++){ const a=RACE.cl[i-1], b=RACE.cl[i%n]; RACE.cs.push(RACE.cs[i-1]+Math.hypot(b.x-a.x,b.z-a.z)); } RACE.L=RACE.cs[n];
+    // the speed a car can carry at each point: the bend ahead, and braking for it
+    const k=RACE.cl.map((_,i)=>{ const a=RACE.cl[(i-2+n)%n], b=RACE.cl[i], c=RACE.cl[(i+2)%n], h1=Math.atan2(b.z-a.z,b.x-a.x), h2=Math.atan2(c.z-b.z,c.x-b.x); let d=Math.abs(h2-h1); if(d>Math.PI) d=2*Math.PI-d; return d/Math.max(1,Math.hypot(c.x-a.x,c.z-a.z)); });
+    const v=k.map(q=>Math.min(37,Math.sqrt(7.5/Math.max(q,1e-4)))); for(let r=0;r<3;r++) for(let i=n-1;i>=0;i--){ const j=(i+1)%n, ds=RACE.cs[i+1]-RACE.cs[i]; v[i]=Math.min(v[i],Math.sqrt(v[j]*v[j]+2*7.5*ds)); }
+    RACE.vp=v; RACE.w=J.w||7; RACE.grid=(J.grid||[]).map(([lx,lz,yw])=>({...setPt(S2,lx,lz),h:carYaw(S2.ry+yw)})); RACE.fin=J.finish;
+    const M=J.marks||{}; if(M.race){ const w=setPt(S2,M.race[0],M.race[1]); RACE.door=w; DOORS.push({x:w.x,z:w.z,r:3,label:'Eko Raceway · sign up for a race',act:raceMenu}); }
+    // the gantry's start lights and the floodlights
+    RACE.mats={red:null,green:null,flood:null}; for(const g of [S2.far,S2.near_]) if(g) g.traverse(o=>{ if(!o.isMesh) return; const nm=o.material.name||'';
+      if(/RW_LightRed/.test(nm)) RACE.mats.red=o.material; if(/RW_LightGreen/.test(nm)) RACE.mats.green=o.material; if(/RW_Flood/.test(nm)) RACE.mats.flood=o.material; });
+    for(const m of Object.values(RACE.mats)) if(m){ m.emissiveIntensity=0; }
+    const prev=S2.tick; S2.tick=(dt,d)=>{ if(prev) prev.call(S2,dt,d); if(RACE.mats.flood) RACE.mats.flood.emissiveIntensity=ENV.lamp>0||RACE.on?4:0; }; }; }
+// how far left of the line a point is, at distance s
+function raceLat(x,z,s){ const p=racePt(s); return (x-p.x)*Math.sin(p.h)+(z-p.z)*Math.cos(p.h); }
+// a point on the racing line at distance s, off metres to the left
+function racePt(s,off=0){ const L=RACE.L, n=RACE.cl.length; s=((s%L)+L)%L; let lo=0, hi=n; while(hi-lo>1){ const m=(lo+hi)>>1; if(RACE.cs[m]<=s) lo=m; else hi=m; }
+  const a=RACE.cl[lo], b=RACE.cl[(lo+1)%n], t=(s-RACE.cs[lo])/Math.max(1e-3,RACE.cs[lo+1]-RACE.cs[lo]), tx=b.x-a.x, tz=b.z-a.z, l=Math.hypot(tx,tz)||1;
+  return {x:a.x+tx*t-tz/l*off,z:a.z+tz*t+tx/l*off,h:Math.atan2(-tz,tx),i:lo}; }
+// where a car is along the track (the closest point near where it was)
+function raceProj(x,z,hint){ const n=RACE.cl.length; let best=hint|0, bd=1e18; const span=hint==null?n:40;
+  for(let k=-span;k<=span;k++){ const i=((hint|0)+k+n)%n, p=RACE.cl[i], d=(p.x-x)**2+(p.z-z)**2; if(d<bd){ bd=d; best=i; } }
+  const a=RACE.cl[best], b=RACE.cl[(best+1)%n], tx=b.x-a.x, tz=b.z-a.z, l2=tx*tx+tz*tz||1, t=Math.max(0,Math.min(1,((x-a.x)*tx+(z-a.z)*tz)/l2));
+  return {i:best,s:RACE.cs[best]+t*Math.sqrt(l2),lat:Math.sqrt(bd)}; }
+function raceMenu(){ if(RACE.on) return; if(!RACE.cl){ toast('The track is still loading. Wait small.',2.5); return; }
+  const best=k=>{ try{ return +localStorage.getItem('naija-bestlap-'+k)||0; }catch(e){ return 0; } };
+  openMenu('EKO RACEWAY · RACE OFFICE','Steward: "Pay your entry, we give you a car. Beat five drivers."',RACE_KINDS.map(K=>({name:K.n,sub:`Win ${naira(K.prize[0])} · 2nd ${naira(K.prize[1])} · 3rd ${naira(K.prize[2])}`+(best(K.id)?` · your best lap ${lapTxt(best(K.id))}`:''),price:K.fee,rank:K.rank,act:()=>{ closeMenu(); raceStart(K); }}))); }
+const lapTxt=t=>{ const m=Math.floor(t/60), s=t-m*60; return `${m}:${s<10?'0':''}${s.toFixed(2)}`; };
+function raceHUD(on){ let e=document.getElementById('raceHud'); if(!e){ e=document.createElement('div'); e.id='raceHud'; e.className='racehud'; e.innerHTML='<div class="rl"><i></i><i></i><i></i><i></i><i></i></div><div class="rp"><b id="rhPos">P1</b><span>/6</span></div><div class="rt"><div id="rhLap">LAP 1/3</div><div id="rhTime">0:00.00</div><div id="rhBest">BEST --</div></div><div class="rw" id="rhWarn" hidden></div>'; document.body.appendChild(e); }
+  e.hidden=!on; return e; }
+// a race car's own paint: the red body of the model turned into this colour (the tyres, glass and lights stay as they are)
+const PAINT_MATS=new Map();
+function racePaint(v,col){ const key=v.type+col; const paint=m=>{ if(!m||!m.isMaterial) return m; const k=key+m.uuid; let q=PAINT_MATS.get(k); if(q) return q;
+    q=m.clone(); const c=new THREE.Color(col); q.onBeforeCompile=sh=>{ sh.uniforms.uPaint={value:c}; sh.fragmentShader='uniform vec3 uPaint;\n'+sh.fragmentShader.replace('#include <map_fragment>',
+      '#include <map_fragment>\n{ float mx=max(diffuseColor.g,diffuseColor.b); float rd=smoothstep(1.5,2.2,diffuseColor.r/max(mx,.004))*smoothstep(.05,.12,diffuseColor.r); diffuseColor.rgb=mix(diffuseColor.rgb,uPaint*min(1.,diffuseColor.r*1.25),rd); }'); };
+    q.customProgramCacheKey=()=>'racepaint'; PAINT_MATS.set(k,q); return q; };
+  v.c.g.traverse(o=>{ if(o.isMesh&&o.material&&o.material.map) o.material=paint(o.material); }); }
+async function raceStart(K){ if(busy||RACE.on||!RACE.cl||!RACE.grid||!RACE.grid.length) return; if(!MODELS.v_f40){ toast('The cars are coming to the grid. Wait small.',3); try{ const [k,out]=await loadModelEntry(['v_f40',LATE_FILES.v_f40]); if(!MODELS[k]){ MODELS[k]=out; lateReady(k); } }catch(e){ toast('The cars could not come. Try again.',3); return; } if(RACE.on) return; } if(mode==='drive') exitCar(); const R=RACE; R.K=K; R.on=true; R.hold=true; R.t=-1; R.phase='intro'; R.pt=0; R.lap=0; R.best=0; R.lapT=0; R.cp=0; R.lastI=null; R.wrong=0; R.off=0; R.done=false; R.res=null;
+  // you on slot 4, the rivals round you (the best on pole)
+  const g=R.grid; const mine=g[3]||g[g.length-1];
+  const v=newVehicle('v_f40','#16a06b',true); racePaint(v,'#0fa968'); Object.assign(v,{x:mine.x,z:mine.z,h:mine.h,y:0,keep:1,race:true}); R.car=v;
+  drive.v=v; drive.ride=false; drive.speed=0; drive.steer=0; v.parked=false; mode='drive'; player.speed=0; rig.root.visible=false; seatHero(v); camState.last=-10; camState.yaw=Math.atan2(Math.cos(v.h),-Math.sin(v.h));
+  R.ai=[]; const slots=[0,1,2,4,5]; RACE_RIVALS.forEach(([nm,col],k)=>{ const sl=g[slots[k]]; if(!sl) return; const c=newVehicle('v_f40',col,true); racePaint(c,col);
+    const pj=raceProj(sl.x,sl.z,null); Object.assign(c,{x:sl.x,z:sl.z,h:sl.h,y:0,keep:1,parked:true,race:true}); R.ai.push({v:c,nm,s:pj.s,lap:0,off:raceLat(sl.x,sl.z,pj.s),spd:0,sk:K.skill[k]*(.97+Math.random()*.06),done:0}); });
+  const pj=raceProj(v.x,v.z,null); R.ps=pj.s; R.lastI=pj.i; R.pstart=pj.s;
+  for(const a of R.ai) a.s0=a.s;
+  raceHUD(true); document.getElementById('rhLap').textContent=`LAP 1/${K.laps}`; for(const l of document.querySelectorAll('#raceHud .rl i')) l.className='';
+  toast(`${K.n}! The lights go out and you go. Watch the lights.`,4); }
+function raceEnd(quit){ const R=RACE; if(!R.on) return; R.on=false; R.hold=false; DEVCAM=null; raceHUD(false); for(const m of [R.mats&&R.mats.red,R.mats&&R.mats.green]) if(m) m.emissiveIntensity=0;
+  for(const a of R.ai||[]){ const i=vehicles.indexOf(a.v); if(i>=0) vehicles.splice(i,1); scene.remove(a.v.c.g); } R.ai=[];
+  if(R.car){ if(drive.v===R.car&&mode==='drive'){ exitCar(); } const i=vehicles.indexOf(R.car); if(i>=0) vehicles.splice(i,1); scene.remove(R.car.c.g); R.car=null; }
+  if(R.door){ player.x=R.door.x; player.z=R.door.z; rig.root.visible=true; }
+  if(quit) toast('Race abandoned. No refund o!',3); }
+function raceUpdate(dt){ const R=RACE; if(!R.on) return; const K=R.K, v=R.car;
+  if(!v||drive.v!==v||(mode!=='drive'&&mode!=='enter')){ raceEnd(true); return; }
+  // intro: the camera sweeps the grid, then the lights
+  if(R.phase==='intro'){ R.pt+=dt; const g=R.grid[0], a=R.pt*.55+.6, r=26-R.pt*2.2; DEVCAM={p:new THREE.Vector3(v.x+Math.cos(a)*r,5+R.pt*.9,v.z+Math.sin(a)*r),t:new THREE.Vector3((v.x+g.x)/2,1,(v.z+g.z)/2)};
+    if(R.pt>4.2){ DEVCAM=null; R.phase='lights'; R.pt=0; camState.last=-10; } }
+  else if(R.phase==='lights'){ R.pt+=dt; const n=Math.min(5,Math.floor(R.pt/.8)); const ls=document.querySelectorAll('#raceHud .rl i'); ls.forEach((l,i)=>l.className=i<n?'on':'');
+    if(R.mats.red) R.mats.red.emissiveIntensity=n>0?6:0; if(R.pt>=4.0+.6+Math.random()*.02){ R.phase='race'; R.hold=false; R.t=0; R.lapT=0; ls.forEach(l=>l.className='go'); if(R.mats.red) R.mats.red.emissiveIntensity=0; if(R.mats.green) R.mats.green.emissiveIntensity=6;
+      bigMsg('GO! GO! GO!','rankup'); if(SND) SND.play('dj_horn',{b:'ui',gain:.8}); setTimeout(()=>{ if(R.mats.green) R.mats.green.emissiveIntensity=0; ls.forEach(l=>l.className=''); },2500); } }
+  if(R.phase!=='race'&&R.phase!=='done'){ for(const a of R.ai) raceAiPlace(a,0); return; }
+  R.t+=dt; R.lapT+=dt;
+  // your progress: laps count only through the four checkpoints in order (no short cuts)
+  const pj=raceProj(v.x,v.z,R.lastI), L=R.L; let ds=pj.s-R.ps; if(ds<-L/2) ds+=L; if(ds>L/2) ds-=L; R.ps=pj.s; R.lastI=pj.i; R.dist=(R.dist||0)+ds;
+  const rel=((pj.s-R.pstart)%L+L)%L, q=Math.floor(rel/(L/4));
+  if(q===(R.cp+1)%4&&R.cp<3) R.cp=q; else if(q===0&&R.cp===3&&R.dist>L*.8&&!R.done){ R.cp=0; R.lap++; R.dist-=L; const lt=R.lapT; R.lapT=0; if(!R.best||lt<R.best) R.best=lt;
+      try{ const k='naija-bestlap-'+K.id, b=+localStorage.getItem(k)||0; if(!b||lt<b){ localStorage.setItem(k,String(lt)); if(b) toast(`New best lap! ${lapTxt(lt)}`,3); } }catch(e){}
+      if(R.lap>=K.laps) raceFinish(); else { bigMsg(R.lap===K.laps-1?'LAST LAP!':`LAP ${R.lap+1}`,'rankup',lapTxt(lt)); } }
+  // wrong way, and off the track for long: put back on the line
+  const tp=racePt(pj.s), fw=Math.cos(v.h)*Math.cos(tp.h)+Math.sin(v.h)*Math.sin(tp.h); R.wrong=fw<-.3&&Math.abs(drive.speed)>3?R.wrong+dt:0; R.off=pj.lat>R.w+14?R.off+dt:0;
+  const wr=document.getElementById('rhWarn'); if(R.wrong>1.2){ wr.hidden=false; wr.textContent='WRONG WAY'; } else if(R.off>2){ wr.hidden=false; wr.textContent='BACK TO THE TRACK'; } else wr.hidden=true;
+  if(R.off>6){ const p=racePt(pj.s); v.x=p.x; v.z=p.z; v.h=p.h; drive.speed=0; v.speed=0; R.off=0; toast('Marshals put you back on the track.',2.2); }
+  // the rivals
+  for(const a of R.ai) raceAi(a,dt);
+  // bumping: you and a rival push apart
+  for(const a of R.ai){ const c=a.v, dx=v.x-c.x, dz=v.z-c.z, d=Math.hypot(dx,dz); if(d<2.3&&d>.01){ const push=(2.3-d)/2; v.x+=dx/d*push; v.z+=dz/d*push; a.off-=Math.sign(raceLat(v.x,v.z,a.s)-a.off)*push; drive.speed*=.92; a.spd*=.9; if(SND&&!a.bt){ SND.play('crash',{b:'sfx',gain:.35}); a.bt=.6; } } if(a.bt) a.bt=Math.max(0,a.bt-dt); }
+  // positions
+  const me={me:true,score:R.lap*L+((R.dist%L)+L)%L+(R.done?1e7-R.doneT:0)}; const all=[me,...R.ai.map(a=>({a,score:a.lap*L+(a.s-a.s0)+(a.done?1e7-a.done:0)}))].sort((x,y)=>y.score-x.score);
+  R.place=all.findIndex(o=>o.me)+1;
+  document.getElementById('rhPos').textContent='P'+R.place; document.getElementById('rhLap').textContent=`LAP ${Math.min(K.laps,R.lap+1)}/${K.laps}`;
+  document.getElementById('rhTime').textContent=lapTxt(R.lapT); document.getElementById('rhBest').textContent='BEST '+(R.best?lapTxt(R.best):'--');
+  if(R.phase==='done'){ R.pt+=dt; if(R.pt>7) raceEnd(false); } }
+function raceAi(a,dt){ const R=RACE, L=R.L; if(a.done&&R.phase==='done'){ a.spd=Math.max(0,a.spd-6*dt); }
+  const p0=racePt(a.s), vt=R.vp[p0.i]*a.sk, ahead=R.vp[(p0.i+3)%R.vp.length]*a.sk; let target=Math.min(vt,ahead+4);
+  // a car just ahead on your line: pull out to pass
+  for(const b of R.ai.concat([{me:1}])){ if(b===a) continue; let bs, bo; if(b.me){ const pj=raceProj(R.car.x,R.car.z,R.lastI); bs=pj.s; bo=raceLat(R.car.x,R.car.z,bs); } else { bs=b.s; bo=b.off; }
+    let gap=bs-a.s; if(gap<-L/2) gap+=L; if(gap>L/2) gap-=L; if(gap>0&&gap<14&&Math.abs(bo-a.off)<2.6){ a.off+=(a.off>=bo?1:-1)*dt*2.4; if(gap<7) target=Math.min(target,(b.me?Math.abs(drive.speed):b.spd)); } }
+  a.off=Math.max(-R.w+1.4,Math.min(R.w-1.4,a.off*(1-dt*.08)));
+  a.spd+=Math.max(-14*dt,Math.min(6.5*dt*(1-a.spd/52),target-a.spd)); a.spd=Math.max(0,a.spd);
+  const before=a.s; a.s+=a.spd*dt; if(Math.floor((before-a.s0)/L)<Math.floor((a.s-a.s0)/L)){ a.lap++; if(a.lap>=R.K.laps&&!a.done){ a.done=R.t; } }
+  raceAiPlace(a,dt); }
+function raceAiPlace(a,dt){ const p=racePt(a.s,a.off), c=a.v; c.x=p.x; c.z=p.z; c.h=p.h; c.speed=a.spd; c.c.g.position.set(p.x,0,p.z); c.c.g.rotation.set(0,p.h,0);
+  for(const w of c.c.wheels||[]) if(w.spin) w.spin.rotation.z-=a.spd*dt/(w.r||.35); }
+function raceFinish(){ const R=RACE, K=R.K; R.done=true; R.doneT=R.t; R.phase='done'; R.pt=0;
+  const pos=R.place, prize=K.prize[pos-1]||0; if(prize) addCash(prize); credAdd('race',pos===1?150:pos===2?80:pos===3?40:20,false);
+  if(pos===1){ bigMsg('YOU WIN!','rankup',`${K.n} · ${lapTxt(R.t)} · ${naira(prize)}`); raceConfetti(); if(SND) SND.play('fight_crowd',{b:'sfx',gain:.8}); }
+  else bigMsg(`P${pos}`,'rankup',prize?`${naira(prize)} prize`:'No prize this time. Try again!');
+  setTimeout(()=>toast(pos===1?'The crowd dey hail you! Champion of Eko Raceway!':pos<=3?'Podium! Correct driving.':'Practice small, then come back.',4),3800); }
+function raceConfetti(){ const R=RACE, v=R.car; if(!v) return; const n=260, g=new THREE.BufferGeometry(), P=new Float32Array(n*3), C=new Float32Array(n*3), V=[];
+  const cols=[[1,.84,.3],[.1,.63,.42],[1,1,1],[.9,.2,.2],[.2,.5,1]];
+  for(let i=0;i<n;i++){ P[i*3]=v.x+(Math.random()-.5)*10; P[i*3+1]=6+Math.random()*6; P[i*3+2]=v.z+(Math.random()-.5)*10; const c=cols[i%cols.length]; C.set(c,i*3); V.push([(Math.random()-.5)*2,-1.5-Math.random()*1.5,(Math.random()-.5)*2]); }
+  g.setAttribute('position',new THREE.BufferAttribute(P,3)); g.setAttribute('color',new THREE.BufferAttribute(C,3));
+  const pts=new THREE.Points(g,new THREE.PointsMaterial({size:.22,vertexColors:true})); scene.add(pts); let t=0;
+  const tick=()=>{ t+=1/60; for(let i=0;i<n;i++){ P[i*3]+=V[i][0]/60+Math.sin(t*3+i)*.01; P[i*3+1]+=V[i][1]/60; P[i*3+2]+=V[i][2]/60; } g.attributes.position.needsUpdate=true; if(t<7) requestAnimationFrame(tick); else { scene.remove(pts); g.dispose(); } }; tick(); }
+
 // ---- the hotel's pools: water that moves, and you can get in and swim (set-local swim boxes from the Blender job)
 function hotelWater(S,J){
   for(const [x0,x1,z0,z1,wy,fy] of J.swim||[]) SWIM.zones.push({S,x0,x1,z0,z1,wy,fy});
@@ -9395,7 +9515,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -9577,6 +9697,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     requestAnimationFrame(tick); })(performance.now());
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
+    race(i=0){ return raceStart(RACE_KINDS[i]); }, get RACE(){ return RACE; },
     // dev: plots for the new places (salons, barbers, restaurants, fashion houses), facing a road, clear of everything
     plotSearch(hx,hz0,hz1,maxC=4,step=12,space=50,box=null){ const out=[], bizS=[[265.98,-17.85],[-143.05,206.92],[82.11,-415.92],[-274.61,-379.09],[738.22,11.62],[1043.05,537.73],[-1058.91,-1566.99],[-4058.97,935.85],[304.73,-150.51],[-180.69,345.03],[-140.06,-425.01],[796.67,122.87],[1141,433.78],[-3963.78,899.85],[-95.83,116.51],[354.07,-61.82],[-45.52,-517.66],[860.8,22.13],[1209.72,580.06],[-4143.5,998.67]];
       const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school'||a.k==='farmland'||a.k==='npcfarm'||a.k==='estate'||a.k==='gra');

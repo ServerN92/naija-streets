@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="76104b7e82">
+<meta name="ns-build" content="740cd8c46a">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -172,6 +172,11 @@ body.touchui .ward .kb{display:none}
 .rank.r7::after,.rank.r8::after,.rank.r9::after{content:'';position:absolute;inset:-8px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 8%,var(--gl) 10%,transparent 12% 33%,var(--gl) 35%,transparent 37% 58%,var(--gl) 60%,transparent 62% 83%,var(--gl) 85%,transparent 87%);mask:radial-gradient(circle,#000 30%,transparent 70%);-webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);animation:rkSpin 6s linear infinite;opacity:.7;pointer-events:none}
 .rank.r9::after{animation-duration:3.5s}
 @keyframes rkGlow{0%,100%{opacity:.35;transform:scale(.9)}50%{opacity:1;transform:scale(1.08)}}@keyframes rkSpin{to{transform:rotate(360deg)}}
+.racehud{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:8px 16px;border-radius:14px;background:rgba(8,10,14,.72);border:1px solid rgba(255,213,74,.4);color:#fff;font:700 15px var(--fd,system-ui);z-index:30;pointer-events:none;text-shadow:0 1px 2px #000}
+.racehud[hidden]{display:none}.racehud .rl{display:flex;gap:5px}.racehud .rl i{width:16px;height:16px;border-radius:50%;background:#2a2d33;border:2px solid #111;box-shadow:inset 0 2px 3px rgba(0,0,0,.6)}
+.racehud .rl i.on{background:#ff2a1f;box-shadow:0 0 12px #ff2a1f}.racehud .rl i.go{background:#2bff6a;box-shadow:0 0 12px #2bff6a}
+.racehud .rp b{font-size:30px;color:#ffd54a}.racehud .rp span{opacity:.7;margin-left:2px}.racehud .rt{display:flex;flex-direction:column;gap:1px;font-size:13px}.racehud .rt div:first-child{color:#ffd54a}
+.racehud .rw{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:10px;padding:6px 14px;border-radius:8px;background:#c0281e;font-size:18px;white-space:nowrap}
 .rkset{display:flex;align-items:center;gap:12px;margin:6px 0 4px}.rkset img{width:64px;height:64px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6))}.rkset b{display:block;font-size:17px}.rkset small{opacity:.8}
 .rkbar{display:block;height:8px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;margin:6px 0}.rkbar i{display:block;height:100%;width:0;background:var(--rk,#ffd54a);transition:width .6s}
 .big.rankup{color:#ffd54a;-webkit-text-stroke:2px #141414;text-shadow:0 5px 0 #141414,0 0 30px rgba(255,213,74,.6)}
@@ -657,7 +662,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=76104b7e82"></script>
+<script type="module" src="src/game.js?v=740cd8c46a"></script>
 
 </body>
 </html>
