@@ -686,7 +686,12 @@ export function createPhone(api) {
   const rcRows = (rows) => { const d = h('div', 'bk-rc'); for (const [k, v] of rows) { if (v == null || v === '') continue; const r = h('div'); r.append(h('span', null, k), h('b', null, v)); d.append(r); } return d; };
   function bankMsg(m) {   // what the server says about your account
     if (m.t === 'bkout') { BK.me = null; BK.hist = []; BK.view = 'home'; BK.f = null; if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
-    if (m.t === 'bk') { BK.me = m.me; BK.banks = m.banks || BK.banks; BK.hist = m.hist || []; BK.rules = m.rules || BK.rules;
+    if (m.t === 'bkloan') { BK.loan = m.loan || null; const n = api.naira(m.n);
+      if (m.k === 'take') bkAlert(null, `Credit Alert!\nAmt: ${n}\nDesc: Bank loan\nYou owe ${api.naira(m.loan.left)} (20% interest). 15% of every job payment goes back to the bank.`);
+      else if (m.k === 'collect') api.toast(`🏦 Bank collectors! Your loan is overdue: they take ${n}. ${m.loan ? `You still owe ${api.naira(m.loan.left)}.` : 'Loan settled.'}`, 5);
+      else if (m.k === 'work' && !m.loan) api.toast('🏦 Your loan is fully paid. The bank thanks you!', 4);
+      if (R.app === 'wallet') openApp('wallet'); refreshHome(); return; }
+    if (m.t === 'bk') { BK.me = m.me; BK.banks = m.banks || BK.banks; BK.hist = m.hist || []; BK.rules = m.rules || BK.rules; BK.loan = m.loan || null;
       // money that came while you were away: the alerts now
       const seen = (S.bkSeen = S.bkSeen || {}), last = seen[m.me.acct]; const inc = BK.hist.filter(x => x.d > 0 && (last == null ? Date.now() - x.t < 864e5 : x.id > last)).slice(0, 3);
       for (const x of inc.reverse()) bkAlert(x, `Credit Alert!\nAcct: ••${m.me.acct.slice(-4)}\nAmt: ${api.naira(x.d)}\nFrom: ${x.who} (${bankOf(x.bank).name})${x.note ? `\nDesc: ${x.note}` : ''}`);
@@ -721,6 +726,7 @@ export function createPhone(api) {
     const ac = h('div', 'bk-acct', acctFmt(me.acct)); ac.append(btn('', ['Copy'], () => copy(me.acct, 'Account number don copy ✓'), 'Copy account number'));
     card.append(h('div', 'bk-top', bk.name, h('i', null, 'Savings')), h('div', 'ph-big', api.naira(api.cash())), h('small', null, me.name + ' · Available balance'), ac); b.append(card);
     const row = h('div', 'bk-row'); row.append(btn('iph-btn', ['↗ Send money'], () => { BK.f = { acct: '', bank: '', name: null, n: '', note: '' }; BK.view = 'send'; openApp('wallet'); }), btn('iph-btn gray', ['↙ Receive'], () => { BK.view = 'receive'; openApp('wallet'); })); b.append(row);
+    loanRows(b);
     b.append(h('div', 'iph-h', 'Transfers')); if (!BK.hist.length) b.append(h('div', 'iph-note', 'No transfer yet. Send your account number to your guys!'));
     const L = h('div', 'iph-list');
     for (const x of BK.hist.slice(0, 25)) { const r = h('div', 'iph-li'), tx = h('div', 'tx'), inn = x.d > 0; tx.append(h('b', null, (inn ? 'From ' : 'To ') + x.who), h('small', null, `${bankOf(x.bank).name}${x.note ? ' · ' + x.note : ''} · ${ago(x.t)}`));
@@ -728,6 +734,13 @@ export function createPhone(api) {
     if (L.children.length) b.append(L);
     localTx(b);
   }
+  // the loan: optional, for people who want a motor now; paid back from work
+  function loanRows(b) { const L = BK.loan, R = BK.rules || {}, sizes = R.loan || [100000, 250000, 500000]; b.append(h('div', 'iph-h', 'Loan'));
+    if (L) { const late = Date.now() > L.due, d = Math.max(0, Math.ceil((L.due - Date.now()) / 864e5));
+      b.append(h('div', 'iph-note', `You owe ${api.naira(L.left)} of ${api.naira(L.total)}. ${Math.round((R.cut || .15) * 100)}% of every job payment goes to the bank. ${late ? '⚠️ Overdue: the collectors take half of what you carry until it is settled.' : `Settle it within ${d} day${d === 1 ? '' : 's'} or the collectors come.`}`));
+      const row = h('div', 'bk-row'); row.append(btn('iph-btn', ['Pay ' + api.naira(Math.min(L.left, 10000))], () => api.bankSend({ a: 'repay', n: Math.min(L.left, 10000) })), btn('iph-btn gray', ['Pay all I have'], () => api.bankSend({ a: 'repay', n: 'all' }))); b.append(row); return; }
+    b.append(h('div', 'iph-note', `Need a motor now? The bank lends ${sizes.map(n => api.naira(n)).join(', ')} at ${Math.round((R.rate || .2) * 100)}% interest. You pay back from your work (${Math.round((R.cut || .15) * 100)}% of every job payment), or any time here. Miss it for 7 days and the collectors come.`));
+    const row = h('div', 'bk-row'); for (const n of sizes) row.append(btn('iph-btn gray', ['Borrow ' + api.naira(n)], () => { if (confirm(`Borrow ${api.naira(n)}? You will owe ${api.naira(Math.round(n * (1 + (R.rate || .2))))}, paid from your work.`)) api.bankSend({ a: 'loan', n }); })); b.append(row); }
   function localTx(b) { b.append(h('div', 'iph-h', 'Recent')); if (!S.tx.length) b.append(h('div', 'iph-note', 'No transaction yet.')); const L = h('div', 'iph-list');
     for (const t of S.tx.slice(0, 30)) { const r = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, t.d > 0 ? 'Credit' : 'Debit'), h('small', null, t.w || '')); const amt = h('span', 'rt', (t.d > 0 ? '+' : '−') + api.naira(Math.abs(t.d))); amt.style.opacity = 1; amt.style.color = t.d > 0 ? '#30d158' : '#ff6b5e'; r.append(h('div', 'iph-av', t.d > 0 ? '⬇' : '⬆'), tx, amt); r.firstChild.style.background = t.d > 0 ? '#14532d' : '#4a1d1a'; L.append(r); }
     if (L.children.length) b.append(L); }

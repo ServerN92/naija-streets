@@ -342,3 +342,18 @@ test('romance between players: 18+ only, opt-in, ask/accept, kiss seen by people
   b.send({ t: 'rom', a: 'end' }); assert.equal((await a.next('romend')).n, 'lover_b');
   for (const c of [a, b, k, w, d]) c.close();
 });
+
+test('bank loan: take one, the work cut pays it back, repay from the app, one at a time', async () => {
+  const [c] = await account('loan_lady', 'secret77', { look: { c: 'p_dayo', g: 'f' } });
+  c.send({ t: 'bk', a: 'me' }); const bk = await c.next('bk'); assert.deepEqual(bk.rules.loan, [100000, 250000, 500000]); assert.equal(bk.loan, null);
+  c.send({ t: 'bk', a: 'loan', n: 7000 }); assert.match((await c.next(m => m.t === 'err' && m.w === 'bk')).m, /100,000/);
+  c.send({ t: 'bk', a: 'loan', n: 100000 }); const tk = await c.next('bkloan'); assert.equal(tk.k, 'take'); assert.equal(tk.loan.left, 120000);
+  assert.equal((await c.next(m => m.t === '$' && m.n === 100000)).n, 100000);
+  c.send({ t: 'bk', a: 'loan', n: 100000 }); assert.match((await c.next(m => m.t === 'err' && m.w === 'bk')).m, /still owe/);
+  c.send({ t: 'p', x: 50, y: 0, z: 50, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  c.send({ t: '$', d: 2000, s: 1, j: 'okada' }); const cut = await c.next(m => m.t === 'bkloan' && m.k === 'work'); assert.equal(cut.n, 300); assert.equal(cut.loan.left, 119700);
+  c.send({ t: 'bk', a: 'repay', n: 1700 }); const p1 = await c.next(m => m.t === 'bkloan' && m.k === 'pay'); assert.equal(p1.loan.left, 118000); await c.next(m => m.t === 'ok' && m.w === 'bk');
+  c.send({ t: 'bk', a: 'repay', n: 'all' }); const ok = await c.next(m => m.t === 'ok' && m.w === 'bk'); assert.match(ok.m, /still owe ₦18,000/);   // (₦100,000 on hand: not enough for all)
+  c.send({ t: 'bk', a: 'me' }); const b2 = await c.next(m => m.t === 'bk' && m.loan && m.loan.paid > 0); assert.equal(b2.loan.left, 18000); assert.equal(b2.loan.paid, 102000);
+  c.close();
+});
