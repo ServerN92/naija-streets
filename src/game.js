@@ -3806,7 +3806,7 @@ function passFree(v,fx,fz,lat,from,to,skip){ const W=v.c.def.W;
 let CAR_UID=0;
 function updateTraffic(dt){
   for(const v of vehicles){ const ai=v.ai; if(!ai) continue; const fx=Math.cos(v.h), fz=-Math.sin(v.h);
-    const sc=ai.seg.k===0?(ai.cond||'good'):'good'; let target=ai.seg.k===1?Math.min((ai.seg.vmax||6.5)*(ai.chase?1.3:1),ai.maxV):ai.maxV*(sc==='dirt'?(ai.chase?.75:.5):sc==='bad'?(ai.chase?.85:.7):1)*ROAD_PACE(ai.ec,ai.chase), waiting=false; if(ai.wait>0){ ai.wait-=dt; target=0; waiting=true; }
+    const sc=ai.seg.k===0?(ai.cond||'good'):'good'; const rush=ai.chase||ai.fast; let target=ai.seg.k===1?Math.min((ai.seg.vmax||6.5)*(rush?1.3:1),ai.maxV):ai.maxV*(sc==='dirt'?(rush?.75:.5):sc==='bad'?(rush?.85:.7):1)*ROAD_PACE(ai.ec,rush), waiting=false; if(ai.wait>0){ ai.wait-=dt; target=0; waiting=true; }
     if(ai.seg.k===0){ const nb=nodes[ai.b], dist=ai.seg.len-ai.s;
       if(v.type==='danfo'&&ai.stopAt>0&&ai.s>=ai.stopAt){ ai.stopAt=-1; ai.wait=mrr(4,8); target=0; waiting=true; condCall(v); }
       if(nb.tl&&!ai.chase){ const st=lightAt(nb,ai.seg.fx,ai.seg.fz); if(st!=='g'&&!(st==='y'&&dist<8)){ const lim=Math.min(brakeTo(dist-.8),Math.max(0,(dist-.8)*.8)+1.2*Math.min(1,dist/6)); if(lim<target){ target=lim; if(dist<30) waiting=true; } } }
@@ -3833,13 +3833,20 @@ function updateTraffic(dt){
     if(ai.hs){ const r=busStopFor(v,ai,fx,fz,target); target=r; if(target===0) waiting=true; }
     // a car that won't move (parked, broken down, burnt, you): go round it on the left when the way is clear; never through it
     if(ai.pcool>0) ai.pcool-=dt;
-    if(ai.pb){ const o=ai.pb, dx=o.x-v.x, dz=o.z-v.z, ah=dx*fx+dz*fz; target=Math.min(target,7.5);
+    if(ai.pb){ const o=ai.pb, dx=o.x-v.x, dz=o.z-v.z, ah=dx*fx+dz*fz; if(!ai.ovt) target=Math.min(target,7.5);
       if(ai.seg.k!==0||!vehicles.includes(o)){ ai.pb=null; ai.pt=0; }
       else if(ah<-((v.c.def.L+o.c.def.L)/2+2)&&passFree(v,fx,fz,-(ai.po||0),-4,12,o)){ ai.pb=null; ai.pt=0; } }   // past it, and room to pull back in
     else if(blk&&ai.seg.k===0&&ai.stuck>(ai.chase?.8:2.2)&&!(ai.pcool>0)&&Math.abs(blk.speed)<.6&&!(blk.ai&&blk.ai.waiting)){
       const e=edgeOf(ai.a,ai.b), hw=e?e.hw:3, W=v.c.def.W, dx=blk.x-v.x, dz=blk.z-v.z, bl=-dx*fz+dz*fx, want=bl-((W+blk.c.def.W)/2+.55), np=(ai.po||0)+want, minPo=e&&e.bar===2?-ai.seg.off+.6+W/2:-(ai.seg.off+hw)+W/2+.25;   // never round it over the centre barrier
       if(np>=minPo&&ai.seg.len-ai.s>blkAh+(blk.c.def.L+v.c.def.L)/2+6&&passFree(v,fx,fz,want,-6,blkAh+blk.c.def.L/2+12,blk)){ ai.pb=blk; ai.pt=np; ai.stuck=0; if(MR()<.5&&Math.hypot(v.x-player.x,v.z-player.z)<40) setTimeout(horn,200); }
       else ai.pcool=1.5; }
+    // a fast ride behind a slow car: overtake on the left when the road is clear (not across the centre barrier), back in when past
+    if(ai.fast&&!ai.pb&&blk&&ai.seg.k===0&&Math.abs(blk.speed)>.6&&Math.abs(blk.speed)<ai.maxV*.6&&v.speed<ai.maxV*.75&&!(ai.pcool>0)){ ai.slowT=(ai.slowT||0)+dt;
+      if(ai.slowT>1.2){ const e=edgeOf(ai.a,ai.b), hw=e?e.hw:3, W=v.c.def.W, dx=blk.x-v.x, dz=blk.z-v.z, bl=-dx*fz+dz*fx, want=bl-((W+blk.c.def.W)/2+.4), np=(ai.po||0)+want, minPo=e&&e.bar===2?-ai.seg.off+.5+W/2:-(ai.seg.off+hw)+W/2+.05;   // (a tight squeeze, Lagos style)
+        if(np>=minPo&&ai.seg.len-ai.s>blkAh+blk.c.def.L+v.c.def.L+14&&passFree(v,fx,fz,want,-6,blkAh+blk.c.def.L/2+Math.abs(blk.speed)*3+14,blk)){ ai.pb=blk; ai.pt=np; ai.stuck=0; ai.slowT=0; ai.ovt=true; target=ai.maxV; if(Math.hypot(v.x-player.x,v.z-player.z)<40) setTimeout(horn,150); }
+        else { ai.pcool=1.2; ai.slowT=0; } } }
+    else ai.slowT=0;
+    if(ai.ovt){ if(!ai.pb) ai.ovt=false; else target=Math.max(target,ai.maxV); }   // overtaking: foot down
     // held up for a while: sort it out like real drivers do
     if(ai.back>0){ ai.back-=dt; target=-2.2; waiting=false; }   // reverse a little to make room to go round
     else if(blk&&ai.seg.k===0&&ai.stuck>4&&!ai.chase&&!ai.pb){
@@ -6384,11 +6391,12 @@ const rideHere=()=>!!RIDE.v&&(RIDE.state==='waiting'||RIDE.state==='coming')&&Ma
 function rideEnter(){ const v=RIDE.v, d=RIDE.dest; if(!v||(!v.ai&&!RIDE.fromAir)) return; closeWard(); RIDE.state='riding'; RIDE.t=0; RIDE.goal=goalAt(d.rx,d.rz);
   if(RIDE.fromAir){ const G=RIDE.goal; RIDE.leg={pts:airportPath(false),i:-1,cb:()=>{ v.x=AIRPORT.hand.x; v.z=AIRPORT.hand.z+4; player.x=v.x; player.z=v.z; if(!(placeCar(v,0,60)||placeCar(v,0,160))||!v.ai){ cancelRide(); return; }   /* back on the street network at the end of Agege Motor Road */ v.ai.goal=G; v.ai.wait=0; }}; }
   else { v.ai.goal=RIDE.goal; v.ai.wait=1.2; }
+  if(v.ai){ v.ai.fast=true; v.ai.maxV0=v.ai.maxV0||v.ai.maxV; v.ai.maxV=Math.max(v.ai.maxV0*1.45,v.type==='okada'?15:16); }   // a Lagos driver with a passenger: fast, overtakes the slow ones
   drive.v=v; drive.ride=true; drive.speed=0; drive.steer=0; mode='drive'; carryDrop(true); player.speed=0; camState.last=-10; lastMode=null;
   if(v.type==='okada'){ bikeBack(v,false); seatHero(v,1); rig.root.visible=true; } else rig.root.visible=false;   // on the back of the bike
   mapView.setDest(d.x,d.z,d); toast(`Oya, we dey go ${d.name}. Sit back, relax.`,2.6); if(PHONE.open) phoneUI(); }
 function rideExit(early){ const v=RIDE.v; if(!v) return; drive.ride=false; if(mode==='drive'&&drive.v===v) exitCar(); if(v.type==='okada') bikeBack(v,true);
-  v.parked=!v.ai; if(v.ai){ v.ai.goal=null; v.ai.wait=2.5; } v.taxi=false; rideSign(v,false); if(early) mapView.clearRoute();
+  v.parked=!v.ai; if(v.ai){ v.ai.goal=null; v.ai.wait=2.5; v.ai.fast=false; if(v.ai.maxV0) v.ai.maxV=v.ai.maxV0; } v.taxi=false; rideSign(v,false); if(early) mapView.clearRoute();
   Object.assign(RIDE,{v:null,state:null,dest:null,goal:null,leg:null,fromAir:false,legDone:false}); lastMode=null; if(PHONE.open) phoneUI(); }
 function arriveRide(){ const d=RIDE.dest, f=Math.min(CASH.n,RIDE.fare), w=RIDE.who; rideExit(false); mapView.clearRoute(); addCash(-f); if(JOB.state) jobRoute(); toast(`You don reach ${d.name}! ${w} collect ${naira(f)}. "Thank you o, safe journey!"`,3.6); }
 function skipRide(){ const v=RIDE.v, G=RIDE.goal; if(!v||RIDE.state!=='riding') return;
