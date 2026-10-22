@@ -3540,9 +3540,9 @@ function blShown(){ if(mode==='drive') return BL.ids.filter(id=>!$('#'+id).hidde
 function blRecord(ids){ const L=BL.data[blKey()]||(BL.data[blKey()]={s:1,o:1,pos:{}}); L.pos=L.pos||{};
   for(const id of ids){ if(L.pos[id]) continue; const r=$('#'+id).getBoundingClientRect(); if(r.width) L.pos[id]=[(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight]; } return L; }
 function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; if(!on) blSelect(null); document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
-  if(on){ BL.was={}; const set=blShown(); for(const id of BL.ids){ const b=$('#'+id); BL.was[id]={h:b.hidden,t:b.textContent}; b.hidden=!set.includes(id); if(BL_NAME[id]&&mode!=='drive') b.textContent=BL_NAME[id]; }
+  if(on){ BL.was={}; const set=blShown(); for(const id of BL.ids){ const b=$('#'+id); BL.was[id]={h:b.hidden,html:b.innerHTML}; b.hidden=!set.includes(id); if(BL_NAME[id]&&mode!=='drive') b.textContent=BL_NAME[id]; }
     requestAnimationFrame(()=>{ const L=blRecord(set); blApply(); $('#beSize').value=Math.round((L.s||1)*100); $('#beOp').value=Math.round((L.o||1)*100); }); }
-  else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; b.textContent=BL.was[id].t; } BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=true; } }
+  else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; if(b.innerHTML!==BL.was[id].html) b.innerHTML=BL.was[id].html; }   /* (the old way, textContent, wiped the pedal and arrow pictures: invisible pedals) */ BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=true; } }
 { const box=document.querySelector('.tbtns');
   box.addEventListener('pointerdown',e=>{ if(!BL.edit) return; const b=e.target.closest('button'); e.preventDefault(); e.stopPropagation(); if(!b) return; const r=b.getBoundingClientRect();
     BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId,x0:e.clientX,y0:e.clientY,moved:false}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
@@ -3737,12 +3737,12 @@ function updateDrive(dt){ drvTick(dt); const v=drive.v; let [f,s]=RACE.hold?[0,0
   const B=BIKE[v.type], big=v.type==='bus'||v.type==='tanker'||v.type==='v_tipper', SKL=drive.skl||(drive.skl={wh:0,st:0,hop:0,hv:0,dr:0,drPts:0,drOff:0,whT:0,stT:0,prevJ:false});
   // the phone pedals do the stunts too: the brake pedal held while you turn fast is the handbrake (drift; on a bike going
   // straight, a stoppie), and gas + brake together on a bike is a wheelie
-  let pW=false; if(drvPedals()&&!RACE.hold){ if(B&&DRV.gas&&DRV.rev&&sp>2.5){ pW=true; f=1; } else if(DRV.rev&&sp>6&&(Math.abs(s)>.15||B)){ hb=true; f=Math.max(0,f+DRV.rev); } }
+  let pW=false; if(drvPedals()&&!RACE.hold){ if(B&&DRV.gas&&DRV.rev&&sp>2.5){ pW=true; f=1; } else if(DRV.rev&&sp>9&&(Math.abs(s)>.35||B)){ hb=true; f=Math.max(0,f+DRV.rev); } }   // the brake pedal makes a drift only fast (32 km/h+) and turning hard
   // drift: handbrake while turning at speed slides the back out (big buses and tankers just brake)
-  const drifting=hb&&Math.abs(sp)>7&&Math.abs(s)>.15&&!big&&SKL.st<.05;
+  const drifting=hb&&Math.abs(sp)>9&&Math.abs(s)>.3&&!big&&SKL.st<.05;
   const DT=({bus:[.5,22],keke:[.6,16],danfo:[.8,28],okada:[1.15,31],police:[1,40],car2:[1.1,42],benz:[1.3,52],tanker:[.38,21],bike2:[1.45,40],sbike:[1.8,48],skate:[.55,7.5]})[v.type]||[1,38];
   if(f>.1) sp+=(sp<-.2?18:9.5*DT[0]*Math.max(0,1-sp/DT[1]))*dt*f; else if(f<-.1){ sp+=(sp>.4?-20:-6)*dt*(-f); if(sp<-9) sp=-9; } else { const dec=(1.6+Math.abs(sp)*.1)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
-  if(hb){ const dec=(drifting?3.4:B&&SKL.st>.05?12:24)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
+  if(hb){ const dec=(drifting?5:B&&SKL.st>.05?12:24)*dt; sp=Math.abs(sp)<=dec?0:sp-Math.sign(sp)*dec; }
   // bikes: wheelie (Shift / WHEELIE), stoppie (brake hard going straight), bunny hop (J / HOP)
   if(B){ const wantW=(K.shift||TSK.b1||pW)&&f>.2&&sp>2.5&&SKL.hop<=0, wantS=hb&&sp>8&&Math.abs(s)<.3&&!wantW&&SKL.hop<=0;
     SKL.wh=wantW?Math.min(.5,SKL.wh+dt*(.9+.4*Math.sin(T0*3))):Math.max(0,SKL.wh-dt*1.6); SKL.st=wantS?Math.min(.3,SKL.st+dt*1.1):Math.max(0,SKL.st-dt*1.6);
@@ -3751,9 +3751,9 @@ function updateDrive(dt){ drvTick(dt); const v=drive.v; let [f,s]=RACE.hold?[0,0
     if(SKL.hop>0){ SKL.hv-=10.5*dt; SKL.hop+=SKL.hv*dt; if(SKL.hop<=0){ SKL.hop=0; SKL.hv=0; bump(5); skillAdd('BUNNY HOP',drifting?180:90); } }
     skillTime('WHEELIE',SKL.wh>.22,dt,45); skillTime('STOPPIE',SKL.st>.16,dt,80); }
   const maxSt=.6/(1+Math.abs(sp)/14)*(B?1-SKL.wh*1.1:1); drive.steer+=(-s*maxSt-drive.steer)*Math.min(1,dt*6);
-  v.h+=sp/2.7*Math.tan(drive.steer)*(drifting?1.75:hb&&Math.abs(sp)>4?1.5:1)*dt;
+  v.h+=sp/2.7*Math.tan(drive.steer)*(drifting?1.35:hb&&Math.abs(sp)>4?1.2:1)*dt;
   // the way you move lags the way you point while you slide
-  if(v.mh===undefined) v.mh=v.h; { let dh=v.h-v.mh; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); v.mh+=dh*Math.min(1,dt*(drifting?1.5:SKL.dr>0&&Math.abs(dh)>.06?4.5:14)); dh=v.h-v.mh; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); if(Math.abs(dh)>.8){ v.h=v.mh+Math.sign(dh)*.8; dh=Math.sign(dh)*.8; } v.slip=dh;   // a big slide, never a spin-out
+  if(v.mh===undefined) v.mh=v.h; { let dh=v.h-v.mh; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); v.mh+=dh*Math.min(1,dt*(drifting?2.8:SKL.dr>0&&Math.abs(dh)>.06?6:14)); dh=v.h-v.mh; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); if(Math.abs(dh)>.55){ v.h=v.mh+Math.sign(dh)*.55; dh=Math.sign(dh)*.55; } v.slip=dh;   // a big slide, never a spin-out
     if(Math.abs(dh)>.1) sp-=Math.sign(sp)*Math.abs(Math.sin(dh))*2.2*dt;
     const sliding=Math.abs(dh)>.2&&Math.abs(sp)>5&&(drifting||SKL.dr>0);   // a handbrake slide (and its tail), not a plain turn
     if(sliding){ SKL.dr+=dt; SKL.drOff=0; SKL.drPts+=dt*Math.abs(dh)*Math.abs(sp)*9; const hx=Math.cos(v.h), hz=-Math.sin(v.h), L=v.c.def.L*.38, W=v.c.def.W*.4;   // tyre smoke off the back wheels
