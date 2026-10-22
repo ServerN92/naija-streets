@@ -13,22 +13,22 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=95e474718d';
-import * as C2 from './char2.js?v=95e474718d';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=95e474718d';
-import { createPhone } from './phone.js?v=95e474718d';
-import { createGuide } from './guide.js?v=95e474718d';
+import * as CLOCK from './clock.js?v=0f59f2504a';
+import * as C2 from './char2.js?v=0f59f2504a';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=0f59f2504a';
+import { createPhone } from './phone.js?v=0f59f2504a';
+import { createGuide } from './guide.js?v=0f59f2504a';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=95e474718d';
-import { createFarm } from './farm.js?v=95e474718d';
-import { createBusiness } from './business.js?v=95e474718d';
-import { createOnline } from './online.js?v=95e474718d';
-import { createPolice } from './police.js?v=95e474718d';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=95e474718d';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=95e474718d';
+import { createFootball } from './football.js?v=0f59f2504a';
+import { createFarm } from './farm.js?v=0f59f2504a';
+import { createBusiness } from './business.js?v=0f59f2504a';
+import { createOnline } from './online.js?v=0f59f2504a';
+import { createPolice } from './police.js?v=0f59f2504a';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=0f59f2504a';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=0f59f2504a';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='95e474718d';
+const BUILD='0f59f2504a';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -448,7 +448,7 @@ const MODEL_FILES={ub_base_yellow:['ub_base_yellow','h',0,1],btruck:['ub_btruck'
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
-  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],stadium:['ns_stadium','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
+  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
   tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],airtoll:['ns_airtoll','h',0,1],airarm:['ns_airtoll_arm','h',0,1],bansign:['ns_bansign','h',0,1],carpark:['ns_carpark','h',0,1],impound:['ns_impound','h',0,1],toilet:['ns_toilet','h',0,1],tdoor:['ns_toilet_door','h',0,1],mytent:['ns_mytent','h',0,1],boutique:['ns_boutique','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
@@ -1008,6 +1008,7 @@ function obTop(acc,K,y,col,ts=8){ acc.quad([K[0][0],y,K[0][1]],[K[1][0],y,K[1][1
 // rectangles that must stay clear (your house, the hotel, the police station, the motor park, footbridge stairs)
 const KEEP=[];
 const SCAT_OFF=EST.list.map(E=>({x:E.cx,z:E.cz,ry:E.ry,hw:EST.W/2,hd:EST.D/2}));   // paved or built-over ground where no grass tufts or stones grow: {x,z,ry,hw,hd} (the estates' kept lawns too)
+const SPORT_OFF=[], sportOff=(x,z)=>SPORT_OFF.some(r=>{ const dx=x-r.x, dz=z-r.z, c=Math.cos(r.ry), s=Math.sin(r.ry); return Math.abs(dx*c-dz*s)<r.hw&&Math.abs(dx*s+dz*c)<r.hd; });   // the pitches and stadiums: nothing grows there
 const scatOff=(x,z)=>SCAT_OFF.some(r=>{ const dx=x-r.x, dz=z-r.z, c=Math.cos(r.ry), s=Math.sin(r.ry); return Math.abs(dx*c-dz*s)<r.hw&&Math.abs(dx*s+dz*c)<r.hd; });
 function rectHit(b,r){ // two turned rectangles overlap? (separating axis test)
   const A1=bCorners(b), B1=obCorners(r.cx,r.cz,r.hw,r.hd,Math.cos(r.ang),Math.sin(r.ang));
@@ -1055,9 +1056,9 @@ function roadWide(x,z,R){ let best=null, bd=1e9; const seen=new Set();
   for(let i=Math.floor((x-R)/RGC);i<=Math.floor((x+R)/RGC);i++) for(let j=Math.floor((z-R)/RGC);j<=Math.floor((z+R)/RGC);j++) for(const e of RG.get(rgk(i,j))||[]){ if(seen.has(e)) continue; seen.add(e); if(!e.drive||e.c>6) continue; const d=segD(e,x,z)-e.hw; if(d<bd){ bd=d; best=e; } }
   return bd<=R?[best,bd]:[null,1e9]; }
 function openGround(o,rMin,rMax,hw,hd,step=25,far=16,keep=true){ if(!o) return null; let best=null, bs=1e18;
-  const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school');   // the LUTH grounds are fine: real playing fields lie inside
+  const noGo=AREAS.filter(a=>a.k==='market'||a.k==='school'||a.k==='farmland'||a.k==='npcfarm');   // the LUTH grounds are fine: real playing fields lie inside (not the farms)
   for(let gx=o.cx-rMax;gx<=o.cx+rMax;gx+=step) for(let gz=o.cz-rMax;gz<=o.cz+rMax;gz+=step){ const dd=Math.hypot(gx-o.cx,gz-o.cz); if(dd<rMin||dd>rMax) continue;
-    if(!onLand(gx,gz,Math.max(hw,hd)+6)) continue;
+    if(!onLand(gx,gz,Math.max(hw,hd)+6)||EST.in(gx,gz,Math.hypot(hw,hd))||inFarmZone(gx,gz,Math.hypot(hw,hd)+10)||NPC_FARMS.some(f=>Math.hypot(f.x-gx,f.z-gz)<Math.hypot(hw,hd)+70)) continue;   // not on the estates or the farms
     const [e,de]=roadWide(gx,gz,hd+far+30); if(!e) continue; const A0=nodes[e.a], t=clamp((gx-A0.x)*e.fx+(gz-A0.z)*e.fz,0,e.len), px=A0.x+e.fx*t, pz=A0.z+e.fz*t;
     let nx=-e.fz, nz=e.fx; if((px-gx)*nx+(pz-gz)*nz<0){ nx=-nx; nz=-nz; }   // the front faces the road
     const sep=(px-gx)*nx+(pz-gz)*nz-e.hw; if(sep<hd+2||sep>hd+far) continue;   // close to the road, not on it
@@ -1069,7 +1070,11 @@ function openGround(o,rMin,rMax,hw,hd,step=25,far=16,keep=true){ if(!o) return n
     const sc=cost+dd*4; if(sc<bs){ bs=sc; best={cx:gx,cz:gz,ry,hw,hd}; } }
   if(best&&keep) keepOut({cx:best.cx,cz:best.cz,hw:best.hw+2,hd:best.hd+2,ang:-best.ry}); return best; }
 const PITCH_SITE=HOUSES?openGround(UNI_SITE,30,500,36.5,24.5):null;
-const STADIUM_SITE=HOUSES?(openGround(UNI_SITE,100,800,61,47,20,40)||openGround(UNI_SITE,100,1500,61,47,25,90)):null;
+// the two big stadiums (Blender: stadium.blend, 142 x 126 m): Mushin Township Stadium (where the old one stood) and one by Diamond Court Estate
+const STADIUM_SITE=HOUSES?(openGround(UNI_SITE,100,900,72,63,20,40)||openGround(UNI_SITE,100,1600,72,63,25,90)):null;
+const DIAMOND_E=EST.list.find(E=>/Diamond/.test(E.name)), DIAMOND_SITE=HOUSES&&DIAMOND_E?(openGround({cx:DIAMOND_E.cx,cz:DIAMOND_E.cz},150,900,72,63,25,60)||openGround({cx:DIAMOND_E.cx,cz:DIAMOND_E.cz},150,1800,72,63,30,120)):null;
+const BIG_SITES=[[STADIUM_SITE,'Mushin Township Stadium'],[DIAMOND_SITE,'Diamond Court Stadium']].filter(x=>x[0]);
+for(const [g] of BIG_SITES){ SCAT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2}); SPORT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2}); }
 // ---- street football (Blender: pitch.blend): the sandlot (64 x 44) and the cage (46 x 33), two in school compounds, two on the streets
 const PITCH_SZ={sand:{hw:32,hd:22.5,lz0:0},cage:{hw:23.5,hd:17,lz0:-2.5}};   // lz0: the set's middle is off its origin
 function schoolGround(sc,hw,hd){ const P=sc.a.pts; let best=null, bs=1e18; const angs=new Set();
@@ -1099,7 +1104,7 @@ if(HOUSES&&MANIFEST['assets/models/set_pitch_sand.glb']){
   const ring=(o,r)=>[0,1,2,3,4,5].map(k=>({cx:o.cx+Math.cos(k*1.047)*r,cz:o.cz+Math.sin(k*1.047)*r}));
   street([H0,...ring(H0,250)],FOOT_SITES.some(f=>f.kind==='cage')?'sand':'cage');
   street([mc,...ring(H0,650)].filter(o=>o&&!FOOT_SITES.some(f=>Math.hypot(f.cx-o.cx,f.cz-o.cz)<300)),FOOT_SITES.filter(f=>f.kind==='sand').length>1?'cage':'sand'); }
-for(const g of FOOT_SITES) SCAT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2});   // no stones or tufts on the pitches
+for(const g of FOOT_SITES){ SCAT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2}); SPORT_OFF.push({x:g.cx,z:g.cz,ry:g.ry,hw:g.hw+2,hd:g.hd+2}); }   // no stones or tufts on the pitches
 
 // ---- footbridges over the big roads: the real ones from the map, plus a few where crowds cross (market, bus stops)
 const FOOTB=[];
@@ -1672,7 +1677,7 @@ const LAND=(()=>{ if(!AIRPORT||!MODELS.airtoll) return null; const A=AIRPORT;
 const SET_TREE={palm:'tree_palm',tree:'tree_oak_big',leafy:'tree_oak',island_tree_02_LOD0:'tree_oak_big'};
 const SET_CROP={maize:'maize_3',cassava:'cassava_3',yam:'yam_3',pepper:'pepper_3',tomato:'tomato_3',gnut:'pepper_2',okra:'tomato_2',banana:'plantain',plantain:'plantain'};
 function setPlants(S){ const L=(S.json&&S.json.inst)||[]; if(!L.length) return; const trees={}, crops={}, seen=new Set();
-  for(const [kind,lx,lz,y,yaw,sc] of L){ const key=kind+'|'+Math.round(lx*4)+'|'+Math.round(lz*4); if(seen.has(key)) continue; seen.add(key); const w=setPt(S,lx,lz), k=String(kind).replace(/^CT_Lib_|^FM_Lib_/,'').toLowerCase().replace(/[^a-z_0-9]/g,'');
+  for(const [kind,lx,lz,y,yaw,sc] of L){ const key=kind+'|'+Math.round(lx*4)+'|'+Math.round(lz*4); if(seen.has(key)) continue; seen.add(key); const w=setPt(S,lx,lz); if(sportOff(w.x,w.z)) continue; const k=String(kind).replace(/^CT_Lib_|^FM_Lib_/,'').toLowerCase().replace(/[^a-z_0-9]/g,'');
     const tk=Object.keys(SET_TREE).find(t=>k.startsWith(t.toLowerCase())), ck=Object.keys(SET_CROP).find(c=>k.startsWith(c));
     if(ck&&!(ck==='banana'&&!S.name.includes('farm'))){ (crops[SET_CROP[ck]]||(crops[SET_CROP[ck]]=[])).push({x:w.x,y:0,z:w.z,ry:yaw+S.ry,sc:Math.max(.6,Math.min(1.6,sc||1))}); }
     else if(tk&&TREES[SET_TREE[tk]]){ const t=SET_TREE[tk], s2=Math.max(.6,Math.min(1.5,sc||1)); (trees[t]||(trees[t]=[])).push({x:w.x,y:0,z:w.z,ry:yaw,sx:s2,sy:s2,sz:s2}); addCol({x0:w.x-.3,x1:w.x+.3,z0:w.z-.3,z1:w.z+.3,h:4}); } }
@@ -1793,8 +1798,7 @@ if(MODELS.carstand&&SITES.carstand){ const r=placeVenue(SITES.carstand,'carstand
 // the township stadium and a football field near the university (tools/blender_sports.py)
 function placeOpen(site,key,solids){ const M=MODELS[key]; if(!site||!M) return null; const r={x:site.cx,z:site.cz,y:0,ry:site.ry,sc:1,M};
   new CullSet(modelLevels(M,Q.lod0*2.2,Q.draw+260),[{x:r.x,y:0,z:r.z,ry:r.ry,sc:1}],{shadowDist:Q.shR,name:key}); solidsAt(r,solids); SCAT_OFF.push({x:r.x,z:r.z,ry:r.ry,hw:M.W/2+1,hd:M.D/2+1}); return r; }
-const STADIUM=placeOpen(STADIUM_SITE,'stadium',[[-45,45,38,48,12],[-59,-53,-26,26,10],[53,59,-26,26,10],[-54,-3.5,-46,-39,5],[3.5,54,-46,-39,5],
-  [-60.5,60.5,45.6,46.4,4],[-60.5,-59.6,-46,46,4],[59.6,60.5,-46,46,4],[-60.5,-4,-46.4,-45.6,4],[4,60.5,-46.4,-45.6,4]]);
+const STADIUM=null;   // (the old stadium model: replaced by the big stadium set, see street football)
 const PITCH=placeOpen(PITCH_SITE,'pitch',[]);
 for(const [r,nm,sub] of [[STADIUM,'Mushin Township Stadium','Football · Naija Streets FC'],[PITCH,'UNILAG Medicine Football Field','Football field']]){ if(!r) continue;
   for(const m of marksOf(r,/^sign_/)) signAt(scene,m,m.k==='sign_score'?'NAIJA STREETS FC  2 - 1  EKO UNITED':m.text,m.k==='sign_score'?'#0b0d10':'#123d26',m.k==='sign_score'?'#ffcf3a':'#ffffff',{fog:false});
@@ -1919,7 +1923,7 @@ function plantTrees(kind,items,dist){ const t=TREES[kind]; new CullSet([{geo:t.g
   new CullSet([{geo:TREE_SHADE.geo,mat:TREE_SHADE.mat,dist:Math.min(dist,Q.draw*.45),shadow:false}],items.map(it=>({x:it.x,y:(it.y??SLAB)+.03,z:it.z,sx:t.W*.62*it.sx,sy:1,sz:t.W*.62*it.sx})),{shadowDist:0,name:kind+'-shade'}); }
 
 // trees: along the streets wherever a house leaves room, more in schools, the hospital grounds and the parks
-{ const trees=[], palms=[]; const free=(x,z,r)=>onLand(x,z,2)&&!roadAt(x,z,.4)&&!EST.in(x,z,10)&&!inLuxP(x,z,3)&&!resolveCircle({x,z},r);   // (the estates keep their fronts clear)
+{ const trees=[], palms=[]; const free=(x,z,r)=>onLand(x,z,2)&&!roadAt(x,z,.4)&&!EST.in(x,z,10)&&!inLuxP(x,z,3)&&!sportOff(x,z)&&!resolveCircle({x,z},r);   // (none on the pitches and in the stadiums)   // (the estates keep their fronts clear)
   for(const e of ROADS){ if(e.c>6||e.c===0) continue; const A0=nodes[e.a], step0=e.c<=3?16:30;
     for(let t=A0.r+6;t<e.len-6;t+=rr(step0,step0*1.6)) for(const sd of [-1,1]){ if(R()<.45) continue; const o=e.hw+rr(1.3,2.4), x=A0.x+e.fx*t-e.fz*o*sd, z=A0.z+e.fz*t+e.fx*o*sd;
       if(Math.hypot(x-APT.front.x,z-APT.front.z)<6||!free(x,z,1.1)) continue; (e.c<=3&&R()<.5?palms:trees).push({x,y:0,z,ry:R()*6,sx:rr(.75,1.1),sy:rr(.8,1.15),sz:rr(.75,1.1)}); } }
@@ -3259,6 +3263,7 @@ function drawWorldMap(g,x0,z0,x1,z1,all=false){ g.fillStyle='#2a2d31'; g.fillRec
 // outside the map square: the lagoon and the Third Mainland Bridge, the airport and its runway
 function drawExtras(g){
   const rot=(r,u0,u1,v0,v1,fill)=>{ const c=Math.cos(r.ry), sn=Math.sin(r.ry), P=(u,v)=>[r.x+u*c+v*sn,r.z-u*sn+v*c]; g.fillStyle=fill; g.beginPath(); [[u0,v0],[u1,v0],[u1,v1],[u0,v1]].forEach(([u,v],i)=>{ const [x,z]=P(u,v); i?g.lineTo(x,z):g.moveTo(x,z); }); g.closePath(); g.fill(); };
+  for(const [g] of BIG_SITES){ const r={x:g.cx,z:g.cz,ry:g.ry}; rot(r,-72,72,-61,61,'#a8aaa6'); rot(r,-54,54,-36,36,'#3f8f3a'); }
   if(STADIUM){ rot(STADIUM,-60,60,-46,46,'#8d8a84'); rot(STADIUM,-54,54,-38,38,'#b5523b'); rot(STADIUM,-46,46,-30,30,'#3f8f3a'); }   // stands, track, pitch
   if(PITCH){ rot(PITCH,-35,35,-23,23,'#e8e8e0'); rot(PITCH,-33,33,-21,21,'#4c9a3f'); }
   for(const E of EST.list){ const r={x:E.gx,z:E.gz,ry:E.ry};   // the estates: streets and the houses on their plots
@@ -4150,7 +4155,7 @@ const SPOTS=[];
   for(const fo of FLYOVERS) for(const c of fo.camps){ const m=[[pk(['baba','areaboy','mama','hawker','areaboy']),null],[pk(['areaboy','lady_black','baba','mama']),null]]; if(SR()<.4) m.push([pk(['schoolboy','girl','areaboy']),null]);
     for(const q of m) q[1]=WAIT[q[0]]||ACT[q[0]]||['idle_1','talk']; addSpot('camp',c.x,c.z,m,{rot:SR()*6.28,skipFree:true}); }
   // school compounds: pupils in groups in the yard during school hours
-  for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; const span=Math.min(60,Math.sqrt(sc.a.a)*.45), want=Math.min(12,4+Math.floor(sc.a.a/2500)); for(let t=0;t<260&&n<want;t++){ const x=sc.x+rr(-span,span), z=sc.z+rr(-span,span); if(!inPoly(sc.a.pts,x,z)||scatOff(x,z)) continue;
+  for(const sc of SCHOOLS){ if(sc.x===undefined) continue; let n=0; const span=Math.min(60,Math.sqrt(sc.a.a)*.45), want=Math.min(12,4+Math.floor(sc.a.a/2500)); for(let t=0;t<260&&n<want;t++){ const x=sc.x+rr(-span,span), z=sc.z+rr(-span,span); if(!inPoly(sc.a.pts,x,z)||sportOff(x,z)) continue;
       const m=[['schoolboy',['talk','idle_1','no','text']],['schoolboy',['idle_1','talk','idle_2']],['schoolboy',['talk','no','idle_1']]]; if(addSpot('pupils',x,z,m,{rot:SR()*6.28,hours:[7.3,13.4]})) n++; } } }
 
 
@@ -8777,7 +8782,7 @@ function kitMat(m,col){ const k=m.uuid+col; let q=KIT_MATS.get(k); if(q) return 
   q.customProgramCacheKey=()=>'kit'; KIT_MATS.set(k,q); return q; }
 function footMode(on,at){ if(on){ if(mode==='drive') exitCar(); closePhone(); FOOTM.fov=camera.fov; mode='foot'; if(rig&&rig.root) rig.root.visible=false; }
   else { mode='walk'; if(rig&&rig.root) rig.root.visible=true; if(FOOTM.fov){ camera.fov=FOOTM.fov; camera.updateProjectionMatrix(); } if(at){ player.x=at.x; player.z=at.z; } camState.last=-10; } }
-if(typeof FOOT_SITES!=='undefined'&&FOOT_SITES.length){
+if(typeof FOOT_SITES!=='undefined'&&(FOOT_SITES.length||BIG_SITES.length)){
   FOOT=createFootball({THREE,scene,camera,C2,ac:()=>AC,out:()=>master,toast,naira,openMenu,closeMenu,addCash:n=>{ addCash(n); cashHUD(); },cred:(p,why)=>credAdd('foot',p,false,why),
     touch:()=>touchUI,input:()=>inputVec(),meId:()=>isV2(WARD.cur)?WARD.cur:myPerson(),myName:()=>(PROFILE&&PROFILE.name)||'You',footballer,
     folk:(cast,at,clips)=>folk(scene,cast,at,clips,null),folkDo,folkGone:f=>{ if(f&&f.root) scene.remove(f.root); },
@@ -8789,7 +8794,11 @@ if(typeof FOOT_SITES!=='undefined'&&FOOT_SITES.length){
     const S=addSet('set_pitch_'+g.kind,x,z,g.ry,{near:650,detailDist:140}), PI=FOOT.addPitch(S,g.kind,name);
     PLACES.push({name,sub:g.kind==='cage'?'Street football · 5-a-side cage':'Street football · sandlot',kind:'sport',x,z,r:30});
     S.onLoad=S2=>{ for(const [x0,x1,z0,z1] of (S2.json&&S2.json.solids)||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,1.2); }
-      const m=S2.json&&S2.json.marks&&S2.json.marks.sign; if(m){ const w=setPt(S2,m[0],m[1]); DOORS.push({x:w.x,z:w.z,r:2.6,label:'Play football (5-a-side)',act:()=>FOOT.menu(PI)}); } }; }); }
+      const m=S2.json&&S2.json.marks&&S2.json.marks.sign; if(m){ const w=setPt(S2,m[0],m[1]); DOORS.push({x:w.x,z:w.z,r:2.6,label:'Play football (5-a-side)',act:()=>FOOT.menu(PI)}); } }; });
+  for(const [g,name] of BIG_SITES){ const S=addSet('set_stadium',g.cx,g.cz,g.ry,{near:900,detailDist:220}), PI=FOOT.addPitch(S,'stadium',name);
+    PLACES.push({name,sub:'Stadium · 11-a-side matches',kind:'sport',x:g.cx,z:g.cz,r:70});
+    S.onLoad=S2=>{ for(const [x0,x1,z0,z1] of (S2.json&&S2.json.solids)||[]){ const p=setPt(S2,(x0+x1)/2,(z0+z1)/2); addOB(p.x,p.z,(x1-x0)/2,(z1-z0)/2,-S2.ry,8); }
+      const m=S2.json&&S2.json.marks&&S2.json.marks.sign; if(m){ const w=setPt(S2,m[0],m[1]); DOORS.push({x:w.x,z:w.z,r:3,label:'Enter the stadium · play a match',act:()=>FOOT.menu(PI)}); } }; } }
 // how far left of the line a point is, at distance s
 function raceLat(x,z,s){ const p=racePt(s); return (x-p.x)*Math.sin(p.h)+(z-p.z)*Math.cos(p.h); }
 // a point on the racing line at distance s, off metres to the left

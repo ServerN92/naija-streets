@@ -17,17 +17,23 @@ const angD = (a, b) => { let d = b - a; while (d > Math.PI) d -= TAU; while (d <
 
 // the two pitches (set-local metres; u = along the pitch, v = across; goals at u = ±hx)
 const KINDS = {
-  cage: { hx: 18, hz: 10, gw: 2.0, gh: 2.0, gd: 1.2, walls: true, roll: .55, box: 6, shoot: 13, cam: { d: 7.5, h: 7, fov: 44 }, len: 180, name: 'The Cage' },
-  sand: { hx: 25, hz: 15, gw: 2.5, gh: 2.1, gd: 1.3, walls: false, roll: 1.05, box: 6, shoot: 17, cam: { d: 9.5, h: 8, fov: 42 }, len: 240, name: 'Sandlot' },
+  cage: { n: 5, hx: 18, hz: 10, gw: 2.0, gh: 2.0, gd: 1.2, walls: true, roll: .55, box: 6, boxW: 5, shoot: 13, intro: [1.25, 9], repD: 4.5, cam: { d: 7.5, h: 7, fov: 44 }, len: 180, name: 'The Cage' },
+  sand: { n: 5, hx: 25, hz: 15, gw: 2.5, gh: 2.1, gd: 1.3, walls: false, roll: 1.05, box: 6, boxW: 5.5, shoot: 17, intro: [1.25, 9], repD: 4.5, cam: { d: 9.5, h: 8, fov: 42 }, len: 240, name: 'Sandlot' },
+  stadium: { n: 11, hx: 50, hz: 32, gw: 3.66, gh: 2.44, gd: 2.2, walls: false, roll: .6, box: 16.5, boxW: 20.2, shoot: 24, intro: [.75, 22], repD: 2.4, cam: { d: 12, h: 14, fov: 40 }, len: 300, name: 'Stadium' },
 };
 const BR = .11, G = 9.81;
+const STAD_TEAMS = [['Eko United', '#c62828', '#ffffff'], ['Oyo Thunder', '#1565c0', '#ffffff'], ['Delta Royals', '#6a1b9a', '#f4c20d'], ['Arewa Stars', '#f9a825', '#111111'], ['Coal City Boys', '#212121', '#ffffff']];
 const TEAMS = [['Area Boys FC', '#d32f2f', '#f5f5f5'], ['Mushin Stars', '#1e5bd8', '#ffffff'], ['Ojuelegba United', '#f4c20d', '#111111'], ['Idi-Araba Rangers', '#7b1fa2', '#ffffff'],
   ['Ilupeju Lions', '#ef6c00', '#111111'], ['Surulere Boys', '#f2f2f2', '#111111']];
 const MY_KIT = ['#0f9d58', '#ffffff'];   // your side: green and white
 const NAMES = ['Tobi', 'Chidi', 'Femi', 'Kunle', 'Emeka', 'Sadiq', 'Dayo', 'Ifeanyi', 'Bayo', 'Uche', 'Segun', 'Musa', 'Jide', 'Obinna', 'Wale', 'Tunde', 'Ayo', 'Kelechi', 'Lanre', 'Gbenga'];
 const CASTS = ['p_emeka', 'p_dayo', 'p_chidi', 'p_segun'];   // four faces (and skin tones) make ten boys: fewer files to download
 // 5-a-side: keeper, back, two wide, striker (u as a fraction of the half, v of the width) - you are the striker
-const FORM = [{ r: 'gk', u: -.95, v: 0 }, { r: 'def', u: -.6, v: 0 }, { r: 'lw', u: -.2, v: -.55 }, { r: 'rw', u: -.2, v: .55 }, { r: 'fwd', u: .25, v: 0 }];
+const FORM = [{ r: 'gk', u: -.95, v: 0 }, { r: 'def', u: -.6, v: 0 }, { r: 'lw', u: -.2, v: -.55, att: 1 }, { r: 'rw', u: -.2, v: .55, att: 1 }, { r: 'fwd', u: .25, v: 0, att: 1 }];
+// 11-a-side in the stadium: 4-3-3, you up front (9), the right winger (10) kicks off with you
+const FORM11 = [{ r: 'gk', u: -.96, v: 0 }, { r: 'lb', u: -.62, v: -.62 }, { r: 'cb', u: -.7, v: -.22 }, { r: 'cb', u: -.7, v: .22 }, { r: 'rb', u: -.62, v: .62 },
+  { r: 'cm', u: -.32, v: -.32 }, { r: 'cm', u: -.4, v: 0 }, { r: 'cm', u: -.32, v: .32, att: 1 }, { r: 'lw', u: .02, v: -.62, att: 1 }, { r: 'fwd', u: .18, v: 0, att: 1 }, { r: 'rw', u: .02, v: .62, att: 1 }];
+const formOf = K => K.n === 11 ? FORM11 : FORM, meOf = K => K.n === 11 ? 9 : 4, mateOf = K => K.n === 11 ? 10 : 3;
 
 // ---------------------------------------------------------------- the moves (where the bones point: +Z forward, +Y up, +X the body's left)
 const UP = (f = 0, s = 0) => [s, 1, f];
@@ -152,6 +158,11 @@ export function createFootball(api) {
   function sCrowd(k = 1, dur = 3) { const o = bus(); if (!o) return; const t = AC.currentTime, n = AC.createBufferSource(); n.buffer = noise(dur + .5); const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = .6;
     const f2 = AC.createBiquadFilter(); f2.type = 'peaking'; f2.frequency.value = 1800; f2.gain.value = 6; const g = AC.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.32 * k, t + .35); g.gain.setValueAtTime(.32 * k, t + dur * .55); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
     n.connect(f); f.connect(f2); f2.connect(g); g.connect(o); n.start(t); n.stop(t + dur + .4); }
+  let crowd = null;
+  function crowdLoop(k) { if (crowd) { try { crowd.g.gain.setTargetAtTime(0, AC.currentTime, .4); const c = crowd; setTimeout(() => { try { c.s.stop(); } catch (e) { } }, 1500); } catch (e) { } crowd = null; }
+    const o = k && bus(); if (!o) return; const s = AC.createBufferSource(); s.buffer = noise(4); s.loop = true; const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 520; f.Q.value = .5;
+    const lfo = AC.createOscillator(), lg = AC.createGain(); lfo.frequency.value = .13; lg.gain.value = k * .35; const g = AC.createGain(); g.gain.value = k; lfo.connect(lg); lg.connect(g.gain);
+    s.connect(f); f.connect(g); g.connect(o); s.start(); lfo.start(); crowd = { s, g }; }
   function sNet() { const o = bus(); if (!o) return; const t = AC.currentTime, n = AC.createBufferSource(); n.buffer = noise(.4); const f = AC.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500; const g = AC.createGain(); g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.001, t + .35); n.connect(f); f.connect(g); g.connect(o); n.start(t); }
   function sPost() { const o = bus(); if (!o) return; const t = AC.currentTime; for (const fr of [1250, 1870, 2630]) { const s = AC.createOscillator(), g = AC.createGain(); s.frequency.value = fr; g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.0005, t + .8); s.connect(g); g.connect(o); s.start(t); s.stop(t + .85); } }
   function sBoard() { const o = bus(); if (!o) return; const t = AC.currentTime, n = AC.createBufferSource(); n.buffer = noise(.15); const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; const g = AC.createGain(); g.gain.setValueAtTime(.5, t); g.gain.exponentialRampToValueAtTime(.001, t + .14); n.connect(f); f.connect(g); g.connect(o); n.start(t); }
@@ -172,10 +183,33 @@ export function createFootball(api) {
     const S = PI.S, K = PI.K; let netMap = null;
     for (const g of [S.far, S.near_]) if (g) g.traverse(o => { if (!o.isMesh) return; for (const m of [].concat(o.material)) { const n = m.name || ''; if (/PT_Net/.test(n)) { netMap = netMap || m.map; m.visible = false; } if (/ChainNear|FencePostNear/.test(n)) (PI.nearFence || (PI.nearFence = [])).push(o);
         // the playing surface over any lawn or ground of the town (they are pulled forward a little)
-        if (/PT_CageCourt|PT_SandGround|PT_Apron/.test(n)) { m.polygonOffset = true; m.polygonOffsetFactor = /Court/.test(n) ? -5 : -3; m.polygonOffsetUnits = /Court/.test(n) ? -10 : -6; } } });
+        if (/PT_CageCourt|PT_SandGround|PT_Apron|ST_Pitch|ST_Apron/.test(n)) { const top = /Court|ST_Pitch/.test(n); m.polygonOffset = true; m.polygonOffsetFactor = top ? -5 : -3; m.polygonOffsetUnits = top ? -10 : -6; } } });
     for (const s of [-1, 1]) PI.nets.push(makeNet(S, K, s, netMap));
+    if (PI.kind === 'stadium') stadiumDress(PI);
     PI.ready = true;
   }
+  // ---------------------------------------------------------------- the stadium: the big screen, the name on the roof and over the gate
+  function textPlane(t, w, h, bg, fg, font = 'Impact, Arial Black, sans-serif') { const c = document.createElement('canvas'); c.width = 2048; c.height = Math.max(64, Math.round(2048 * h / w)); const g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; let fs = c.height * .78; g.font = `900 ${fs}px ${font}`; while (g.measureText(t).width > c.width * .94) { fs *= .94; g.font = `900 ${fs}px ${font}`; }
+    g.fillText(t, c.width / 2, c.height * .54); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
+    return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false })); }
+  function stadiumDress(PI) { const S = PI.S, J = S.json || {};
+    const roof = textPlane(PI.name.toUpperCase(), 64, 1.4, '#0d6b2b', '#ffffff'); roof.position.set(0, 21.08, -43.3); S.root.add(roof);
+    const gate = textPlane(PI.name.toUpperCase(), 19.4, 2.3, '#0b0d10', '#ffd54a'); gate.position.set(0, 9.2, 60.83); S.root.add(gate);
+    // the screen: a canvas the game draws on (the name, the score, GOAL!, the replay)
+    let scr = null; for (const g of [S.far, S.near_]) if (g) g.traverse(o => { if (o.isMesh && /ST_Screen/.test([].concat(o.material)[0].name || '')) scr = o; });
+    if (scr) { const c = document.createElement('canvas'); c.width = 1024; c.height = 460; const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.repeat.set(-1, 1); tx.offset.set(1, 0); scr.material = new THREE.MeshBasicMaterial({ map: tx, toneMapped: false }); PI.scr = { c, g: c.getContext('2d'), tx }; screen(PI, 'idle'); } }
+  function screen(PI, mode) { const Z = PI && PI.scr; if (!Z) return; const g = Z.g, W = 1024, H = 460, M = FB.M && FB.M.PI === PI ? FB.M : null; Z.mode = mode;
+    g.fillStyle = '#05070a'; g.fillRect(0, 0, W, H); g.textAlign = 'center'; g.textBaseline = 'middle';
+    const big = (t, y, s, c) => { g.font = `900 ${s}px Impact, Arial Black, sans-serif`; g.fillStyle = c; g.fillText(t, W / 2, y); };
+    if (mode === 'idle' || !M) { big('NAIJA STREETS', 130, 96, '#22d07a'); big(PI.name.toUpperCase(), 260, 64, '#ffffff'); big('MATCH TODAY · TICKETS AT THE GATE', 370, 40, '#ffd54a'); }
+    else if (mode === 'goal') { big('GOAL!', 190, 220, '#ffd54a'); big(`${M.scorer.name.toUpperCase()}`, 360, 64, '#ffffff'); }
+    else if (mode === 'replay') { big('● REPLAY', 230, 140, '#ff4040'); }
+    else { g.fillStyle = MY_KIT[0]; g.fillRect(40, 60, 18, 200); g.fillStyle = M.opp[1]; g.fillRect(W - 58, 60, 18, 200);
+      g.font = '900 92px Impact, Arial Black, sans-serif'; g.fillStyle = '#ffffff'; g.textAlign = 'left'; g.fillText('YOU', 90, 160); g.textAlign = 'right'; g.fillText(abbr(M.opp[0]), W - 90, 160); g.textAlign = 'center';
+      big(`${M.score[0]} - ${M.score[1]}`, 160, 130, '#ffd54a');
+      const c = Math.ceil(M.clock); big(mode === 'ft' ? 'FULL TIME' : `${(c / 60) | 0}:${String(c % 60).padStart(2, '0')}`, 340, 80, mode === 'ft' ? '#ff6b6b' : '#7dffb0'); }
+    Z.tx.needsUpdate = true; }
   // a goal net: back, top and the two sides, a grid of points that the ball pushes and that springs back
   function makeNet(S, K, s, map) {
     const nu = 14, nv = 8, geo = new THREE.BufferGeometry(), P0 = [], uv = [], idx = [];
@@ -263,32 +297,40 @@ export function createFootball(api) {
   function canPlay() { return !FB.M; }
   // the menu at the sign
   function menu(PI) {
-    if (FB.M) return; const K = PI.K, opp = TEAMS[(FB.pitches.indexOf(PI) * 2 + (Math.random() * 2 | 0)) % TEAMS.length];
+    if (FB.M) return; const K = PI.K;
+    if (PI.kind === 'stadium') { const opp = STAD_TEAMS[(Math.random() * STAD_TEAMS.length) | 0];
+      api.openMenu(`${PI.name.toUpperCase()}`, `11-a-side under the lights. ${opp[0]} dey come. ${Math.round(K.len / 60)} minutes. The crowd don full.`, [
+        { name: 'League match', sub: `Win ${api.naira(10000)} and big respect · draw ${api.naira(3000)}`, price: 0, btn: 'PLAY', act: () => { api.closeMenu(); start(PI, opp, 0, { win: 10000, draw: 3000, cred: [150, 50, 25] }); } },
+        { name: 'Cup final', sub: `Stake ${api.naira(20000)} · win ${api.naira(60000)} · draw, you keep your stake`, price: 20000, rank: 3, act: () => { api.closeMenu(); start(PI, opp, 20000, { win: 60000, draw: 20000, cred: [300, 80, 30] }); } },
+        { name: 'How to play', sub: api.touch() ? 'Left: run. SHOOT: hold for power, let go. PASS: pass, or call for the ball. SPRINT: hold. TACKLE: win the ball. 🎥 changes the camera.' : 'WASD / arrows: run · SPACE: shoot (hold for power) · E: pass / call for it · SHIFT: sprint · Q: tackle · V: camera', price: 0, btn: 'OK', act: () => api.closeMenu() }]);
+      return; }
+    const opp = TEAMS[(FB.pitches.indexOf(PI) * 2 + (Math.random() * 2 | 0)) % TEAMS.length];
     api.openMenu(`${PI.name.toUpperCase()} · 5-A-SIDE`, `The boys dey wait. ${opp[0]} wan play una. ${Math.round(K.len / 60)} minutes, winner takes it.`, [
-      { name: 'Friendly match', sub: `Win ${api.naira(3000)} and respect · draw ${api.naira(1000)}`, price: 0, btn: 'PLAY', act: () => { api.closeMenu(); start(PI, opp, 0); } },
-      { name: 'Money match', sub: `Stake ${api.naira(5000)} · win ${api.naira(15000)} · draw, you keep your stake`, price: 5000, act: () => { api.closeMenu(); start(PI, opp, 5000); } },
+      { name: 'Friendly match', sub: `Win ${api.naira(3000)} and respect · draw ${api.naira(1000)}`, price: 0, btn: 'PLAY', act: () => { api.closeMenu(); start(PI, opp, 0, { win: 3000, draw: 1000, cred: [80, 30, 15] }); } },
+      { name: 'Money match', sub: `Stake ${api.naira(5000)} · win ${api.naira(15000)} · draw, you keep your stake`, price: 5000, act: () => { api.closeMenu(); start(PI, opp, 5000, { win: 15000, draw: 5000, cred: [100, 35, 15] }); } },
       { name: 'How to play', sub: api.touch() ? 'Left: run. SHOOT: hold for power, let go. PASS: pass, or call for the ball. SPRINT: hold. TACKLE: win the ball. 🎥 changes the camera.' : 'WASD / arrows: run · SPACE: shoot (hold for power) · E: pass / call for it · SHIFT: sprint · Q: tackle · V: camera', price: 0, btn: 'OK', act: () => api.closeMenu() }]);
   }
-  async function start(PI, opp, stake) {
+  async function start(PI, opp, stake, prize) {
     if (FB.M) return; const K = PI.K, S = PI.S;
     api.toast('The boys dey come out… lace your boots.', 3);
     const meId = api.meId(), oppC = [...CASTS].sort(() => Math.random() - .5), myC = [...CASTS].sort(() => Math.random() - .5), names = [...NAMES].sort(() => Math.random() - .5);
-    const jobs = []; for (let t = 0; t < 2; t++) for (let i = 0; i < 5; i++) { const me = t === 0 && i === 4, id = me ? meId : (t ? oppC : myC)[i % CASTS.length];
+    const N = K.n, MI = meOf(K), F0 = formOf(K); const jobs = []; for (let t = 0; t < 2; t++) for (let i = 0; i < N; i++) { const me = t === 0 && i === MI, id = me ? meId : (t ? oppC : myC)[i % CASTS.length];
       jobs.push(api.footballer(id, i === 0 ? (t ? ['#c6ff00', '#111111'] : ['#26282c', '#26282c']) : t ? [opp[1], opp[2]] : MY_KIT, { me, keeper: i === 0 })); }
     const models = await Promise.all(jobs); if (models.some(m => !m)) { api.toast('The boys no fit come now. Try again small.', 3); models.forEach(m => m && m.dispose()); if (stake) api.addCash(stake); return; }
-    const M = FB.M = { PI, K, S, opp, stake, t: 0, clock: K.len, score: [0, 0], scorers: [], phase: 'intro', pt: 0, P: [], ball: null, rec: [], recT: 0, kick: 0, lastTouch: null, cam: { u: 0, v: 0, z: 1, p: new THREE.Vector3(), l: new THREE.Vector3() }, shake: 0, slow: 1, fans: [], told: {} };
-    for (let t = 0; t < 2; t++) for (let i = 0; i < 5; i++) { const m = models[t * 5 + i], me = t === 0 && i === 4, F = FORM[i];
-      const p = { team: t, i, role: F.r, me, m, A: rig(m), u: 0, v: 0, vu: 0, vv: 0, face: t ? Math.PI : 0, sp: 0, st: 'idle', stT: 0, cool: 0, tackleCool: 0, stam: 1, name: me ? api.myName() : names[t * 5 + i], skill: t ? rnd(.82, .95) : rnd(.8, .92), gk: F.r === 'gk', shotT: 0 };
+    const M = FB.M = { PI, K, S, opp, stake, prize, t: 0, clock: K.len, score: [0, 0], scorers: [], phase: 'intro', pt: 0, P: [], ball: null, rec: [], recT: 0, kick: 0, lastTouch: null, cam: { u: 0, v: 0, z: 1, p: new THREE.Vector3(), l: new THREE.Vector3() }, shake: 0, slow: 1, fans: [], told: {} };
+    for (let t = 0; t < 2; t++) for (let i = 0; i < N; i++) { const m = models[t * N + i], me = t === 0 && i === MI, F = F0[i];
+      const p = { team: t, i, role: F.r, me, m, A: rig(m), u: 0, v: 0, vu: 0, vv: 0, face: t ? Math.PI : 0, sp: 0, st: 'idle', stT: 0, cool: 0, tackleCool: 0, stam: 1, name: me ? api.myName() : names[(t * N + i) % names.length] + ((t * N + i) >= names.length ? ' ' + 'ABCDEFG'[(t * N + i) % 7] + '.' : ''), skill: t ? rnd(.82, .95) : rnd(.8, .92), gk: F.r === 'gk', shotT: 0 };
       if (p.gk) play(p, 'gk_ready', { hold: true }); M.P.push(p); }
-    M.me = M.P[4];
+    M.me = M.P[MI]; M.F = F0;
     const bm = newBall(), sh = new THREE.Mesh(blob, shadowMat); scene.add(sh); M.B = { m: bm, sh, u: 0, v: 0, y: BR, vu: 0, vv: 0, vy: 0, own: null, spin: new THREE.Vector3(), free: 0, inGoal: 0, last: null, lastT: null, air: 0 };
     // fans: the boys from the kickabout and a few more at the side
     for (const [lx, lz, yaw] of ((S.json && S.json.marks && S.json.marks.fans) || [])) { const w = toW(S, lx, lz); const f = api.folk(Math.random() < .5 ? 'schoolboy' : 'areaboy', { x: w.x, y: 0, z: w.z, yaw: yawW(S, -Math.PI / 2) }, ['hail', 'idle_1']); if (f) M.fans.push(f); }
+    crowdLoop(PI.kind === 'stadium' ? .14 : .05); screen(PI, 'match');
     api.enter(true); FB.on = true; ui(true); kickoff(0, true); M.phase = 'intro'; M.pt = 0; sCrowd(.5, 4);
   }
   function lineup(kicker) { const M = FB.M, K = M.K;
-    for (const p of M.P) { const F = FORM[p.i], side = p.team ? -1 : 1; let u = F.u * K.hx * side, v = F.v * K.hz * (p.team ? -1 : 1);
-      u = side > 0 ? Math.min(u, -1.2) : Math.max(u, 1.2); if (p.i === 4 && p.team === kicker) { u = -side * .6; v = 0; } if (p.i === 3 && p.team === kicker) { u = -side * 1.8; v = side * 3; }
+    for (const p of M.P) { const F = M.F[p.i], side = p.team ? -1 : 1; let u = F.u * K.hx * side, v = F.v * K.hz * (p.team ? -1 : 1);
+      u = side > 0 ? Math.min(u, -1.2) : Math.max(u, 1.2); if (p.i === meOf(K) && p.team === kicker) { u = -side * .6; v = 0; } if (p.i === mateOf(K) && p.team === kicker) { u = -side * 1.8; v = side * 3; }
       p.u = u; p.v = v; p.vu = p.vv = 0; p.sp = 0; p.face = p.team ? Math.PI : 0; p.st = 'idle'; p.stT = 0; p.tackleCool = 0; p.down = 0; if (!p.gk) stopShot(p, .1); } }
   function kickoff(team, first) { const M = FB.M, B = M.B; lineup(team); B.u = B.v = B.vu = B.vv = B.vy = 0; B.y = BR; B.own = null; B.last = null; M.kickTeam = team; M.phase = 'kickoff'; M.pt = 0; M.restart = null;
     if (!first) { sWhistle(1); } }
@@ -346,12 +388,13 @@ export function createFootball(api) {
       if (Math.abs(B.v) > K.hz + BR) outOfPlay('side'); else if (Math.abs(B.u) > K.hx + BR) outOfPlay('end'); } }
   function outOfPlay(kind) { const M = FB.M, K = M.K, B = M.B, last = B.lastT == null ? 0 : B.lastT, other = 1 - last; let u = clamp(B.u, -K.hx, K.hx), v = clamp(B.v, -K.hz, K.hz), team = other, what = 'Kick-in';
     if (kind === 'end') { const s = Math.sign(B.u), defend = s > 0 ? 1 : 0; if (last === defend) { what = 'Corner'; u = s * K.hx; v = Math.sign(B.v || 1) * K.hz; team = 1 - defend; } else { what = 'Goal kick'; u = s * (K.hx - 3); v = 0; team = defend; } }
+    if (kind === 'end' && M.shotBy && M.t - M.shotT < 3) { say(['So close!', 'Just wide!', 'Ahhh! Over the bar!'][(Math.random() * 3) | 0], 1.4); sCrowd(.5, 1.8); }
     M.phase = 'restart'; M.pt = 0; M.restart = { u, v, team, what }; B.own = null; B.vu = B.vv = B.vy = 0; say(what, 1.4); sWhistle(1); }
 
   // ---------------------------------------------------------------- goal!
-  function goal(team) { const M = FB.M; if (M.phase !== 'play') return; M.score[team]++; const last = M.B.last, by = last && last.team === team ? last : null; M.scorer = by || M.P.find(p => p.team === team && p.i === 4);
+  function goal(team) { const M = FB.M; if (M.phase !== 'play') return; M.score[team]++; const last = M.B.last, by = last && last.team === team ? last : null; M.scorer = by || M.P.find(p => p.team === team && p.i === meOf(M.K));
     M.scorers.push({ team, name: by ? by.name : last ? last.name : M.scorer.name, min: Math.max(1, Math.ceil((M.K.len - M.clock) / M.K.len * 90)), me: !!(by && by.me), own: !by });
-    M.phase = 'goal'; M.pt = 0; M.goalTeam = team; M.goalT = M.t; M.shake = .6; sCrowd(team === 0 ? 1.25 : .7, 5); sWhistle(1); goalFX(team);
+    M.phase = 'goal'; M.pt = 0; M.goalTeam = team; setTimeout(() => FB.M === M && screen(M.PI, 'goal'), 0); M.goalT = M.t; M.shake = .6; sCrowd(team === 0 ? 1.25 : .7, 5); sWhistle(1); goalFX(team);
     if (by && by.me) { api.cred(20, 'goal'); M.myGoals = (M.myGoals || 0) + 1; }
     // the scorer runs off and celebrates, his team jumps; the others hold their heads
     const sc = M.scorer; sc.cele = ['knee_slide', 'plane', 'knee_slide', 'cheer'][(Math.random() * 4) | 0]; sc.celeT = 0;
@@ -388,7 +431,7 @@ export function createFootball(api) {
       if (!p.me || IN.shoot) { play(p, 'header'); const gs = goalSide(p.team), a = Math.atan2(rnd(-K.gw, K.gw) - B.v, gs * K.hx - B.u); kickBall(p, Math.cos(a), Math.sin(a), 13, 1.5, p.me || Math.abs(gs * K.hx - p.u) < 12 ? 'shot' : 'pass'); return; } }
     if (bsp > 15 && Math.random() < .5) { B.vu *= -.25; B.vv *= -.25; B.free = .15; B.last = p; B.lastT = p.team; sKick(.2); return; }   // too hard to take: it comes off him
     controlBall(p); }
-  const inBox = p => { const K = FB.M.K, gx = goalSide(1 - p.team) * K.hx; return Math.abs(p.u - gx) < K.box && Math.abs(p.v) < K.gw + 3; };
+  const inBox = p => { const K = FB.M.K, gx = goalSide(1 - p.team) * K.hx; return Math.abs(p.u - gx) < K.box && Math.abs(p.v) < K.boxW; };
   // the ball at the feet of whoever has it (a touch ahead when running, further when sprinting)
   function dribble(p, dt) { const B = FB.M.B; p.touch = (p.touch || 0) + dt * (2 + p.sp * .9); const ahead = .45 + p.sp * .06 + (p.sp > 5.5 ? .25 : 0) + Math.max(0, Math.sin(p.touch * 2.2)) * .12 * Math.min(1, p.sp / 3);
     const tu = p.u + Math.cos(p.face) * ahead, tv = p.v + Math.sin(p.face) * ahead; const k = 1 - Math.exp(-dt * 16); B.u += (tu - B.u) * k; B.v += (tv - B.v) * k; B.y = BR;
@@ -429,10 +472,10 @@ export function createFootball(api) {
     if (p.st === 'slide') { p.stT += dt; move(p, Math.cos(p.face) * (p.stT < .5 ? 7.5 : 2), Math.sin(p.face) * (p.stT < .5 ? 7.5 : 2), dt, 6); tackleHit(p); if (p.stT > .95) p.st = 'idle'; return; }
     if (p.gk) return keeper(p, dt);
     if (own === p) return carry(p, dt);
-    const attack = own ? own.team === p.team : M.poss === p.team, F = FORM[p.i];
+    const attack = own ? own.team === p.team : M.poss === p.team, F = M.F[p.i];
     // the shape: shift with the ball, up when we have it, back when they do
     let hu = F.u * K.hx * gs + B.u * .45 + (attack ? .28 : -.08) * K.hx * gs, hv = F.v * K.hz * gs * .9 + B.v * .3;
-    if (attack && p.i >= 2 && own && own !== p) { hu += gs * 3; }   // run into space ahead
+    if (attack && F.att && own && own !== p) { hu += gs * (K.n === 11 ? 6 : 3); }   // run into space ahead
     hu = clamp(hu, -K.hx + 1, K.hx - 1); hv = clamp(hv, -K.hz + 1, K.hz - 1);
     // the ball: the nearest of each side goes for it (a pass on its way: the one it is for)
     const chase = chaser(p.team); let tu = hu, tv = hv, spd = 4.2;
@@ -499,12 +542,12 @@ export function createFootball(api) {
   function step(dt) { const M = FB.M, K = M.K, B = M.B; M.t += dt;
     for (const p of M.P) { if (p.cool > 0) p.cool -= dt; if (p.tackleCool > 0) p.tackleCool -= dt; if (p.kickAt) { p.kickAt.t -= dt; if (p.kickAt.t <= 0) { const f = p.kickAt.fn; p.kickAt = null; f(); } } }
     if (M.phase === 'intro') { if (M.pt > 4.2) { M.phase = 'kickoff'; M.pt = 0; say('KICK OFF', 1.4, true); sWhistle(1); } idleAll(dt); return; }
-    if (M.phase === 'kickoff') { idleAll(dt); if (M.pt > 1.1) { const k = M.P.find(p => p.team === M.kickTeam && p.i === 4), q = M.P.find(p => p.team === M.kickTeam && p.i === 3); M.phase = 'play'; M.pt = 0; controlBall(k);
+    if (M.phase === 'kickoff') { idleAll(dt); if (M.pt > 1.1) { const k = M.P.find(p => p.team === M.kickTeam && p.i === meOf(M.K)), q = M.P.find(p => p.team === M.kickTeam && p.i === mateOf(M.K)); M.phase = 'play'; M.pt = 0; controlBall(k);
         if (!k.me) { k.kickAt = { t: .25, fn: () => passTo(k, q, false) }; play(k, 'pass'); } } return; }
     if (M.phase === 'restart') { const R = M.restart; idleAll(dt); B.u = R.u; B.v = R.v; B.y = BR;
       const t = M.P.filter(p => p.team === R.team && !p.gk).sort((a, b) => Math.hypot(a.u - R.u, a.v - R.v) - Math.hypot(b.u - R.u, b.v - R.v))[0]; if (R.what === 'Goal kick') { const gk = M.P.find(p => p.team === R.team && p.gk); steer(gk, R.u, R.v, 6, dt); if (M.pt > 1.2) { M.phase = 'play'; controlBall(gk); gk.hold = .5; } return; }
       steer(t, R.u - Math.sign(R.u || 1) * .3, R.v - Math.sign(R.v || 1) * .4, 6, dt); if (M.pt > 1.4) { M.phase = 'play'; M.pt = 0; controlBall(t); t.hold = t.me ? 0 : .35; } return; }
-    if (M.phase === 'goal') { celebrate(dt); if (M.pt > 3.6) { M.phase = 'replay'; M.pt = 0; M.rp = { i: Math.max(0, M.rec.length - 1 - Math.round(4 * 30)), end: M.rec.length - 1, f: 0 }; $('fbBig').hidden = true; $('fbSub').hidden = true; $('fbRep').hidden = false; } return; }
+    if (M.phase === 'goal') { celebrate(dt); if (M.pt > 3.6) { M.phase = 'replay'; M.pt = 0; M.rp = { i: Math.max(0, M.rec.length - 1 - Math.round(4 * 30)), end: M.rec.length - 1, f: 0 }; $('fbBig').hidden = true; $('fbSub').hidden = true; $('fbRep').hidden = false; screen(M.PI, 'replay'); } return; }
     if (M.phase === 'ft') { idleAll(dt); return; }
     // play
     M.clock -= dt; if (M.clock <= 0) { M.clock = 0; fullTime(); return; }
@@ -524,7 +567,7 @@ export function createFootball(api) {
       else { move(p, 0, 0, dt); if (!p.gk && p.A.shotName !== 'despair' && Math.random() < .02) play(p, 'despair'); } } }
   function after() { const M = FB.M; for (const p of M.P) { if (p.gk) play(p, 'gk_ready', { hold: true }); else stopShot(p, .25); } kickoff(1 - M.goalTeam); M.B.inGoal = 0; }
   function fullTime() { const M = FB.M; M.phase = 'ft'; M.pt = 0; sWhistle(3, true); const [a, b] = M.score, win = a > b, draw = a === b;
-    let prize = M.stake ? (win ? 15000 : draw ? M.stake : 0) : (win ? 3000 : draw ? 1000 : 0); if (prize) api.addCash(prize); api.cred(win ? 80 : draw ? 30 : 15, win ? 'won a match' : draw ? 'drew a match' : 'played a match');
+    const Z = M.prize, prize = win ? Z.win : draw ? Z.draw : 0; if (prize) api.addCash(prize); api.cred(Z.cred[win ? 0 : draw ? 1 : 2], win ? 'won a match' : draw ? 'drew a match' : 'played a match'); screen(M.PI, 'ft');
     if (win) sCrowd(1, 5);
     for (const p of M.P) { if (p.st === 'dive') continue; play(p, (p.team === 0) === win ? 'cheer' : draw ? 'call' : 'despair', { hold: (p.team === 0) === win }); }
     const el = $('fbEnd'); el.innerHTML = `<h3>${win ? 'YOU WIN!' : draw ? 'DRAW' : 'YOU LOSE'}</h3><div class="fbfs"><span style="--c:${MY_KIT[0]}">YOUR BOYS</span><b>${a} - ${b}</b><span style="--c:${M.opp[1]}">${M.opp[0].toUpperCase()}</span></div>
@@ -534,7 +577,7 @@ export function createFootball(api) {
     $('fbAgain').onclick = () => { const PI = M.PI, opp = M.opp; stop(); menu(PI); }; $('fbLeave').onclick = () => stop(); }
   function quitAsk() { const M = FB.M; if (!M) return; if (M.phase === 'ft') { stop(); return; } if (confirmQuit()) stop(); }
   let quitT = 0; function confirmQuit() { const t = performance.now(); if (t - quitT < 2500) return true; quitT = t; api.toast('Press again to leave the match (you lose your stake).', 2.5); return false; }
-  function stop() { const M = FB.M; if (!M) return; ring.visible = arrow.visible = trail.visible = false; for (const o of M.PI.nearFence || []) o.visible = true; for (const p of M.P) { p.m.dispose(); } scene.remove(M.B.m); scene.remove(M.B.sh); for (const f of M.fans) api.folkGone(f); FB.M = null; FB.on = false; ui(false); api.enter(false, M.PI.S.json && M.PI.S.json.marks && M.PI.S.json.marks.sign ? toW(M.PI.S, M.PI.S.json.marks.sign[0], M.PI.S.json.marks.sign[1]) : null);
+  function stop() { const M = FB.M; if (!M) return; crowdLoop(0); setTimeout(() => screen(M.PI, 'idle'), 0); ring.visible = arrow.visible = trail.visible = false; for (const o of M.PI.nearFence || []) o.visible = true; for (const p of M.P) { p.m.dispose(); } scene.remove(M.B.m); scene.remove(M.B.sh); for (const f of M.fans) api.folkGone(f); FB.M = null; FB.on = false; ui(false); api.enter(false, M.PI.S.json && M.PI.S.json.marks && M.PI.S.json.marks.sign ? toW(M.PI.S, M.PI.S.json.marks.sign[0], M.PI.S.json.marks.sign[1]) : null);
     for (const net of M.PI.nets) { net.pos.set(net.rest); net.vel.fill(0); net.m.geometry.attributes.position.needsUpdate = true; } }
 
   // models follow the game state
@@ -565,9 +608,9 @@ export function createFootball(api) {
   // ---------------------------------------------------------------- the camera
   function cam(dt) { const M = FB.M; if (!M) return false; const K = M.K, B = M.B, C = M.cam, S = M.S;
     let pu, pv, py, lu, lv, ly; const fov = K.cam.fov * (innerWidth < innerHeight ? 1.35 : 1);
-    if (M.phase === 'intro') { const a = -Math.PI * .1 + M.pt * .32, r = K.hx * 1.25; pu = Math.cos(a) * r; pv = Math.sin(a) * r * 1.1 + K.hz * .6; py = 9 + M.pt * .8; lu = 0; lv = 0; ly = 0; }
+    if (M.phase === 'intro') { const a = -Math.PI * .1 + M.pt * .32, r = K.hx * K.intro[0]; pu = Math.cos(a) * r; pv = Math.sin(a) * r * (K.n === 11 ? .55 : 1.1) + K.hz * .6; py = K.intro[1] + M.pt * .8; lu = 0; lv = 0; ly = 0; }
     else if (M.phase === 'goal') { const sc = M.scorer, a = M.pt * .4 + Math.atan2(M.K.hz + 5 - sc.v, -sc.u * .2) - .6, r = 6.2 + M.pt * .25; pu = sc.u + Math.cos(a) * r; pv = sc.v + Math.sin(a) * r; py = 2.4 + M.pt * .15; lu = sc.u; lv = sc.v; ly = 1.05; }
-    else if (M.phase === 'replay') { const s = Math.sign(B.u || 1), R = M.rp, k = R.end > R.i ? (R.i + R.f - R.i) / (R.end - R.i) : 1; if (k < .55) { pu = B.u - 2; pv = B.v + 7.5; py = 2.6; } else { pu = s * (K.hx + K.gd + 4.5); pv = B.v * .4 + 1.2; py = 2.5; } lu = B.u; lv = B.v; ly = Math.max(.4, B.y); }
+    else if (M.phase === 'replay') { const s = Math.sign(B.u || 1), R = M.rp, k = R.end > R.i ? (R.i + R.f - R.i) / (R.end - R.i) : 1; if (k < .55) { pu = B.u - 2; pv = B.v + 7.5; py = 2.6; } else { pu = s * (K.hx + K.gd + K.repD); pv = B.v * .4 + 1.2; py = 2.5; } lu = B.u; lv = B.v; ly = Math.max(.4, B.y); }
     else if (M.phase === 'ft') { const a = M.pt * .2; pu = M.me.u + Math.cos(a) * 6; pv = M.me.v + Math.sin(a) * 6; py = 2.4; lu = M.me.u; lv = M.me.v; ly = 1.1; }
     else if (FB.view === 'pro') { const me = M.me, gs = 1; pu = me.u - gs * 7.5; pv = me.v * .85; py = 4.2; lu = me.u + gs * 5; lv = me.v * .9 + (B.v - me.v) * .25; ly = .8; }
     else { const tu = clamp((B.own ? B.own.u : B.u) * .9, -K.hx * .8, K.hx * .8), tv = clamp(B.v * .45, -K.hz * .5, K.hz * .5); C.u = lerp(C.u, tu, 1 - Math.exp(-dt * 2.4)); C.v = lerp(C.v, tv, 1 - Math.exp(-dt * 1.6));
@@ -596,7 +639,7 @@ export function createFootball(api) {
     if (on) { const M = FB.M; $('fbNa').textContent = 'YOU'; $('fbNb').textContent = abbr(M.opp[0]); $('fbCa').style.background = MY_KIT[0]; $('fbCb').style.background = M.opp[1]; scoreUI(); } }
   const abbr = n => n.split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase();
   function scoreUI() { const M = FB.M; $('fbSc').textContent = `${M.score[0]} - ${M.score[1]}`; }
-  function hud() { const M = FB.M, c = Math.ceil(M.clock); $('fbClk').textContent = `${(c / 60) | 0}:${String(c % 60).padStart(2, '0')}`;
+  function hud() { const M = FB.M, c = Math.ceil(M.clock); if (M.PI.scr && M.phase === 'play' && (M.scrC !== c)) { M.scrC = c; screen(M.PI, 'match'); } $('fbClk').textContent = `${(c / 60) | 0}:${String(c % 60).padStart(2, '0')}`;
     const pw = $('fbPow'); pw.hidden = !(IN.shoot && IN.charge > .05); if (!pw.hidden) pw.firstChild.style.width = (IN.charge * 100) + '%', pw.classList.toggle('hot', IN.charge > .82);
     $('fbStam').firstChild.style.width = (M.me.stam * 100) + '%'; if (M.sayT > 0) { M.sayT -= 1 / 30; if (M.sayT <= 0) $('fbSay').hidden = true; }
     if (M.phase === 'ft' && M.pt > 6 && !M.leftT) { M.leftT = 1; } }
@@ -607,7 +650,7 @@ export function createFootball(api) {
   return {
     addPitch, pitchLoaded, menu, key, update, cam, stop, get on() { return FB.on; }, get match() { return FB.M; },
     // every frame (also when not playing): the boys at every pitch near you, the nets settle
-    tick(dt, px, pz) { for (const PI of FB.pitches) { const d = Math.hypot(PI.S.x - px, PI.S.z - pz); if (PI.S.state === 2 && !PI.ready) pitchLoaded(PI); boysTick(PI, dt, d < 120); } },
+    tick(dt, px, pz) { for (const PI of FB.pitches) { const d = Math.hypot(PI.S.x - px, PI.S.z - pz); if (PI.S.state === 2 && !PI.ready) pitchLoaded(PI); if (PI.kind !== 'stadium') boysTick(PI, dt, d < 120); } },
     pitches: FB.pitches, KINDS, _play: (p, n, o) => play(p, n, o), _clip: (m, n) => moveClip(m, n), _stop: (p) => stopShot(p, 0),
   };
 }
