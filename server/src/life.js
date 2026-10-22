@@ -44,6 +44,9 @@ function cxOk(x) {
 }
 // street cred cannot jump: at most what an hour of very busy play earns per hour since the last save (plus a little), never more than
 // the client claims; a guest bringing a life to a new account keeps at most the Hustler rank's worth
+// the rank thresholds (street cred) — the game has the same list (src/game.js RANKS)
+export const RANK_CR = [0, 120, 600, 2000, 5000, 11000, 22000, 40000, 70000, 120000];
+export const rankOf = cr => { let i = 0; while (i < RANK_CR.length - 1 && (+cr || 0) >= RANK_CR[i + 1]) i++; return i; };
 export const CRED_RATE = 1500 / 3600, CRED_SLACK = 400, CRED_GUEST = 1999;
 export function credCap(d, prev, now) {
   if (!d) return d;

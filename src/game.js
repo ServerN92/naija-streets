@@ -2307,10 +2307,15 @@ function rankGate(need,what){ const r=myRank(); if(r>=need) return true;
   toast(`🔒 ${what} na for ${rankTag(need)} and above. You be ${rankTag(r)} now (${Math.max(0,RANKS[need][3]-(LIFE.cr|0)).toLocaleString()} street cred to go). Keep hustling!`,5);
   return false; }
 function rankHUD(){ const e=document.getElementById('rank'); if(!e) return; const r=myRank(), cr=LIFE.cr|0, nx=RANKS[r+1];
-  const f=nx?(cr-RANKS[r][3])/(nx[3]-RANKS[r][3]):1; if(RANK.shownR!==r){ RANK.shownR=r; e.style.setProperty('--rk',RANKS[r][2]); e.querySelector('b').textContent=rankTag(r); }
-  e.querySelector('i').style.width=(Math.max(0,Math.min(1,f))*100).toFixed(1)+'%'; }
+  const f=nx?(cr-RANKS[r][3])/(nx[3]-RANKS[r][3]):1;
+  if(RANK.shownR!==r){ RANK.shownR=r; e.className='rank r'+r; e.querySelector('img').src=`assets/ui/rank_${r}.png`; e.setAttribute('aria-label',`Your rank: ${rankName(r)}. Tap to see it`);
+    const si=document.getElementById('rkSetImg'); if(si) si.src=`assets/ui/rank_${r}.png`; const sn=document.getElementById('rkSetName'); if(sn){ sn.textContent=rankName(r); sn.style.color=RANKS[r][2]; } }
+  const sb=document.querySelector('#rkSetBar i'); if(sb){ sb.style.width=(Math.max(0,Math.min(1,f))*100).toFixed(1)+'%'; sb.parentNode.style.setProperty('--rk',RANKS[r][2]); }
+  const sc=document.getElementById('rkSetCr'); if(sc) sc.textContent=`${cr.toLocaleString()} street cred`;
+  const sx=document.getElementById('rkSetNext'); if(sx) sx.textContent=nx?`${(nx[3]-cr).toLocaleString()} more to ${nx[1]} ${rankName(r+1)} · it opens: ${RANK_OPEN[r+1]}`:'You are at the top: Eko Legend!'; }
 RANK.last=myRank();
-{ const e=document.getElementById('rank'); if(e) e.addEventListener('click',()=>rankMenu()); }
+{ const e=document.getElementById('rank'); if(e) e.addEventListener('click',()=>{ const st=document.getElementById('settings'); rankHUD(); st.hidden=false; st.scrollTop=0; });
+  const a=document.getElementById('rkSetAll'); if(a) a.addEventListener('click',()=>{ document.getElementById('settings').hidden=true; rankMenu(); }); }
 function rankMenu(){ const r=myRank(), cr=LIFE.cr|0;
   openMenu('YOUR RANK · '+rankTag(r),`${cr.toLocaleString()} street cred${RANKS[r+1]?` · ${(RANKS[r+1][3]-cr).toLocaleString()} to ${rankName(r+1)}`:' · the top!'}`,[
     {name:'How to rank up',sub:'Play and move about (standing still does not count), finish your hustle tasks, earn money, buy things, come back every day. Doing the same thing again and again pays less.',btn:'OK',act:closeMenu},

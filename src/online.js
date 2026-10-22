@@ -133,9 +133,9 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b); scene.add(R.tag); }
-    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || ''); R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
-      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0); R.rk = j.rk | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
   function heardPos(R, p, now) {
@@ -145,7 +145,7 @@ export function createOnline(api) {
     else if (L && now - L.t > .35) b.push({ ...L, t: now - SEND_MS / 1000 });                // standing still a while, then off again
     b.push(s); if (b.length > 10) b.splice(0, b.length - 10);
   }
-  function gone(id) { const R = RS.get(id); if (!R) return; RS.delete(id); dropBody(R); dropCar(R); for (const sp of [R.tag, R.bub]) if (sp) { scene.remove(sp); sp.material.map.dispose(); sp.material.dispose(); } }
+  function gone(id) { const R = RS.get(id); if (!R) return; RS.delete(id); dropBody(R); dropCar(R); for (const sp of [R.tag, R.bub, R.glow]) if (sp) { scene.remove(sp); sp.material.map.dispose(); sp.material.dispose(); } }
   function dropAll() { for (const id of [...RS.keys()]) gone(id); }
 
   async function makeBody(R) {
@@ -227,14 +227,33 @@ export function createOnline(api) {
     sp.renderOrder = 999; sp.userData.w = cv.width / cv.height * h; sp.userData.h = h; sp.scale.set(sp.userData.w, h, 1); sp.visible = false; return sp;
   }
   // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman) and their stars when wanted
-  function tagSprite(name, stars = 0, badge = '') {
-    const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '';
-    g.font = `700 ${fs}px ${FONT}`; const tw = Math.ceil(g.measureText(name).width), sw = st ? Math.ceil(g.measureText(st).width) : 0, w = tw + sw + 36; cv.width = w; cv.height = 60;
-    g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, 4, w - 4, 52, 16); g.fill();
-    g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, 30, 6, 0, 6.3); g.fill();
-    g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, 32);
-    if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, 32); }
-    return spriteOf(cv, .4 * TS);
+  // the rank medals (assets/ui/rank_N.png, made in Blender: tools of the 2go-style ranks), drawn after the name
+  const MEDAL = [], MEDAL_GLOW = [null, null, ['#4fc3f7', .22, .1, 1.5], ['#26c6a0', .28, .12, 1.8], ['#c77dff', .34, .15, 2.0], ['#ff9f43', .42, .16, 2.2],
+    ['#ff5d5d', .5, .2, 2.6], ['#ffd54a', .55, .2, 2.0, 1], ['#ffd54a', .65, .25, 2.4, 1], ['#7fe3ff', .78, .25, 3.0, 2]];
+  for (let i = 0; i < 10; i++) { const im = new Image(); im.onload = () => { for (const R of RS.values()) if ((R.rk | 0) === i && R.tag && !R.tag.userData.medal) R.retagNow = true; }; im.src = `assets/ui/rank_${i}.png`; MEDAL.push(im); }
+  function glowTex(rays) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d'), gr = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    if (rays) { g.globalCompositeOperation = 'lighter'; g.translate(64, 64); for (let k = 0; k < (rays > 1 ? 12 : 8); k++) { g.rotate(Math.PI * 2 / (rays > 1 ? 12 : 8)); const lg = g.createLinearGradient(0, 0, 62, 0); lg.addColorStop(0, 'rgba(255,255,255,.8)'); lg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = lg; g.beginPath(); g.moveTo(0, -3); g.lineTo(62, 0); g.lineTo(0, 3); g.fill(); } }
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+  }
+  const GLOWT = [glowTex(0), glowTex(1), glowTex(2)];
+  function glowSprite(rk) {
+    const P = MEDAL_GLOW[rk]; if (!P) return null;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOWT[P[4] || 0], color: new THREE.Color(P[0]), blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true, fog: false, toneMapped: false }));
+    sp.renderOrder = 998; sp.visible = false; sp.userData.P = P; sp.userData.ph = Math.random() * 6.3; return sp;
+  }
+  // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman), their stars when wanted, then their rank medal
+  function tagSprite(name, stars = 0, badge = '', rk = 0) {
+    const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '', H = 92, MS = 92, med = MEDAL[rk | 0], hasM = !!(med && med.complete && med.naturalWidth);
+    g.font = `700 ${fs}px ${FONT}`; const tw = Math.ceil(g.measureText(name).width), sw = st ? Math.ceil(g.measureText(st).width) : 0, pw = tw + sw + 36, w = pw + MS + 6; cv.width = w; cv.height = H;
+    const y0 = (H - 60) / 2;
+    g.font = `700 ${fs}px ${FONT}`; g.fillStyle = stars > 0 ? 'rgba(70,10,10,.8)' : 'rgba(12,14,18,.72)'; rr(g, 2, y0 + 4, pw - 4, 52, 16); g.fill();
+    g.fillStyle = badge === 'p' ? '#4c7dff' : badge === 'c' ? '#1d9a56' : '#F2B705'; g.beginPath(); g.arc(17, y0 + 30, 6, 0, 6.3); g.fill();
+    g.fillStyle = '#F7EFDF'; g.textBaseline = 'middle'; g.fillText(name, 29, y0 + 32);
+    if (st) { g.fillStyle = '#ff4a3a'; g.fillText(st, 29 + tw, y0 + 32); }
+    if (hasM) g.drawImage(med, pw + 6, 0, MS, MS);
+    const sp = spriteOf(cv, .4 * TS * H / 60); sp.userData.medal = hasM; sp.userData.mx = (pw + 6 + MS / 2) / w; sp.userData.ms = MS / H; return sp;
   }
   function bubbleSprite(text) {
     const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 36, pad = 18, maxW = 520;
@@ -276,7 +295,7 @@ export function createOnline(api) {
     list.sort((a, b) => a.d - b.d);
     list.forEach((R, i) => {
       const s = R.s, show = !!s && !inside && i < maxB && R.d < 170;
-      if (!show) { if (R.root) R.root.visible = false; if (R.car) R.car.g.visible = false; R.tag.visible = false; if (R.bub) R.bub.visible = false; return; }
+      if (!show) { if (R.root) R.root.visible = false; if (R.car) R.car.g.visible = false; R.tag.visible = false; if (R.glow) R.glow.visible = false; if (R.bub) R.bub.visible = false; return; }
       let topY = s.y + 2.05;
       if (s.v) {   // in a motor or on an okada
         const c = useCar(R, s);
@@ -299,7 +318,14 @@ export function createOnline(api) {
       if (R.mixer) { R.acc += dt; const k = R.d < 25 ? 1 : R.d < 60 ? 2 : 3; if ((frameN + R.slot) % k === 0) { R.mixer.update(R.acc); R.acc = 0; } }
       // the name, the same size on screen near or far
       const tagOn = R.d < TAG_FAR, sc = clamp(R.d / 11, 1, 5);
+      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk); R.tag.visible = vis; scene.add(R.tag); }
       R.tag.visible = tagOn; if (tagOn) { R.tag.position.set(s.x, topY, s.z); R.tag.scale.set(R.tag.userData.w * sc, R.tag.userData.h * sc, 1); }
+      // the medal glows: each rank its own colour and beat; the top three send out turning rays
+      if (R.glowRk !== R.rk) { if (R.glow) { scene.remove(R.glow); R.glow.material.dispose(); } R.glow = glowSprite(R.rk | 0); R.glowRk = R.rk; if (R.glow) scene.add(R.glow); }
+      if (R.glow) { const on = tagOn && R.tag.userData.medal; R.glow.visible = on;
+        if (on) { const P = R.glow.userData.P, u = R.tag.userData, mh = u.h * sc * u.ms, gs = mh * (P[4] ? 2.1 : 1.6), tw2 = u.w * sc;
+          R.glow.position.copy(R.tag.position); R.glow.scale.set(gs, gs, 1); R.glow.center.set(.5 - (u.mx - .5) * tw2 / gs, .5);
+          R.glow.material.opacity = Math.max(0, P[1] + P[2] * Math.sin(t * P[3] + R.glow.userData.ph)); if (P[4]) R.glow.material.rotation = t * (P[4] > 1 ? .9 : .5); } }
       if (R.bub) {
         R.bubT -= dt; if (R.bubT <= 0 || R.d > 60) { R.bub.visible = false; if (R.bubT <= 0) { scene.remove(R.bub); R.bub.material.map.dispose(); R.bub.material.dispose(); R.bub = null; } }
         else { R.bub.visible = true; const bs = clamp(R.d / 11, 1, 3); R.bub.position.set(s.x, topY + (R.tag.userData.h * sc) * .5 + R.bub.userData.h * bs * .55, s.z); R.bub.scale.set(R.bub.userData.w * bs, R.bub.userData.h * bs, 1); R.bub.material.opacity = Math.min(1, R.bubT); }
