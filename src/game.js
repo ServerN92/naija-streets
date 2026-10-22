@@ -580,22 +580,39 @@ const MAT={
 const GTEX=(()=>{ const tl=new THREE.TextureLoader(), u=f=>{ const p=`assets/models/${f}`, k=AV[p]||MANIFEST[p]; return k?p+'?v='+k:p; };
   const load=(f,srgb)=>tl.loadAsync(u(f)).then(t=>{ if(srgb) t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=maxAniso; return t; }).catch(()=>null);
   return {ground:Promise.all([load('ground_laterite.jpg',true),load('ground_laterite_n.jpg',false)]), lawn:Promise.all([load('grass_lawn.jpg',true),load('grass_lawn_n.jpg',false)]), clouds:load('clouds.png',true)}; })();
-function antiTile(m,big=.19,mac=.045){ m.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
-    vec4 sampledDiffuseColor=texture2D(map,vMapUv);
+// (the picture repeats hundreds of times over the big ground: phone GPUs lose the fine part of such big texture coordinates and
+// the ground seems to swim as you move. So the repeating lookups take only the fraction, with the true gradients for sharpness.)
+const TEXF=`
+#if __VERSION__ >= 300
+  #define texRep(t,u) textureGrad(t,fract(u),dFdx(u),dFdy(u))
+#else
+  #define texRep(t,u) texture2D(t,u)
+#endif
+`;
+const MAPF=THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )','texRep(map,vMapUv)'), NRMF=THREE.ShaderChunk.normal_fragment_maps.replace('vec3 mapN = texture2D( normalMap, vNormalMapUv )','vec3 mapN = texRep(normalMap,vNormalMapUv)');
+function repMap(m){ const prev=m.onBeforeCompile, key=m.customProgramCacheKey;
+  m.onBeforeCompile=(sh,r)=>{ if(prev) prev.call(m,sh,r); if(!sh.fragmentShader.includes('#define texRep')) sh.fragmentShader=TEXF+sh.fragmentShader; sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>',MAPF).replace('#include <normal_fragment_maps>',NRMF); };
+  m.customProgramCacheKey=()=>'rep|'+(key?key.call(m):''); m.needsUpdate=true; }
+function antiTile(m,big=.19,mac=.045){ m.onBeforeCompile=sh=>{ sh.fragmentShader=TEXF+sh.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
+    vec4 sampledDiffuseColor=texRep(map,vMapUv);
     vec2 uvB=mat2(.8,-.6,.6,.8)*vMapUv*${big.toFixed(3)}+vec2(.37,.11);
-    vec4 farC=texture2D(map,uvB);
+    vec4 farC=texRep(map,uvB);
     float macro=texture2D(map,vMapUv*${mac.toFixed(3)}+vec2(.21,.63)).g;
     float k=smoothstep(.3,.6,texture2D(map,vMapUv*${(mac*.6).toFixed(3)}).r);
     sampledDiffuseColor=mix(sampledDiffuseColor,farC,k*.5);
     sampledDiffuseColor.rgb*=.8+.5*smoothstep(.2,.7,macro);
     diffuseColor*=sampledDiffuseColor;
-  #endif`); }; m.customProgramCacheKey=()=>'antitile'+big+mac; }
+  #endif`).replace('#include <normal_fragment_maps>',`#ifdef USE_NORMALMAP_TANGENTSPACE
+      vec3 mapN=texRep(normalMap,vNormalMapUv).xyz*2.-1.; mapN.xy*=normalScale; normal=normalize(tbn*mapN);
+    #else
+      #include <normal_fragment_maps>
+    #endif`); }; m.customProgramCacheKey=()=>'antitile2'+big+mac; }
 GTEX.ground.then(([c,n])=>{ if(!c) return; for(const m of [MAT.ground]){ m.map=c; if(n){ m.normalMap=n; m.normalScale.set(.9,.9); } m.color.setHex(0xffffff); m.userData.c0=m.color.clone(); antiTile(m); m.needsUpdate=true; } });
 // dirt roads keep their ruts and grassy edges, and get the real earth's grain and bumps on top
 GTEX.ground.then(([c,n])=>{ if(!c) return; const m=MAT.dirt; m.userData.detail=c; if(n){ m.normalMap=n; m.normalScale.set(.8,.8); }
-  m.onBeforeCompile=sh=>{ sh.uniforms.detailMap={value:c}; sh.fragmentShader='uniform sampler2D detailMap;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-    float dl=dot(texture2D(detailMap,vMapUv*vec2(1.,2.)).rgb,vec3(.2126,.7152,.0722))/.138; diffuseColor.rgb*=clamp(mix(1.,dl,.8),.55,1.45);`); };
-  m.customProgramCacheKey=()=>'dirt-detail'; m.needsUpdate=true; });
+  m.onBeforeCompile=sh=>{ sh.uniforms.detailMap={value:c}; sh.fragmentShader=TEXF+'uniform sampler2D detailMap;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+    float dl=dot(texRep(detailMap,vMapUv*vec2(1.,2.)).rgb,vec3(.2126,.7152,.0722))/.138; diffuseColor.rgb*=clamp(mix(1.,dl,.8),.55,1.45);`).replace('#include <map_fragment>',MAPF).replace('#include <normal_fragment_maps>',NRMF); };
+  m.customProgramCacheKey=()=>'dirt-detail2'; m.needsUpdate=true; });
 GTEX.lawn.then(([c,n])=>{ if(!c) return; for(const m of [MAT.lawn,MAT.grass]){ m.map=c; if(n){ m.normalMap=n; m.normalScale.set(.7,.7); } antiTile(m,.23,.05); m.needsUpdate=true; } });
 // the roads of the Blender scene ("Naija Ground"): real asphalt on the tarred roads, red laterite gravel showing through the broken
 // streets (Poly Haven asphalt_02 and gravel_road), laid by world position so the grain never stretches along a street
@@ -603,14 +620,14 @@ const RDTEX=(()=>{ const tl=new THREE.TextureLoader(), u=f=>{ const p=`assets/mo
   const load=f=>tl.loadAsync(u(f)).then(t=>{ t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=maxAniso; return t; }).catch(()=>null);
   return {asph:load('road_asph.jpg'),gravel:load('road_gravel.jpg'),conc:load('road_conc.jpg')}; })();
 function roadPhoto(m,tex,{sc=.33,avg=.109,k=.85,col=0,lo=.45,hi=1.7}={}){ const prev=m.onBeforeCompile;
-  m.onBeforeCompile=sh=>{ sh.uniforms.rdMap={value:tex};
+  m.onBeforeCompile=sh=>{ sh.uniforms.rdMap={value:tex}; if(!sh.fragmentShader.includes('#define texRep')) sh.fragmentShader=TEXF+sh.fragmentShader;
     sh.vertexShader='varying vec2 vRdW;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n  vRdW=(modelMatrix*vec4(transformed,1.)).xz;');
     sh.fragmentShader='uniform sampler2D rdMap; varying vec2 vRdW;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-    { vec3 dt=texture2D(rdMap,vRdW*${sc.toFixed(3)}).rgb, dt2=texture2D(rdMap,vRdW*${(sc*.23).toFixed(4)}+vec2(.31,.67)).rgb; dt=mix(dt,dt2,.35);
+    { vec3 dt=texRep(rdMap,vRdW*${sc.toFixed(3)}).rgb, dt2=texRep(rdMap,vRdW*${(sc*.23).toFixed(4)}+vec2(.31,.67)).rgb; dt=mix(dt,dt2,.35);
       float dl=dot(dt,vec3(.2126,.7152,.0722))/${avg.toFixed(4)}; vec3 base=diffuseColor.rgb;
       diffuseColor.rgb=base*clamp(mix(1.,dl,${k.toFixed(2)}),${lo.toFixed(2)},${hi.toFixed(2)});
-      diffuseColor.rgb=mix(diffuseColor.rgb,dt*dot(base,vec3(.333))/${avg.toFixed(4)}*.9,${col.toFixed(2)}); }`); };
-  m.customProgramCacheKey=()=>'rdphoto'+sc+k+col; m.needsUpdate=true; }
+      diffuseColor.rgb=mix(diffuseColor.rgb,dt*dot(base,vec3(.333))/${avg.toFixed(4)}*.9,${col.toFixed(2)}); }`).replace('#include <map_fragment>',MAPF).replace('#include <normal_fragment_maps>',NRMF); };
+  m.customProgramCacheKey=()=>'rdphoto2'+sc+k+col; m.needsUpdate=true; void prev; }
 RDTEX.asph.then(t=>{ if(!t) return; for(const m of [MAT.road2,MAT.road4,MAT.cross,MAT.asph]) roadPhoto(m,t,{sc:.33,avg:.109,k:.9}); });
 RDTEX.gravel.then(t=>{ if(!t) return; for(const m of [MAT.roadBad2,MAT.roadBad4]) roadPhoto(m,t,{sc:.3,avg:.115,k:.75,col:.28}); });
 const FAC_KEYS=['glass','bronze','office','resi','oldmid','shop'];
@@ -619,6 +636,7 @@ const TINTS={glass:['#ffffff','#e2f2ff','#dcfff2','#eef0ff'],bronze:['#ffffff','
   resi:['#fffaf0','#ffe6d2','#e2f0ff','#e4f6e8','#f1e6ff','#ffffff','#fff1c0'],oldmid:['#f6d98b','#f2b8a8','#a9d6e5','#b8e0b0','#e9c46a','#f4a261','#ddd5c8','#c9b8e8','#e7e1d3']};
 const A={}; for(const k of [...FAC_KEYS,'roof','zinc','fence','curb','pave','plaza','grass','road2','road4','cross','sign','conc','roadBad2','roadBad4','dirt','asph','sand','lot','lawn']) A[k]=new Acc();
 const ROAD_MATS=[MAT.road2,MAT.road4,MAT.cross,MAT.roadBad2,MAT.roadBad4,MAT.dirt,MAT.pave,MAT.plaza,MAT.curb,MAT.asph,MAT.ground,MAT.sand,MAT.lot];
+for(const m of [MAT.pave,MAT.plaza,MAT.curb,MAT.sand,MAT.lot]) repMap(m);   // (the roads, dirt, ground and lawns do it in their own shaders)
 // how much shine rain gives each surface: earth and sand only get damp (never a mirror), tar and concrete a soft sheen
 const WET_K=new Map([[MAT.dirt,.3],[MAT.ground,.3],[MAT.sand,.25],[MAT.lot,.4],[MAT.pave,.4],[MAT.plaza,.45],[MAT.curb,.35]]);
 for(const m of ROAD_MATS){ m.userData.r0=m.roughness; m.userData.c0=m.color.clone(); m.userData.k=WET_K.get(m)??.55; }
@@ -3414,7 +3432,7 @@ function inputVec(){ if(WARD.open||NOMOVE||TL.hold) return [0,0]; let f=0,s=0; i
   if(mode==='drive'&&drvPedals()){ f+=DRV.gas-DRV.rev; s+=DRV.sv; } return [clamp(f,-1,1),clamp(s,-1,1)]; }
 // driving on a phone: ARROWS (the default: ◀ ▶ on the right steer, GAS and BRAKE on the left, BRAKE held when stopped
 // reverses), WHEEL (a steering wheel you turn with your thumb, the same pedals) or JOYSTICK (the old way). Kept on this phone.
-const DRV={m:'easy',gas:0,rev:0,l:0,r:0,sv:0,wr:0,wp:null,wa:0,w0:0}; try{ const m=localStorage.getItem('naija-drive'); if(m==='easy'||m==='wheel'||m==='joy') DRV.m=m; }catch(e){}
+const DRV={m:'easy',look:'pedal',gas:0,rev:0,l:0,r:0,sv:0,wr:0,wp:null,wa:0,w0:0}; try{ const m=localStorage.getItem('naija-drive'); if(m==='easy'||m==='wheel'||m==='joy') DRV.m=m; if(localStorage.getItem('naija-drvlook')==='round') DRV.look='round'; }catch(e){}
 const drvPedals=()=>touchUI&&DRV.m!=='joy';
 function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
   if(DRV.m==='wheel'){ if(DRV.wp==null) DRV.wr*=Math.exp(-10*dt); if(Math.abs(DRV.wr)<.3&&DRV.wp==null) DRV.wr=0; DRV.sv=clamp(DRV.wr/90,-1,1); $('#tWheel').style.transform=DRV.wr?`rotate(${DRV.wr.toFixed(1)}deg)`:''; }   // let go and it turns back to straight
@@ -3422,8 +3440,10 @@ function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
 function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; if(p&&!DRV.told){ DRV.told=true; let seen=false; try{ seen=!!localStorage.getItem('naija-drv-tip'); localStorage.setItem('naija-drv-tip','1'); }catch(e){} if(!seen) toast('Gas pedal: go · brake pedal: brake (hold to reverse) · ◀ ▶ steer. Stunts: hold the brake while you turn fast to drift; on a bike, gas + brake = wheelie. Tap Get out to come down.',8); } $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
   $('#tBrake').hidden=!(on&&!drvPedals()); document.body.classList.toggle('drvpad',p&&!w); document.body.classList.toggle('drvwheel',w);
   if(!p){ DRV.gas=DRV.rev=DRV.l=DRV.r=0; DRV.sv=DRV.wr=0; DRV.wp=null; for(const id of ['tGas','tRev','tLeft','tRight','tWheel']) $('#'+id).classList.remove('on'); } }
-function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
+function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); document.querySelectorAll('#drvLook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===DRV.look))); document.body.classList.toggle('drvround',DRV.look==='round'); try{ localStorage.setItem('naija-drvlook',DRV.look); }catch(e){} if(typeof blApply==='function'&&touchUI) requestAnimationFrame(blApply); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
 document.querySelectorAll('#drvSeg button').forEach(b=>b.addEventListener('click',()=>{ DRV.m=b.dataset.d; drvSettings(); }));
+document.querySelectorAll('#drvLook button').forEach(b=>b.addEventListener('click',()=>{ DRV.look=b.dataset.l; drvSettings(); }));
+document.body.classList.toggle('drvround',DRV.look==='round'); document.querySelectorAll('#drvLook button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.l===DRV.look))); document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m)));
 // physical key positions, so AZERTY / other layouts still use the WASD spot
 const CODE={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arrowdown',ArrowLeft:'arrowleft',ArrowRight:'arrowright',ShiftLeft:'shift',ShiftRight:'shift',Space:' ',KeyE:'e',KeyF:'f',KeyH:'h',KeyJ:'j',KeyK:'k',KeyM:'m',KeyC:'c',KeyG:'g',Escape:'escape',Enter:'enter'};
 const keyOf=e=>CODE[e.code]||(e.key||'').toLowerCase();
@@ -3491,25 +3511,31 @@ const BL={ids:['tE','tGrab','tPunch','tCrouch','tJump','tHorn','tRadio','tBrake'
 try{ BL.data=JSON.parse(localStorage.getItem('naija-btns')||'{}')||{}; }catch(e){ BL.data={}; }
 const blKey=()=>innerWidth>innerHeight?'land':'port';
 const BL_NAME={tE:'E',tGrab:'GRAB / AIM',tPunch:'ATTACK / FIRE',tCrouch:'CROUCH',tJump:'JUMP'};
+const BL_WHAT={tGas:'gas pedal',tRev:'brake pedal',tLeft:'left arrow',tRight:'right arrow',tWheel:'steering wheel',tHorn:'horn',tRadio:'radio',tBrake:'brake',tGrab:'grab',tPunch:'attack',tCrouch:'crouch',tJump:'jump',tE:'E',tSk1:'trick 1',tSk2:'trick 2',tSk3:'trick 3'};
+// tap a button in the editor: the size slider then sizes that one only (tap it again: all of them)
+function blSelect(id){ BL.sel=id; document.querySelectorAll('.tbtns button.sel').forEach(b=>b.classList.remove('sel')); const L=BL.data[blKey()]||{};
+  if(id){ $('#'+id).classList.add('sel'); $('#beWhat').textContent='Size · '+(BL_WHAT[id]||'this button'); $('#beSize').value=Math.round((L.s||1)*((L.sz&&L.sz[id])||1)*100); }
+  else { $('#beWhat').textContent='Size · all'; $('#beSize').value=Math.round((L.s||1)*100); } }
 function blSave(){ try{ localStorage.setItem('naija-btns',JSON.stringify(BL.data)); }catch(e){} }
 function blApply(){ const L=BL.data[blKey()], box=document.querySelector('.tbtns'); if(!box) return; const sc=L&&L.s||1; box.style.setProperty('--bs',sc); box.style.setProperty('--bo',L&&L.o||1);
-  for(const id of BL.ids){ const b=$('#'+id); if(!b) continue; const p=L&&L.pos&&L.pos[id];
-    if(p){ const d=(b.classList.contains('tbig')?76:64)*sc; b.classList.add('free'); b.style.left=Math.round(clamp(p[0]*innerWidth,d/2,innerWidth-d/2)-d/2)+'px'; b.style.top=Math.round(clamp(p[1]*innerHeight,d/2,innerHeight-d/2)-d/2)+'px'; }
+  for(const id of BL.ids){ const b=$('#'+id); if(!b) continue; const p=L&&L.pos&&L.pos[id], k=L&&L.sz&&L.sz[id]; if(k) b.style.setProperty('--bs',sc*k); else b.style.removeProperty('--bs');   // a button sized on its own
+    if(p){ b.classList.add('free'); const w=b.offsetWidth||(b.classList.contains('tbig')?76:64)*sc, h=b.offsetHeight||w; b.style.left=Math.round(clamp(p[0]*innerWidth,w/2,innerWidth-w/2)-w/2)+'px'; b.style.top=Math.round(clamp(p[1]*innerHeight,h/2,innerHeight-h/2)-h/2)+'px'; }
     else { b.classList.remove('free'); b.style.left=b.style.top=''; } } }
 function blShown(){ if(mode==='drive') return BL.ids.filter(id=>!$('#'+id).hidden&&id!=='tCrouch'&&id!=='tJump'&&id!=='tGrab'&&id!=='tPunch'&&id!=='tE');   // the buttons of what you are doing now
   return ['tGrab','tPunch','tCrouch','tJump']; }
 function blRecord(ids){ const L=BL.data[blKey()]||(BL.data[blKey()]={s:1,o:1,pos:{}}); L.pos=L.pos||{};
   for(const id of ids){ if(L.pos[id]) continue; const r=$('#'+id).getBoundingClientRect(); if(r.width) L.pos[id]=[(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight]; } return L; }
-function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
+function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; if(!on) blSelect(null); document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
   if(on){ BL.was={}; const set=blShown(); for(const id of BL.ids){ const b=$('#'+id); BL.was[id]={h:b.hidden,t:b.textContent}; b.hidden=!set.includes(id); if(BL_NAME[id]&&mode!=='drive') b.textContent=BL_NAME[id]; }
     requestAnimationFrame(()=>{ const L=blRecord(set); blApply(); $('#beSize').value=Math.round((L.s||1)*100); $('#beOp').value=Math.round((L.o||1)*100); }); }
   else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; b.textContent=BL.was[id].t; } BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=true; } }
 { const box=document.querySelector('.tbtns');
   box.addEventListener('pointerdown',e=>{ if(!BL.edit) return; const b=e.target.closest('button'); e.preventDefault(); e.stopPropagation(); if(!b) return; const r=b.getBoundingClientRect();
-    BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
-  addEventListener('pointermove',e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; const L=BL.data[blKey()]; L.pos[D.b.id]=[clamp((e.clientX-D.dx)/innerWidth,.03,.97),clamp((e.clientY-D.dy)/innerHeight,.05,.97)]; blApply(); });
-  const end=e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; D.b.classList.remove('drag'); BL.drag=null; blSave(); }; addEventListener('pointerup',end); addEventListener('pointercancel',end);
-  $('#beSize').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; const ns=+e.target.value/100, r=ns/(L.s||1); L.s=ns;
+    BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId,x0:e.clientX,y0:e.clientY,moved:false}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
+  addEventListener('pointermove',e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; if(!D.moved&&Math.hypot(e.clientX-D.x0,e.clientY-D.y0)<7) return; D.moved=true; const L=BL.data[blKey()]; L.pos[D.b.id]=[clamp((e.clientX-D.dx)/innerWidth,.03,.97),clamp((e.clientY-D.dy)/innerHeight,.05,.97)]; blApply(); });
+  const end=e=>{ const D=BL.drag; if(!D||e.pointerId!==D.pid) return; D.b.classList.remove('drag'); BL.drag=null; if(!D.moved&&e.type==='pointerup') blSelect(BL.sel===D.b.id?null:D.b.id); blSave(); }; addEventListener('pointerup',end); addEventListener('pointercancel',end);
+  $('#beSize').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; if(BL.sel){ L.sz=L.sz||{}; L.sz[BL.sel]=(+e.target.value/100)/(L.s||1); blApply(); return; }   // one button only
+    const ns=+e.target.value/100, r=ns/(L.s||1); L.s=ns;
     // bigger buttons spread apart (and smaller ones close up) so they never sit on top of each other, then the group is kept on screen
     const W=innerWidth, H=innerHeight, ids=Object.keys(L.pos).filter(id=>!$('#'+id).hidden); if(ids.length){ let cx=0, cy=0; for(const id of ids){ cx+=L.pos[id][0]*W; cy+=L.pos[id][1]*H; } cx/=ids.length; cy/=ids.length;
       let x0=1e9, y0=1e9, x1=-1e9, y1=-1e9; const P={};
@@ -3517,7 +3543,7 @@ function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.bod
       const sx=x0<0?-x0:x1>W?W-x1:0, sy=y0<0?-y0:y1>H?H-y1:0; for(const id of ids) L.pos[id]=[(P[id][0]+sx)/W,(P[id][1]+sy)/H]; }
     blApply(); });
   $('#beOp').addEventListener('input',e=>{ const L=BL.data[blKey()]; if(!L) return; L.o=+e.target.value/100; blApply(); });
-  $('#beReset').addEventListener('click',()=>{ delete BL.data[blKey()]; blApply(); requestAnimationFrame(()=>{ const L=blRecord(blShown()); blApply(); $('#beSize').value=100; $('#beOp').value=100; void L; }); });
+  $('#beReset').addEventListener('click',()=>{ delete BL.data[blKey()]; blSelect(null); blApply(); requestAnimationFrame(()=>{ const L=blRecord(blShown()); blApply(); $('#beSize').value=100; $('#beOp').value=100; void L; }); });
   $('#beDone').addEventListener('click',()=>blEdit(false));
   $('#btnEdit').addEventListener('click',()=>blEdit(true));
   addEventListener('resize',()=>{ if(touchUI) blApply(); }); }
@@ -3993,11 +4019,13 @@ function updateWorld(dt){ WU.time.value=(WU.time.value+dt*.6)%1000; if(WU._n){ W
   { const f=mode==='drive'?drive.v:player; fillLight.position.set(f.x-Math.sin(camState.yaw)*1.2,(f.y||0)+3.2,f.z-Math.cos(camState.yaw)*1.2); }
   const fo=mode==='drive'?drive.v:player; sun.position.set(fo.x+lightDir.x*260,lightDir.y*260,fo.z+lightDir.z*260); sun.target.position.set(fo.x,0,fo.z);
   // keep the shadow map steady: move the light in whole shadow-texel steps
-  { const tex=(sun.shadow.camera.right-sun.shadow.camera.left)/Q.sh; sun.position.x=Math.round(sun.position.x/tex)*tex; sun.position.z=Math.round(sun.position.z/tex)*tex; sun.target.position.x=Math.round(sun.target.position.x/tex)*tex; sun.target.position.z=Math.round(sun.target.position.z/tex)*tex; }
+  { const tex=(sun.shadow.camera.right-sun.shadow.camera.left)/Q.sh, L=_shL.copy(lightDir).normalize(), R=_shR.set(0,1,0).cross(L); if(R.lengthSq()<1e-6) R.set(1,0,0); R.normalize(); const U=_shU.copy(L).cross(R);   // (in the light's own view: whole texels across and up, so shadow edges don't crawl as you move)
+    const c=_shC.set(fo.x,0,fo.z), a=Math.round(c.dot(R)/tex)*tex, b=Math.round(c.dot(U)/tex)*tex, d=c.dot(L);
+    c.copy(R).multiplyScalar(a).addScaledVector(U,b).addScaledVector(L,d); sun.target.position.copy(c); sun.position.copy(c).addScaledVector(L,260); }
   aviMat.emissiveIntensity=ENV.lamp>.3?(Math.sin(T0*3)>.2?3:.3):.6;
   PH_MAT.wet.opacity=.62+.38*ENV.wet; PH_MAT.wet.roughness=.22-.18*ENV.wet; PH_MAT.dry.color.setScalar(1-ENV.wet*.25);
   APT.ring.material.opacity=.45+.35*Math.sin(T0*3); APT.ring.scale.setScalar(1+.08*Math.sin(T0*3)); doorMarksTick(dt); }
-const _up=new THREE.Vector3(0,1,0);
+const _up=new THREE.Vector3(0,1,0); const _shL=new THREE.Vector3(), _shR=new THREE.Vector3(), _shU=new THREE.Vector3(), _shC=new THREE.Vector3();
 // Low quality has no real-time sun shadows; soft dark spots under people and vehicles keep them standing on the ground
 const BLOBS=(()=>{ if(Q.shadows) return null; const [c,g]=cv(64,64); const gr=g.createRadialGradient(32,32,2,32,32,31); gr.addColorStop(0,'rgba(0,0,0,.55)'); gr.addColorStop(.6,'rgba(0,0,0,.32)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,64,64);
   const geo=new THREE.PlaneGeometry(1,1); geo.rotateX(-Math.PI/2);
@@ -4065,19 +4093,25 @@ const SCAT=(()=>{ const CELL=3, PH=isTouch?.6:1, RAD=Math.round((Q===QUAL.low?20
     const t=new THREE.DataTexture(d,W,W); t.colorSpace=THREE.SRGBColorSpace; t.generateMipmaps=true; t.minFilter=THREE.LinearMipmapLinearFilter; t.magFilter=THREE.LinearFilter; t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping; t.needsUpdate=true; return t; })();
   const parts=[]; for(let k=0;k<3;k++){ const p=new THREE.PlaneGeometry(.62,.42); p.translate(0,.21,0); p.rotateY(k*Math.PI/3); parts.push(p); }
   const tg=mergeGeometries(parts); const nrm=tg.attributes.normal; for(let i=0;i<nrm.count;i++) nrm.setXYZ(i,0,1,0);   // lit like the ground it grows from
-  const wind={value:0};
+  const wind={value:0}, fadeR={value:new THREE.Vector2(RAD*.6,RAD)};   // tufts and stones shrink away toward the edge of the patch drawn round you (no ring of grass that walks with you)
   const tm=new THREE.MeshStandardMaterial({map:gt,alphaTest:.42,side:THREE.DoubleSide,roughness:1,color:0xcfc8b8});
-  tm.onBeforeCompile=sh=>{ sh.uniforms.wtime=wind; sh.vertexShader='uniform float wtime;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  const FADE=`#ifdef USE_INSTANCING
+      { vec3 fw=(modelMatrix*vec4(instanceMatrix[3].xyz,1.)).xyz; float fd=distance(fw.xz,cameraPosition.xz); transformed*=1.-smoothstep(fadeR.x,fadeR.y,fd); }
+    #endif`;
+  tm.onBeforeCompile=sh=>{ sh.uniforms.wtime=wind; sh.uniforms.fadeR=fadeR; sh.vertexShader='uniform float wtime;\nuniform vec2 fadeR;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
     #ifdef USE_INSTANCING
       vec3 iw=instanceMatrix[3].xyz; float sway=sin(wtime*1.6+iw.x*.35+iw.z*.27)*.5+sin(wtime*2.7+iw.z*.5)*.25;
       transformed.x+=sway*.07*uv.y; transformed.z+=sway*.04*uv.y;
-    #endif`); };
-  tm.customProgramCacheKey=()=>'tufts';
+    #endif
+    ${FADE}`); };
+  tm.customProgramCacheKey=()=>'tufts-fade';
   const tufts=new THREE.InstancedMesh(tg,tm,NG); tufts.count=0; tufts.frustumCulled=false; tufts.receiveShadow=Q.shadows; scene.add(tufts);
   // stones: a lumpy, flattened ball; every stone gets its own size, squash and colour
   const sg0=new THREE.IcosahedronGeometry(1,1); sg0.deleteAttribute('normal'); sg0.deleteAttribute('uv'); const sg=mergeVertices(sg0); const sp=sg.attributes.position;
   for(let i=0;i<sp.count;i++){ const k=.78+R()*.4; sp.setXYZ(i,sp.getX(i)*k,Math.max(-.25,sp.getY(i))*k,sp.getZ(i)*k); } sg.computeVertexNormals();
-  const stones=new THREE.InstancedMesh(sg,new THREE.MeshStandardMaterial({roughness:.92,metalness:0}),NS); stones.count=0; stones.frustumCulled=false; stones.receiveShadow=Q.shadows; scene.add(stones);
+  const smat=new THREE.MeshStandardMaterial({roughness:.92,metalness:0}); smat.onBeforeCompile=sh=>{ sh.uniforms.fadeR=fadeR; sh.vertexShader='uniform vec2 fadeR;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+    ${FADE}`); }; smat.customProgramCacheKey=()=>'stones-fade';
+  const stones=new THREE.InstancedMesh(sg,smat,NS); stones.count=0; stones.frustumCulled=false; stones.receiveShadow=Q.shadows; scene.add(stones);
   stones.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(NS*3),3);
   const SCOL=[0x8a4a2c,0x9c5a36,0x7a6e62,0xa59a8c,0x5e5650,0xb0805a].map(h=>new THREE.Color(h));
   const cache=new Map(); let lastK=null, lastT=-9;
@@ -4094,10 +4128,15 @@ const SCAT=(()=>{ const CELL=3, PH=isTouch?.6:1, RAD=Math.round((Q===QUAL.low?20
     for(let k=0;k<nS;k++){ const x=cx+(rnd()-.5)*CELL, z=cz+(rnd()-.5)*CELL; if(roadAt(x,z,.5)||inBld(x,z)||(SCAT_OFF.length&&scatOff(x,z))) continue; const big=rnd()<.15; it.s.push(x,z,rnd()*6.28,big?.12+rnd()*.16:.04+rnd()*.07,.45+rnd()*.5,Math.floor(rnd()*SCOL.length)); }
     if(cache.size>30000) cache.clear(); cache.set(key,it); return it; }
   const _M=new THREE.Matrix4(), _P=new THREE.Vector3(), _Q=new THREE.Quaternion(), _S=new THREE.Vector3(), _Y=new THREE.Vector3(0,1,0);
+  let FW=RAD;
   function update(dt){ wind.value=(wind.value+dt*(1+ENV.storm*2.5+ENV.rain))%1000; const on=mode!=='interior'&&LITE.step<1; tufts.visible=stones.visible=on; if(!on) return;
+    if(fadeR.value.y<FW){ fadeR.value.y=Math.min(FW,fadeR.value.y+dt*2); fadeR.value.x=fadeR.value.y*.6; }
     const ci=Math.floor(camera.position.x/CELL), cj=Math.floor(camera.position.z/CELL), k=ci+','+cj; if(k===lastK&&T0-lastT<1.5) return; lastK=k; lastT=T0;
     let ng=0, ns=0; const ta=tufts.instanceMatrix.array, sa=stones.instanceMatrix.array, scol=stones.instanceColor.array;
-    for(const [di,dj] of offs){ if(ng>=NG&&ns>=NS) break; const it=cellItems(ci+di,cj+dj);
+    // how far the drawn patch reaches: whole rings of cells while they fit (dense lawns reach less far), then it fades out before that
+    let reach=RAD+CELL; { let a=0, b=0; for(const [di,dj,d] of offs){ const it=cellItems(ci+di,cj+dj); a+=it.g.length/4; b+=it.s.length/6; if(a>NG||b>NS){ reach=d; break; } } }
+    FW=Math.max(CELL*2.5,reach-CELL*.75); if(fadeR.value.y>FW){ fadeR.value.y=FW; fadeR.value.x=FW*.6; }   // shrinks at once (never past what is drawn), grows back gently
+    for(const [di,dj,d] of offs){ if(d>reach) break; if(ng>=NG&&ns>=NS) break; const it=cellItems(ci+di,cj+dj);
       for(let n=0;n<it.g.length&&ng<NG;n+=4){ _Q.setFromAxisAngle(_Y,it.g[n+2]); const sc=it.g[n+3]; _P.set(it.g[n],0,it.g[n+1]); _S.set(sc,sc*(.8+.4*((n*7)%5)/4),sc); _M.compose(_P,_Q,_S).toArray(ta,ng*16); ng++; }
       for(let n=0;n<it.s.length&&ns<NS;n+=6){ _Q.setFromAxisAngle(_Y,it.s[n+2]); const sc=it.s[n+3]; _P.set(it.s[n],sc*.18,it.s[n+1]); _S.set(sc,sc*it.s[n+4],sc*(.7+it.s[n+4]*.5)); _M.compose(_P,_Q,_S).toArray(sa,ns*16); SCOL[it.s[n+5]].toArray(scol,ns*3); ns++; } }
     tufts.count=ng; stones.count=ns; tufts.instanceMatrix.needsUpdate=true; stones.instanceMatrix.needsUpdate=true; stones.instanceColor.needsUpdate=true; }
