@@ -5,7 +5,13 @@
 // are 18+ and have it on can be asked or ask. Then: ask a player standing near you to be your partner (they accept, say
 // no or block you); partners standing together can ask for a kiss (the other accepts or says no). Everybody near sees the
 // hearts. A "no" keeps you from asking that player again for half an hour; a block for good. Either partner can end it.
-export const LOVE = { near: 12, kissNear: 3.2, askCd: 20e3, kissCd: 15e3, noCd: 30 * 60e3, pend: 60e3, fxR: 60, blockMax: 200 };
+// A yes is only the talking stage: no kiss yet. You become partners by spending time together: every minute the two of you
+// are close (chilling, riding together, gisting) is a point, at most 30 a day, 60 to be partners, so two days at least.
+export const LOVE = { near: 12, kissNear: 3.2, askCd: 20e3, kissCd: 15e3, noCd: 30 * 60e3, pend: 60e3, fxR: 60, blockMax: 200,
+  bondEvery: 60e3, bondNear: 10, need: 60, dayCap: 30, day: 864e5 };
+export function tuneLove(env) {   // tests: a short day and a quick clock
+  for (const [k, e] of [['bondEvery', 'LOVE_BOND_MS'], ['need', 'LOVE_NEED'], ['dayCap', 'LOVE_DAY_CAP'], ['day', 'LOVE_DAY_MS']]) if (env[e]) LOVE[k] = +env[e];
+}
 // the moment somebody born on dob (YYYY-MM-DD) turns 18 (Lagos time), or null if it is not a real date of birth
 export function adultAtFrom(dob, t = Date.now()) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dob || '')); if (!m) return null;
@@ -18,17 +24,22 @@ export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) 
   const raw = db.raw;
   raw.exec('CREATE TABLE IF NOT EXISTS rom(uid INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL);');
   const S = { get: raw.prepare('SELECT data FROM rom WHERE uid=?'), put: raw.prepare('INSERT INTO rom(uid,data) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data') };
-  const blank = () => ({ adultAt: 0, on: 0, partner: 0, pname: '', since: 0, block: [] });
+  const blank = () => ({ adultAt: 0, on: 0, partner: 0, pname: '', since: 0, stage: '', bond: 0, bday: -1, bdayN: 0, block: [] });
+  const dayOf = t => Math.floor((t + 3600e3) / LOVE.day);   // a Lagos day
   function get(uid) { let d = null; try { const r = S.get.get(uid); d = r ? JSON.parse(r.data) : null; } catch (e) { d = null; } d = { ...blank(), ...(d || {}) };
-    if (d.partner && !db.userById(d.partner)) { d.partner = 0; d.pname = ''; }   // the partner's account is gone
+    if (d.partner && !db.userById(d.partner)) single(d);   // the partner's account is gone
+    if (d.partner && !d.stage) d.stage = 'part';
     return d; }
+  const single = d => Object.assign(d, { partner: 0, pname: '', since: 0, stage: '', bond: 0, bday: -1, bdayN: 0 });
   const put = (uid, d) => S.put.run(uid, JSON.stringify(d));
   const adult = d => !!d.adultAt && now() >= d.adultAt;
   const byPid = pid => { for (const D of ctx.online.values()) if (D.p && D.user && D.p.id === pid) return D; return null; };
   const dist = (A, B) => (A.p && B.p && A.p.has && B.p.has) ? Math.hypot(A.p.x - B.p.x, A.p.z - B.p.z) : 1e9;
   const noUntil = new Map();   // "asker:target" -> until (after a no)
   function tag(C, d) { if (!C || !C.p) return; const pt = d.partner ? d.pname : ''; if ((C.p.pt || '') !== pt) { C.p.pt = pt; C.p.lv++; C.p.ver++; } }
-  function me(C, d = get(C.user.id)) { ctx.send(C, { t: 'romme', m: { known: !!d.adultAt, adult: adult(d), on: !!d.on, partner: d.partner ? d.pname : '' } }); tag(C, d); }
+  function me(C, d = get(C.user.id)) {
+    const today = d.bday === dayOf(now()) ? d.bdayN : 0;
+    ctx.send(C, { t: 'romme', m: { known: !!d.adultAt, adult: adult(d), on: !!d.on, partner: d.partner ? d.pname : '', stage: d.partner ? d.stage : '', bond: d.bond | 0, need: LOVE.need, today, cap: LOVE.dayCap } }); tag(C, d); }
   function hello(C) { me(C); }
   function setDob(uid, dob) { const d = get(uid); if (d.adultAt) return false; const a = adultAtFrom(dob, now()); if (!a) return false; d.adultAt = a; put(uid, d); return true; }
   function handle(C, m) {
@@ -46,7 +57,7 @@ export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) 
         if (!adult(d) || !d.on) return err('Turn on romance in the Love app first (18+).');
         if (!D || D === C) return err('That player is not here.');
         const e = get(D.user.id);
-        if (kiss) { if (d.partner !== D.user.id) return err('You can only kiss your partner.'); if (dist(C, D) > LOVE.kissNear) return err('Stand close to your partner first.');
+        if (kiss) { if (d.partner !== D.user.id) return err('You can only kiss your partner.'); if (d.stage !== 'part') return err(`You and ${D.user.name} are still talking. Chill together more first.`); if (dist(C, D) > LOVE.kissNear) return err('Stand close to your partner first.');
           if (t - (C.romKiss || 0) < LOVE.kissCd) return err('Wait small.'); C.romKiss = t; }
         else { if (d.partner) return err('You have a partner already.'); if (dist(C, D) > LOVE.near) return err('Go closer to that player.');
           if (t - (C.romAsk || 0) < LOVE.askCd) return err('Wait small before you ask again.');
@@ -66,22 +77,38 @@ export function createLove({ db, now = () => Date.now(), log = () => {}, ctx }) 
         const a = get(P.from);
         if (P.k === 'rel') {
           if (!adult(d) || !d.on || d.partner || !adult(a) || !a.on || a.partner) return err('That can\'t happen now.');
-          d.partner = P.from; d.pname = A.user.name; d.since = t; a.partner = uid; a.pname = C.user.name; a.since = t; put(uid, d); put(P.from, a);
+          Object.assign(single(d), { partner: P.from, pname: A.user.name, since: t, stage: 'talk' }); Object.assign(single(a), { partner: uid, pname: C.user.name, since: t, stage: 'talk' }); put(uid, d); put(P.from, a);
           ctx.send(A, { t: 'romok', n: C.user.name }); ctx.send(C, { t: 'romok', n: A.user.name }); me(A, a); me(C, d); log('couple', A.user.name, C.user.name); return;
         }
-        if (d.partner !== P.from || dist(A, C) > LOVE.kissNear + 1.5) return err('Too far now.');
+        if (d.partner !== P.from || d.stage !== 'part' || dist(A, C) > LOVE.kissNear + 1.5) return err('Too far now.');
         const fx = JSON.stringify({ t: 'kissfx', a: A.p.id, b: C.p.id, n: [A.user.name, C.user.name] });
         for (const D of ctx.online.values()) if (D.p && D.p.has && Math.hypot(D.p.x - C.p.x, D.p.z - C.p.z) <= LOVE.fxR) D.ws.send(fx);
         return;
       }
       case 'end': {
         if (!d.partner) return err('You have no partner.');
-        const other = d.partner, o = get(other), n = d.pname; d.partner = 0; d.pname = ''; put(uid, d);
-        if (o.partner === uid) { o.partner = 0; o.pname = ''; put(other, o); }
+        const other = d.partner, o = get(other), n = d.pname; single(d); put(uid, d);
+        if (o.partner === uid) { single(o); put(other, o); }
         const O = ctx.online.get(other); if (O) { ctx.send(O, { t: 'romend', n: C.user.name }); me(O, o); }
         me(C, d); return ctx.ok(C, 'rom', `You and ${n} are not together any more.`);
       }
     }
   }
-  return { hello, handle, setDob, get };
+  // every minute: two people in the talking stage, online and close together, get a point (up to the day's limit)
+  function tick() {
+    const t = now(), day = dayOf(t), done = new Set();
+    for (const C of ctx.online.values()) {
+      if (!C.user || done.has(C.user.id)) continue;
+      const d = get(C.user.id); if (!d.partner || d.stage !== 'talk') continue;
+      const D = ctx.online.get(d.partner); if (!D || !D.user) continue;
+      done.add(C.user.id); done.add(D.user.id);
+      const e = get(D.user.id); if (e.partner !== C.user.id || dist(C, D) > LOVE.bondNear) continue;
+      if (d.bday !== day) { d.bday = day; d.bdayN = 0; }
+      if (d.bdayN >= LOVE.dayCap) continue;
+      d.bond = (d.bond | 0) + 1; d.bdayN++; Object.assign(e, { bond: d.bond, bday: d.bday, bdayN: d.bdayN });
+      if (d.bond >= LOVE.need) { d.stage = e.stage = 'part'; for (const [X, x] of [[C, d], [D, e]]) ctx.send(X, { t: 'rompart', n: x.pname }); log('partners', C.user.name, D.user.name); }
+      put(C.user.id, d); put(D.user.id, e); me(C, d); me(D, e);
+    }
+  }
+  return { hello, handle, setDob, get, tick };
 }

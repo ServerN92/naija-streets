@@ -71,7 +71,7 @@ export function createOnline(api) {
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
       case 'cbnme': case 'cbnshift': case 'cbnpaid': api.cbn && api.cbn(m); break;
-      case 'romme': case 'romask': case 'romok': case 'romno': case 'romend': case 'kissfx': api.rom && api.rom(m); break;
+      case 'romme': case 'romask': case 'romok': case 'rompart': case 'romno': case 'romend': case 'kissfx': api.rom && api.rom(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'oga': api.toast(`Your oga ${m.n} collect ₦${(+m.c || 0).toLocaleString('en-NG')} settlement from your work. Rise, and you go be oga too.`, 3.6); if (api.ogaNews) api.ogaNews(m, false); break;
       case 'ogaget': api.toast(`👑 ${m.n} bring you ₦${(+m.c || 0).toLocaleString('en-NG')} settlement.`, 3.2); if (api.ogaNews) api.ogaNews(m, true); break;

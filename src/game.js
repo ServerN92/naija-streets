@@ -10206,20 +10206,21 @@ function npcKiss(L){ const R=LIFE.rel; if(!R) return; player.yaw=Math.atan2(L.x-
 // ---- romance with real players (server/src/love.js): 18+ only (date of birth asked when you make the account), OFF until you turn it on.
 // Ask a player near you to be your partner: they accept, say no or block you. Partners standing close can ask for a kiss: the other accepts or says no.
 // Everybody near sees the hearts. (For now the two face each other and the hearts fly; a real kiss move can come from Blender later.)
-const ROM={known:false,adult:false,on:false,partner:'',req:null,kissT:-99};
+const ROM={known:false,adult:false,on:false,partner:'',stage:'',bond:0,need:60,today:0,cap:30,req:null,kissT:-99};
 const romSend=o=>!!(ON&&ON.send({t:'rom',...o}));
 function romOn(m){
-  if(m.t==='romme'){ const d=m.m||{}; Object.assign(ROM,{known:!!d.known,adult:!!d.adult,on:!!d.on,partner:d.partner||''}); if(PH) PH.event('loveup'); return; }
+  if(m.t==='romme'){ const d=m.m||{}; Object.assign(ROM,{known:!!d.known,adult:!!d.adult,on:!!d.on,partner:d.partner||'',stage:d.stage||'',bond:d.bond|0,need:d.need||60,today:d.today|0,cap:d.cap||30}); if(PH) PH.event('loveup'); return; }
   if(m.t==='err'||m.t==='ok'){ toast(m.m,3.2); if(PH) PH.event('loveup'); return; }
   if(m.t==='romask'){ ROM.req={k:m.k,i:m.i,n:m.n,t:T0}; romCard(); return; }
-  if(m.t==='romok'){ bigMsg('TOGETHER 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} are together now. Stand close and press E to ask for a kiss.`,4.5); return; }
+  if(m.t==='romok'){ bigMsg('TALKING STAGE 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} dey talk now. Chill together (stay close) for a day or two to become partners.`,5); return; }
+  if(m.t==='rompart'){ bigMsg('PARTNERS 💕','rankup',`You and ${m.n}`); toast(`💕 You and ${m.n} are partners now! Stand close and press E to ask for a kiss.`,5); return; }
   if(m.t==='romno'){ toast(m.k==='kiss'?`${m.n} no gree for the kiss now. 😅`:`${m.n} said no. 💔`,3); return; }
   if(m.t==='romend'){ toast(`💔 ${m.n} ended it with you.`,4); return; }
   if(m.t==='kissfx') kissFx(m); }
 function kissFx(m){ if(!ON) return; const me=ON.myId, sp=id=>id===me?{x:player.x,y:player.y||0,z:player.z}:ON.spot(id), A=sp(m.a), B=sp(m.b); if(!A&&!B) return;
   const P=A&&B?{x:(A.x+B.x)/2,y:Math.max(A.y,B.y),z:(A.z+B.z)/2}:(A||B); heartFx(P.x,P.y+1.65,P.z,16,true);
   if(m.a===me||m.b===me){ const o=m.a===me?B:A, who=(m.n||[])[m.a===me?1:0]||''; if(o&&mode==='walk') player.yaw=Math.atan2(o.x-player.x,o.z-player.z); toast(`💋 You and ${who} kiss. Love dey air! 💕`,3.2); } }
-const romKissNear=()=>{ if(!ROM.partner||mode!=='walk'||!ON) return null; for(const o of ON.nearby()) if(o.n===ROM.partner&&!o.v&&o.a!=='k'&&Math.hypot(o.x-player.x,o.z-player.z)<3) return o; return null; };
+const romKissNear=()=>{ if(!ROM.partner||ROM.stage!=='part'||mode!=='walk'||!ON) return null; for(const o of ON.nearby()) if(o.n===ROM.partner&&!o.v&&o.a!=='k'&&Math.hypot(o.x-player.x,o.z-player.z)<3) return o; return null; };
 function romKiss(o){ if(T0-ROM.kissT<15){ toast('Wait small 😅',2); return; } ROM.kissT=T0; player.yaw=Math.atan2(o.x-player.x,o.z-player.z); romSend({a:'kiss',i:o.id}); }
 function romTick(){ if(ROM.req&&T0-ROM.req.t>58){ ROM.req=null; romCardClose(); } }
 function romCardShow(c){ c.hidden=false; c.classList.remove('out'); requestAnimationFrame(()=>c.classList.add('show')); if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} }
@@ -10239,7 +10240,9 @@ function romSection(){ const H='Real players (18+)';
   if(!ROM.known) return {h:H,rows:[{name:'Confirm your age',sub:'Romance with real players is for 18+ only. Put your date of birth once (nobody sees it).',btn:'SET',act:romDob}]};
   if(!ROM.adult) return {h:H,rows:[{name:'Romance with players',sub:'This one na for 18+ only.'}]};
   const rows=[{name:`Romance with players: ${ROM.on?'ON':'OFF'}`,sub:ROM.on?'Players near you can ask you out':'Nobody can ask you out or kiss you',btn:ROM.on?'TURN OFF':'TURN ON',act:()=>romSend({a:'on',on:!ROM.on})}];
-  if(ROM.partner) rows.push({name:`💕 ${ROM.partner}`,sub:'Your partner. Stand close to them and press E to ask for a kiss.',btn:'END',act:()=>{ if(confirm(`End it with ${ROM.partner}?`)) romSend({a:'end'}); }});
+  if(ROM.partner){ const end=()=>{ if(confirm(`End it with ${ROM.partner}?`)) romSend({a:'end'}); };
+    if(ROM.stage==='part') rows.push({name:`💕 ${ROM.partner} · partners`,sub:'Stand close to them and press E to ask for a kiss.',btn:'END',act:end});
+    else rows.push({name:`💕 ${ROM.partner} · talking stage`,sub:`Bond ${ROM.bond}/${ROM.need} · today ${ROM.today}/${ROM.cap}. Chill together: hang out, ride together, gist. Every minute close counts. ${ROM.today>=ROM.cap?'Enough for today, come back tomorrow.':'Partners can kiss.'}`,btn:'END',act:end}); }
   else if(ROM.on){ const f=mode==='drive'&&drive.v?drive.v:player, near=ON.nearby().filter(o=>!o.pt&&Math.hypot(o.x-f.x,o.z-f.z)<12);
     if(!near.length) rows.push({name:'Nobody near you',sub:'Stand near a player (12 steps) to ask them out. They must turn on romance too.'});
     for(const o of near.slice(0,6)) rows.push({name:o.n,sub:'Near you',btn:'ASK OUT',act:()=>romSend({a:'ask',i:o.id})}); }

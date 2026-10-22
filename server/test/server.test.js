@@ -13,7 +13,7 @@ const PROTO = 1;
 function freePort() { return new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); }); }
 before(async () => {
   port = await freePort(); dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
-  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0', LOVE_TEST: '1', LOVE_BOND_MS: '250', LOVE_NEED: '4', LOVE_DAY_CAP: '2', LOVE_DAY_MS: '3000' }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((res, rej) => { proc.stdout.on('data', d => { const t = String(d); for (const m of t.matchAll(/MAILCODE (\S+) (\d{6})/g)) codes[m[1]] = m[2]; if (/listening/.test(t)) res(); }); proc.on('exit', c => rej(new Error('server exited ' + c))); });
 });
 after(() => { proc.kill('SIGTERM'); });
@@ -317,6 +317,11 @@ test('romance between players: 18+ only, opt-in, ask/accept, kiss seen by people
   a.send({ t: 'rom', a: 'ask', i: kId }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /can't take requests/);
   a.send({ t: 'rom', a: 'ask', i: bId }); const ask = await b.next('romask'); assert.deepEqual([ask.k, ask.n], ['rel', 'lover_a']);
   b.send({ t: 'rom', a: 'yes', i: ask.i }); assert.equal((await a.next('romok')).n, 'lover_b'); await b.next('romok');
+  // the talking stage: no kiss yet; time close together makes them partners (2 points a "day", 4 needed)
+  a.send({ t: 'rom', a: 'kiss', i: bId }); assert.match((await a.next(m => m.t === 'err' && m.w === 'rom')).m, /still talking/);
+  const capped = await a.next(m => m.t === 'romme' && m.m.bond >= 2, 4000); assert.equal(capped.m.stage, 'talk');
+  assert.ok(a.got.every(m => m.t !== 'romme' || m.m.today <= 2), 'the day limit holds');
+  assert.equal((await a.next('rompart', 9000)).n, 'lover_b'); await b.next('rompart', 3000); assert.ok(a.got.every(m => m.t !== 'romme' || m.m.today <= 2), 'the day limit holds');
   a.send({ t: 'rom', a: 'kiss', i: bId }); const kq = await b.next(m => m.t === 'romask' && m.k === 'kiss');
   b.send({ t: 'rom', a: 'yes', i: kq.i }); 
   const fx = await w.next('kissfx'); assert.deepEqual(fx.n, ['lover_a', 'lover_b']);

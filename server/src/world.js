@@ -7,7 +7,7 @@ import { createPvp } from './pvp.js';
 import { createLaw } from './law.js';
 import { createBank } from './bank.js';
 import { createCbn } from './cbn.js';
-import { createLove } from './love.js';
+import { createLove, LOVE } from './love.js';
 import { lifeOk, credCap, rankOf, jobBadge } from './life.js';
 import { hashPass, checkPass, newToken, tokenHash, codeHash, newCode, checkName, checkPassText, checkEmail, cleanChat, Bucket, Limits } from './auth.js';
 
@@ -358,7 +358,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       let bt = now();
       timers = [setInterval(tick, TICK), setInterval(slow, 5000), setInterval(pings, 25000), setInterval(prune, 10 * 60e3),
         setInterval(() => { const t = now(); biz.tick((t - bt) / 1000); bt = t; }, 5000), setInterval(() => biz.flush(), 15000), setInterval(() => biz.pushAll(), 2000),
-        setInterval(() => park.tick(), 1000), setInterval(() => park.flush(), 15000), setInterval(() => law.tick(), 2000), setInterval(() => cbn.tick(), 60e3)];
+        setInterval(() => park.tick(), 1000), setInterval(() => park.flush(), 15000), setInterval(() => law.tick(), 2000), setInterval(() => cbn.tick(), 60e3), setInterval(() => love.tick(), LOVE.bondEvery)];
     },
     stop() { timers.forEach(clearInterval); timers = []; biz.flush(); park.flush(); for (const C of conns) { flushCash(C); C.ws.close(1012, 'server restarting'); } },
     biz, park, pvp, law, cbn, love,
