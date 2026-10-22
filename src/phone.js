@@ -38,7 +38,8 @@ const CSS = `
 .iph-bat{width:6.2cqw;height:2.9cqw;border:.35cqw solid rgba(255,255,255,.55);border-radius:.9cqw;padding:.3cqw;box-sizing:border-box;position:relative}
 .iph-bat::after{content:'';position:absolute;right:-1cqw;top:.8cqw;width:.6cqw;height:1.1cqw;border-radius:0 .3cqw .3cqw 0;background:rgba(255,255,255,.55)}
 .iph-bat i{display:block;height:100%;background:#fff;border-radius:.4cqw}
-.iph-home{position:absolute;inset:0;padding:13.5cqw 5.5cqw 0;transition:transform .3s,opacity .3s,filter .3s}
+.iph-home{position:absolute;inset:0;transition:transform .3s,opacity .3s,filter .3s}
+.iph-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:13.5cqw 5.5cqw 30cqw;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:none}.iph-scroll::-webkit-scrollbar{display:none}   /* the apps scroll up under the dock when the screen is short (a phone held sideways) */
 .iph-home.away{transform:scale(.9);opacity:0;filter:blur(4px);pointer-events:none}
 .iph-wid{display:grid;grid-template-columns:1fr 1fr;gap:4.6cqw;margin-bottom:5cqw}
 .iph-w{height:40cqw;border-radius:6cqw;padding:3.6cqw 4cqw;box-sizing:border-box;background:rgba(30,30,40,.35);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);display:flex;flex-direction:column;justify-content:space-between;text-align:left}
@@ -348,13 +349,14 @@ export function createPhone(api) {
   let widT, widW, widC, widWi, widB, w2s = () => { };
   function buildHome() {
     home.textContent = '';
+    const scr = h('div', 'iph-scroll'); scr.addEventListener('pointerdown', e => e.stopPropagation()); scr.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); scr.addEventListener('touchmove', e => e.stopPropagation(), { passive: true });
     const wid = h('div', 'iph-wid');
     const w1 = h('div', 'iph-w'); widT = h('div', 'ph-big'); widW = h('div', 'mid'); w1.append(h('small', null, 'Mushin, Lagos'), widT, widW);
     const w2 = btn('iph-w', [], () => openApp('wallet'), 'Wallet'); widC = h('div', 'mid'); widWi = h('small'); widC.style.fontSize = '6.4cqw'; widB = h('small', null, 'Wallet'); w2.append(widB, widC, widWi);
     w2s = () => { const b = BK.me && bankOf(BK.me.bank); w2.style.background = b ? `linear-gradient(135deg,${b.c}cc,${b.c2}cc)` : 'linear-gradient(135deg,rgba(15,155,88,.75),rgba(11,94,60,.75))'; }; w2s();
-    wid.append(w1, w2); home.append(wid);
-    const grid = h('div', 'iph-grid'); grid.dataset.g = 'apps'; APPS.forEach(a => grid.append(appIcon(a))); home.append(grid);
-    const dots = h('div', 'iph-dots'); dots.append(h('i', 'on'), h('i')); home.append(dots);
+    wid.append(w1, w2); scr.append(wid);
+    const grid = h('div', 'iph-grid'); grid.dataset.g = 'apps'; APPS.forEach(a => grid.append(appIcon(a))); scr.append(grid);
+    const dots = h('div', 'iph-dots'); dots.append(h('i', 'on')); scr.append(dots); home.append(scr);
     const dock = h('div', 'iph-dock'); dock.dataset.g = 'dock'; DOCK.forEach(a => dock.append(appIcon(a))); home.append(dock);
     refreshHome(); setBadges();
   }

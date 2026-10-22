@@ -10027,6 +10027,18 @@ function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const do
   else toast(mpick([`🎉 You don settle as ${J.n.toLowerCase()}! Keep the money coming: rent a better place, then buy back your flat.`,`🎉 Correct ${J.n.toLowerCase()}! Lagos dey see you now. Save, rent a room, buy back your flat.`]),7);
   hustleHUD(true); }
 // show the way to where a task happens
+// where a task happens (the step's own place, or the usual place for that kind of work) and how to do it
+function stepPlace(S){ if(!S) return null; const g=S.go&&S.go(); if(g) return g; const f=mode==='drive'&&drive.v?drive.v:player;
+  if(S.ev==='fare'){ const st=nearestOf(SPOTS.filter(sp=>sp.type==='stop'),f.x,f.z); return st&&{x:st.x,z:st.z,name:'Bus stop · people wait here'}; }
+  if(S.ev==='sachet'){ if(LIFE.hk>0) return null; const k=KIOSK_NEAR(f.x,f.z); return k&&{...kioskFront(k),name:'Kiosk · pure water'}; }
+  if(S.ev==='farm_harvest'||S.ev==='farm_sell') return FARM&&FARM.pos?{...FARM.pos(),name:'Your farm'}:null;
+  if(S.ev==='ticket') return SITES.park?{x:SITES.park.cx,z:SITES.park.cz,name:'Mushin Motor Park'}:null;
+  if(/okada/i.test(S.t)&&myCar) return {x:myCar.x,z:myCar.z,name:'Your okada'};
+  return null; }
+const STEP_HOW={fare:'Ride your okada along the road. People by the road wave you down: stop by them, they climb on, drop them where they say.',delivery:'Open OYA WORK on your phone, take a job, go pick the package and carry it to the address. Any way you like: walk, okada, bus.',
+  sachet:'Walk up to people on the street and press E to sell a sachet (₦50). When the bag finishes, buy another at a kiosk (₦300).',water_bag:'Walk to the kiosk and press E: a bag of 20 sachets is ₦300.',
+  farm_harvest:'At your farm: press E on a bed to plant seeds, water it, come back when it is ready and harvest.',farm_sell:'Sell at the market buyer by the farm gate, or wait for a pickup. The gate also buys.',
+  ticket:'Stand at a bus stop or the park loading bays and stop the danfos: press E to collect the ticket money.'};
 function hustleGo(S,say=true){ const g=S&&S.go&&S.go(); if(g&&mode!=='interior'){ mapView.setDest(g.x,g.z,{name:g.name||'Your task',x:g.x,z:g.z,work:true}); if(say) toast(`Your map don show the way to ${g.name||'your task'}.`,2.6); } }
 // the line on the screen: what to do now
 function hustleHUD(force=false){ const e=$('#task'); if(!e) return; const J=myJob(), S=stepOf();
@@ -10060,7 +10072,11 @@ function hustlePick(J){ $('#hus').hidden=true; const fresh=HUS.first&&!LIFE.job;
   $('#stJob').textContent=`${J.e} ${J.n}`; $('#stTask').textContent=`First task: ${S.t}`; $('#story').hidden=false; }
 $('#stGo').addEventListener('click',()=>{ hustleClose(); const S=stepOf(); if(S) hustleGo(S); });
 $('#husLater').addEventListener('click',()=>{ hustleClose(); toast('Pick your hustle anytime: MY HUSTLE on your phone.',3.5); });
-$('#task').addEventListener('click',()=>{ if(!LIFE.job){ hustleOpen(false); return; } openPhone(); if(PHONE.open&&PH&&PH.openTo) PH.openTo('hustle'); else{ const S=stepOf(); toast(S?`Now: ${S.t}`:'All your tasks are done.',3); } });
+// tap the line at the top: the map shows the way there (green route) and a toast tells you how; tap again for the Hustle app
+$('#task').addEventListener('click',()=>{ if(!LIFE.job){ hustleOpen(false); return; } const S=stepOf(), G=S?null:lifeGoal(), g=S?stepPlace(S):(G&&G.go&&G.go()), how=S&&(S.how||STEP_HOW[S.ev]);
+  if(g&&mode!=='interior'&&!(HUS.tapT&&T0-HUS.tapT<4)){ HUS.tapT=T0; mapView.setDest(g.x,g.z,{name:g.name||(S?S.t:G.t),x:g.x,z:g.z,work:true}); toast(`📍 ${g.name}: follow the green line on the road.${how?' '+how:''} (Tap again for My Hustle)`,how?8:4); return; }
+  if(how&&!(HUS.tapT&&T0-HUS.tapT<4)){ HUS.tapT=T0; toast(`${S.t}: ${how} (Tap again for My Hustle)`,8); return; }
+  HUS.tapT=0; openPhone(); if(PHONE.open&&PH&&PH.openTo) PH.openTo('hustle'); });
 // the first time you play: you start where your job is (so a crowd of new players is spread over Lagos), women in their room
 function startFresh(J){ if(isF()&&ROOMLET&&!LIFE.flat){ LIFE.home='room'; LIFE.rent=Math.max(LIFE.rent,7*DAY_S); LIFE.rented=Math.max(1,LIFE.rented); LIFE.ntc=0; lifePlaces(); }
   let p=J.start?J.start():null; if(!p&&isF()&&ROOMLET) p={...ROOMLET.out};
@@ -10070,12 +10086,12 @@ function startFresh(J){ if(isF()&&ROOMLET&&!LIFE.flat){ LIFE.home='room'; LIFE.r
 // MY HUSTLE on your phone
 function hustleApp(){ const J=myJob(), rows=[];
   if(!J) return {title:'My Hustle',sections:[{rows:[{name:'You never pick your hustle',sub:'Okada, dispatch, pure water, farm, park union, police or business',btn:'PICK',act:()=>{ closePhone(); hustleOpen(false); }}]}]};
-  J.steps.forEach((S,i)=>rows.push({name:`${i<LIFE.tk?'✅':i===LIFE.tk?'👉':'⬜'} ${S.t}`,sub:i===LIFE.tk&&S.n?`${Math.min(LIFE.tkn|0,S.n)} of ${S.n}`:i<LIFE.tk?'Done':i===LIFE.tk?'Now':'Later',warn:i===LIFE.tk,btn:i===LIFE.tk&&S.go?'SHOW WAY':null,act:()=>{ hustleGo(S); closePhone(); }}));
+  J.steps.forEach((S,i)=>{ const now=i===LIFE.tk, how=STEP_HOW[S.ev]||'', g=now&&stepPlace(S); rows.push({name:`${i<LIFE.tk?'✅':now?'👉':'⬜'} ${S.t}`,sub:now?`${S.n?`${Math.min(LIFE.tkn|0,S.n)} of ${S.n} · `:''}${how||'Now'}`:i<LIFE.tk?'Done':'Later',warn:now,btn:g?'SHOW WAY':now&&how?'HOW':null,act:()=>{ if(g){ mapView.setDest(g.x,g.z,{name:g.name||S.t,x:g.x,z:g.z,work:true}); closePhone(); toast(`📍 ${g.name}: follow the green line.${how?' '+how:''}`,how?8:4); } else toast(`${S.t}: ${how}`,8); }}); });
   const r=jobRank(J.id), nx=J.id!=='police'&&r<JOB_PTS.length-1?JOB_PTS[r+1]:null, og=ogaHere();
   const rank=[{name:`${r>=3?'👑':'⭐'} ${jobTitle(J.id)}`,sub:J.id==='police'?'Police ranks go up with arrests (the force keeps the book)':`Pay +${Math.round((JOB_PAY[r]-1)*100)}%${OGA_PAY[r]?` · settlement ${naira(OGA_PAY[r])} every day`:''}`},
     ...(nx!=null?[{name:`Next: ${jobTitle(J.id,r+1)}`,sub:`${Math.floor(jobPts(J.id))} of ${nx} points · from ${JOB_HOW[J.id]}${r+1>=3?' · then you are an oga':''}`}]:[]),
     ...(og?[{name:og.me?(r>=3?'👑 You be the oga for this area':'No oga around: rise and become one'):`👑 Oga for this area: ${og.n}`,sub:og.me?(r>=3?'Players of your hustle near you pay you settlement from their work':'Nobody of your hustle near you has a higher rank'):r>=3?`${jobTitle(J.id,og.r)} · a bigger oga than you (ogas pay nobody)`:`${jobTitle(J.id,og.r)} · takes ${r>=2?5:10}% of your work pay while you work near am. Rise to oga and you pay nobody`}]:[])];
-  const D=LIFE.tk>=J.steps.length?stepOf():null, today=LIFE.tk>=J.steps.length?[{h:'Today',rows:[D?{name:`👉 ${D.t}`,sub:`${D.n?`${Math.min(LIFE.tkn|0,D.n)} of ${D.n} · `:''}bonus ${naira(DAY_BONUS(jobRank(J.id)))} when you finish`,warn:true,btn:D.go&&D.go()?'SHOW WAY':null,act:()=>{ hustleGo(D); closePhone(); }}:{name:'✅ Work done for today',sub:lifeGoal().t}]}]:[];
+  const D=LIFE.tk>=J.steps.length?stepOf():null, today=LIFE.tk>=J.steps.length?[{h:'Today',rows:[D?{name:`👉 ${D.t}`,sub:`${D.n?`${Math.min(LIFE.tkn|0,D.n)} of ${D.n} · `:''}bonus ${naira(DAY_BONUS(jobRank(J.id)))} when you finish${STEP_HOW[D.ev]?' · '+STEP_HOW[D.ev]:''}`,warn:true,btn:stepPlace(D)?'SHOW WAY':null,act:()=>{ const g=stepPlace(D); if(g){ mapView.setDest(g.x,g.z,{name:g.name||D.t,x:g.x,z:g.z,work:true}); closePhone(); toast(`📍 ${g.name}: follow the green line.`,4); } }}:{name:'✅ Work done for today',sub:lifeGoal().t}]}]:[];
   return {title:'My Hustle',sections:[{h:`${J.e} ${J.n}`,rows:[{name:J.d,sub:LIFE.tk>=J.steps.length?'First tasks done. Every day: today\'s target, then your bonus.':`Task ${LIFE.tk+1} of ${J.steps.length}`}]},...today,{h:'Your rank in this hustle',rows:rank},{h:'First tasks',rows},
     {rows:[{name:'Change your hustle',sub:'Your tasks start again',btn:'CHANGE',act:()=>{ closePhone(); hustleOpen(false); }}]}]}; }
 // coming back: where you are and what to do now
