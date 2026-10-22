@@ -23,7 +23,10 @@ export function createPolice(api) {
     api.mapPlace({ name: 'Police front desk', sub: 'Mushin police station · join the police, go on duty (online)', kind: 'place', x: ST.desk.x, z: ST.desk.z, id: 'police_desk' });
     return ST.desk;
   }
-  const atDesk = () => { const D = desk(); if (!D || api.mode() !== 'walk') return false; const p = api.player(); return Math.hypot(p.x - D.x, p.z - D.z) < DESK_R; };
+  // the police posts at the checkpoints on the big roads: you can join and go on duty there too (so the force is not all in one yard)
+  const posts = () => (api.posts ? api.posts() : []);
+  const atDesk = () => { if (api.mode() !== 'walk') return false; const p = api.player(), D = desk(); if (D && Math.hypot(p.x - D.x, p.z - D.z) < DESK_R) return true;
+    return posts().some(q => Math.hypot(p.x - q.x, p.z - q.z) < 4); };
   const duty = () => !!(ST.me && ST.me.duty);
   const myStars = () => (ST.me ? ST.me.stars | 0 : 0);
 
@@ -40,7 +43,7 @@ export function createPolice(api) {
   }
   const stars = n => '★'.repeat(Math.max(0, Math.min(5, n)));
   function prompt() {
-    if (atDesk()) return !api.signedIn() ? 'Police front desk · sign in online to join the police' : ST.me && ST.me.cop ? `Police front desk · ${ST.me.rank} ${api.myName()} · ${duty() ? 'on duty' : 'off duty'}` : 'Police front desk · join the police';
+    if (atDesk()) return !api.signedIn() ? 'Police desk · sign in online to join the police' : ST.me && ST.me.cop ? `Police front desk · ${ST.me.rank} ${api.myName()} · ${duty() ? 'on duty' : 'off duty'}` : 'Police front desk · join the police';
     const a = arrestable(); if (a) return a.a === 'k' ? `Arrest ${a.n} ${stars(a.w)}` : `${a.n} ${stars(a.w)} is wanted · knock am down, then arrest`;
     const o = officer(); if (o) return `Police: ${o.n} · surrender or settle`;
     return null;

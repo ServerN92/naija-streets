@@ -17,6 +17,8 @@ export const KINDS = {
   pin:     { label: 'Your pin', color: '#ff3b30', glyph: '•' },
 };
 export const GPS_RED = '#ff3b30';   // the GPS line and the pins: red, easy to see on the yellow-brown streets
+export const GPS_GREEN = '#22c55e';   // the way to your work (your hustle's task, a delivery, your passengers, the farm buyer)
+export const isWork = p => !!(p && (p.work || p.job));
 const FILTERS = [['all', 'All'], ['guns', 'Guns'], ['food', 'Food'], ['shop', 'Shops'], ['service', 'Services'], ['office', 'Offices'], ['police', 'Police'], ['hotel', 'Hotels'], ['club', 'Clubs'], ['cars', 'Cars'], ['sport', 'Sport'], ['place', 'Places']];
 
 export class MapView {
@@ -118,8 +120,9 @@ export class MapView {
     if (this.detail && W / v.s < 900) { const hw = W / 2 / v.s, hh = H / 2 / v.s; this.detail(g, v.cx - hw, v.cz - hh, v.cx + hw, v.cz + hh); }
     if (this.route && this.route.length > 1) {
       g.lineJoin = 'round'; g.lineCap = 'round';
-      g.strokeStyle = 'rgba(40,0,0,.7)'; g.lineWidth = 10 / v.s + 4; g.beginPath(); this.route.forEach(([x, z], i) => i ? g.lineTo(x, z) : g.moveTo(x, z)); g.stroke();
-      g.strokeStyle = GPS_RED; g.lineWidth = 6 / v.s + 2.5; g.stroke();
+      const wk = isWork(this.dest && this.dest.place);
+      g.strokeStyle = wk ? 'rgba(0,40,10,.7)' : 'rgba(40,0,0,.7)'; g.lineWidth = 10 / v.s + 4; g.beginPath(); this.route.forEach(([x, z], i) => i ? g.lineTo(x, z) : g.moveTo(x, z)); g.stroke();
+      g.strokeStyle = wk ? GPS_GREEN : GPS_RED; g.lineWidth = 6 / v.s + 2.5; g.stroke();
     }
     g.restore();
     // street names (round joins: no spikes on letters like M and A)

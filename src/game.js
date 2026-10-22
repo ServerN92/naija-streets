@@ -24,7 +24,7 @@ import { createBusiness } from './business.js?v=39d4f80f92';
 import { createOnline } from './online.js?v=39d4f80f92';
 import { createPolice } from './police.js?v=39d4f80f92';
 import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=39d4f80f92';
-import { MapView, GPS_RED } from './mapview.js?v=39d4f80f92';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=39d4f80f92';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
 const BUILD='39d4f80f92';
@@ -3272,7 +3272,7 @@ const fmtDist=m=>m<1000?Math.round(m/10)*10+' m':(m/1000).toFixed(1)+' km';
 const mapView=new MapView({root:$('#bigmap'),canvas:$('#bmCanvas'),image:null,bounds:MMB,places:PLACES,streets:STREETS,routeTo,fmtDist,
   detail:(g,x0,z0,x1,z1)=>drawWorldMap(g,x0,z0,x1,z1),
   getPlayer:()=>{ if(mode==='interior'){ const o=ROOM.out(); return {x:o.x,z:o.z,dir:0}; } const v=mode==='drive'?drive.v:null; return v?{x:v.x,z:v.z,dir:Math.PI/2-v.h}:{x:player.x,z:player.z,dir:Math.PI-player.yaw}; },
-  onRoute:d=>{ if(d) toast('GPS set: follow the red line'); },
+  onRoute:d=>{ if(d&&toastT<=0) toast(isWork(d.place)?'GPS: follow the green line to your work':'GPS set: follow the red line'); },
   nameAt:(x,z)=>{ let best=null, bd=150; for(const e of ROADS){ if(!e.name) continue; const A=nodes[e.a]; if(Math.abs(A.x-x)>e.len+bd||Math.abs(A.z-z)>e.len+bd) continue; const d=segD(e,x,z)-e.hw; if(d<bd){ bd=d; best=e.name; } }   // the named street nearest your pin
     const ar=districtAt(x,z); return best&&best!==ar?best+', '+ar:ar; }, touch:()=>touchUI,
   onPin:p=>{ if(p) toast(touchUI?'Pin dropped! Tap SET GPS to go there, or 🚕 CAB to ride there.':'Pin dropped! Click SET GPS to go there, or 🚕 CAB to ride there.',3); },
@@ -3295,7 +3295,7 @@ function drawMinimap(){ if(!mmCW) mmCW=mm.clientWidth||190; const S=mm.width, R0
   const phi=Math.atan2(Math.cos(camState.yaw),Math.sin(camState.yaw)), th=-Math.PI/2-phi;
   mg.translate(R0,R0); mg.rotate(th); mg.scale(sc,sc); mg.translate(-px,-pz);
   mg.drawImage(MINI.c,MINI.x-MINI.R,MINI.z-MINI.R,MINI.R*2,MINI.R*2);
-  const rt=mapView.route; if(rt&&rt.length>1){ mg.lineJoin='round'; mg.lineCap='round'; mg.strokeStyle='rgba(40,0,0,.75)'; mg.lineWidth=10.5; mg.beginPath(); rt.forEach(([x,z],i)=>i?mg.lineTo(x,z):mg.moveTo(x,z)); mg.stroke(); mg.strokeStyle=GPS_RED; mg.lineWidth=7; mg.stroke(); }
+  const rt=mapView.route; if(rt&&rt.length>1){ const wk=isWork(mapView.dest&&mapView.dest.place); mg.lineJoin='round'; mg.lineCap='round'; mg.strokeStyle=wk?'rgba(0,40,10,.75)':'rgba(40,0,0,.75)'; mg.lineWidth=10.5; mg.beginPath(); rt.forEach(([x,z],i)=>i?mg.lineTo(x,z):mg.moveTo(x,z)); mg.stroke(); mg.strokeStyle=wk?GPS_GREEN:GPS_RED; mg.lineWidth=7; mg.stroke(); }
   for(const v of vehicles){ if(v===drive.v) continue; if(Math.abs(v.x-px)>200||Math.abs(v.z-pz)>200) continue; mg.save(); mg.translate(v.x,v.z); mg.rotate(-v.h); mg.fillStyle=v.type==='police'?'#7fa6ff':'#e7e1d3'; mg.fillRect(-2.6,-1.1,5.2,2.2); mg.restore(); }
   mg.restore();
   const c=Math.cos(th), s=Math.sin(th);
@@ -3805,7 +3805,7 @@ function fareIn(cast,v){ let T=FARE.trip; const n=T?T.pax.length:0, st=fareSeat(
   if(!T){ const all=PLACES.filter(pl=>pl.name&&pl.kind!=='guns'&&!(pl.minor&&pl.sub!=='Neighbourhood')&&pl.name!=='Footbridge'), here={x:v.x,z:v.z}; let dest=null;
       for(let t=0;t<60&&!dest;t++){ const pl=mpick(all), d=Math.hypot(pl.x-here.x,pl.z-here.z); if(d>180&&d<950) dest=pl; } if(!dest) dest=mpick(all);
       const dk=kerbPoint(dest.x,dest.z), d=Math.hypot(dk.x-v.x,dk.z-v.z);
-      T=FARE.trip={v,pax:[],dest:{...dest,rx:dk.x,rz:dk.z},d,each:farePay(d*1.25,v.type),t:0,limit:d*1.35/6+50};
+      T=FARE.trip={v,pax:[],dest:{...dest,rx:dk.x,rz:dk.z,work:true},d,each:farePay(d*1.25,v.type),t:0,limit:d*1.35/6+50};
       mapView.setDest(dk.x,dk.z,T.dest); }
   T.pax.push({cast,h}); const tot=T.each*T.pax.length;
   toast(T.pax.length===1?`Passenger: "Driver, take me go ${T.dest.name}." · ${naira(T.each)} when you drop am.`:`Another passenger enter for ${T.dest.name} · ${naira(tot)} for all of them.`,3.4); }
@@ -3813,7 +3813,7 @@ function fareOut(paid){ const T=FARE.trip; if(!T) return; FARE.trip=null; const 
   T.pax.forEach((o,i)=>{ if(o.h&&o.h.root.parent) o.h.root.parent.remove(o.h.root); const q=freePed(); if(!q) return; wakePed(q,o.cast); const sd=i%2?-1:1, x=v.x+hz*sd*(v.c.def.W/2+.8)-hx*i*.6, z=v.z-hx*sd*(v.c.def.W/2+.8)-hz*i*.6;
     Object.assign(q,{x,z,y:groundY(x,z),yaw:Math.atan2(hz*sd,-hx*sd),state:'walk',speed:.6,startT:.8}); q.seq=(q.seq||0)+1; replanPed(q); });
   mapView.clearRoute(); if(JOB.state) jobRoute(); else if(RIDE.state==='riding') mapView.setDest(RIDE.dest.x,RIDE.dest.z,RIDE.dest);
-  if(paid){ const late=T.t>T.limit, pay=Math.round(T.each*T.pax.length*(late?.6:1)*(T.v===myCar?jobMul('okada'):1)/50)*50; addCash(pay); JOBEV('fare',T.pax.length);
+  if(paid){ const late=T.t>T.limit, pay=Math.round(T.each*T.pax.length*(late?.6:1)*(T.v===myCar?jobMul('okada'):1)/50)*50; addCash(pay,T.v===myCar&&LIFE.job==='okada'?'okada':''); JOBEV('fare',T.pax.length);
     toast(late?`You reach ${T.dest.name} but you take too long. Passengers pay only ${naira(pay)}. "Driver, you slow o!"`:`You reach ${T.dest.name}! Passengers pay ${naira(pay)}. "Thank you driver, God bless!"`,3.6); }
   else toast(mpick(['"Driver, you wan leave us for road?!" Your passengers got down without paying.','"Na wa for this driver o!" Your passengers left without paying.']),3.2); }
 function updateFare(dt){ const T=FARE.trip, v=mode==='drive'&&!drive.ride?drive.v:null;
@@ -6308,7 +6308,7 @@ function updateJob(dt){ if(!JOB.state) return; if(JOB.ring&&JOB.ring.visible){ J
   if(JOB.state==='pick'){ const k=JOB.pick; if(mode!=='interior'&&slow&&Math.hypot(f.x-k.x,f.z-k.z)<(mode==='drive'?5:2.6)){ JOB.state='drop'; JOB.t=0; jobRing(JOB.drop.x,JOB.drop.z,0x3fc27a,'DROP OFF'); jobRoute();
       toast(`You collected ${JOB.what}. Take am reach ${JOB.drop.name} in ${fmtClock(JOB.limit)}!`,3); } }
   else if(JOB.state==='drop'){ JOB.t+=dt; const k=JOB.drop;
-    if(mode!=='interior'&&slow&&Math.hypot(f.x-k.x,f.z-k.z)<(mode==='drive'?5:2.6)){ const late=JOB.t>JOB.limit, pay=Math.round((late?JOB.pay*.3:JOB.pay)*jobMul('dispatch')/50)*50; addCash(pay); JOBEV('delivery');
+    if(mode!=='interior'&&slow&&Math.hypot(f.x-k.x,f.z-k.z)<(mode==='drive'?5:2.6)){ const late=JOB.t>JOB.limit, pay=Math.round((late?JOB.pay*.3:JOB.pay)*jobMul('dispatch')/50)*50; addCash(pay,LIFE.job==='dispatch'?'dispatch':''); JOBEV('delivery');
       endJob(late?`Late! The customer vex. Na only ${naira(pay)} dem pay you.`:`Delivered! ${JOB.who} paid you ${naira(pay)}. "Correct person!"`,3.4); return; } }
   const left=JOB.state==='drop'?JOB.limit-JOB.t:null, txt=JOB.state==='pick'?`Pick up: ${JOB.pick.name}`:`Deliver to ${JOB.drop.name} · ${left>0?fmtClock(left):'late!'}`;
   if(txt!==JOB.shownT){ JOB.shownT=txt; const e=$('#job'); e.textContent=txt; e.hidden=mode==='interior'; e.classList.toggle('late',left!==null&&left<=15); } }
@@ -6328,7 +6328,7 @@ function workUI(b,el,btn){ b.append(el('h3','ph-h','OYA WORK'));
    G next to someone with a weapon in your hand robs them (shop and market sellers carry more). Jobs on the phone pay too. */
 const CASH={n:5000,shown:null,drops:[],geo:null,mat:null,flashT:0,flash:0};
 try{ const c=localStorage.getItem('naija-cash'); if(c!==null&&isFinite(+c)) CASH.n=+c; }catch(e){}
-function addCash(d){ d=Math.round(d); if(!d) return; if(d>0) credCash(d); CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
+function addCash(d,j){ d=Math.round(d); if(!d) return; if(d>0) credCash(d); CASH.n=Math.max(0,CASH.n+d); if(PH) PH.event('cash',{d}); if(ON) ON.cash(d,j); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} CASH.flash=d>0?1:-1; CASH.flashT=1.4; }
 const CASH_OF={areaboy:[300,3500],mama:[500,4500],baba:[800,6000],suit_lady:[3000,15000],lady_red:[500,5000],lady_black:[500,5000],hawker:[200,2500],schoolboy:[50,600],girl:[500,4000],police_m:[2000,9000],police_f:[2000,9000]};
 const cashOf=(c,k=1)=>{ const r=CASH_OF[c]||[300,3000]; return Math.max(50,Math.round(mrr(r[0],r[1])*k/50)*50); };
 function dropCash(x,z,amt){ if(amt<=0||mode==='interior') return;
@@ -9293,7 +9293,7 @@ const RB_FEE={okada:100,keke:100,bike2:100,sbike:100,danfo:300,bus:300,benz:500,
       if(CPB.list.some(r=>Math.hypot(r.x-kx,r.z-kz)<350)) continue;
       const ry=Math.atan2(-nx,-nz); CPB.list.push({x:kx,z:kz,ry,e,fx:e.fx,fz:e.fz,nx,nz,guards:[],passT:-99,talked:-99,alarmT:-99,side:0,said:-99,name:e.name||'the road'}); break; } }
   for(const r of CPB.list){ r.at=(lx,lz)=>{ const c=Math.cos(r.ry), s=Math.sin(r.ry); return {x:r.x+lx*c+lz*s,z:r.z-lx*s+lz*c}; }; 
-    PLACES.push({name:'Police checkpoint',sub:`${r.name} · they stop motors: roger them or show your papers`,kind:'place',x:r.x,z:r.z}); }
+    PLACES.push({name:'Police checkpoint',sub:`${r.name} · they stop motors: roger them or show your papers · police post: join the force, go on duty`,kind:'place',x:r.x,z:r.z}); }
   farmGlb('cp_roadblock').then(M=>{ for(const r of CPB.list) for(const [lx,lz,hx,hz,h] of RB_SPOTS.walls){ const p=r.at(lx,lz); addOB(p.x,p.z,hx,hz,-r.ry,h); }   // solid only once you can see it
     const items=CPB.list.map(r=>({x:r.x,y:groundY(r.x,r.z),z:r.z,ry:r.ry,sc:1}));
     const levels=M.geo1?[{geo:M.geo,mat:M.mat,dist:Q.lod0*1.1,shadow:true},{geo:M.geo1,mat:M.mat1,dist:Q.draw*.8,shadow:false}]:[{geo:M.geo,mat:M.mat,dist:Q.draw*.8,shadow:true}];
@@ -9458,13 +9458,16 @@ const JOBS=[
       {t:'Join the union at Mushin Motor Park (play online)',ok:()=>!!(UNION&&UNION.member()),go:()=>SITES.park?{x:SITES.park.cx,z:SITES.park.cz,name:'Mushin Motor Park'}:null},
       {t:'Collect 5 tickets from danfos',ev:'ticket',n:5}]},
   {id:'police',n:'Police officer',e:'👮🏾',now:0,d:'Join the force at Mushin police station (play online, no stars), go on duty and arrest wanted people.',
-    start:()=>({x:STATION.front.x,z:STATION.front.z,ry:STATION.front.ry}),
-    steps:[{t:'Join the force at the front desk and go on duty (play online)',ok:()=>!!(POLICE&&POLICE.duty&&POLICE.duty()),go:()=>({x:STATION.front.x,z:STATION.front.z,name:'Mushin Police Station'})},
+    start:()=>{ const q=policeDesk(); return {x:q.x,z:q.z,ry:q.ry||0}; },
+    steps:[{t:'Join the force at a police desk and go on duty (play online)',ok:()=>!!(POLICE&&POLICE.duty&&POLICE.duty()),go:()=>policeDesk()},
       {t:'Patrol on duty for 10 minutes',ok:()=>HUS.duty>=600},{t:'Patrol on duty for 30 minutes',ok:()=>HUS.duty>=1800}]},
   {id:'boss',n:'Business owner',e:'🏪',now:0,d:'Save up and buy a buka, a barbing salon or a POS stand (play online). Customers pay you, even when you are away.',
     steps:[{t:'Save ₦60,000 (hustle first: okada, dispatch, pure water…)',ok:()=>CASH.n>=60000||ownBiz()},{t:'Buy a buka, barbing salon or POS stand (play online)',ok:ownBiz},
       {t:'Run your business for 30 minutes',ok:()=>HUS.biz>=1800}]}];
 const HUS={duty:0,biz:0,t:0,shown:'',first:false,open:false};
+// the nearest place to join the police and go on duty: the station's front desk or a checkpoint's police post
+function policeDesk(){ const f=mode==='drive'&&drive.v?drive.v:player, L=[{x:STATION.front.x,z:STATION.front.z,ry:STATION.front.ry,name:'Mushin Police Station'},...CPB.list.map(r=>({x:r.x,z:r.z,ry:r.ry,name:'Police post · '+r.name}))];
+  let b=L[0], bd=1e18; for(const q of L){ const d=(q.x-f.x)**2+(q.z-f.z)**2; if(d<bd){ bd=d; b=q; } } return b; }
 /* ---- rising in your hustle: the work itself gives you points (a passenger dropped, a delivery, a sachet sold, a harvest,
    a ticket, an arrest); points make your rank in the job. Every rank pays more, and from the fourth you are an oga: your
    boys bring you settlement every game day, and people see the crown over your name. The police use the force's own ranks
@@ -9489,9 +9492,9 @@ function jobPoint(id,n){ if(!id||!JOB_RANK[id]||!(n>0)||LIFE.job!==id) return; c
 function ogaTick(){ const r=jobRank(); if(!LIFE.job||r<3||!OGA_PAY[r]) return; const day=Math.floor(CLOCK.now()/(CLOCK.DAY_MINUTES*60000)); if(LIFE.ogd===day) return;
   LIFE.ogd=day; addCash(OGA_PAY[r]); cashHUD(); lifeSave(true); toast(`👑 Your boys bring settlement: ${naira(OGA_PAY[r])}. Oga at the top!`,4.5); }
 // who is the oga around here: the highest rank of your hustle among the players near you (and you)
-function ogaHere(){ if(!LIFE.job) return null; let best={n:'You',r:jobRank(),me:true};
-  try{ for(const q of (ON&&ON.nearby?ON.nearby():[])){ const [j,r]=(q.jb||'').split(':'); if(j!==LIFE.job) continue; const rr=+r||0; if(rr>best.r) best={n:q.n,r:rr,me:false}; } }catch(e){}
-  return best; }
+function ogaHere(){ if(!LIFE.job) return null; const mine=jobRank(); let best=mine>=3?{n:'You',r:mine,me:true}:null;
+  try{ for(const q of (ON&&ON.nearby?ON.nearby():[])){ const [j,r]=(q.jb||'').split(':'), rr=+r||0; if(j!==LIFE.job||rr<3) continue; if(!best||rr>best.r) best={n:q.n,r:rr,me:false}; } }catch(e){}
+  return best||{n:'',r:mine,me:true}; }
 const jobLabel=jb=>{ const [j,r]=(jb||'').split(':'), J=jobOf(j), rr=+r||0; if(!J||rr<3) return ''; return `👑 ${(JOB_RANK[j]||[])[rr]||''}`; };   // over an oga's name
 const jobOf=id=>JOBS.find(j=>j.id===id)||null;
 const myJob=()=>jobOf(LIFE.job);
@@ -9503,7 +9506,7 @@ function hustleCheck(){ const J=myJob(), S=stepOf(); if(!J||!S) return; const do
   else toast(mpick([`🎉 You don settle as ${J.n.toLowerCase()}! Keep the money coming: rent a better place, then buy back your flat.`,`🎉 Correct ${J.n.toLowerCase()}! Lagos dey see you now. Save, rent a room, buy back your flat.`]),7);
   hustleHUD(true); }
 // show the way to where a task happens
-function hustleGo(S,say=true){ const g=S&&S.go&&S.go(); if(g&&mode!=='interior'){ mapView.setDest(g.x,g.z,{name:g.name||'Your task',x:g.x,z:g.z}); if(say) toast(`Your map don show the way to ${g.name||'your task'}.`,2.6); } }
+function hustleGo(S,say=true){ const g=S&&S.go&&S.go(); if(g&&mode!=='interior'){ mapView.setDest(g.x,g.z,{name:g.name||'Your task',x:g.x,z:g.z,work:true}); if(say) toast(`Your map don show the way to ${g.name||'your task'}.`,2.6); } }
 // the line on the screen: what to do now
 function hustleHUD(force=false){ const e=$('#task'); if(!e) return; const J=myJob(), S=stepOf();
   const t=!J?'Pick your hustle: tap here':S?`${S.t}${S.n?` (${Math.min(LIFE.tkn|0,S.n)}/${S.n})`:''}`:''; if(!force&&t===HUS.shown) return; HUS.shown=t;
@@ -9544,7 +9547,7 @@ function hustleApp(){ const J=myJob(), rows=[];
   const r=jobRank(J.id), nx=J.id!=='police'&&r<JOB_PTS.length-1?JOB_PTS[r+1]:null, og=ogaHere();
   const rank=[{name:`${r>=3?'👑':'⭐'} ${jobTitle(J.id)}`,sub:J.id==='police'?'Police ranks go up with arrests (the force keeps the book)':`Pay +${Math.round((JOB_PAY[r]-1)*100)}%${OGA_PAY[r]?` · settlement ${naira(OGA_PAY[r])} every day`:''}`},
     ...(nx!=null?[{name:`Next: ${jobTitle(J.id,r+1)}`,sub:`${Math.floor(jobPts(J.id))} of ${nx} points · from ${JOB_HOW[J.id]}${r+1>=3?' · then you are an oga':''}`}]:[]),
-    ...(og?[{name:og.me?(r>=3?'👑 You be the oga for this area':'No oga around: rise and become one'):`👑 Oga for this area: ${og.n}`,sub:og.me?'Nobody of your hustle near you has a higher rank':`${jobTitle(J.id,og.r)} · respect the oga, or out-hustle am`}]:[])];
+    ...(og?[{name:og.me?(r>=3?'👑 You be the oga for this area':'No oga around: rise and become one'):`👑 Oga for this area: ${og.n}`,sub:og.me?(r>=3?'Players of your hustle near you pay you settlement from their work':'Nobody of your hustle near you has a higher rank'):r>=3?`${jobTitle(J.id,og.r)} · a bigger oga than you (ogas pay nobody)`:`${jobTitle(J.id,og.r)} · takes ${r>=2?5:10}% of your work pay while you work near am. Rise to oga and you pay nobody`}]:[])];
   return {title:'My Hustle',sections:[{h:`${J.e} ${J.n}`,rows:[{name:J.d,sub:LIFE.tk>=J.steps.length?'All tasks done. You don settle!':`Task ${LIFE.tk+1} of ${J.steps.length}`}]},{h:'Your rank in this hustle',rows:rank},{h:'Tasks',rows},
     {rows:[{name:'Change your hustle',sub:'Your tasks start again',btn:'CHANGE',act:()=>{ closePhone(); hustleOpen(false); }}]}]}; }
 // coming back: where you are and what to do now
@@ -9578,7 +9581,7 @@ function wayTarget(){ if(!started||busy||mode==='interior'||mode==='enter'||JAIL
   if(S.ev==='sachet'&&LIFE.hk>0&&mode==='walk'){ let b=null, bd=35; for(const p of peds){ if(!HAWK_OK.has(p.state)||p.cop||p.carried||p.crook||HAWK.sold.has(p)) continue; const d=Math.hypot(p.x-x,p.z-z); if(d<bd){ bd=d; b=p; } }
     if(b) return {x:b.x,z:b.z,y:2.5,t:'Sell pure water to this person',ped:b}; }
   if(S.ev==='sachet'&&!(LIFE.hk>0)){ const k=KIOSK_NEAR(x,z); if(k){ const fr=kioskFront(k); return {x:fr.x,z:fr.z,y:3,t:'Kiosk · buy another bag'}; } }
-  if(S.ev==='ticket'&&SITES.park) return {x:SITES.park.cx,z:SITES.park.cz,y:4,t:'Mushin Motor Park'};
+  if(S.ev==='ticket'){ const L=SPOTS.filter(sp=>sp.type==='stop').map(sp=>({x:sp.x,z:sp.z,y:3,t:'Bus stop · stop the danfos for the ticket'})); if(SITES.park) L.push({x:SITES.park.cx,z:SITES.park.cz,y:4,t:'Mushin Motor Park · the loading bays'}); const q=nearestOf(L,x,z); if(q) return q; }   // agberos collect at the park and at every bus stop
   return null; }
 function wayMake(){ const m=new THREE.MeshBasicMaterial({color:0xF2B705,fog:false}), g=new THREE.Group();
   const cone=new THREE.Mesh(new THREE.ConeGeometry(.42,.8,18),m); cone.rotation.x=Math.PI; cone.position.y=.4; const stem=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.7,12),m); stem.position.y=1.1; g.add(cone,stem);
@@ -9594,12 +9597,34 @@ function wayTick(dt){ if(!WAY.mk) wayMake(); const M=WAY.mk, el=WAY.el;
   M.visible=d<90&&d>.8; if(M.visible){ M.position.set(tx,0,tz); const {g,ring}=M.userData; g.position.y=(d<12?Math.min(T.y||3,2.1):(T.y||3))+Math.abs(Math.sin(T0*3.4))*.35; g.rotation.y+=dt*2.2; const k=(T0*.9)%1; ring.scale.setScalar(.7+k*.8); ring.material.opacity=.85*(1-k); }
   if(hide||d<6){ el.hidden=true; return; }
   _gv.set(tx,(T.y||3)+.8,tz).project(camera); let x=_gv.x, y=_gv.y; const behind=_gv.z>1; if(behind){ x=-x; y=-y; }
-  const W=innerWidth, H=innerHeight, mx=1-110/W, my=1-90/H, out=behind||Math.abs(x)>mx||Math.abs(y)>my;
-  if(out){ const k=Math.max(Math.abs(x)/mx,Math.abs(y)/my,1e-3); x/=k; y/=k; }   // onto the edge of the screen, toward it
+  const W=innerWidth, H=innerHeight, mx=1-130/W, myT=.42, myB=-(1-110/H), out=behind||Math.abs(x)>mx||y>myT||y<myB;
+  if(out){ const k=Math.max(Math.abs(x)/mx,y>0?y/myT:y/myB,1e-3); x/=k; y/=k; }   // onto the edge of the screen, toward it (never up in the corner over the money and the map)
   const sx=(x*.5+.5)*W, sy=(-y*.5+.5)*H; el.style.transform=`translate(${Math.round(sx)}px,${Math.round(sy)}px) translate(-50%,-100%)`;
   const key=(out?Math.round(Math.atan2(-y,x)*12):'d')+'|'+Math.round(d/5)+'|'+T.t;
   if(key!==WAY.key){ WAY.key=key; WAY.ar.style.transform=out?`rotate(${Math.atan2(-y,x)*180/Math.PI-90}deg)`:''; WAY.lb.textContent=`${T.t} · ${d>=1000?(d/1000).toFixed(1)+' km':Math.round(d)+' m'}`; el.classList.toggle('out',out); }
   el.hidden=false; }
+// ---- the road guide: arrows on the road along your GPS route, the next ~140 m ahead of you: green when it is the way to
+// your work (your task, a delivery, your passengers, the farm buyer), red when it is a place you chose. (Off with the arrow.)
+const RGD={m:null,t:0,wk:null,n:0};
+function roadGuideMake(){ const sh=new THREE.Shape(); sh.moveTo(-.85,-.4); sh.lineTo(0,.28); sh.lineTo(.85,-.4); sh.lineTo(.85,.06); sh.lineTo(0,.74); sh.lineTo(-.85,.06); sh.closePath();
+  const g=new THREE.ShapeGeometry(sh); g.rotateX(-Math.PI/2); g.rotateY(Math.PI);
+  const m=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({color:GPS_GREEN,transparent:true,opacity:.82,depthWrite:false,fog:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}),36);
+  m.count=0; m.frustumCulled=false; m.renderOrder=2; scene.add(m); RGD.m=m; }
+const _rq=new THREE.Quaternion(), _rp=new THREE.Vector3(), _rs=new THREE.Vector3(1,1,1), _rm=new THREE.Matrix4();
+function roadGuideTick(dt){ if(!RGD.m) roadGuideMake(); const m=RGD.m, rt=mapView.route;
+  if(!WAY.on||!rt||rt.length<2||mode==='interior'||!started){ if(m.count){ m.count=0; } return; }
+  m.material.opacity=.62+.25*Math.abs(Math.sin(T0*2.2));
+  if((RGD.t-=dt)>0) return; RGD.t=.12;
+  const wk=isWork(mapView.dest&&mapView.dest.place); if(wk!==RGD.wk){ RGD.wk=wk; m.material.color.set(wk?GPS_GREEN:GPS_RED); }
+  const f=mode==='drive'&&drive.v?drive.v:player, sc=mode==='drive'?1:.65, step=mode==='drive'?5.5:3.2, far=mode==='drive'?150:70;
+  // from the point of the route nearest to you, forward
+  let bi=0, bd=1e18; for(let i=0;i<Math.min(rt.length-1,40);i++){ const [ax,az]=rt[i],[bx,bz]=rt[i+1], L=Math.hypot(bx-ax,bz-az)||1, t=clamp(((f.x-ax)*(bx-ax)+(f.z-az)*(bz-az))/(L*L),0,1), d=(ax+(bx-ax)*t-f.x)**2+(az+(bz-az)*t-f.z)**2; if(d<bd){ bd=d; bi=i; } }
+  let n=0, walked=0, acc=4;
+  for(let i=bi;i<rt.length-1&&n<36&&walked<far;i++){ const [ax,az]=rt[i],[bx,bz]=rt[i+1], L=Math.hypot(bx-ax,bz-az); if(!L) continue; const ux=(bx-ax)/L, uz=(bz-az)/L;
+    let pos=i===bi?clamp((f.x-ax)*ux+(f.z-az)*uz,0,L):0; const p0=pos;
+    while(pos+acc<=L&&n<36){ pos+=acc; acc=step; if(walked+pos-p0>far) break; _rq.setFromAxisAngle(_up,Math.atan2(ux,uz)); { const px=ax+ux*pos, pz=az+uz*pos, e=roadAt(px,pz), o=e?(e.ow?(e.w>=8?e.w*.2:0):(e.hw>=10?4.6:e.hw*.45)):0; _rp.set(px-uz*o,.05,pz+ux*o); } _rs.setScalar(sc); _rm.compose(_rp,_rq,_rs); m.setMatrixAt(n++,_rm); }
+    acc-=L-pos; walked+=L-p0; }
+  m.count=n; m.instanceMatrix.needsUpdate=true; }
 function waySettings(){ document.querySelectorAll('#guideSeg button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.g==='on')===WAY.on))); try{ localStorage.setItem('naija-arrow',WAY.on?'on':'off'); }catch(e){} WAY.t=0; }
 document.querySelectorAll('#guideSeg button').forEach(b=>b.addEventListener('click',()=>{ WAY.on=b.dataset.g==='on'; waySettings(); })); waySettings();
 // ---- the pure water hawker: buy a bag (20 sachets) at any kiosk, sell to people on the street
@@ -9612,7 +9637,7 @@ function kioskBuy(){ if(LIFE.hk>=20){ toast('Your bag still full. Sell the ones 
 const HAWK_BAD=new Set(['off','down','dead','getup','takedown','arrest','fight','hurt','flee']);
 function hawkNear(){ if(mode!=='walk'||!(LIFE.hk>0)) return null; let best=null, bd=2.4; for(const p of peds){ if(HAWK_BAD.has(p.state)||p.cop||p.carried||p.robber||p.crook||HAWK.sold.has(p)) continue; const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<bd){ bd=d; best=p; } } return best; }
 function hawkSell(){ const p=hawkNear(); if(!p) return false; HAWK.sold.add(p);
-  if(MR()<.62){ LIFE.hk--; const pr=Math.round(50*jobMul('water')/5)*5; addCash(pr); cashHUD(); JOBEV('sachet'); if(LIFE.hk%5===0) lifeSave(); toast(mpick(['"Give me one pure water."','"Abeg, one sachet. E cold?"','"Pure water! Oya give me."','"Two minutes, make I find change… here."'])+` +${naira(pr)}`+(LIFE.hk?` · ${LIFE.hk} left`:' · your bag don finish!'),2.4); }
+  if(MR()<.62){ LIFE.hk--; const pr=Math.round(50*jobMul('water')/5)*5; addCash(pr,LIFE.job==='water'?'water':''); cashHUD(); JOBEV('sachet'); if(LIFE.hk%5===0) lifeSave(); toast(mpick(['"Give me one pure water."','"Abeg, one sachet. E cold?"','"Pure water! Oya give me."','"Two minutes, make I find change… here."'])+` +${naira(pr)}`+(LIFE.hk?` · ${LIFE.hk} left`:' · your bag don finish!'),2.4); }
   else toast(mpick(['"I no need am, thank you."','"I don drink water now now."','"No change for my hand."','"Comot for road abeg."']),2.2);
   return true; }
 /* ================= main loop ================= */
@@ -9633,7 +9658,7 @@ function simulate(dt){
   updateEnv(dt); updateStorm(dt); if(CB.sayOn) cbSayTick(dt); if(CB.bed&&(CB.kc=(CB.kc||0)-dt)<=0){ CB.kc=1.5; if(Math.hypot(player.x-CB.bed.x,player.z-CB.bed.z)<60) cbKeepClear(); }
   if(mode!=='interior'){ updateTraffic(dt); flyTick(dt); updatePeople(dt); updateFight(dt); updateCops(dt); updateRaid(dt); updateCarry(dt); updateRide(dt); updateFare(dt); lateTick(dt); updateMoney(dt); updateJob(dt); updatePicks(dt); updateArms(dt); updateDealer(dt); updateTolls(dt); updateAgb(dt); updateRob(dt); updatePeds(dt); updateSkaters(dt); boardTick(); updateUnderBridge(dt); updateIcons(dt); updateCars(dt); updateThrown(dt); updateFires(dt); updateFX(dt); updatePFX(dt); updateBoom(dt); updateBlood(dt); updateLights(dt); for(const v of vehicles) syncCar(v,dt); updateWorld(dt); recycleCars(dt); hotelPrefetch(dt); updateWorldFolk(dt); if(STADIUM&&STADIUM.lamps){ const on=ENV.lamp>0; if(STADIUM.lamps[0].visible!==on) for(const l of STADIUM.lamps) l.visible=on; } } else { ROOM.update(dt); guideTick(dt); }
   if(!started){ rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false); camState.yaw+=dt*.05; }
-  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started) wayTick(dt); lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
+  updateCamera(dt); if(PH) PH.tick(dt); if(GD) GD.update(dt); updateBeacon(); if(FARM) FARM.update(dt); if(BIZ) BIZ.update(dt); if(UNION) UNION.update(dt); if(POLICE) POLICE.update(dt); hustleTick(dt); if(started){ wayTick(dt); roadGuideTick(dt); } lifeTick(dt); rankTick(dt); landTick(dt); if(hero&&(UNION||POLICE)) dutyWear(MYWEAR,hero.cObj,POLICE&&POLICE.duty()?'p':UNION?UNION.badge():'',WARD.cur,fitOf(WARD.cur)); crowdDraw(); updateBlobs(); SCAT.update(dt); if(TMB) TMB.update(dt); if(AIRPORT) AIRPORT.update(dt); setsUpdate(dt); raceUpdate(dt); estTick(dt); updateHUD(dt); if(started){ updateFightHUD(); skillTick(dt); skillButtons(); } updateAudio(); sndTick(dt); }
 // dynamic resolution: if frames run long, draw fewer pixels; if the browser itself caps at 30 fps (iOS Low Power Mode),
 // one test step down shows no gain, so the original sharpness is restored and kept
 let capped30=false, probe=null;
@@ -9716,13 +9741,13 @@ FARM=createFarm({ ev:(k,n)=>JOBEV(k,n), jobMul:()=>jobMul('farmer'), THREE, scen
   face:(x,z)=>{ if(mode==='walk') player.yaw=Math.atan2(x-player.x,z-player.z); },
   kneel:on=>{ if(on){ if(!crOK()) return; try{ crClips(); }catch(e){ return; } CR.on=true; CR.sp=0; CR.pr=0; } else if(CR.on&&!CR.sp) crStand(); },
   sfx:k=>{ if(!soundOn) return; if(k==='water'||k==='grass') burst(1.3,1100,.1,1.1); else if(k==='plant'||k==='harvest') burst(.45,320,.28,2.2); else if(k==='grain') burst(.35,2600,.07,2); else thud(); },
-  toast, cash:()=>CASH.n, addCash:d=>{ addCash(d); cashHUD(); }, openMenu, closeMenu, rain:()=>Math.min(1,ENV.rain||0),
+  toast, cash:()=>CASH.n, addCash:d=>{ addCash(d,d>0&&LIFE.job==='farmer'?'farmer':''); cashHUD(); }, openMenu, closeMenu, rain:()=>Math.min(1,ENV.rain||0),
   day:()=>Math.floor(CLOCK.now()/(CLOCK.DAY_MINUTES*60000)), dayMs:()=>CLOCK.DAY_MINUTES*60000,
   kerbPoint, inZone:inFarmZone, npcFarms:NPC_FARMS, market:()=>FARM_MARKET, roadHalf:(x,z)=>{ const [e]=nearestRoad(x,z,e=>e.drive); return e?e.hw:4; },
   roadClear:(x,z,pad)=>{ for(let i=-1;i<=1;i++) for(let j=-1;j<=1;j++){ const L=RG.get(rgk(Math.floor(x/RGC)+i,Math.floor(z/RGC)+j)); if(L) for(const e of L) if(segD(e,x,z)-e.hw<pad) return false; } return true; },
   roadAngle:(x,z)=>{ const [e]=nearestRoad(x,z); return e?Math.atan2(-e.fz,e.fx):0; },
   mapPlace:p=>{ if(!PLACES.some(q=>q.name===p.name)) PLACES.push(p); },
-  gps:(x,z,place)=>{ mapView.setDest(x,z,place||null); }, clearGps:()=>mapView.clearRoute(),
+  gps:(x,z,place)=>{ mapView.setDest(x,z,{...(place||{}),work:true}); }, clearGps:()=>mapView.clearRoute(),
   spot:(cast,x,z,ry,acts)=>{ const sp={type:'farm',x,z,m:[{cast,acts,dx:0,dz:0,ry}],on:false,peds:[],boarding:0,hailV:null}; SPOTS.push(sp); farmSpots.push(sp); return sp; },
   unspot:sp=>{ if(sp.on) spotOff(sp); const i=SPOTS.indexOf(sp); if(i>=0) SPOTS.splice(i,1); },
   sms:(who,text)=>{ if(PH) PH.event('sms',{id:'farm_'+who.split(' ')[0].toLowerCase(),n:who,c:'#2e7d3c',e:'🚚',x:text}); },
@@ -9804,7 +9829,7 @@ UNION=createUnion({ ev:(k,n)=>JOBEV(k,n), THREE, scene, Q, CullSet, addOB, groun
 // the police online (src/police.js): the front desk at Mushin station, the uniform, the wanted list, arrests
 POLICE=createPolice({ ev:(k,n)=>JOBEV(k,n), naira, player:()=>({x:player.x,z:player.z}), mode:()=>mode, toast, openMenu, menuOpen:()=>MENU.open,
   send:o=>ON&&ON.send(o), signedIn:()=>!!(ON&&ON.signedIn), myName:()=>ON?ON.myName:'', openSignIn:()=>ON&&ON.openPanel(),
-  station:()=>STATION.front, mapPlace:p=>{ if(!PLACES.some(q=>q.id&&q.id===p.id)) PLACES.push(p); },
+  station:()=>STATION.front, posts:()=>CPB.list, mapPlace:p=>{ if(!PLACES.some(q=>q.id&&q.id===p.id)) PLACES.push(p); },
   spot:(cast,x,z,ry,acts)=>{ const sp={type:'police_desk',x,z,m:[{cast,acts,dx:0,dz:0,ry}],on:false,peds:[],boarding:0,hailV:null}; SPOTS.push(sp); return sp; },
   nearby:()=>ON?ON.nearby():[], camYaw:()=>camState.yaw, stars:()=>starCount(),
   handsUp:()=>{ if(hero&&hero.act.hands_up&&mode==='walk'&&!FIGHT.ko) heroDo('hands_up',{force:true,pause:true}); setTimeout(()=>{ if(hero&&hero.ov&&hero.ov.name==='hands_up'&&!COPS.bust) heroEnd(); },12000); },

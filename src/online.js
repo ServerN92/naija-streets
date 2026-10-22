@@ -71,6 +71,8 @@ export function createOnline(api) {
       case 'hurt': case 'hitok': case 'pko': case 'pkowin': case 'pvno': api.pvp && api.pvp(m); break;
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
       case 'note': api.toast(m.m, 4); break;
+      case 'oga': api.toast(`Your oga ${m.n} collect ₦${(+m.c || 0).toLocaleString('en-NG')} settlement from your work. Rise, and you go be oga too.`, 3.6); if (api.ogaNews) api.ogaNews(m, false); break;
+      case 'ogaget': api.toast(`👑 ${m.n} bring you ₦${(+m.c || 0).toLocaleString('en-NG')} settlement.`, 3.2); if (api.ogaNews) api.ogaNews(m, true); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
       case 'n': S.n = m.n; ui(); break;
@@ -88,7 +90,7 @@ export function createOnline(api) {
     S.me = { id: m.id, name: m.name, email: m.email || '' }; S.st = 'in'; S.busy = false; S.kicked = false; if (m.n) S.n = m.n;
     save({ tok: m.tok, name: m.name });
     S.srv = m.cash | 0;
-    for (const p of S.cpend) send({ t: '$', d: p.d, s: p.s, e: S.ep });   // money made while the line was down
+    for (const p of S.cpend) send({ t: '$', d: p.d, s: p.s, e: S.ep, ...(p.j ? { j: p.j } : {}) });   // money made while the line was down
     showCash();
     S.look = ''; S.last = null; lookTick();
     if (api.lifeIn) api.lifeIn(m.life || null, m.uid);   // where you sleep, your rent, your clothes: the account's own
@@ -100,11 +102,11 @@ export function createOnline(api) {
   function restoreGuest() { let g = null; try { g = localStorage.getItem(GUEST_CASH); localStorage.removeItem(GUEST_CASH); } catch (e) { /* ignore */ } S.cpend = []; if (g !== null && isFinite(+g)) api.setCash(+g); }
 
   // ---- money: the server's number, plus what is on its way to it
-  function cash(d) {
+  function cash(d, j) {
     if (!S.me && !(saved && saved.tok)) return;   // a guest: the phone keeps the money as before
     d = Math.round(d); if (!d) return;
-    const s = ++S.cseq; S.cpend.push({ s, d }); if (S.cpend.length > 200) S.cpend.shift();
-    if (S.me) send({ t: '$', d, s, e: S.ep });
+    const s = ++S.cseq, o = { s, d }; if (j && d > 0) o.j = j; S.cpend.push(o); if (S.cpend.length > 200) S.cpend.shift();   // j: money from your hustle's work (your oga takes a part)
+    if (S.me) send({ t: '$', d, s, e: S.ep, ...(o.j ? { j: o.j } : {}) });
   }
   function money(m) { S.srv = m.n; S.cpend = S.cpend.filter(p => p.s > m.s); showCash(); }
   function showCash() { let n = S.srv; for (const p of S.cpend) n = Math.max(0, n + p.d); if (n !== api.getCash()) api.setCash(n); }

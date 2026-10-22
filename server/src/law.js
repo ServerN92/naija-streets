@@ -77,7 +77,7 @@ export function createLaw({ db, now = () => Date.now(), log = () => {}, ctx }) {
       }
       case 'quit': { if (!d.cop) return; d.cop = 0; save(uid, d); if (s.duty) { s.duty = false; ctx.badge(uid); } ok(C, 'You left the police. Your arrests stay on the book.'); return me(C); }
       case 'duty': {
-        if (!d.cop) return err(C, 'Join the force at the police station first.');
+        if (!d.cop) return err(C, 'Join the force at a police desk first (the station or a checkpoint post).');
         const on = !!m.on;
         if (on && d.ban > t) return err(C, `You are suspended from duty for ${Math.ceil((d.ban - t) / 36e5)} more hours.`);
         if (on && stars(C, t) > 0) return err(C, 'You are wanted. Wanted officers cannot go on duty.');
