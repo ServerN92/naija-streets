@@ -230,7 +230,7 @@ export function createOnline(api) {
   // the rank medals (assets/ui/rank_N.png, made in Blender: tools of the 2go-style ranks), drawn after the name
   const MEDAL = [], MEDAL_GLOW = [null, null, ['#4fc3f7', .22, .1, 1.5], ['#26c6a0', .28, .12, 1.8], ['#c77dff', .34, .15, 2.0], ['#ff9f43', .42, .16, 2.2],
     ['#ff5d5d', .5, .2, 2.6], ['#ffd54a', .55, .2, 2.0, 1], ['#ffd54a', .65, .25, 2.4, 1], ['#7fe3ff', .78, .25, 3.0, 2]];
-  for (let i = 0; i < 10; i++) { const im = new Image(); im.onload = () => { for (const R of RS.values()) if ((R.rk | 0) === i && R.tag && !R.tag.userData.medal) R.retagNow = true; }; im.src = `assets/ui/rank_${i}.png?v=2`; MEDAL.push(im); }
+  for (let i = 0; i < 10; i++) { const im = new Image(); im.onload = () => { for (const R of RS.values()) if ((R.rk | 0) === i && R.tag && !R.tag.userData.medal) R.retagNow = true; }; im.src = `assets/ui/rank_${i}.png?v=3`; MEDAL.push(im); }
   function glowTex(rays) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d'), gr = g.createRadialGradient(64, 64, 4, 64, 64, 62);
     gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
