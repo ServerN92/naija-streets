@@ -192,6 +192,7 @@ const ICONS = {
   settings: ['linear-gradient(180deg,#a2a2a8,#6e6e75)', '#fff', SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')],
   hustle: ['linear-gradient(180deg,#ff9f43,#e8590c)', '#fff', SV('<rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="rgba(255,255,255,.18)"/><path d="M9 8V6.2A1.7 1.7 0 0 1 10.7 4.5h2.6A1.7 1.7 0 0 1 15 6.2V8M3.5 13h17"/><path d="M12 12v2.4" stroke-width="2.4"/>')],
   farm: ['linear-gradient(180deg,#8fd14f,#3e8e1f)', '#fff', SV('<path d="M3 20h18" stroke="#fff"/><path d="M12 20V9" stroke="#fff" stroke-width="2.2"/><path d="M12 13c-3.5 0-5.5-2.2-5.5-5.5 3.3 0 5.5 2 5.5 5.5zM12 11c0-3.6 2.2-6 6-6 0 3.8-2.4 6-6 6z" fill="#fff" stroke="none"/>')],
+  love: ['linear-gradient(180deg,#ff7aa8,#d6336c)', '#fff', SV('<path d="M12 20.5s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.9a4.3 4.3 0 0 1 7.5 2.6c0 5.4-7.5 10-7.5 10z" fill="rgba(255,255,255,.9)" stroke="none"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
 };
 const icon = k => { const [bg, fg, svg] = ICONS[k]; const d = document.createElement('div'); d.className = 'iph-ico'; d.style.background = bg; d.style.color = fg; d.innerHTML = svg; return d; };
@@ -312,7 +313,7 @@ export function createPhone(api) {
   const bar = h('div', 'iph-bar'), barHit = btn('iph-barhit', [], () => toHome(), 'Home'); scr.append(bar, barHit);
 
   const APPS = [
-    ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
+    ['hustle', 'My Hustle', () => openApp('hustle')], ['ride', 'Oya Ride', () => openApp('ride')], ['work', 'Oya Work', () => openApp('work')], ['farm', 'Oya Farm', () => openApp('farm')], ['love', 'Love', () => openApp('love')], ['maps', 'Maps', () => { api.openMap(); }], ['photos', 'Photos', () => openApp('photos')],
     ['wallet', 'Bank', () => openApp('wallet')], ['weather', 'Weather', () => openApp('weather')], ['sos', 'Police', () => { openApp('phone'); startCall(CONTACTS.find(c => c.police)); }], ['settings', 'Settings', () => openApp('settings')],
   ];
   const DOCK = [['phone', 'Phone', () => openApp('phone')], ['msg', 'Messages', () => openApp('msg')], ['gist', 'Gist', () => openApp('gist')], ['camera', 'Camera', () => openCamera()]];
@@ -358,7 +359,7 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
   function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
@@ -367,6 +368,14 @@ export function createPhone(api) {
     for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
       for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#d0451b'; row.append(tx);
         if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.app === 'farm') openApp('farm'); }, 60); }); row.append(bb); }
+        L.append(row); }
+      b.append(L); } }
+  function loveApp() {   // Love: your babe (or guy), the love meter, money, gifts and dates (the game makes the rows)
+    const d = api.love && api.love(); const b = frameApp('Love', { light: true }); R.view.querySelector('h1').style.color = '#d6336c';
+    if (!d) { b.append(h('div', 'iph-note', 'Loading…')); return; }
+    for (const sec of d.sections) { if (sec.h) b.append(h('div', 'iph-h', sec.h)); const L = h('div', 'iph-list');
+      for (const r of sec.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), r.sub ? h('small', null, r.sub) : null); if (r.warn) tx.firstChild.style.color = '#d6336c'; row.append(tx);
+        if (r.btn) { const bb = btn('fm-btn' + (r.off ? ' off' : ''), [r.btn], () => { if (r.off || !r.act) return; r.act(); setTimeout(() => { if (R.open && R.app === 'love') openApp('love'); }, 60); }); row.append(bb); }
         L.append(row); }
       b.append(L); } }
   function hustleApp() {   // My Hustle: the job you picked and its tasks (the game makes the rows)
