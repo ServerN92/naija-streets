@@ -1075,6 +1075,9 @@ function addFootbridge(e,t){ const A0=nodes[e.a], cx=A0.x+e.fx*t, cz=A0.z+e.fz*t
   let l0=-e.hw, l1=e.hw; for(let s=e.hw;s<40;s+=.5){ if(roadAt(cx+rx*s,cz+rz*s,.2)) l1=s; else if(s>l1+3) break; } for(let s=e.hw;s<40;s+=.5){ if(roadAt(cx-rx*s,cz-rz*s,.2)) l0=-s; else if(s>-l0+3) break; }
   l0-=1.4; l1+=1.4; const H=6.4, Ls=12;
   for(const o of FOOTB) if(Math.hypot(o.cx-cx,o.cz-cz)<150) return null;
+  // its stairs come down beside the road on both sides: if they would land on another road (a junction, a bend), no bridge here
+  { let bad=0, n=0; for(const [l,sg] of [[l0-1.25,1],[l1+1.25,-1]]) for(let st=1.2;st<=1.2+Ls;st+=1) for(const w of [-.6,0,.6]){ const x=cx+rx*(l+w)+e.fx*sg*st, z=cz+rz*(l+w)+e.fz*sg*st; n++; if(roadAt(x,z,.2)||!onLand(x,z,.2)) bad++; }
+    if(bad>n*.04) return null; }
   const fb={cx,cz,dx:e.fx,dz:e.fz,rx,rz,l0,l1,H,Ls,ang:Math.atan2(rz,rx),e};
   FOOTB.push(fb);
   // stairs run along the road on both sides, away from the deck; keep that ground clear
@@ -1973,7 +1976,8 @@ const STALLS=[], BOLAS=[];
     const shed={cx:W3(0,0,fs*(pk.hd-3.5))[0],cz:W3(0,0,fs*(pk.hd-3.5))[2],w:pk.hw*1.6,d:4,ang:pk.ang,c,s}; const zc=new THREE.Color('#bfb3a3');
     { const hw=shed.w/2, hd=shed.d/2, W4=(u,y,v)=>[shed.cx+c*u-s*v,y,shed.cz+s*u+c*v]; A.zinc.quad(W4(-hw,3.4,-hd),W4(-hw,3.9,hd),W4(hw,3.9,hd),W4(hw,3.4,-hd),[0,1,0],[[0,0],[1,0],[1,1],[0,1]],zc);
       for(let u=-hw;u<=hw+.1;u+=hw/3) for(const v of [-hd,hd]){ const [x,,z]=W4(u,0,v); if(roadAt(x,z,.15)) continue; SHED_POSTS.push({x,y:0,z,sy:3.6}); addCol({x0:x-.1,x1:x+.1,z0:z-.1,z1:z+.1,h:3.6}); }
-      const bench=[]; for(let u=-hw+1.5;u<hw-1;u+=3){ const [x,,z]=W4(u,0,fs>0?hd*.4:-hd*.4); bench.push({x,y:0,z,ry:-pk.ang}); }
+      const bench=[]; for(let u=-hw+1.5;u<hw-1;u+=3){ const [x,,z]=W4(u,0,fs>0?hd*.4:-hd*.4); let off=false; for(const k of [-1.2,0,1.2]){ const px=x+c*k, pz=z+s*k; if(roadAt(px,pz,.6)||!onLand(px,pz,.3)) off=true; } if(off) continue;   // (never out on the road)
+        bench.push({x,y:0,z,ry:-pk.ang}); addOB(x,z,1.12,.26,pk.ang,.5); }   // you sit on them, you don't walk through them
       inst(mergeList([box(2.2,.08,.45,0,.46,0),box(.08,.46,.4,-1,.23,0),box(.08,.46,.4,1,.23,0)]),new THREE.MeshStandardMaterial({color:0x5c4632,roughness:.8}),bench); }
     // the sign by the gate
     { const g=pk.gate, lab=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('MUSHIN MOTOR PARK','#F2B705','#0E1014'),fog:false})); lab.scale.set(7,1.3,1); const [x,,z]=W3(-pk.hw+4,0,-fs*(pk.hd-1)); lab.position.set(x,4.6,z); lab.layers.set(1); scene.add(lab);
@@ -2950,26 +2954,27 @@ function updateEnv(dt,force=false){
   ENV.hour=h; ENV.elev=e; ENV.w=w; ENV.label=w.label; ENV.icon=w.icon; ENV.rain=w.rain; ENV.cloud=w.cloud; ENV.haze=w.haze; ENV.dim=w.dim; ENV.storm=w.storm;
   ENV.wet+=((w.wet)-ENV.wet)*Math.min(1,dt*.05+(force?1:0));
   const dw=sm((e-3)/19), nw=sm((1.5-e)/8.5), dark=Math.min(1,nw+w.dim*.55*(1-nw)*(1-dw*.4));
+  const lo=sm((8-e)/8);   // the sun is going (or not up yet): the night's lift comes in early, so dusk and dawn are never the darkest time
   const u=sky.material.uniforms;
   u.turbidity.value=mixK('turb',dw,nw)+w.cloud*7+w.haze*11; u.rayleigh.value=mixK('ray',dw,nw)*(1-w.cloud*.55)*(1-w.haze*.4); u.mieCoefficient.value=mixK('mie',dw,nw)+w.haze*.02+w.cloud*.004; u.mieDirectionalG.value=mixK('mieG',dw,nw);
   sunDir.setFromSphericalCoords(1,THREE.MathUtils.degToRad(90-e),THREE.MathUtils.degToRad(180-sa.azim)); u.sunPosition.value.copy(sunDir);
   { const hk=HDRSKY.userData.ok?dw*(1-sm((w.cloud-.35)/.4))*(1-Math.min(1,w.rain*1.5))*(1-Math.min(1,w.haze*1.6)):0; HDRSKY.userData.k=hk; HDRSKY.material.opacity=hk; HDRSKY.visible=hk>.01;
     HDRSKY.rotation.y=HDR_SUN-Math.atan2(sunDir.z,sunDir.x); }
   if(e<-1) lightDir.setFromSphericalCoords(1,THREE.MathUtils.degToRad(48),THREE.MathUtils.degToRad(200)); else lightDir.setFromSphericalCoords(1,THREE.MathUtils.degToRad(90-Math.max(e,14)),THREE.MathUtils.degToRad(180-sa.azim));
-  mixC(sun.color,'sun',dw,nw); const fade=e>=-1?sm((e+1)/6):sm((-1-e)/6);
+  mixC(sun.color,'sun',dw,nw); const fade=e>=-1?sm((e+1)/6):sm((-1-e)/2.5);   // (the moon comes up quickly after the sun goes)
   sun.intensity=(e>=-1?mixK('sunI',dw,nw):LK.night.sunI)*fade*(1-w.dim*.82);
-  mixC(hemi.color,'hs',dw,nw); mixC(hemi.groundColor,'hg',dw,nw); hemi.intensity=mixK('hi',dw,nw)*(1+w.dim*.12*(1-nw))+ENV.flash*2.5;
+  mixC(hemi.color,'hs',dw,nw); mixC(hemi.groundColor,'hg',dw,nw); hemi.intensity=Math.max(mixK('hi',dw,nw),LK.night.hi*lo)*(1+w.dim*.3*(1-nw))+ENV.flash*2.5;
   if(w.cloud>.3){ _c1.copy(hemi.color); hemi.color.lerp(_c2.setRGB(.62,.66,.7),Math.min(1,(w.cloud-.3))*(1-nw)*.8); }
   mixC(scene.fog.color,'fog',dw,nw); scene.fog.color.lerp(_c1.copy(RAINFOG).multiplyScalar(1-nw*.6),w.rain*.75).lerp(_c2.copy(HAZE).multiplyScalar(1-nw*.8),w.haze*.8);
   scene.fog.density=mixK('fd',dw,nw)*Q.fog*(1+w.rain*2.2+w.storm*1.6+w.haze*6.5);
   // sky veil: the sky and far city fade into rain grey or harmattan dust, like real bad-weather days
   veil.material.color.copy(scene.fog.color); veil.material.opacity=Math.min(.86,w.haze*.74+w.rain*.42+w.storm*.28+Math.max(0,w.cloud-.5)*.35+nw*.5);   // at night it tints the black sky a deep moonlit blue veil.visible=veil.material.opacity>.02&&mode!=='interior'; veil.position.copy(camera.position);
-  renderer.toneMappingExposure=(mixK('exp',dw,nw)*(1-w.dim*.4*(1-nw))+ENV.flash*.35)*PIC.b;   // (and how bright the player wants it)
+  renderer.toneMappingExposure=(Math.max(mixK('exp',dw,nw),LK.night.exp*lo)*(1-w.dim*.22*(1-Math.max(nw,lo)))+ENV.flash*.35)*PIC.b;   // (and how bright the player wants it)
   WU.sunDirection.value.copy(lightDir).normalize(); mixC(WU.waterColor.value,'water',dw,nw); WU.sunColor.value.setRGB(1-nw*.55,1-nw*.5,1-nw*.3).multiplyScalar(1-w.dim*.8);
   ENV.lamp=Math.max(mixK('lamp',dw,nw), dark>.55?2.4*(dark-.55)/.45:0); ENV.win=Math.max(mixK('win',dw,nw),dark*.9); ENV.sign=Math.max(mixK('sign',dw,nw),dark*.6);
   ENV.head=Math.max(mixK('head',dw,nw),dark*2); ENV.tail=Math.max(mixK('tail',dw,nw),dark*1.6); ENV.spot=Math.max(mixK('spot',dw,nw),dark*120); ENV.night=nw>.5;
   for(const k of FAC_KEYS) MAT[k].emissiveIntensity=Math.min(1.25,ENV.win)*(k==='shop'?.38:k==='oldmid'||k==='resi'?.7:1); MAT.sign.emissiveIntensity=ENV.sign*.8;
-  fillLight.intensity=Math.max(0,(nw*.9+w.dim*.35*(1-dw))*7); for(const m of billboardMats) m.emissiveIntensity=ENV.sign*.9;
+  fillLight.intensity=Math.max(0,(Math.max(nw,lo)*.9+w.dim*.35*(1-dw))*7); for(const m of billboardMats) m.emissiveIntensity=ENV.sign*.9;
   { const lift=fillLight.intensity/7; for(const m of HERO_MATS) m.emissiveIntensity=lift*.32; HUMAN_MAT.emissiveIntensity=lift*.14; }
   lampHeadMat.emissiveIntensity=ENV.lamp; EXPWAY_HEAD.emissiveIntensity=ENV.lamp*1.4; POOLS.off=!(ENV.lamp>1);
   CM.head.emissiveIntensity=ENV.head; CM.tail.emissiveIntensity=ENV.tail; APT.doorMesh.material.emissiveIntensity=Math.min(1.2,ENV.win*.8);
@@ -3298,7 +3303,7 @@ function updateHUD(dt){ if(!started) return;
   clockTick-=dt; if(clockTick<=0){ clockTick=.5; updateClockHUD(); }
   let txt=''; if(!busy){ if(mode==='walk'){ if(DEALER.open||MENU.open||WARD.open) txt=''; else if(BT.st==='carry'&&BT.carrier) txt='Kick to get free'; else if(KID.tied>0) txt='Work the rope loose'; else if(rbNear()) txt=rbPrompt(); else if(nearBox()) txt='Take back your things'; else if(nearHostage()) txt='Untie the hostage'; else if(capoNear()) txt=`Talk to the Capo (${CULTS[capoNear().side].name})`; else if(CROOK.demand&&CROOK.demand.a.state==='crook') txt='Give them your money'; else if(gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(rideHere()) txt=rideWord(); else if(FARM&&FARM.near()) txt=FARM.prompt(); else if(BIZ&&BIZ.near()) txt=BIZ.prompt(); else if(UNION&&UNION.near()) txt=UNION.prompt(); else if(POLICE&&POLICE.near()) txt=POLICE.prompt(); else if(nearDealer()) txt='Talk to Oga Shege (black market)'; else if(nearChair()) txt='Talk to Chairman (black market)'; else if(nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(robNear()) txt=`The man's money · ${naira(robNear().cash)} · give it back or keep it`; else if(agbCollectNear()) txt=`Collect the danfo's ticket · ${naira(AGB_FEE/2)} for you, ${naira(AGB_FEE/2)} for ${UNION.chairName()}`; else if(nearDoor()) txt=LIFE.flat?'Enter your house':'Flat for sale · '+naira(FLAT_PRICE); else if(nearHotel()) txt='Enter Mushin Grand Hotel'; else if(hawkNear()) txt=`Sell pure water · ₦50 (${LIFE.hk} left)`; else if(LIFE.hk<20&&kioskAt()&&!doorNear()) txt='Kiosk · buy a bag of pure water (₦300)'; else if(doorNear()){ const d=doorNear(); txt=typeof d.label==='function'?d.label():d.label; } else if(ARMS.cur==='board'&&mySkate&&mySkate.carried) txt='Ride your skateboard'; else { const v=nearestVehicle(); if(v){ const nm=(VT[v.type]||{name:'car'}).name; txt=v===RIDE.v?rideWord():v.forSale?`Buy this ${v.forSale.name} · ${naira(v.forSale.price)}`:v.impounded?`Impounded ${nm} · pay at the office`:v.ai?`Take this ${nm}`:(v===myCar?'Ride your okada':v===mySkate?(touchUI?'Ride your skateboard':'Ride your skateboard  ·  G: pick it up'):v.mine?`Drive your ${nm}`:`Drive the ${nm}`); } } }
     else if(mode==='drive'){ if(rbNear()) txt=rbPrompt(); else if(landPayNear()) txt='Pay ₦300 · airport toll'; else if(!drive.ride&&gateNear()) txt=cardOn()&&!starCount()?"Show Chairman's card · police checkpoint":`Pay ${naira(GATE.fee)} · police checkpoint`; else if(!drive.ride&&nearChop()) txt='Sell this motor to the chop shop'; else if(!drive.ride&&nearToll()) txt=`Pay ${naira(nearToll().fee||TOLL_FEE)} to pass`; else if(!drive.ride&&agbPayNear()) txt=agbPayWord(); else if(Math.abs(drive.speed)<3) txt=drive.ride?'Get down here':drive.v.type==='skate'?'Step off':'Get out'; } else if(mode==='interior'){ if(WARD.open||MENU.open) txt=''; else if(HL.act) txt=homePrompt(); else if(roomSpot()) txt=spotLabel(roomSpot()); else if(nearExit()&&T0-enteredAt>.8) txt='Go back outside'; else if(nearWard()) txt='Change clothes'; else txt=homePrompt(); } }
-  if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=!txt; }
+  if(txt!==lastPrompt){ lastPrompt=txt; $('#prompt').hidden=!txt; $('#promptTxt').textContent=txt; if(touchUI&&!BL.edit) $('#tE').hidden=true; }   // (on a phone the prompt itself is the E button: one E, only when there is something to do)
   if(mode==='drive'){ if(SPEEDO.hidden) SPEEDO.hidden=false; const k=Math.round(Math.abs(drive.speed)*3.6); if(k!==SPEEDO.k){ SPEEDO.k=k; SPD.textContent=k; } } else if(!SPEEDO.hidden) SPEEDO.hidden=true;
   if(toastT>0&&!mapView.isOpen){ toastT-=dt; const t=$('#toast'); if(toastT<.3) t.classList.add('out'); if(toastT<=0) t.hidden=true; }   // (fades out)
   if(mode!==lastMode){ lastMode=mode; const dv=mode==='drive'&&!drive.ride; $('#tHorn').hidden=!dv; $('#tBrake').hidden=!dv; if(touchUI) drvShow(dv); $('#phoneBtn').hidden=!(mode==='walk'||(mode==='drive'&&drive.ride)); if(PHONE.open&&$('#phoneBtn').hidden) closePhone(); const fb=mode==='walk'&&fightReady(); $('#tJump').hidden=!fb; $('#tCrouch').hidden=!fb; if(!fb){ $('#tGrab').hidden=true; $('#tPunch').hidden=true; } if(mode!=='walk'&&mode!=='interior') crOff(); TB.k=null; weapHUD(true); $('#mmWrap').style.visibility=mode==='interior'?'hidden':''; }
@@ -3339,7 +3344,7 @@ const drvPedals=()=>touchUI&&DRV.m!=='joy';
 function drvTick(dt){ if(!drvPedals()){ DRV.sv=0; return; }
   if(DRV.m==='wheel'){ if(DRV.wp==null) DRV.wr*=Math.exp(-10*dt); if(Math.abs(DRV.wr)<.3&&DRV.wp==null) DRV.wr=0; DRV.sv=clamp(DRV.wr/90,-1,1); $('#tWheel').style.transform=DRV.wr?`rotate(${DRV.wr.toFixed(1)}deg)`:''; }   // let go and it turns back to straight
   else { const t=DRV.r-DRV.l, k=!t?8:(DRV.sv&&Math.sign(t)!==Math.sign(DRV.sv)?10:4.5); DRV.sv+=(t-DRV.sv)*Math.min(1,dt*k); if(!t&&Math.abs(DRV.sv)<.02) DRV.sv=0; } }   // the arrows turn the wheel in smoothly, not all at once
-function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
+function drvShow(on){ const p=on&&drvPedals(), w=p&&DRV.m==='wheel'; if(p&&!DRV.told){ DRV.told=true; let seen=false; try{ seen=!!localStorage.getItem('naija-drv-tip'); localStorage.setItem('naija-drv-tip','1'); }catch(e){} if(!seen) toast('▲ go · ▼ brake (keep holding ▼ to reverse) · ◀ ▶ steer. Tap the Get out button to come down.',6); } $('#tGas').hidden=!p; $('#tRev').hidden=!p; $('#tLeft').hidden=!(p&&!w); $('#tRight').hidden=!(p&&!w); $('#tWheel').hidden=!w;
   $('#tBrake').hidden=!(on&&!drvPedals()); document.body.classList.toggle('drvpad',p&&!w); document.body.classList.toggle('drvwheel',w);
   if(!p){ DRV.gas=DRV.rev=DRV.l=DRV.r=0; DRV.sv=DRV.wr=0; DRV.wp=null; for(const id of ['tGas','tRev','tLeft','tRight','tWheel']) $('#'+id).classList.remove('on'); } }
 function drvSettings(){ document.querySelectorAll('#drvSeg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.d===DRV.m))); try{ localStorage.setItem('naija-drive',DRV.m); }catch(e){} drvShow(mode==='drive'&&!drive.ride); }
@@ -3414,14 +3419,14 @@ function blApply(){ const L=BL.data[blKey()], box=document.querySelector('.tbtns
   for(const id of BL.ids){ const b=$('#'+id); if(!b) continue; const p=L&&L.pos&&L.pos[id];
     if(p){ const d=(b.classList.contains('tbig')?76:64)*sc; b.classList.add('free'); b.style.left=Math.round(clamp(p[0]*innerWidth,d/2,innerWidth-d/2)-d/2)+'px'; b.style.top=Math.round(clamp(p[1]*innerHeight,d/2,innerHeight-d/2)-d/2)+'px'; }
     else { b.classList.remove('free'); b.style.left=b.style.top=''; } } }
-function blShown(){ if(mode==='drive') return BL.ids.filter(id=>!$('#'+id).hidden&&id!=='tCrouch'&&id!=='tJump'&&id!=='tGrab'&&id!=='tPunch');   // the buttons of what you are doing now
-  return ['tE','tGrab','tPunch','tCrouch','tJump']; }
+function blShown(){ if(mode==='drive') return BL.ids.filter(id=>!$('#'+id).hidden&&id!=='tCrouch'&&id!=='tJump'&&id!=='tGrab'&&id!=='tPunch'&&id!=='tE');   // the buttons of what you are doing now
+  return ['tGrab','tPunch','tCrouch','tJump']; }
 function blRecord(ids){ const L=BL.data[blKey()]||(BL.data[blKey()]={s:1,o:1,pos:{}}); L.pos=L.pos||{};
   for(const id of ids){ if(L.pos[id]) continue; const r=$('#'+id).getBoundingClientRect(); if(r.width) L.pos[id]=[(r.left+r.width/2)/innerWidth,(r.top+r.height/2)/innerHeight]; } return L; }
 function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.body.classList.toggle('btnedit',on); $('#bedit').hidden=!on; $('#settings').hidden=true;
   if(on){ BL.was={}; const set=blShown(); for(const id of BL.ids){ const b=$('#'+id); BL.was[id]={h:b.hidden,t:b.textContent}; b.hidden=!set.includes(id); if(BL_NAME[id]&&mode!=='drive') b.textContent=BL_NAME[id]; }
     requestAnimationFrame(()=>{ const L=blRecord(set); blApply(); $('#beSize').value=Math.round((L.s||1)*100); $('#beOp').value=Math.round((L.o||1)*100); }); }
-  else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; b.textContent=BL.was[id].t; } BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=mode==='drive'?$('#tE').hidden:!lastPrompt; } }
+  else { for(const id in BL.was){ const b=$('#'+id); b.hidden=BL.was[id].h; b.textContent=BL.was[id].t; } BL.was=null; blSave(); TB.k=null; skBtnK=null; lastMode=null; weapHUD(true); if(touchUI) $('#tE').hidden=true; } }
 { const box=document.querySelector('.tbtns');
   box.addEventListener('pointerdown',e=>{ if(!BL.edit) return; const b=e.target.closest('button'); e.preventDefault(); e.stopPropagation(); if(!b) return; const r=b.getBoundingClientRect();
     BL.drag={b,dx:e.clientX-(r.left+r.width/2),dy:e.clientY-(r.top+r.height/2),pid:e.pointerId}; b.classList.add('drag'); try{ b.setPointerCapture(e.pointerId); }catch(_){} },true);
@@ -3439,7 +3444,7 @@ function blEdit(on){ if(on===BL.edit||!touchUI) return; BL.edit=on; document.bod
   $('#beDone').addEventListener('click',()=>blEdit(false));
   $('#btnEdit').addEventListener('click',()=>blEdit(true));
   addEventListener('resize',()=>{ if(touchUI) blApply(); }); }
-function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=!lastPrompt; if(typeof fsSettings==='function') fsSettings(); $('#btnSet').hidden=false; $('#drvSet').hidden=false; blApply(); $('#keys').hidden=true; $('#lookhint').hidden=true;
+function enableTouchUI(){ if(touchUI) return; touchUI=true; document.body.classList.add('touchui'); $('#touch').hidden=false; $('#tE').hidden=true; if(typeof fsSettings==='function') fsSettings(); $('#btnSet').hidden=false; $('#drvSet').hidden=false; blApply(); $('#keys').hidden=true; $('#lookhint').hidden=true;
   const zl=$('#zoneL'), zr=$('#zoneR'), jo=$('#joy'), jk=$('#joyK'); let jid=null,jx=0,jy=0; const lp=new Map(); let pinch=0;
   zl.addEventListener('pointerdown',e=>{ $('#settings').hidden=true; if(mode==='drive'&&drvPedals()&&!drive.ride) return; jid=e.pointerId; jx=e.clientX; jy=e.clientY; jo.hidden=false; jo.style.left=jx+'px'; jo.style.top=jy+'px'; try{ zl.setPointerCapture(jid); }catch(_){} });
   zl.addEventListener('pointermove',e=>{ if(e.pointerId!==jid) return; let dx=e.clientX-jx, dy=e.clientY-jy; const d=Math.hypot(dx,dy), m=50; if(d>m){ dx*=m/d; dy*=m/d; } joy.x=dx/m; joy.y=dy/m; jk.style.transform=`translate(${dx}px,${dy}px)`; jo.classList.toggle('run',Math.hypot(joy.x,joy.y)>.88); });
@@ -4797,7 +4802,7 @@ function skillTime(name,on,dt,perSec){ const T=SKILL.timers; if(on){ T[name]=(T[
 let skBtnK='';
 function skillButtons(){ if(!touchUI||BL.edit) return; const v=mode==='drive'&&!drive.ride?drive.v:null, t=v?(v.type==='skate'?'skate':BIKE[v.type]?'bike':''):'';
   if(t===skBtnK) return; skBtnK=t; const L=t==='skate'?['FLIP','OLLIE','SPIN']:t==='bike'?['WHEELIE','HOP','']:['','',''];
-  ['#tSk1','#tSk2','#tSk3'].forEach((id,i)=>{ const b=$(id); b.hidden=!L[i]; b.textContent=L[i]; }); $('#tHorn').hidden=!v||t==='skate'; $('#tBrake').textContent=t==='skate'?'BRAKE':t==='bike'?'BRAKE':'BRAKE'; }
+  ['#tSk1','#tSk2','#tSk3'].forEach((id,i)=>{ const b=$(id); b.hidden=!L[i]||t==='bike'; b.textContent=L[i]; }); $('#tHorn').hidden=!v||t==='skate'; $('#tBrake').textContent='BRAKE'; }   // (no WHEELIE / HOP buttons on bikes: they hid the road)
 function skillTick(dt){ if(SKILL.hideT>0&&(SKILL.hideT-=dt)<=0) $('#trick').hidden=true; }
 // phone buttons for skills (what they do depends on what you ride): b1 left, b2 middle, b3 top
 const TSK={b1:false,b2:false,b3:false};
@@ -9426,6 +9431,10 @@ FARM=createFarm({ ev:(k,n)=>JOBEV(k,n), THREE, scene, zone:FARMZ, Q, CullSet, ad
   glb:farmGlb, skinned:name=>fetchBuf(murl(name)).then(b=>GLL.parseAsync(b,'')), registerTruck:farmTruckType,
   started:()=>started&&!busy, player:()=>mode==='drive'&&drive.v?{x:drive.v.x,z:drive.v.z}:{x:player.x,z:player.z}, playerName:()=>PROFILE&&PROFILE.name||'',
   teleport:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; },
+  // farm work: turn to face it, bend down while you do it, and a sound
+  face:(x,z)=>{ if(mode==='walk') player.yaw=Math.atan2(x-player.x,z-player.z); },
+  kneel:on=>{ if(on){ if(!crOK()) return; try{ crClips(); }catch(e){ return; } CR.on=true; CR.sp=0; CR.pr=0; } else if(CR.on&&!CR.sp) crStand(); },
+  sfx:k=>{ if(!soundOn) return; if(k==='water'||k==='grass') burst(1.3,1100,.1,1.1); else if(k==='plant'||k==='harvest') burst(.45,320,.28,2.2); else if(k==='grain') burst(.35,2600,.07,2); else thud(); },
   toast, cash:()=>CASH.n, addCash:d=>{ addCash(d); cashHUD(); }, openMenu, closeMenu, rain:()=>Math.min(1,ENV.rain||0),
   day:()=>Math.floor(CLOCK.now()/(CLOCK.DAY_MINUTES*60000)), dayMs:()=>CLOCK.DAY_MINUTES*60000,
   kerbPoint, inZone:inFarmZone, npcFarms:NPC_FARMS, market:()=>FARM_MARKET, roadHalf:(x,z)=>{ const [e]=nearestRoad(x,z,e=>e.drive); return e?e.hw:4; },

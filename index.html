@@ -196,17 +196,17 @@ body.touchui .ward .kb{display:none}
 .tbtns{--bs:1;--bo:1}.tbtns button{opacity:var(--bo);width:calc(64px * var(--bs));height:calc(64px * var(--bs));border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(12,14,18,.6);font-family:var(--fd);font-size:13px;touch-action:none}
 .tbtns button.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}
 .tbtns .act{background:var(--danfo);color:var(--ink);border-color:var(--danfo);font-size:20px}
-/* driving with pedals: GAS and BRAKE bottom left, the arrows (or the wheel) bottom right, E HORN RADIO in a row above them */
-.tbtns .tdrv{position:fixed;width:calc(84px * var(--bs));height:calc(84px * var(--bs));border-radius:22px;font-size:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1}
-.tbtns .tped b{font-size:15px;letter-spacing:.04em}.tbtns .tped small{font:600 9px/1 var(--fb,system-ui);opacity:.75;letter-spacing:0}
-#tGas{left:calc(124px + var(--sl));bottom:calc(20px + var(--sb));height:calc(118px * var(--bs));background:rgba(28,122,62,.72);border-color:rgba(190,255,205,.55)}
-#tRev{left:calc(26px + var(--sl));bottom:calc(20px + var(--sb));background:rgba(170,40,32,.72);border-color:rgba(255,200,190,.55)}
-#tLeft{right:calc(124px + var(--sr));bottom:calc(20px + var(--sb))}#tRight{right:calc(26px + var(--sr));bottom:calc(20px + var(--sb))}
-#tWheel{right:calc(22px + var(--sr));bottom:calc(14px + var(--sb));width:calc(150px * var(--bs));height:calc(150px * var(--bs));border-radius:50%;background:rgba(12,14,18,.35);color:rgba(247,239,223,.9);padding:6px}
-#tWheel svg{width:100%;height:100%;pointer-events:none}
-.tbtns .tdrv.on{background:var(--danfo);color:var(--ink);border-color:var(--danfo)}#tWheel.on{background:rgba(12,14,18,.5);color:var(--danfo)}
-body.drvpad .tbtns{bottom:calc(112px + var(--sb))}body.drvwheel .tbtns{bottom:calc(172px + var(--sb))}
-:is(body.drvpad,body.drvwheel) #tE{grid-row:3;grid-column:3}:is(body.drvpad,body.drvwheel) #tHorn{grid-row:3;grid-column:2}:is(body.drvpad,body.drvwheel) #tRadio{grid-row:3;grid-column:1}:is(body.drvpad,body.drvwheel) #tSk3{grid-row:2;grid-column:3}
+/* driving, Call of Duty Mobile style: ▲ ▼ on the left, ◀ ▶ on the right, round and see-through; a small horn (and radio) above them */
+.tbtns .tdrv{position:fixed;width:calc(62px * var(--bs));height:calc(62px * var(--bs));border-radius:50%;background:rgba(10,12,16,.34);border:2px solid rgba(255,255,255,.5);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.tbtns .tdrv svg{width:56%;height:56%;pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.55))}
+#tGas{left:calc(40px + var(--sl));bottom:calc(46vh - 31px)}#tRev{left:calc(40px + var(--sl));bottom:calc(20vh - 31px)}
+#tLeft{right:calc(132px + var(--sr));bottom:calc(25vh - 31px)}#tRight{right:calc(38px + var(--sr));bottom:calc(25vh - 31px)}
+#tWheel{right:calc(22px + var(--sr));bottom:calc(14px + var(--sb));width:calc(140px * var(--bs));height:calc(140px * var(--bs));border-radius:50%;background:rgba(12,14,18,.3);color:rgba(247,239,223,.9);padding:6px}
+#tWheel svg{width:100%;height:100%}
+.tbtns .tdrv.on{background:rgba(242,183,5,.8);border-color:var(--danfo);color:#111}#tWheel.on{background:rgba(12,14,18,.45);color:var(--danfo)}
+:is(body.drvpad,body.drvwheel) #tHorn:not(.free){position:fixed;right:calc(10px + var(--sr));bottom:calc(47vh - 23px);width:calc(46px * var(--bs));height:calc(46px * var(--bs));font-size:10px}
+:is(body.drvpad,body.drvwheel) #tRadio:not(.free){position:fixed;right:calc(64px + var(--sr));bottom:calc(47vh - 23px);width:calc(46px * var(--bs));height:calc(46px * var(--bs));font-size:9px}
+body.drvwheel #tHorn:not(.free),body.drvwheel #tRadio:not(.free){bottom:calc(14px + 150px + var(--sb))}
 #tE{grid-column:3;grid-row:1}#tHorn{grid-column:2;grid-row:1}#tRadio{grid-column:1;grid-row:3;font-size:11px}#tGrab{grid-column:2;grid-row:2}#tPunch{grid-column:2;grid-row:3}#tBrake{grid-column:2;grid-row:3}#tJump{grid-column:3;grid-row:2}#tCrouch{grid-column:3;grid-row:3}#tSk1{grid-column:1;grid-row:2}#tSk2{grid-column:2;grid-row:2}#tSk3{grid-column:1;grid-row:1}
 .tbtns #tPunch.fire{background:rgba(190,40,30,.85);border-color:rgba(255,200,190,.6);font-size:14px}.tbtns #tCrouch{font-size:12px}
 .trick{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;pointer-events:none;font-family:var(--fd);color:var(--danfo);text-shadow:0 2px 0 #0E1014,0 4px 14px rgba(0,0,0,.6);white-space:nowrap;z-index:6}
@@ -265,7 +265,7 @@ body.btnedit .zone{pointer-events:none}body.btnedit #touch::before{content:'';po
 .foe .hpbar{width:90px;height:6px}
 .foe .hpbar i{background:var(--rust)}
 body.touchui .speedo{right:calc(22px + var(--sr));bottom:calc(170px + var(--sb))}
-body.touchui:is(.drvpad,.drvwheel) .speedo{right:auto;top:auto;left:50%;transform:translateX(-50%);bottom:calc(62px + var(--sb));text-align:center}
+body.touchui:is(.drvpad,.drvwheel) .speedo{right:auto;top:auto;left:50%;transform:translateX(-50%);bottom:calc(76px + var(--sb));text-align:center}body.touchui:is(.drvpad,.drvwheel) .speedo b{font-size:30px}body.touchui:is(.drvpad,.drvwheel) .speedo small{font-size:10px}
 body.touchui .prompt{bottom:calc(24px + var(--sb))}
 body.touchui #mmWrap{left:calc(14px + var(--sl));top:calc(64px + var(--st));bottom:auto;width:112px;height:112px}
 @media (max-height:500px),(max-width:760px){ body.touchui #mmWrap{width:96px;height:96px} body.touchui #mm{border-radius:9px;border-width:2px} body.touchui #mmWrap .mmtag{font-size:10px;padding:3px 7px 2px;bottom:3px;right:-4px} }
@@ -471,7 +471,7 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" data-d="wheel" aria-pressed="false">Wheel</button>
       <button type="button" data-d="joy" aria-pressed="false">Joystick</button>
     </div>
-    <p class="note">Arrows: ◀ ▶ on the right steer, GAS and BRAKE on the left (keep holding BRAKE to reverse). Wheel: turn the steering wheel with your thumb. Joystick: the old way.</p></div>
+    <p class="note">Arrows: ◀ ▶ on the right steer, ▲ goes and ▼ brakes on the left (keep holding ▼ to reverse). Wheel: turn the steering wheel with your thumb. Joystick: the old way.</p></div>
     <h3>Camera</h3>
     <label class="slide"><span>Turn speed</span><input type="range" id="camSens" min="40" max="250" step="10" value="100"><b id="camSensV">100%</b></label>
     <div class="seg" id="camFol" role="group" aria-label="Camera follows you">
@@ -542,10 +542,10 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
       <button type="button" id="tSk2" class="tbig" hidden>OLLIE</button>
       <button type="button" id="tSk3" hidden>SPIN</button>
       <button type="button" id="tPunch" class="fightb tbig" hidden aria-label="Attack: tap tap tap for jab, cross, kick">ATTACK</button>
-      <button type="button" id="tGas" class="tdrv tped" hidden aria-label="Accelerate"><b>GAS</b></button>
-      <button type="button" id="tRev" class="tdrv tped" hidden aria-label="Brake, and reverse when stopped"><b>BRAKE</b><small>hold: reverse</small></button>
-      <button type="button" id="tLeft" class="tdrv tarw" hidden aria-label="Steer left">◀</button>
-      <button type="button" id="tRight" class="tdrv tarw" hidden aria-label="Steer right">▶</button>
+      <button type="button" id="tGas" class="tdrv" hidden aria-label="Accelerate"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3.5 12H9v9h6v-9h5.5z" fill="currentColor"/></svg></button>
+      <button type="button" id="tRev" class="tdrv" hidden aria-label="Brake; hold to reverse"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21 3.5 12H9V3h6v9h5.5z" fill="currentColor"/></svg></button>
+      <button type="button" id="tLeft" class="tdrv" hidden aria-label="Steer left"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12 12 3.5V9h9v6h-9v5.5z" fill="currentColor"/></svg></button>
+      <button type="button" id="tRight" class="tdrv" hidden aria-label="Steer right"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12 12 3.5V9H3v6h9v5.5z" fill="currentColor"/></svg></button>
       <button type="button" id="tWheel" class="tdrv" hidden aria-label="Steering wheel: turn it with your thumb"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="41" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="50" cy="50" r="12" fill="currentColor"/><path d="M50 62V91M38 50H9M62 50H91" stroke="currentColor" stroke-width="8"/><rect x="45" y="3" width="10" height="12" rx="2" fill="#f5b400"/></svg></button>
     </div>
   </div>
