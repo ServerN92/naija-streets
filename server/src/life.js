@@ -41,8 +41,16 @@ export function lifeOk(d, now = Date.now()) {
     kf: num(d.kf, 0, 9),                                  // how well the police know your face (it fades day by day)
     kfd: num(d.kfd, 0, 99991231) | 0, ogd: num(d.ogd, 0, 99991231) | 0, seen: d.seen ? 1 : 0,
     ffd: num(d.ffd, 0, 1e8) | 0, tips: num(d.tips, 0, 99) | 0,   // the day you last took free food (church/mosque), Mama's tips sent
+    rel: relOk(d.rel, now), relNo: relNoOk(d.relNo), relHype: num(d.relHype, 0, 1e8) | 0,   // your babe (or guy) in the game: who, how much love, a money request; who you broke up with today
   };
 }
+function relOk(r, now) {
+  if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.id !== 'string' || !/^[a-z]{2,12}$/.test(r.id)) return null;
+  const c = (v, lo, hi) => Math.min(hi, Math.max(lo, +v || 0));
+  const ask = r.ask && typeof r.ask === 'object' && Number.isFinite(+r.ask.n) ? { n: Math.round(c(r.ask.n, 0, 50000)), until: Math.round(c(r.ask.until, 0, now + 36e5)) } : null;
+  return { id: r.id, love: Math.round(c(r.love, 0, 100) * 10) / 10, since: c(r.since, 0, 1e8) | 0, dates: c(r.dates, 0, 1e5) | 0, last: Math.round(c(r.last, 0, now + 6e4)), ask };
+}
+function relNoOk(o) { const out = {}; if (o && typeof o === 'object' && !Array.isArray(o)) for (const [k, v] of Object.entries(o).slice(0, 12)) if (/^[a-z]{2,12}$/.test(k) && Number.isFinite(+v)) out[k] = (+v) | 0; return out; }
 function posOk(p, now) {
   if (!p || typeof p !== 'object' || Array.isArray(p) || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return null;
   const c = (v, lo, hi) => Math.min(hi, Math.max(lo, +v || 0));
