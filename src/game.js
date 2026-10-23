@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=1f0d721b09';
-import * as C2 from './char2.js?v=1f0d721b09';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=1f0d721b09';
-import { createPhone } from './phone.js?v=1f0d721b09';
-import { createGuide } from './guide.js?v=1f0d721b09';
+import * as CLOCK from './clock.js?v=2e57b44671';
+import * as C2 from './char2.js?v=2e57b44671';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=2e57b44671';
+import { createPhone } from './phone.js?v=2e57b44671';
+import { createGuide } from './guide.js?v=2e57b44671';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=1f0d721b09';
-import { createHome } from './home.js?v=1f0d721b09';
-import { createFarm } from './farm.js?v=1f0d721b09';
-import { createBusiness } from './business.js?v=1f0d721b09';
-import { createOnline } from './online.js?v=1f0d721b09';
-import { createPolice } from './police.js?v=1f0d721b09';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=1f0d721b09';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=1f0d721b09';
+import { createFootball } from './football.js?v=2e57b44671';
+import { createHome } from './home.js?v=2e57b44671';
+import { createFarm } from './farm.js?v=2e57b44671';
+import { createBusiness } from './business.js?v=2e57b44671';
+import { createOnline } from './online.js?v=2e57b44671';
+import { createPolice } from './police.js?v=2e57b44671';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=2e57b44671';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=2e57b44671';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='1f0d721b09';
+const BUILD='2e57b44671';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -9418,7 +9418,7 @@ function boutiqueMenu(opt={}){ const id=WARD.cur, C=isV2(id)&&V2.casts[id]; if(!
 function roomMenu(){ const rows=[];
   if(LIFE.ntc>0) rows.push({name:'RENT DUE: pay now',sub:`Notice: ${ntcLeft()} before the landlord throws your load out`,btn:'Go in',act:()=>{ closeMenu(); enterFaceRoom(); }});
   else if(LIFE.rent>0) rows.push({name:'Your room',sub:'Rent paid for '+rentLeft()+' more',btn:'Go in',act:()=>{ closeMenu(); enterFaceRoom(); }});
-  for(const [d,p] of RENT_OPTS) rows.push({name:`${LIFE.rent>0?'Pay':'Rent the room for'} ${d} day${d>1?'s':''}${LIFE.rent>0?' more':''}`,sub:`${naira(Math.round(p/d))} a day · a mattress, a fan, the compound toilet`,price:p,
+  for(const [d,p] of RENT_OPTS) rows.push({name:`${LIFE.rent>0?'Pay':'Rent the room for'} ${d} day${d>1?'s':''}${LIFE.rent>0?' more':''}`,sub:`${naira(Math.round(p/d))} a day · a mattress, a fan, the compound toilet and bathroom`,price:p,
     act:()=>{ const first=LIFE.rent<=0&&!LIFE.ntc; LIFE.rent+=d*DAY_S; LIFE.ntc=0; LIFE.rented++; if(!LIFE.flat) LIFE.home='room'; lifeSave(true); lifePlaces();
       toast(first?'Landlord: "Na your room be this. No noise after ten, and pay your rent on time!"':'Landlord: "Thank you. Your rent dey run."',4.5); }});
   openMenu('ROOM TO LET','Landlord Baba Kunle · face-me-I-face-you',rows); }
@@ -9435,9 +9435,15 @@ function setupFaceRoom(R){ if(R.ready) return; R.ready=true; const M=R.marks; R.
   R.spot(M.bed,'Sleep',()=>lifeSleep('room'),1.3);
   R.spot(M.ward,'Change clothes',()=>openWard((M.ward.yaw||0)+Math.PI),1.2);
   R.spot(M.stove,'Cook indomie',()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+20); careEat(.6); }); toast(mpick(['Indomie and egg don ready. You chop am finish!','Hot noodles on the kerosene stove. Belle don full.']),3.4); },1.2);
+  const bt=R.nearFree(M.yard.x-.75,M.yard.z+.45);   // the bucket and cup by the back door: a bucket bath in the compound bathroom
+  R.spot({x:bt.x,z:bt.z},()=>LIFE.dirt<.15?'Bucket bath (you dey clean already)':'Take a bucket bath (free for tenants)',roomBath,.95);
   R.spot(M.yard,'Use the compound toilet (free)',()=>lifeEase(mpick(['The compound toilet for the back. E no too clean, but e free.','You use the toilet for the backyard. Free for tenants.'])),1.2);
   if(M.radio) R.spot(M.radio,()=>MUS.home?'Turn the radio off':'Play the radio',()=>{ if(SND&&SND.SONGS.length){ MUS.home=!MUS.home; MUS.r0=null; if(!MUS.home){ SND.songStop(0,.4); toast('Radio off',1.6); } return; }
     toast(mpick(['Radio: "Na Wazobia FM be this! Traffic for Ikorodu Road heavy o."','Radio: fuji music dey play. You nod your head.','Radio: news, then Afrobeats.']),3.2); },1.1); }
+// a bucket bath in the compound bathroom behind your rented room: free while your rent is paid
+function roomBath(){ if(busy) return; if(LIFE.rent<=0){ toast('Landlord: "Pay your rent first, then you fit baff for my compound."',3.4); return; }
+  burst(1.4,900,.12,1.1); fadeSwap(()=>{ LIFE.dirt=0; LIFE_SYNC.warnDirt=false; FIGHT.hp=Math.min(100,FIGHT.hp+5); lifeSave(); });
+  toast(mpick(['Bucket bath for the backyard: cold water from the compound tank and Joy soap. You dey fresh!','You don baff! Free for tenants. Body clean, mind clean.']),3.6); }
 // ease yourself somewhere free (your room's compound toilet, your flat's bathroom)
 function lifeEase(msg){ fadeSwap(()=>{ LIFE.ease=0; LIFE_SYNC.warn75=false; lifeSave(); }); toast(msg,3.4); }
 
@@ -9599,7 +9605,7 @@ function stinkFx(dt){ const on=SMELL()&&started&&mode!=='interior'&&!(mode==='dr
   if(!STK.o){ if(!on) return; STK.o=makeStink(); } STK.o.update(f.x,f.y||0,f.z,dt,on); }
 function hygieneTick(dt){ const busyBody=player.speed>WALK_V+.3||FIGHT.near||T0-FIGHT.lastAtk<6; if(!(HL.act&&HL.act.kind==='bath')) LIFE.dirt=Math.min(1,LIFE.dirt+dt/DIRT_S*(busyBody?1.6:1));
   if(SWIM.on) LIFE.dirt=Math.max(0,LIFE.dirt-dt*.02);
-  if(LIFE.dirt>=.75&&!LIFE_SYNC.warnDirt){ LIFE_SYNC.warnDirt=true; toast('Your body don dey smell small. Go baff: the public bathroom by the toilet (₦100), or your shower for house.',5); }
+  if(LIFE.dirt>=.75&&!LIFE_SYNC.warnDirt){ LIFE_SYNC.warnDirt=true; toast('Your body don dey smell small. Go baff: the public bathroom by the toilet (₦100), the bathroom behind your room, or your shower for house.',5); }
   if(LIFE.dirt<.7) LIFE_SYNC.warnDirt=false;
   if(SMELL()!==!!LIFE_SYNC.smelt){ LIFE_SYNC.smelt=SMELL(); lifeSave(true); }
   if(SMELL()&&mode==='walk'&&(STK.sayT-=dt)<=0){ let near=null; for(const p of peds){ if(p.cop||p.state!=='walk'&&p.state!=='idle'&&p.state!=='spot') continue; if(Math.hypot(p.x-player.x,p.z-player.z)<2.6){ near=p; break; } }
@@ -9624,7 +9630,7 @@ function careHelp(){ const c=$('#careCard'); if(CARE_CARD.open){ careClose(); re
     <p>🍲 <b>EAT</b> · fills as you play. Full: your health drops and you <b>faint</b> as you walk. Chop at a buka, Mama Put (₦300) or cook at home.</p>
     <p>😴 <b>SLEEP</b> · full: you can't run. Sleep in your tent (mosquitoes!), a room or a bed.</p>
     <p>🚽 <b>TOILET</b> · full: you can't run, and if you hold it too long… e go happen 🤣. Public toilet ₦50.</p>
-    <p>🚿 <b>BATH</b> · full: you <b>smell</b>, flies follow you, people avoid you and buy less. Bucket bath ₦100 by the toilet, or your shower.</p>
+    <p>🚿 <b>BATH</b> · full: you <b>smell</b>, flies follow you, people avoid you and buy less. Bucket bath ₦100 by the toilet, free in your rented room, or your shower.</p>
     <p>✨ <b>All four green</b>: you're FRESH, +10% on your work pay.</p>
     <p>💸 <b>No money?</b> Church and mosque share free food once a day, or beg at a bus stop.</p>
     <small>Tap anywhere to close</small>`;
@@ -10126,7 +10132,7 @@ function wayTarget(){ if(!started||busy||mode==='interior'||mode==='enter'||JAIL
   if(LIFE.ease>=.9){ const q=nearestOf(toiletSpots(),x,z); if(q) return {...q,y:3}; }
   if(LIFE.eat>=.9){ const L=foodSpots().concat(MAMAPUT.map(m=>({...m,t:'Mama Put · ₦300'}))); if(CASH.n<300||CASH.n<BROKE&&!(LIFE.ffd===gameDay())) for(const F of FFOOD) if(LIFE.ffd!==gameDay()) L.push({x:F.x,z:F.z,t:F.kind==='church'?'Church · free food':'Mosque · free food'}); const q=nearestOf(CASH.n<300?L.filter(q=>/free/.test(q.t)):L,x,z)||nearestOf(L,x,z); if(q) return {...q,y:3}; }
   if(LIFE.sleep>=.95){ const h=homeSpot(); return {x:h.x,z:h.z,y:3,t:homeNow()==='tent'?'Your tent · sleep':'Home · sleep'}; }
-  if(LIFE.dirt>=1){ const L=CAMPS.filter(C=>C.door).map(C=>{ const b=bathSpot(C); return b&&{...b,y:3,t:'Public bathroom · ₦100'}; }); if(homeNow()!=='tent'){ const h=homeSpot(); L.push({x:h.x,z:h.z,y:3,t:'Your shower'}); } const q=nearestOf(L,x,z); if(q) return q; }
+  if(LIFE.dirt>=1){ const L=CAMPS.filter(C=>C.door).map(C=>{ const b=bathSpot(C); return b&&{...b,y:3,t:'Public bathroom · ₦100'}; }); if(homeNow()!=='tent'){ const h=homeSpot(); L.push({x:h.x,z:h.z,y:3,t:homeNow()==='room'?'Your room · bucket bath':'Your shower'}); } const q=nearestOf(L,x,z); if(q) return q; }
   if(mapView.dest){ const d=mapView.dest; return {x:d.x,z:d.z,y:3.2,t:(d.place&&d.place.name)||'Where you are going'}; }
   const S=stepOf(); if(!S){ if(!myJob()) return null; const G=lifeGoal(), g=G.go&&G.go(); return g?{x:g.x,z:g.z,y:3,t:g.name||G.t}:null; }
   const g=S.go&&S.go(); if(g) return {x:g.x,z:g.z,y:3,t:g.name||S.t};
@@ -10846,7 +10852,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
-    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), enterRoom:()=>enterFaceRoom(), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
