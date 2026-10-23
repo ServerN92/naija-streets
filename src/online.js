@@ -30,7 +30,7 @@ function serverUrl() {
 export function createOnline(api) {
   const { THREE, scene, camera } = api;
   const URL_ = serverUrl();
-  const S = { ws: null, st: 'off', want: false, tries: 0, timer: null, me: null, n: 0, kicked: false, old: false,
+  const S = { ws: null, st: 'off', want: false, tries: 0, timer: null, me: null, n: 0, c: 0, d: 0, kicked: false, old: false,
     srv: 0, cseq: 0, cpend: [], ep: Math.random().toString(36).slice(2, 10), lastSend: 0, last: null, look: '', panel: false, tab: 'in', busy: false };
   const RS = new Map();   // the other players, by their number on the server
   let saved = null; try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
@@ -61,7 +61,7 @@ export function createOnline(api) {
 
   function on(m) {
     switch (m.t) {
-      case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
+      case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; cnt(m); if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
       case 'err': if (m.w === 'pol') { api.pol && api.pol(m); break; } if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
       case 'ok': if (m.w === 'pol') { api.pol && api.pol(m); break; } if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
@@ -79,7 +79,7 @@ export function createOnline(api) {
       case 'ogaget': api.toast(`👑 ${m.n} bring you ₦${(+m.c || 0).toLocaleString('en-NG')} settlement.`, 3.2); if (api.ogaNews) api.ogaNews(m, true); break;
       case 'tok': if (saved) save({ ...saved, tok: m.tok }); break;
       case 'email': if (S.me) S.me.email = m.email; ui(); break;
-      case 'n': S.n = m.n; ui(); break;
+      case 'n': S.n = m.n; cnt(m); ui(); break;
       case 'w': world(m); break;
       case 'say': heard(m); break;
       case '$': money(m); break;
@@ -91,7 +91,7 @@ export function createOnline(api) {
   function signedIn(m) {
     const fresh = !saved || saved.name !== m.name;
     if (!S.me && !(saved && saved.tok)) keepGuest();     // what you had as a guest waits for when you sign out
-    S.me = { id: m.id, name: m.name, email: m.email || '' }; S.st = 'in'; S.busy = false; S.kicked = false; if (m.n) S.n = m.n;
+    S.me = { id: m.id, name: m.name, email: m.email || '' }; S.st = 'in'; S.busy = false; S.kicked = false; if (m.n) S.n = m.n; cnt(m);
     save({ tok: m.tok, name: m.name });
     S.srv = m.cash | 0;
     for (const p of S.cpend) send({ t: '$', d: p.d, s: p.s, e: S.ep, ...(p.j ? { j: p.j } : {}) });   // money made while the line was down
@@ -102,7 +102,7 @@ export function createOnline(api) {
     if (S.solo) { S.solo = false; S.me = null; send({ t: 'out' }); return; }   // they chose Solo Hustle while this was on its way
     if (S.panel && (fresh || want)) closePanel();
     if (want && api.goLive) setTimeout(() => api.goLive(), 150);
-    if (fresh) api.toast(`Welcome, ${m.name}! You are online · ${m.n || 1} in Lagos now.`, 3.5);
+    if (fresh) api.toast(`Welcome, ${m.name}! You are online · ${m.n || 1} in Lagos${m.c ? ` · ${m.c} on the street` : ''}.`, 3.5);
     ui();
   }
   function keepGuest() { try { if (localStorage.getItem(GUEST_CASH) === null) localStorage.setItem(GUEST_CASH, String(api.getCash())); } catch (e) { /* ignore */ } }
@@ -416,13 +416,19 @@ export function createOnline(api) {
     if (k === 'new') { const u = $('#olUser'); if (!u.value) { const p = api.profile(); if (p && p.name) u.value = p.name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_]/g, '').slice(0, 16); } }
     hideMsg();
   }
+  // The city count from the server: c = Lagosians about on the street (the world's own people,
+  // by Lagos time of day), d = players seen in the last 24 h. Both are real numbers; the first
+  // is the NPC population, never passed off as players.
+  function cnt(m) { if (m.c != null) S.c = m.c; if (m.d != null) S.d = m.d; }
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  function cityText() { const a = []; if (S.c) a.push(`${S.c.toLocaleString()} Lagosians on the street`); if (S.d) a.push(`${S.d} played today`); return a.join(' · '); }
   function ui() {
     const st = S.me ? 'in' : S.st;
     // the title screen and the settings
     const sub = $('#onlSub'), set = $('#olSetSub');
     const line = S.old ? 'New version out: reload the page' : S.kicked ? 'Signed in on another phone · tap to play here' : S.me ? `Online as ${S.me.name} · ${S.n} in Lagos` : saved && saved.tok ? (st === 'connecting' ? 'Connecting…' : 'Can’t reach the server · trying again') : 'Sign in to see other players';
     if (set) set.textContent = line;
-    if (sub) sub.textContent = S.old ? 'New version out. Reload the page.' : S.kicked ? 'Signed in on another phone. Tap to play here.' : S.me ? `Continue as ${S.me.name}${S.n ? `. ${S.n} in Lagos now` : ''}` : saved && saved.tok ? (st === 'connecting' ? 'Connecting…' : 'Can’t reach the server. Trying again.') : `Play with real people${S.n ? `. ${S.n} in Lagos now` : ''}`;
+    if (sub) sub.textContent = S.old ? 'New version out. Reload the page.' : S.kicked ? 'Signed in on another phone. Tap to play here.' : S.me ? `Continue as ${S.me.name}${S.n ? ` · ${plural(S.n, 'player')} in Lagos` : ''}${S.c ? ` · ${S.c.toLocaleString()} on the street` : ''}` : saved && saved.tok ? (st === 'connecting' ? 'Connecting…' : 'Can’t reach the server. Trying again.') : `Play with real people${S.n ? ` · ${plural(S.n, 'player')} in Lagos` : ''}${S.c ? ` · ${S.c.toLocaleString()} on the street` : ''}`;
     lobbyText();
     const btn = $('#onlBtn'); if (btn) btn.classList.toggle('on', !!S.me);
     // the HUD
@@ -432,7 +438,7 @@ export function createOnline(api) {
     // the panel
     if (!$('#onlinePanel') || $('#onlinePanel').hidden) return;
     const stat = $('#olStat');
-    stat.textContent = S.old ? 'A new version of the game is out. Reload the page.' : S.me ? `${S.n} player${S.n === 1 ? '' : 's'} in Lagos now` : st === 'connecting' ? 'Connecting to Lagos…' : st === 'guest' ? `${S.n} player${S.n === 1 ? '' : 's'} in Lagos now` : 'Can’t reach the game server right now. Check your data; it keeps trying.';
+    stat.textContent = S.old ? 'A new version of the game is out. Reload the page.' : S.me || st === 'guest' ? [`${plural(S.n, 'player')} in Lagos now`, cityText()].filter(Boolean).join(' · ') : st === 'connecting' ? 'Connecting to Lagos…' : 'Can’t reach the game server right now. Check your data; it keeps trying.';
     $('#olGuest').hidden = !!S.me; $('#olIn').hidden = !S.me;
     if (S.me) { $('#olName').textContent = S.me.name; $('#olMailNow').textContent = S.me.email ? `Now: ${S.me.email}` : 'No email yet. Add one so you can get back in if you forget your password.'; }
     $('#olKick').hidden = !S.kicked;

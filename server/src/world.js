@@ -37,6 +37,27 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     ipHi: new Limits(60, 3),
   };
   let nextId = 1, lastCount = -1;
+  // The city count: Lagosians (NPCs) about on the street, by Lagos time of day. It is the
+  // world's own population, not players; it breathes a little and ticks every 5 s so it
+  // never sits still. Real players are counted separately and shown as players.
+  const CURVE = [220, 190, 160, 150, 170, 260, 520, 780, 860, 820, 720, 660, 640, 610, 600, 640, 760, 820, 900, 860, 700, 560, 420, 300];
+  let cityN = 0, walk = 0;
+  function cityTarget(t = now()) {
+    const h = ((t / 36e5) + 1) % 24;                  // Lagos is UTC+1, no DST
+    const a = CURVE[Math.floor(h)], b = CURVE[(Math.floor(h) + 1) % 24], f = h - Math.floor(h);
+    const base = a + (b - a) * f;
+    const wave = Math.sin(t / 2.2e6) * 35 + Math.sin(t / 5.1e5) * 12;   // slow swells (~37 min and ~9 min)
+    return base + wave;
+  }
+  function city(t = now()) {
+    walk = Math.max(-25, Math.min(25, walk + (Math.random() * 10 - 5)));
+    const want = cityTarget(t) + walk + online.size;
+    if (!cityN) cityN = want;
+    cityN += (want - cityN) * 0.35 + (Math.random() * 4 - 2);   // ease toward the target, jitter a little
+    return Math.max(80, Math.round(cityN));
+  }
+  const today = () => db.active(now() - 864e5);
+  const counts = () => ({ n: online.size, c: city(), d: today() });
 
   // money the server itself moves (a business bought, the till collected): saved at once, the phone told at once
   function spend(C, n, why) {
@@ -109,7 +130,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     db.seen(u.id, t);
     const life = db.lifeGet(u.id);
     if (life) { C.p.rk = rankOf(life.cr); C.p.jb = jobBadge(life); C.p.sm = life.dirt >= 1 ? 1 : 0; }
-    send(C, { t: 'me', tok, id: C.p.id, uid: u.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, life, n: online.size });
+    send(C, { t: 'me', tok, id: C.p.id, uid: u.id, name: u.name, cash: C.cash, email: maskEmail(u.email), look, life, ...counts() });
     biz.hello(C); park.hello(C); pvp.hello(C); law.hello(C); bank.hello(C); cbn.hello(C); love.hello(C); yahoo.hello(C); politics.hello(C);
     log('in', u.name, online.size);
   }
@@ -156,7 +177,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
       if (s) db.dropSession(th);
       return send(C, { t: 'guest', m: 'Please sign in again.' });
     }
-    send(C, { t: 'guest', n: online.size });
+    send(C, { t: 'guest', ...counts() });
   }
   async function forgot(C, m) {
     if (!L.ipForgot.take(C.ip)) return err(C, 'forgot', 'Too many tries. Try again in an hour.');
@@ -350,7 +371,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   }
   function slow() {   // every 5 s: the count of players, money to disk, dead lines
     const t = now();
-    if (online.size !== lastCount) { lastCount = online.size; const o = JSON.stringify({ t: 'n', n: lastCount }); for (const C of conns) if (C.ws.open) C.ws.send(o); }
+    { lastCount = online.size; const o = JSON.stringify({ t: 'n', ...counts() }); for (const C of conns) if (C.ws.open) C.ws.send(o); }
     for (const C of online.values()) flushCash(C);
     for (const C of conns) if (!C.user && t - C.t0 > 10 * 60e3) C.ws.close(1000, 'idle');
   }
