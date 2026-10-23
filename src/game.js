@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=d531b747ef';
-import * as C2 from './char2.js?v=d531b747ef';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=d531b747ef';
-import { createPhone } from './phone.js?v=d531b747ef';
-import { createGuide } from './guide.js?v=d531b747ef';
+import * as CLOCK from './clock.js?v=16bf5e7799';
+import * as C2 from './char2.js?v=16bf5e7799';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=16bf5e7799';
+import { createPhone } from './phone.js?v=16bf5e7799';
+import { createGuide } from './guide.js?v=16bf5e7799';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=d531b747ef';
-import { createHome } from './home.js?v=d531b747ef';
-import { createFarm } from './farm.js?v=d531b747ef';
-import { createBusiness } from './business.js?v=d531b747ef';
-import { createOnline } from './online.js?v=d531b747ef';
-import { createPolice } from './police.js?v=d531b747ef';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=d531b747ef';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=d531b747ef';
+import { createFootball } from './football.js?v=16bf5e7799';
+import { createHome } from './home.js?v=16bf5e7799';
+import { createFarm } from './farm.js?v=16bf5e7799';
+import { createBusiness } from './business.js?v=16bf5e7799';
+import { createOnline } from './online.js?v=16bf5e7799';
+import { createPolice } from './police.js?v=16bf5e7799';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=16bf5e7799';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=16bf5e7799';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='d531b747ef';
+const BUILD='16bf5e7799';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
