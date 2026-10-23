@@ -44,7 +44,8 @@ export function lifeOk(d, now = Date.now()) {
     ffd: num(d.ffd, 0, 1e8) | 0, tips: num(d.tips, 0, 99) | 0,
     dy: num(d.dy, 0, 1e8) | 0, dd: num(d.dd, 0, 1e8) | 0, miss: num(d.miss, 0, 9) | 0, pen: num(d.pen, 0, 1e8) | 0,   // work days skipped in a row, the day of the pay cut   // the day of today's work target, the day it was done   // the day you last took free food (church/mosque), Mama's tips sent
     rel: relOk(d.rel, now), relNo: relNoOk(d.relNo), relHype: num(d.relHype, 0, 1e8) | 0,
-    yh: yhOk(d.yh),   // the yahoo story on the phone (the money side lives in yahoo.js): the heat, legit money, the desk   // your babe (or guy) in the game: who, how much love, a money request; who you broke up with today
+    yh: yhOk(d.yh),
+    aso: num(d.aso, 0, 60) | 0, asoS: num(d.asoS, 0, 1e8) | 0, asoW: num(d.asoW, 0, 1e8) | 0,   // aso-ebi pieces in hand, sold this week, the week (Owambe)   // the yahoo story on the phone (the money side lives in yahoo.js): the heat, legit money, the desk   // your babe (or guy) in the game: who, how much love, a money request; who you broke up with today
   };
 }
 function yhOk(y) { if (!y || typeof y !== 'object') return null; const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo); return { st: ['learn', 'free', 'dropped', 'caught'].includes(y.st) ? y.st : '', days: (Array.isArray(y.days) ? y.days : []).map(v => v | 0).filter(v => v > 0).slice(0, 8), t0: num(y.t0, 0, 2e13), grad: num(y.grad, 0, 2e13), last: num(y.last, 0, 2e13), n: num(y.n, 0, 9999) | 0, dirty: num(y.dirty, 0, 1e12), jail: num(y.jail, 0, 2e13), caught: num(y.caught, 0, 2e13), heat: num(y.heat, 0, 100), legit: num(y.legit, 0, 1e12), desk: y.desk ? 1 : 0, hd: num(y.hd, 0, 1e8) | 0 }; }

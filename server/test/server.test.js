@@ -384,12 +384,14 @@ test('politics: the tax purse, declaring for a seat, voting on the day, the coun
   for (const x of [a, b, c]) x.send({ t: 'p', x: 20, y: 0, z: 20, r: 0, a: 'i', s: 0, v: '', q: 0 });
   await new Promise(r => setTimeout(r, 300));
   const st = async x => { for (let i = x.got.length - 1; i >= 0; i--) if (x.got[i].t === 'polme') x.got.splice(i, 1); x.send({ t: 'pol', a: 'me' }); return (await x.next('polme')).m; };
-  let m = await st(a); const purse0 = m.purse; assert.equal(m.seats.length, 8); assert.ok(m.rank >= 2, 'rank from the life record: ' + m.rank);
+  let m = await st(a); const purse0 = m.purse; assert.equal(m.seats.length, 10); assert.ok(m.rank >= 2, 'rank from the life record: ' + m.rank);
   a.send({ t: '$', d: 2000, s: 1, j: 'okada' }); await a.next('$'); m = await st(a); assert.equal(m.purse, purse0 + 100, '5% tax into the purse');
   // wait for the declaring phase with time to spare
   const until = async (x, ph, maxF) => { for (let i = 0; i < 70; i++) { m = await st(x); const left = m.endAt - Date.now(); if (m.phase === ph && left > (maxF || 0)) return m; await new Promise(r => setTimeout(r, 1000)); } throw new Error('phase ' + ph + ' never came: ' + m.phase); };
   await until(a, 'declare', 8000);
   b.send({ t: 'pol', a: 'declare', seat: 'c_mushin' }); assert.match((await b.next(m => m.t === 'err' && m.w === 'pol')).m, /higher rank/);
+  a.send({ t: 'pol', a: 'declare', seat: 'iya' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'pol')).m, /for women/);
+  a.send({ t: '$', d: 1000, s: 7, j: 'water' }); await a.next('$'); m = await st(a); assert.equal(m.market, 50, 'the market levy on pure water money'); assert.equal(m.seats.length, 10);
   a.send({ t: '$', d: 60000, s: 2 }); await a.next('$');
   a.send({ t: 'pol', a: 'declare', seat: 'c_mushin' }); assert.match((await a.next(m => m.t === 'ok' && m.w === 'pol')).m, /on the ballot/); assert.match((await c.next('note')).m, /running for Councillor, Mushin/);
   a.send({ t: 'pol', a: 'vote', seat: 'c_mushin', c: 'pol_a' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'pol')).m, /Saturday/);
