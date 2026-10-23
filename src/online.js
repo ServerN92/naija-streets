@@ -63,8 +63,8 @@ export function createOnline(api) {
     switch (m.t) {
       case 'guest': S.st = 'guest'; if (m.n != null) S.n = m.n; if (m.m && saved) { save(null); api.toast(m.m, 3); } ui(); break;
       case 'me': signedIn(m); break;
-      case 'err': if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
-      case 'ok': if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
+      case 'err': if (m.w === 'pol') { api.pol && api.pol(m); break; } if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bk') { api.bank && api.bank(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showErr(m.w, m.m); break;
+      case 'ok': if (m.w === 'pol') { api.pol && api.pol(m); break; } if (m.w === 'yh') { api.yahoo && api.yahoo(m); break; } if (m.w === 'rom') { api.rom && api.rom(m); break; } if (m.w === 'bz') { api.biz && api.biz(m); break; } if (m.w === 'pk') { api.park && api.park(m); break; } if (m.w === 'law') { api.law && api.law(m); break; } if (m.w === 'cbn') { api.cbn && api.cbn(m); break; } S.busy = false; showOk(m.w, m.m); break;
       case 'bz': case 'bzd': case 'bzlost': case 'bzate': case 'bzcut': case 'bzsent': case 'mk': case 'mkmine': case 'mkback': case 'mkerr': api.biz && api.biz(m); break;
       case 'bk': case 'bkname': case 'bksent': case 'bktx': case 'bkloan': api.bank && api.bank(m); break;
       case 'pk': case 'pkme': case 'pkd': case 'pkt': case 'pkf': api.park && api.park(m); break;
@@ -72,6 +72,7 @@ export function createOnline(api) {
       case 'lawme': case 'wanted': case 'lawcuff': case 'lawhands': case 'arrested': case 'arrestok': case 'settleask': case 'settled': api.law && api.law(m); break;
       case 'cbnme': case 'cbnshift': case 'cbnpaid': api.cbn && api.cbn(m); break;
       case 'romme': case 'romask': case 'romok': case 'rompart': case 'romno': case 'romend': case 'kissfx': api.rom && api.rom(m); break;
+      case 'polme': api.pol && api.pol(m); break;
       case 'yhme': case 'yhgrad': case 'yhcash': case 'yhcaught': case 'yhbail': case 'yhdrop': api.yahoo && api.yahoo(m); break;
       case 'note': api.toast(m.m, 4); break;
       case 'oga': api.toast(`Your oga ${m.n} collect ₦${(+m.c || 0).toLocaleString('en-NG')} settlement from your work. Rise, and you go be oga too.`, 3.6); if (api.ogaNews) api.ogaNews(m, false); break;
@@ -141,9 +142,9 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, pt: j.pt || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb, R.pt); scene.add(R.tag); }
-    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || '') || R.pt !== (j.pt || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.pt = j.pt || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
-      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, pt: j.pt || '', po: j.po || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb, R.pt, R.po); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || '') || R.pt !== (j.pt || '') || R.po !== (j.po || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.pt = j.pt || ''; R.po = j.po || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+      if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt, R.po); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
   function heardPos(R, p, now) {
@@ -252,7 +253,8 @@ export function createOnline(api) {
     sp.renderOrder = 998; sp.visible = false; sp.userData.P = P; sp.userData.ph = Math.random() * 6.3; return sp;
   }
   // the name over a player: a dot (yellow; blue for the police on duty, green for a park chairman), their stars when wanted, then their rank medal
-  function tagSprite(name, stars = 0, badge = '', rk = 0, jb = '', pt = '') {   // pt: they have a partner (a pink heart after the name)   // one small pill: dot, name, (oga title), stars, and the rank medal inside it
+  function tagSprite(name0, stars = 0, badge = '', rk = 0, jb = '', pt = '', po = '') {   // pt: they have a partner (a pink heart after the name); po: a political title in front
+    const name = po ? `${po} ${name0}` : name0;   // one small pill: dot, name, (oga title), stars, and the rank medal inside it
     const cv = document.createElement('canvas'), g = cv.getContext('2d'), fs = 40, st = stars > 0 ? ' ' + '★'.repeat(Math.min(5, stars)) : '', H = 60, med = MEDAL[rk | 0], hasM = !!(med && med.complete && med.naturalWidth), MS = hasM ? 50 : 0;
     const jt = jb && api.jobLabel ? api.jobLabel(jb) : '';   // an oga's title (👑 Okada oga) after the name
     g.font = `700 ${fs}px ${FONT}`; const tw0 = Math.ceil(g.measureText(name).width); g.font = `700 ${fs * .62}px ${FONT}`; const jw = jt ? Math.ceil(g.measureText(' ' + jt).width) : 0; g.font = `700 ${fs}px ${FONT}`;
@@ -330,7 +332,7 @@ export function createOnline(api) {
       if (R.mixer) { R.acc += dt; const k = R.d < 25 ? 1 : R.d < 60 ? 2 : 3; if ((frameN + R.slot) % k === 0) { R.mixer.update(R.acc); R.acc = 0; } }
       // the name, the same size on screen near or far
       const tagOn = R.d < TAG_FAR, sc = clamp(R.d / 11, 1, 5);
-      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt); R.tag.visible = vis; scene.add(R.tag); }
+      if (R.retagNow && R.tag) { R.retagNow = false; const vis = R.tag.visible; scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt, R.po); R.tag.visible = vis; scene.add(R.tag); }
       R.tag.visible = tagOn; if (tagOn) { R.tag.position.set(s.x, topY, s.z); R.tag.scale.set(R.tag.userData.w * sc, R.tag.userData.h * sc, 1); }
       // they smell (their bath bar is full): the green haze, the stink and the flies, for everybody near to see
       { const on = !!R.sm && R.d < 45 && R.root && R.root.visible && !s.v; if (on && !R.stk && api.stink) R.stk = api.stink(); if (R.stk) R.stk.update(s.x, s.y, s.z, dt, on); }

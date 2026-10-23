@@ -6271,7 +6271,7 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), yahoo:()=>yahooApp(), yahooBail:n=>yhBail(n), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), yahoo:()=>yahooApp(), yahooBail:n=>yhBail(n), politics:()=>politicsApp(), flex:()=>flexCard(), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
@@ -10481,6 +10481,57 @@ function yahooApp(){ const d=yhL(), st=YHS.st, t=Date.now(), rows=[];
   if(st==='free'){ const due=t>=YHS.nextCash; rows.push({name:due?'💸 Cash-out ready':`💸 Next cash-out in ${Math.max(1,Math.ceil((YHS.nextCash-t)/3600e3))} h`,sub:`At your desk at home${d.desk?'':' · you need a desk and PC (the Oga sells it, ₦150,000)'} · ${naira(Math.min(YH_C.cashMax,YH_C.cashMin+YHS.n*50000))} · ${YHS.n} cash-out${YHS.n===1?'':'s'} so far`}); }
   const heat=d.heat||0; rows.push({name:`🚨 EFCC heat: ${heat<25?'cool':heat<50?'warm':heat<75?'hot':'RED HOT'}`,sub:`Cash-outs, flashy cars and big houses raise it; legit work money cools it (${naira(d.legit||0)} on record)`,warn:heat>=50});
   return {title:'Laptop',sections:[{h:st==='learn'?'Learning the work':'On your own',rows}]}; }
+/* ================= Lagos politics =================
+   5% of every job payment goes into the Lagos purse. Seats: four councillors, two LG chairmen, a senator, the Governor.
+   Every real week: Monday to Friday you declare (a fee, by rank), Saturday till 8 pm everybody online votes once a seat
+   on the phone, 8 pm the winners take office for the week and get a daily salary from the purse. The title stands in
+   front of your name for everybody to see. The server runs it (server/src/politics.js); this is the phone side. */
+const POLS={m:null,t:0};
+function polOn(m){ if(m.t==='polme'){ const was=POLS.m&&POLS.m.title; POLS.m=m.m; if(PH) PH.event('polup'); if(was!=null&&m.m.title&&m.m.title!==was){ bigMsg('ELECTED 🏛️','rankup',`${m.m.title} ${PROFILE?PROFILE.name:''}`); } return; }
+  if(m.t==='err'||m.t==='ok'){ toast(m.m,3.4); return; } }
+const polSend=o=>!!(ON&&ON.send({t:'pol',...o}));
+const polLeft=ms=>{ const h=Math.floor(ms/3600e3), d=Math.floor(h/24); return d>0?`${d} day${d>1?'s':''} ${h%24} h`:h>0?`${h} h ${Math.floor(ms%3600e3/60e3)} min`:`${Math.max(1,Math.floor(ms/60e3))} min`; };
+function politicsApp(){ const m=POLS.m;
+  if(!ON||!ON.signedIn) return {title:'Politics',sections:[{h:'Lagos politics',rows:[{name:'Sign in online',sub:'Elections every week, a seat for you, the Lagos purse. Online players only.',btn:'SIGN IN',act:()=>{ closePhone(); if(ON) ON.openPanel(); }}]}]};
+  if(!m){ polSend({a:'me'}); return null; }
+  const t=Date.now(), ph=m.phase, left=polLeft(Math.max(0,m.endAt-t)), top=[];
+  top.push({name:`🏛️ Lagos purse: ${naira(m.purse)}`,sub:'5% of every job payment in Lagos goes here. It pays the salaries of the people you elect.'});
+  top.push({name:ph==='declare'?`🗳️ Declarations open · ${left} left`:ph==='vote'?`🗳️ VOTING DAY · ${left} left`:`🏁 Results are in · new week ${left}`,sub:ph==='declare'?'Monday to Friday: put your name down for a seat (a fee, by rank). Saturday everybody votes.':ph==='vote'?'Vote once per seat. Results at 8 pm.':'Monday the next race starts. Campaign: tell people on Gist and chat to vote for you!',warn:ph==='vote'});
+  if(m.title) top.push({name:`You are ${m.title} ${PROFILE?PROFILE.name:''}`,sub:'Your salary comes from the purse every day. Keep Lagos sweet.'});
+  const seats=m.seats.map(s=>{ const r={name:`${s.name}`,sub:''}; const hold=s.holder?`Now: ${s.holder.npc?'':'👤 '}${s.holder.name}${s.holder.me?' (you)':''}`:'Seat empty';
+    if(ph==='declare'){ r.sub=`${hold} · fee ${naira(s.fee)} · pay ${naira(s.pay)}/day · needs rank ${RANKS[s.rank]?RANKS[s.rank][0]:s.rank}${s.cands.filter(c=>!c.npc).length?` · running: ${s.cands.filter(c=>!c.npc).map(c=>c.name).join(', ')}`:''}`; if(s.mine) r.btn='RUNNING'; else { r.btn='DECLARE'; r.off=m.rank<s.rank||CASH.n<s.fee; r.act=()=>{ if(confirm(`Run for ${s.name}? The fee is ${naira(s.fee)} (into the purse).`)) polSend({a:'declare',seat:s.id}); }; } }
+    else if(ph==='vote'){ r.sub=`${hold} · ${s.voted?`you voted ${s.voted}`:'tap a name to vote'}`; r.cands=s.cands; }
+    else { r.sub=`${s.won?`Winner: ${s.won} 🏆`:hold} · ${s.cands.map(c=>`${c.name} ${c.votes|0}`).join(' · ')}`; }
+    return r; });
+  const sec=[{h:'This week',rows:top}];
+  if(ph==='vote'){ for(const s of seats){ sec.push({h:`${s.name} · ${s.sub}`,rows:s.cands.map(c=>({name:`${c.npc?'':'👤 '}${c.name}${c.me?' (you)':''}`,sub:c.npc?'Candidate':'Player',btn:POLS.m.seats.find(x=>x.name===s.name).voted?null:'VOTE',act:()=>polSend({a:'vote',seat:POLS.m.seats.find(x=>x.name===s.name).id,c:c.name})}))}); } }
+  else sec.push({h:'The seats',rows:seats});
+  sec.push({h:'Brag',rows:[{name:'📸 Make my Flex Card',sub:'Your name, title, rank, money, cars and houses on one card. Save it, post it.',btn:'MAKE',act:()=>{ closePhone(); flexCard(); }}]});
+  return {title:'Politics',sections:sec}; }
+// ---- the Flex Card: one picture of who you are in Lagos, to post anywhere
+function netWorth(){ let n=CASH.n; for(const o of OWNED){ const s=LOT_CARS.find(c=>c.type===o.type); n+=s?s.price:150000; } for(const id of LIFE.est){ const p=EST.byId[id]; if(p) n+=p.price; } if(LIFE.estAll.length) n+=EST.PRICE*LIFE.estAll.length; if(LIFE.flat) n+=FLAT_PRICE; return n; }
+async function flexCard(){ if(!PROFILE) return; const W=1080, H=1350, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
+  const title=POLS.m&&POLS.m.title||'', r=myRank(), R=RANKS[r], worth=netWorth(), job=myJob();
+  const grd=g.createLinearGradient(0,0,W,H); grd.addColorStop(0,'#0E1014'); grd.addColorStop(1,'#2a1a08'); g.fillStyle=grd; g.fillRect(0,0,W,H);
+  g.fillStyle='rgba(242,183,5,.08)'; for(let i=0;i<8;i++){ g.beginPath(); g.arc(W*.8,H*.2,120+i*90,0,6.3); g.fill(); }
+  g.fillStyle='#F2B705'; g.font='700 54px Bungee, Impact, sans-serif'; g.fillText('NAIJA STREETS',70,110); g.fillStyle='#BDB5A6'; g.font='600 34px "Barlow Semi Condensed", sans-serif'; g.fillText('LAGOS · MUSHIN', 70,160);
+  // the face
+  try{ const u=await portrait(isV2(savedLook())?savedLook():myPerson(),PROFILE.k??-1); if(u){ const im=new Image(); await new Promise((res,rej)=>{ im.onload=res; im.onerror=rej; im.src=u; }); g.save(); g.beginPath(); g.roundRect(70,220,300,375,30); g.clip(); g.drawImage(im,70,220,300,375); g.restore(); } }catch(e){}
+  g.fillStyle='#F7EFDF'; g.font='700 64px Bungee, Impact, sans-serif'; const nm=(title?title+' ':'')+PROFILE.name; g.fillText(nm.length>16?nm.slice(0,16)+'…':nm,410,290);
+  g.font='600 40px "Barlow Semi Condensed", sans-serif'; g.fillStyle=R[2]; g.fillText(`${R[1]} ${(PROFILE.g==='f'&&R[4])||R[0]}`,410,350);
+  g.fillStyle='#BDB5A6'; g.font='600 36px "Barlow Semi Condensed", sans-serif'; g.fillText(job?`${job.e} ${jobTitle(job.id)}`:'No hustle yet',410,410); g.fillText(`${LIFE.cr|0} street cred`,410,460);
+  g.fillText(homeNow()==='flat'?'Own flat · Mushin':homeNow()==='room'?'Rented room · Mushin':LIFE.est.length?'Mansion owner':'Tent under the bridge',410,510);
+  g.fillStyle='#16A06B'; g.font='700 96px Bungee, Impact, sans-serif'; g.fillText(naira(worth),70,720); g.fillStyle='#BDB5A6'; g.font='600 36px "Barlow Semi Condensed", sans-serif'; g.fillText('NET WORTH · cash, cars and houses',70,770);
+  const cars=OWNED.length, houses=LIFE.est.length+(LIFE.estAll.length?27:0)+(LIFE.flat?1:0);
+  const chips=[`🚗 ${cars} car${cars===1?'':'s'}`,`🏠 ${houses} house${houses===1?'':'s'}`,`💰 ${naira(CASH.n)} cash`,LIFE.rel?`💕 Taken`:'💔 Single',POLS.m&&POLS.m.purse!=null?`🏛️ Lagos purse ${naira(POLS.m.purse)}`:''].filter(Boolean);
+  let x=70, y=860; g.font='700 40px "Barlow Semi Condensed", sans-serif'; for(const c of chips){ const w=g.measureText(c).width+60; if(x+w>W-70){ x=70; y+=90; } g.fillStyle='rgba(255,255,255,.1)'; g.beginPath(); g.roundRect(x,y-52,w,74,37); g.fill(); g.fillStyle='#F7EFDF'; g.fillText(c,x+30,y); x+=w+20; }
+  g.fillStyle='#F2B705'; g.font='700 44px Bungee, Impact, sans-serif'; g.fillText('naijastreet.app',70,H-90); g.fillStyle='#BDB5A6'; g.font='600 32px "Barlow Semi Condensed", sans-serif'; g.fillText('Come hustle with me for Lagos',70,H-45);
+  const src=cv.toDataURL('image/jpeg',.88); flexShow(src); }
+function flexShow(src){ let e=$('#flexCard'); if(!e){ e=document.createElement('div'); e.id='flexCard'; e.className='flex'; e.innerHTML='<img alt="Your Flex Card"><div class="fb"><button type="button" class="fshare">SHARE</button><button type="button" class="fsave">SAVE</button><button type="button" class="fx">CLOSE</button></div>'; document.body.append(e);
+    e.querySelector('.fx').addEventListener('click',()=>{ e.hidden=true; }); e.querySelector('.fsave').addEventListener('click',()=>{ const a=document.createElement('a'); a.href=e.querySelector('img').src; a.download='naija-streets-flex.jpg'; a.click(); });
+    e.querySelector('.fshare').addEventListener('click',async()=>{ const u=e.querySelector('img').src; try{ const b=await (await fetch(u)).blob(), f=new File([b],'naija-streets-flex.jpg',{type:'image/jpeg'}); if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:'My Lagos',text:'Come hustle with me on naijastreet.app'}); else { const a=document.createElement('a'); a.href=u; a.download='naija-streets-flex.jpg'; a.click(); } }catch(err){} }); }
+  e.querySelector('img').src=src; e.hidden=false; if(PH&&S_photos_add) S_photos_add(src); }
+const S_photos_add=src=>{ if(PH) PH.event('photo',{src}); };
 // ---- the pure water hawker: buy a bag (20 sachets) at any kiosk, sell to people on the street
 const HAWK={sold:new WeakSet(),t:0};
 const kioskAt=()=>{ if(mode!=='walk') return null; const k=KIOSK_NEAR(player.x,player.z); if(!k) return null; const lx=(player.x-k.x)*k.c+(player.z-k.z)*k.s, lz=-(player.x-k.x)*k.s+(player.z-k.z)*k.c;
@@ -10659,7 +10710,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   getLife:()=>LIFE, lifeIn:(L,uid)=>lifeIn(L,uid), lifeOut:()=>lifeOut(), jobLabel, stink:()=>makeStink(3,4),
   getCash:()=>CASH.n, setCash:n=>{ CASH.n=Math.max(0,Math.round(n)); try{ localStorage.setItem('naija-cash',String(CASH.n)); }catch(e){} cashHUD(); },
   typing:on=>{ if(on){ for(const k in K) K[k]=false; if(document.pointerLockElement) try{ document.exitPointerLock(); }catch(e){} } },
-  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m), goLive:()=>goLive(), yahoo:m=>yhOnMsg(m),
+  pvp:m=>pvpMsg(m), law:m=>{ if(POLICE) POLICE.on(m); }, cbn:m=>cbnOn(m), rom:m=>romOn(m), goLive:()=>goLive(), yahoo:m=>yhOnMsg(m), pol:m=>polOn(m),
   biz:m=>{ if(BIZ) BIZ.on(m); }, bank:m=>{ if(PH) PH.event('bank',m); }, bizOut:()=>{ if(BIZ) BIZ.signedOut(); if(UNION) UNION.signedOut(); if(POLICE) POLICE.signedOut(); }, park:m=>{ if(UNION) UNION.on(m); },
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
