@@ -13,7 +13,7 @@ const PROTO = 1;
 function freePort() { return new Promise(r => { const s = net.createServer(); s.listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); }); }
 before(async () => {
   port = await freePort(); dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
-  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0', LOVE_TEST: '1', LOVE_BOND_MS: '250', LOVE_NEED: '4', LOVE_DAY_CAP: '2', LOVE_DAY_MS: '3000', YAHOO_BAIL: '200000' }, stdio: ['ignore', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'src/main.js'], { cwd: path.join(import.meta.dirname, '..'), env: { ...process.env, PORT: String(port), DB_PATH: path.join(dir, 't.db'), REG_PER_HOUR: '100', MAIL_DEV_LOG: '1', PARK_TEST: '1', PVP_FRESH_MS: '0', LOVE_TEST: '1', LOVE_BOND_MS: '250', LOVE_NEED: '4', LOVE_DAY_CAP: '2', LOVE_DAY_MS: '3000', YAHOO_BAIL: '200000', POL_TEST: '1', POL_WEEK_MS: '60000', POL_MIN_AGE_MS: '0', POL_TICK_MS: '1000', POL_RANK: '2' }, stdio: ['ignore', 'pipe', 'inherit'] });
   await new Promise((res, rej) => { proc.stdout.on('data', d => { const t = String(d); for (const m of t.matchAll(/MAILCODE (\S+) (\d{6})/g)) codes[m[1]] = m[2]; if (/listening/.test(t)) res(); }); proc.on('exit', c => rej(new Error('server exited ' + c))); });
 });
 after(() => { proc.kill('SIGTERM'); });
@@ -376,4 +376,28 @@ test('yahoo: men only, the fee, lessons one a day, graduation money, cash-outs, 
   b.send({ t: '$', d: 250000, s: 1 }); await b.next('$');
   b.send({ t: 'yh', a: 'bail', n: 'yahoo_a' }); assert.equal((await a.next('yhbail')).n, 'yahoo_b'); assert.match((await b.next(m => m.t === 'ok' && m.w === 'yh')).m, /free/);
   for (const c of [a, f, b]) c.close();
+});
+
+test('politics: the tax purse, declaring for a seat, voting on the day, the count, the title on the tag', async () => {
+  const M = { look: { c: 'p_dayo', g: 'm' } };
+  const [a] = await account('pol_a', 'secret77', { ...M, life: { cr: 1500 } }), [b] = await account('pol_b', 'secret77', M), [c] = await account('pol_c', 'secret77', M);
+  for (const x of [a, b, c]) x.send({ t: 'p', x: 20, y: 0, z: 20, r: 0, a: 'i', s: 0, v: '', q: 0 });
+  await new Promise(r => setTimeout(r, 300));
+  const st = async x => { for (let i = x.got.length - 1; i >= 0; i--) if (x.got[i].t === 'polme') x.got.splice(i, 1); x.send({ t: 'pol', a: 'me' }); return (await x.next('polme')).m; };
+  let m = await st(a); const purse0 = m.purse; assert.equal(m.seats.length, 8); assert.ok(m.rank >= 2, 'rank from the life record: ' + m.rank);
+  a.send({ t: '$', d: 2000, s: 1, j: 'okada' }); await a.next('$'); m = await st(a); assert.equal(m.purse, purse0 + 100, '5% tax into the purse');
+  // wait for the declaring phase with time to spare
+  const until = async (x, ph, maxF) => { for (let i = 0; i < 70; i++) { m = await st(x); const left = m.endAt - Date.now(); if (m.phase === ph && left > (maxF || 0)) return m; await new Promise(r => setTimeout(r, 1000)); } throw new Error('phase ' + ph + ' never came: ' + m.phase); };
+  await until(a, 'declare', 8000);
+  b.send({ t: 'pol', a: 'declare', seat: 'c_mushin' }); assert.match((await b.next(m => m.t === 'err' && m.w === 'pol')).m, /higher rank/);
+  a.send({ t: '$', d: 60000, s: 2 }); await a.next('$');
+  a.send({ t: 'pol', a: 'declare', seat: 'c_mushin' }); assert.match((await a.next(m => m.t === 'ok' && m.w === 'pol')).m, /on the ballot/); assert.match((await c.next('note')).m, /running for Councillor, Mushin/);
+  a.send({ t: 'pol', a: 'vote', seat: 'c_mushin', c: 'pol_a' }); assert.match((await a.next(m => m.t === 'err' && m.w === 'pol')).m, /Saturday/);
+  await until(a, 'vote', 2000);
+  for (const x of [a, b, c]) { x.send({ t: 'pol', a: 'vote', seat: 'c_mushin', c: 'pol_a' }); assert.match((await x.next(m => m.t === 'ok' && m.w === 'pol')).m, /counted/); }
+  b.send({ t: 'pol', a: 'vote', seat: 'c_mushin', c: 'pol_a' }); assert.match((await b.next(m => m.t === 'err' && m.w === 'pol')).m, /already/);
+  const win = await c.next(m => m.t === 'note' && /wins Councillor, Mushin/.test(m.m), 40000); assert.match(win.m, /pol_a wins .* 3 votes/);
+  m = await until(a, 'done'); const seat = m.seats.find(s => s.id === 'c_mushin'); assert.equal(seat.holder.name, 'pol_a'); assert.equal(m.title, 'Hon.');
+  const tag = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'pol_a' && j.po === 'Hon.'), 5000); assert.ok(tag);
+  for (const x of [a, b, c]) x.close();
 });

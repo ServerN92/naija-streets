@@ -11,6 +11,7 @@ import { tune } from './park.js';
 import { tunePvp } from './pvp.js';
 import { tuneLove } from './love.js';
 import { YH } from './yahoo.js';
+import { tunePol } from './politics.js';
 import { createAdmin } from './admin.js';
 
 const PORT = +process.env.PORT || 8080;
@@ -25,6 +26,7 @@ const db = openDb(DB_PATH);
 const mail = createMail({ key: process.env.RESEND_API_KEY, from: process.env.MAIL_FROM, devLog: process.env.MAIL_DEV_LOG === '1' });
 if (process.env.LOVE_TEST === '1') tuneLove(process.env);
 if (process.env.YAHOO_BAIL) YH.bail = +process.env.YAHOO_BAIL;   // (tests)
+if (process.env.POL_TEST === '1') tunePol(process.env);
 if (process.env.PARK_TEST === '1') { tune(process.env); tunePvp(process.env); console.log('park test settings', process.env.PARK_EVERY_MS, process.env.PARK_RANKS); }
 const world = createWorld({ db, mail, log, regPerHour: +process.env.REG_PER_HOUR || 20 });
 const perIp = new Map();
