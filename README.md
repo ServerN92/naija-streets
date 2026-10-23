@@ -249,6 +249,10 @@ officer to collect again. The way up:
   (₦3,000 a day, ₦8,000 for 3, ₦17,000 for 7). Rent runs only while you play (a game day is two real hours). Inside
   (`int_faceme`): a mattress on the floor to sleep, clothes on the nails, a kerosene stove for indomie, a radio, and the
   back door to the compound toilet (free) and, by the bucket, a bucket bath (free while your rent is paid).
+- **Landlord Baba Kunle** stands by the gate: rent the room there the first time, pay more days, or settle a notice. The
+  door itself just says Go in once the rent is paid. The **Rent** app on the phone (only while you rent) shows the days
+  left and the notice and takes the payment from anywhere; it leaves the phone when you buy your flat. The back door has
+  one spot for the toilet or the bucket bath.
 - **The flat**: the agent sells it only to somebody who has rented a room before. Once it is yours it is home again.
 - **Public toilet** (blue ring, ₦50) by your tent: one at a time. People from the camp come to use it; when somebody is
   inside, press E to join the line and wait; they wait for you too. The door swings open as people go in and out.

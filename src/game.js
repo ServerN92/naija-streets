@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=16bf5e7799';
-import * as C2 from './char2.js?v=16bf5e7799';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=16bf5e7799';
-import { createPhone } from './phone.js?v=16bf5e7799';
-import { createGuide } from './guide.js?v=16bf5e7799';
+import * as CLOCK from './clock.js?v=d75e665983';
+import * as C2 from './char2.js?v=d75e665983';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=d75e665983';
+import { createPhone } from './phone.js?v=d75e665983';
+import { createGuide } from './guide.js?v=d75e665983';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=16bf5e7799';
-import { createHome } from './home.js?v=16bf5e7799';
-import { createFarm } from './farm.js?v=16bf5e7799';
-import { createBusiness } from './business.js?v=16bf5e7799';
-import { createOnline } from './online.js?v=16bf5e7799';
-import { createPolice } from './police.js?v=16bf5e7799';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=16bf5e7799';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=16bf5e7799';
+import { createFootball } from './football.js?v=d75e665983';
+import { createHome } from './home.js?v=d75e665983';
+import { createFarm } from './farm.js?v=d75e665983';
+import { createBusiness } from './business.js?v=d75e665983';
+import { createOnline } from './online.js?v=d75e665983';
+import { createPolice } from './police.js?v=d75e665983';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=d75e665983';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=d75e665983';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='16bf5e7799';
+const BUILD='d75e665983';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -6271,7 +6271,7 @@ PH=createPhone({ started:()=>started, clock:()=>CLOCK.fmtHour(ENV.hour), hour:()
   names:phNames, nearPlaces:n=>phPlaces('',n), searchPlaces:phPlaces, callPolice:phonePolice, around:phoneAround,
   rideUI:()=>{ PHONE.tab='ride'; phoneUI(); }, workUI:()=>{ PHONE.tab='work'; phoneUI(); },
   openMap:()=>{ closePhone(); if(mode!=='interior') openMap(); else toast('Map no dey work inside building. Comot first.'); }, toast,
-  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), yahoo:()=>yahooApp(), yahooBail:n=>yhBail(n), politics:()=>politicsApp(), flex:()=>flexCard(), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
+  guide:id=>{ if(GD) GD.hit(id); }, hustle:()=>hustleApp(), love:()=>loveApp(), yahoo:()=>yahooApp(), yahooBail:n=>yhBail(n), politics:()=>politicsApp(), flex:()=>flexCard(), farm:()=>{ const d=FARM&&FARM.app(); if(d&&BIZ) BIZ.farmApp(d); return d; }, home:()=>HOMEX&&HOMEX.app(), rent:()=>rentApp(), homeOrder:(id,house)=>HOMEX?HOMEX.order(id,house,'app'):{ok:false,msg:'The store is not open yet'}, beep:phoneBeep, click:()=>phoneBeep(1500,.02,.12),
   snap:()=>new Promise(r=>{ PHONE.snapCb=r; }), canCamera:()=>mode==='walk'||(mode==='drive'&&!!drive.ride),
   camMode:on=>{ PHONE.cam=on; if(on&&document.pointerLockElement) document.exitPointerLock(); },
   pose:()=>({x:player.x,y:player.y||0,z:player.z,yaw:player.yaw,cy:camState.yaw,cp:camState.pitch}),
@@ -9416,13 +9416,18 @@ function boutiqueMenu(opt={}){ const id=WARD.cur, C=isV2(id)&&V2.casts[id]; if(!
         rank:own?0:(CLOTH_RANK[o.id]||0),act:()=>{ if(!own){ LIFE.own.push(o.id); lifeSave(true); credAdd('buy',20,false); } wearFit(i);
           toast(own?'You don change.':mpick([`${o.name}! You don dey look like somebody now.`,'"E fit you well well! Go and shine."','New clothes, new life. Lagos go notice.']),3); }}; }); }); }
 // the rooming house: the landlord rents you a room by the day; once you have paid, you go in through the house
-function roomMenu(){ const rows=[];
-  if(LIFE.ntc>0) rows.push({name:'RENT DUE: pay now',sub:`Notice: ${ntcLeft()} before the landlord throws your load out`,btn:'Go in',act:()=>{ closeMenu(); enterFaceRoom(); }});
-  else if(LIFE.rent>0) rows.push({name:'Your room',sub:'Rent paid for '+rentLeft()+' more',btn:'Go in',act:()=>{ closeMenu(); enterFaceRoom(); }});
-  for(const [d,p] of RENT_OPTS) rows.push({name:`${LIFE.rent>0?'Pay':'Rent the room for'} ${d} day${d>1?'s':''}${LIFE.rent>0?' more':''}`,sub:`${naira(Math.round(p/d))} a day · a mattress, a fan, the compound toilet and bathroom`,price:p,
-    act:()=>{ const first=LIFE.rent<=0&&!LIFE.ntc; LIFE.rent+=d*DAY_S; LIFE.ntc=0; LIFE.rented++; if(!LIFE.flat) LIFE.home='room'; lifeSave(true); lifePlaces();
-      toast(first?'Landlord: "Na your room be this. No noise after ten, and pay your rent on time!"':'Landlord: "Thank you. Your rent dey run."',4.5); }});
-  openMenu('ROOM TO LET','Landlord Baba Kunle · face-me-I-face-you',rows); }
+function rentPay(d,p,via){ if(CASH.n<p) return false; const first=LIFE.rent<=0&&!LIFE.ntc; addCash(-p); cashHUD(); LIFE.rent+=d*DAY_S; LIFE.ntc=0; LIFE.rented++; if(!LIFE.flat) LIFE.home='room'; lifeSave(true); lifePlaces();
+  if(via==='phone'){ landlordSMS(`Rent received: ${naira(p)} for ${d} day${d>1?'s':''}. Your rent dey run till ${rentLeft()} from now. Thank you. Baba Kunle.`); toast(`Rent paid: ${naira(p)}. The landlord don confirm am.`,3.5); }
+  else toast(first?'Landlord: "Na your room be this. No noise after ten, and pay your rent on time!"':'Landlord: "Thank you. Your rent dey run."',4.5); return true; }
+const rentRows=()=>RENT_OPTS.map(([d,p])=>({d,p,name:`${LIFE.rent>0?'Pay':'Rent the room for'} ${d} day${d>1?'s':''}${LIFE.rent>0?' more':''}`,sub:`${naira(Math.round(p/d))} a day · a mattress, a fan, the compound toilet and bathroom`}));
+function roomMenu(){ const rows=[];   // the landlord by the gate: the rent (first time and more days); the door itself just lets you in
+  if(LIFE.ntc>0) rows.push({name:'RENT DUE: pay now',sub:`Notice: ${ntcLeft()} before I throw your load out`});
+  else if(LIFE.rent>0) rows.push({name:'Your room',sub:'Rent paid for '+rentLeft()+' more · you fit also pay for the RENT app on your phone'});
+  for(const r of rentRows()) rows.push({name:r.name,sub:r.sub,price:r.p,act:()=>{ rentPay(r.d,r.p,'landlord'); }});
+  openMenu(LIFE.rented?'LANDLORD BABA KUNLE':'ROOM TO LET','Landlord Baba Kunle · face-me-I-face-you',rows); }
+// the RENT app on your phone (only while you rent): days left, the notice, pay from anywhere
+function rentApp(){ if(LIFE.flat||!ROOMLET||(!roomOn()&&!LIFE.rented)) return null;
+  return {on:roomOn(),ntc:LIFE.ntc>0,left:LIFE.ntc>0?ntcLeft():roomOn()?rentLeft():'',rows:rentRows().map(r=>({name:r.name,sub:r.sub,price:r.p,off:CASH.n<r.p,act:()=>rentPay(r.d,r.p,'phone')})),cash:CASH.n}; }
 // the flat you lost: an agent sells it, but only to somebody the landlords know (rent a room first)
 function flatMenu(){ const can=LIFE.rented>0;
   openMenu('FLAT FOR SALE','Agent: "Your old flat. Pay, and the key is yours."',[{name:'Buy the flat',sub:can?'Parlour, kitchen, bathroom, bedroom and your wardrobe. Yours for life.':'First rent a room and pay your rent. Landlords must know you before I sell you a flat.',
@@ -9436,9 +9441,9 @@ function setupFaceRoom(R){ if(R.ready) return; R.ready=true; const M=R.marks; R.
   R.spot(M.bed,'Sleep',()=>lifeSleep('room'),1.3);
   R.spot(M.ward,'Change clothes',()=>openWard((M.ward.yaw||0)+Math.PI),1.2);
   R.spot(M.stove,'Cook indomie',()=>{ fadeSwap(()=>{ FIGHT.hp=Math.min(100,FIGHT.hp+20); careEat(.6); }); toast(mpick(['Indomie and egg don ready. You chop am finish!','Hot noodles on the kerosene stove. Belle don full.']),3.4); },1.2);
-  const bt=R.nearFree(M.yard.x-.75,M.yard.z+.45);   // the bucket and cup by the back door: a bucket bath in the compound bathroom
-  R.spot({x:bt.x,z:bt.z},()=>LIFE.dirt<.15?'Bucket bath (you dey clean already)':'Take a bucket bath (free for tenants)',roomBath,.95);
-  R.spot(M.yard,'Use the compound toilet (free)',()=>lifeEase(mpick(['The compound toilet for the back. E no too clean, but e free.','You use the toilet for the backyard. Free for tenants.'])),1.2);
+  R.spot(M.yard,'Back door · toilet or bath (free for tenants)',()=>openMenu('THE COMPOUND','Behind the house: the toilet and the bathroom. Free while your rent dey run.',[
+    {name:'Use the toilet',sub:LIFE.ease>=.5?'You need am':'The compound toilet · e no too clean, but e free',btn:'Go',act:()=>{ closeMenu(); lifeEase(mpick(['The compound toilet for the back. E no too clean, but e free.','You use the toilet for the backyard. Free for tenants.'])); }},
+    {name:'Take a bucket bath',sub:LIFE.dirt<.15?'You dey clean already':SMELL()?'You dey smell! Baff now':'Cold water from the tank and Joy soap',btn:'Go',off:LIFE.dirt<.15,act:()=>{ closeMenu(); roomBath(); }}]),1.2);
   if(M.radio) R.spot(M.radio,()=>MUS.home?'Turn the radio off':'Play the radio',()=>{ if(SND&&SND.SONGS.length){ MUS.home=!MUS.home; MUS.r0=null; if(!MUS.home){ SND.songStop(0,.4); toast('Radio off',1.6); } return; }
     toast(mpick(['Radio: "Na Wazobia FM be this! Traffic for Ikorodu Road heavy o."','Radio: fuji music dey play. You nod your head.','Radio: news, then Afrobeats.']),3.2); },1.1); }
 // a bucket bath in the compound bathroom behind your rented room: free while your rent is paid
@@ -9648,7 +9653,8 @@ if(LIFEC){ const C=LIFEC;
   if(C.buy) DOORS.push({x:C.buy.x,z:C.buy.z,r:1.8,label:'Bend-down boutique · buy clothes',act:boutiqueMenu});
   if(TL.ok) DOORS.push({x:C.door.x,z:C.door.z,r:1.7,label:toiletLabel,act:toiletAct}); }
 for(const C of CAMPS){ if(!C.door) continue; const b=bathSpot(C); if(b) DOORS.push({x:b.x,z:b.z,r:1.4,label:bathLabel,act:campBath}); }
-if(ROOMLET) DOORS.push({x:ROOMLET.door.x,z:ROOMLET.door.z,r:2.0,label:()=>LIFE.ntc>0?'Your room · RENT DUE · talk to the landlord':roomOn()?'Your room · talk to the landlord':'Room to let · talk to the landlord',act:roomMenu});
+if(ROOMLET){ DOORS.push({x:ROOMLET.door.x,z:ROOMLET.door.z,r:2.0,label:()=>LIFE.ntc>0?'Go in · RENT DUE (pay the landlord or use the RENT app)':roomOn()?'Go in · your room':'Room to let · see the landlord by the gate',act:()=>{ if(roomOn()) enterFaceRoom(); else roomMenu(); }});
+  DOORS.push({x:ROOMLET.landlord.x,z:ROOMLET.landlord.z,r:1.7,label:()=>LIFE.ntc>0?'Landlord Baba Kunle · RENT DUE, pay now':roomOn()?'Landlord Baba Kunle · pay more days':'Landlord Baba Kunle · rent a room',act:roomMenu}); }
 // the other camps: their boutique and toilet work for you too (one in, one out: no line); the tents there are other people's
 function campToilet(){ if(busy) return; if(CASH.n<50){ toast('Attendant: "No money, no toilet! Go find ₦50."',3); return; } addCash(-50); cashHUD();
   lifeEase(mpick(['You use the public toilet (₦50). Body don free!','₦50 well spent. You don ease yourself.'])); }
@@ -10943,7 +10949,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
-    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), enterRoom:()=>enterFaceRoom(), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), enterRoom:()=>enterFaceRoom(), doorsAll:()=>DOORS.map(d=>({l:typeof d.label==='function'?d.label():d.label,x:+d.x.toFixed(2),z:+d.z.toFixed(2)})), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },

@@ -219,6 +219,7 @@ const ICONS = {
   home: ['linear-gradient(180deg,#d9825c,#9a4322)', '#fff', SV('<path d="M3.5 11 12 4.2l8.5 6.8" stroke-width="2.2"/><path d="M5.5 10v9.5h13V10" fill="rgba(255,255,255,.16)"/><path d="M7.6 17.6v-2.4a1.3 1.3 0 0 1 2.6 0v.4h3.6v-.4a1.3 1.3 0 0 1 2.6 0v2.4z" fill="#fff" stroke="none"/><path d="M9.4 14.6v-1.3a1 1 0 0 1 1-1h3.2a1 1 0 0 1 1 1v1.3" stroke-width="1.5"/>')],
   politics: ['linear-gradient(180deg,#1f7a3f,#0d4a24)', '#fff', SV('<path d="M4 10h16M6 10v7M10 10v7M14 10v7M18 10v7M3 19h18M12 3 3 8h18z" stroke="rgba(255,255,255,.95)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>')],
   laptop: ['linear-gradient(180deg,#3a3f4b,#15171c)', '#9fe3ff', SV('<rect x="3" y="5" width="18" height="11" rx="1.5" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.9)" stroke-width="1.6"/><path d="M2 19h20" stroke="rgba(255,255,255,.9)" stroke-width="1.8" stroke-linecap="round"/><path d="M7 9l2 1.5L7 12M11 12h4" stroke="#9fe3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>')],
+  rent: ['linear-gradient(180deg,#f5c242,#c98a0a)', '#2a1d05', SV('<rect x="4" y="9" width="16" height="11" rx="1.5" fill="rgba(42,29,5,.18)"/><path d="M3 10 12 3.5 21 10"/><path d="M8 20v-5.5h4V20" fill="#2a1d05" stroke="none"/><circle cx="15.5" cy="14.5" r="1.6" fill="#2a1d05" stroke="none"/>')],
   love: ['linear-gradient(180deg,#ff7aa8,#d6336c)', '#fff', SV('<path d="M12 20.5s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.9a4.3 4.3 0 0 1 7.5 2.6c0 5.4-7.5 10-7.5 10z" fill="rgba(255,255,255,.9)" stroke="none"/>')],
   cbn: ['linear-gradient(180deg,#14804f,#073d27)', '#f3d27a', SV('<path d="M3 9.5 12 4l9 5.5z" fill="#f3d27a" stroke="#f3d27a" stroke-width="1.2"/><path d="M5.5 11.5v6M9.8 11.5v6M14.2 11.5v6M18.5 11.5v6" stroke="#fff" stroke-width="2"/><path d="M3.5 20h17" stroke="#f3d27a" stroke-width="2"/>')],
   sos: ['linear-gradient(180deg,#ff5e57,#d0021b)', '#fff', SV('<path d="M12 2.5 4 5.5v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10v-6z" fill="rgba(255,255,255,.18)"/><path d="M12 7.5v5M9.5 10h5"/><text x="12" y="19" text-anchor="middle" font-size="5.4" font-weight="800" fill="#fff" stroke="none" font-family="Arial">112</text>')],
@@ -357,7 +358,7 @@ export function createPhone(api) {
     const w2 = btn('iph-w', [], () => openApp('wallet'), 'Wallet'); widC = h('div', 'mid'); widWi = h('small'); widC.style.fontSize = '6.4cqw'; widB = h('small', null, 'Wallet'); w2.append(widB, widC, widWi);
     w2s = () => { const b = BK.me && bankOf(BK.me.bank); w2.style.background = b ? `linear-gradient(135deg,${b.c}cc,${b.c2}cc)` : 'linear-gradient(135deg,rgba(15,155,88,.75),rgba(11,94,60,.75))'; }; w2s();
     wid.append(w1, w2); scr.append(wid);
-    const grid = h('div', 'iph-grid'); grid.dataset.g = 'apps'; APPS.forEach(a => grid.append(appIcon(a))); scr.append(grid);
+    const grid = h('div', 'iph-grid'); grid.dataset.g = 'apps'; APPS.forEach(a => grid.append(appIcon(a))); if (api.rent && api.rent()) grid.append(appIcon(['rent', 'Rent', () => openApp('rent')])); scr.append(grid);
     const dots = h('div', 'iph-dots'); dots.append(h('i', 'on')); scr.append(dots); home.append(scr);
     const dock = h('div', 'iph-dock'); dock.dataset.g = 'dock'; DOCK.forEach(a => dock.append(appIcon(a))); home.append(dock);
     refreshHome(); setBadges();
@@ -388,7 +389,7 @@ export function createPhone(api) {
   function goBack() { if (R.call) { endCall(); return; } if (!R.app) return; (R.back || goHome)(); }
   function syncNav() { backB.disabled = !(R.app || R.call); }
   function phToast(t) { const o = scr.querySelector('.iph-hud'); if (o) o.remove(); const d = h('div', 'iph-hud', t); scr.append(d); setTimeout(() => d.remove(), 1900); }
-  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, home: homeApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp, laptop: laptopApp, politics: politicsApp })[k](arg); }
+  function openApp(k, arg) { R.app = k; ({ love: loveApp, hustle: hustleApp, ride: rideApp, work: workApp, farm: farmApp, home: homeApp, rent: rentApp, gist: gistApp, msg: msgApp, phone: phoneApp, photos: photosApp, wallet: walletApp, weather: weatherApp, settings: settingsApp, cbn: cbnApp, laptop: laptopApp, politics: politicsApp })[k](arg); }
 
   function rideApp() { const b = frameApp('Oya Ride'); b.id = 'phBody'; b.style.paddingTop = '0'; R.view.querySelector('h1').style.color = '#f2b705'; api.rideUI(); }
   function farmApp() {   // Oya Farm: your beds, animals, store, the pickup, today's prices (the farm itself is in src/farm.js)
@@ -438,6 +439,17 @@ export function createPhone(api) {
     const poor = api.cash() < it.total;
     b.append(btn('hm-go' + (poor ? ' off' : ''), [poor ? `You need ${N(it.total)}` : `Order · ${N(it.total)}`], () => {
       if (poor) { phToast('Not enough money'); return; } const r = api.homeOrder(id, R.homeHouse); phToast(r && r.ok ? 'Order placed! 📦' : (r && r.msg) || 'Order failed'); if (r && r.ok) setTimeout(() => { if (R.open && R.app === 'home') openApp('home'); }, 700); }));
+  }
+  function rentApp() {   // Rent: your room's days left, the landlord's notice, pay from anywhere
+    const d = api.rent && api.rent(); const b = frameApp('Rent', { light: true }); R.view.querySelector('h1').style.color = '#9a6a08';
+    if (!d) { b.append(h('div', 'iph-note', 'You no dey rent now. When you rent a room, your rent go show here.')); return; }
+    const card = h('div', 'hm-ban'); card.style.background = d.ntc ? 'linear-gradient(135deg,#ffd9d2,#f5a89a)' : 'linear-gradient(135deg,#fff1c7,#f5d27a)'; card.style.color = '#3b2a05';
+    card.append(h('b', null, d.ntc ? 'RENT DUE' : d.on ? 'Rent paid' : 'Rent finished'), d.ntc ? `Landlord's notice: ${d.left} left before he throws your load out. Pay now.` : d.on ? `Your room is paid for ${d.left} more. Pay more days any time.` : 'Pay to get your room back.');
+    b.append(card, h('div', 'iph-h', 'Pay the landlord'));
+    const L = h('div', 'iph-list');
+    for (const r of d.rows) { const row = h('div', 'iph-li'), tx = h('div', 'tx'); tx.append(h('b', null, r.name), h('small', null, r.sub)); row.append(tx);
+      row.append(btn('fm-btn' + (r.off ? ' off' : ''), [api.naira(r.price)], () => { if (r.off) { phToast('Not enough money'); return; } r.act(); phToast('Rent paid ✅'); setTimeout(() => { if (R.open && R.app === 'rent') openApp('rent'); }, 400); })); L.append(row); }
+    b.append(L, h('div', 'iph-note', `You have ${api.naira(d.cash)}. Landlord Baba Kunle · face-me-I-face-you, Mushin. Paying here is the same as paying him at the gate.`));
   }
   function loveApp() {   // Love: your babe (or guy), the love meter, money, gifts and dates (the game makes the rows)
     const d = api.love && api.love(); const b = frameApp('Love', { light: true }); R.view.querySelector('h1').style.color = '#d6336c';
@@ -831,7 +843,7 @@ export function createPhone(api) {
   }
 
   // ---------------------------------------------------------------- open, close, every frame
-  function open() { R.open = true; wrap.hidden = false; setWall(); if (!home.firstChild) buildHome(); refreshHome(); setBadges(); if (R.app === 'ride' || R.app === 'work') openApp(R.app); else if (!R.app) { home.classList.remove('away'); } syncNav(); }
+  function open() { R.open = true; wrap.hidden = false; setWall(); const rk = !!(api.rent && api.rent()); if (!home.firstChild || R.rentIc !== rk) { R.rentIc = rk; buildHome(); } refreshHome(); setBadges(); if (R.app === 'ride' || R.app === 'work') openApp(R.app); else if (!R.app) { home.classList.remove('away'); } syncNav(); }
   function close() { R.open = false; endCall(true); closeCamera(); wrap.hidden = true; }
   let tk = 0;
   function tick(dt) { tk += dt; if (tk < 1) return; tk = 0; if (!api.started()) return; tickGist(); if (R.open) { timeEl.textContent = api.clock(); if (!R.app) refreshHome(); } }
