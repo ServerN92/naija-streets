@@ -73,6 +73,7 @@ export function openDb(file) {
     setCash: q('UPDATE users SET cash=?, seen=? WHERE id=?'),
     seen: q('UPDATE users SET seen=? WHERE id=?'),
     count: q('SELECT COUNT(*) n FROM users'),
+    active: q('SELECT COUNT(*) n FROM users WHERE seen >= ?'),
     addSess: q('INSERT INTO sessions(th,uid,created,seen) VALUES(?,?,?,?)'),
     sess: q('SELECT s.seen AS sseen, u.* FROM sessions s JOIN users u ON u.id=s.uid WHERE s.th=?'),
     touchSess: q('UPDATE sessions SET seen=? WHERE th=?'),
@@ -120,6 +121,7 @@ export function openDb(file) {
     setCash: (id, cash, now) => S.setCash.run(cash, now, id),
     seen: (id, now) => S.seen.run(now, id),
     users: () => S.count.get().n,
+    active: since => S.active.get(since).n,
     addSession: (th, uid, now) => {
       S.addSess.run(th, uid, now, now);
       const all = S.userSess.all(uid);   // up to 5 phones at once; the oldest sign-in goes
