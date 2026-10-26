@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=aec05e9d48';
-import * as C2 from './char2.js?v=aec05e9d48';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=aec05e9d48';
-import { createPhone } from './phone.js?v=aec05e9d48';
-import { createGuide } from './guide.js?v=aec05e9d48';
+import * as CLOCK from './clock.js?v=edf352bcf2';
+import * as C2 from './char2.js?v=edf352bcf2';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=edf352bcf2';
+import { createPhone } from './phone.js?v=edf352bcf2';
+import { createGuide } from './guide.js?v=edf352bcf2';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=aec05e9d48';
-import { createHome } from './home.js?v=aec05e9d48';
-import { createFarm } from './farm.js?v=aec05e9d48';
-import { createBusiness } from './business.js?v=aec05e9d48';
-import { createOnline } from './online.js?v=aec05e9d48';
-import { createPolice } from './police.js?v=aec05e9d48';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=aec05e9d48';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=aec05e9d48';
+import { createFootball } from './football.js?v=edf352bcf2';
+import { createHome } from './home.js?v=edf352bcf2';
+import { createFarm } from './farm.js?v=edf352bcf2';
+import { createBusiness } from './business.js?v=edf352bcf2';
+import { createOnline } from './online.js?v=edf352bcf2';
+import { createPolice } from './police.js?v=edf352bcf2';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=edf352bcf2';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=edf352bcf2';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='aec05e9d48';
+const BUILD='edf352bcf2';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -114,6 +114,7 @@ let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias:Q.aa, powerPreference:'high-performance', stencil:false }); }
 catch(e){ window.__nsFail('Your browser could not start 3D graphics (WebGL). Update your browser or try Chrome.'); throw e; }
 let PR=Q.pr; renderer.setPixelRatio(PR);
+renderer.debug.checkShaderErrors=/[?&]debug=1/.test(location.search);   // reading every shader's log waits on the compiler; only when testing
 // Phones: once a big still shape (a building set, a merged street) is on the graphics chip, the page's own copy of its
 // lighting and texture coordinates is dead weight (~150 MB on an iPhone, where Safari kills the tab past ~1.5 GB).
 // Positions stay (bumping into things and the floor rays need them); anything animated (people) keeps everything.
@@ -138,6 +139,9 @@ renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload(
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xe0a77c, 0.0019);
 const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.3, 9000);
+// build a new thing's shaders ahead of showing it (in the background where the browser can): a new district, person or
+// car no longer freezes the game for a moment the first time it comes on screen
+const precompile=o=>{ try{ return renderer.compileAsync?renderer.compileAsync(o,camera,scene).catch(()=>{}):Promise.resolve(); }catch(e){ return Promise.resolve(); } };
 camera.layers.enable(1);
 const pmrem = new THREE.PMREMGenerator(renderer);
 
@@ -1554,7 +1558,7 @@ function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ if(is
 function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,player.z-S.z);
     if(S.state===0&&d<S.near){ S.state=1; const u=murl(S.name), ju=`assets/models/${S.name}.json`; DL.exp[u]=MANIFEST[`assets/models/${S.name}.glb`]||4e6;
       Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),MANIFEST[ju]?fetch(ju+'?v='+(AV[ju]||MANIFEST[ju])).then(r=>r.json()).catch(()=>null):Promise.resolve(null)]).then(async([g,j])=>{
-        const R=await setMergeA(g.scene,{lift:S.lift,cut:S.cut}); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
+        const R=await setMergeA(g.scene,{lift:S.lift,cut:S.cut}); await precompile(R.far); await precompile(R.near); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
         .catch(e=>{ console.warn('set',S.name,e); S.state=0; S.near=-1; }); }
     if(S.state===2){ S.near_.visible=d<S.detailDist; if(S.tick) S.tick(dt,d); if(SET_FREE&&!SET_KEEP.test(S.name)&&d>S.near*SET_FREE) setUnload(S); }
     else if(S.state===3&&d<S.near&&!(S.retry>performance.now())) setReload(S); } }
@@ -1568,7 +1572,7 @@ function setUnload(S){ S.state=3; S.root.visible=false; const seen=new Set();
   for(const o of setMeshes(S)){ const g=o.geometry; if(g===SET_EMPTY) continue; o.userData.vc=g.attributes.position?g.attributes.position.count:0; g.dispose(); o.geometry=SET_EMPTY;
     for(const m of [].concat(o.material)) for(const k of TEXKEYS){ const t=m&&m[k]; if(t&&t._capped&&!t.isCompressedTexture&&!seen.has(t)){ seen.add(t); t.dispose(); const im=t.source.data; if(im instanceof HTMLCanvasElement&&im!==STUB) im.width=im.height=0; t.source.data=STUB; } } } }
 function setReload(S){ S.state=4; const u=murl(S.name);
-  fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(async g=>{ const R=await setMergeA(g.scene,{lift:S.lift,cut:S.cut}), old=setMeshes(S), nw=[];
+  fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(async g=>{ const R=await setMergeA(g.scene,{lift:S.lift,cut:S.cut}), old=setMeshes(S), nw=[]; await precompile(R.far); await precompile(R.near);
     for(const grp of [R.far,R.near]) grp.traverse(o=>{ if(o.isMesh) nw.push(o); });
     if(nw.length===old.length&&nw.every((o,i)=>o.geometry.attributes.position.count===old[i].userData.vc)){ const done=new Set();
       nw.forEach((n,i)=>{ const o=old[i], om=[].concat(o.material), nm=[].concat(n.material); o.geometry=n.geometry;
@@ -6183,6 +6187,7 @@ function loadV2(id){ if(V2.casts[id]) return Promise.resolve(V2.casts[id]); cons
     if(P.f) for(const [a,b] of [['start_walk','f_start_walk'],['lie','f_lie'],['fight_idle','f_fight_idle']]) if(clips[b]){ clips[a]=clips[b]; off[a]=off[b]; }   // women stand, fall and fight like women
     if(!clips.idle||!clips.walk) throw new Error('moves missing for '+id);
     tpl.updateMatrixWorld(true); for(const m of ch.mats) if(m.map) renderer.initTexture(m.map);
+    await precompile(tpl);
     return V2.casts[id]={tpl,clips,off,y0:0,sc:1,f:P.f,idle0:'idle',v2:true,mx:!!P.mx,shape:!!P.shape,info:D,meta:ch.meta,wv:P.f?(fw?1.61:.93):1.77,rv:P.f?(fr?4.9:4.2):4.7,w2v:P.f?.97:.92,npc:{clips:nclips,off:noff}};
   })().catch(e=>{ console.warn('person '+id+' could not load',e); delete V2.job[id]; return null; })); }
 const fitOf=id=>{ const sv=V2.fit[id], C=V2.casts[id], n=C?C2.outfitCount(C.meta):id in WOMEN||id in MEN?11:4, rg=C&&C.meta&&C.meta.outfits?C.meta.outfits.findIndex(o=>o.id==='rags'):(n>10?10:-1), i=sv===undefined?rg:+sv; return i>=0&&i<n?i:0; };
@@ -10669,7 +10674,9 @@ await step('Waking up the city…', 94);
 await Promise.race([clockSync,new Promise(r=>setTimeout(r,2500))]).catch(()=>{});
 CLOCK.keepSynced(5);
 updateEnv(0,true);
-{ const hid=[rain,stars,poolMesh,clouds].filter(o=>o&&!o.visible); for(const o of hid) o.visible=true; renderer.compile(scene,camera); for(const o of hid) o.visible=false; } renderer.compile(INT.scene,camera);
+// every shader the town needs is built while the loading bar is still up (in the background where the browser can), not in
+// the first seconds of play
+{ const hid=[rain,stars,poolMesh,clouds].filter(o=>o&&!o.visible); for(const o of hid) o.visible=true; try{ await renderer.compileAsync(scene,camera); }catch(e){ renderer.compile(scene,camera); } for(const o of hid) o.visible=false; } try{ await renderer.compileAsync(INT.scene,camera); }catch(e){ renderer.compile(INT.scene,camera); }
 { const rt=new THREE.WebGLRenderTarget(64,64); renderer.setRenderTarget(rt); renderer.render(INT.scene,camera); renderer.setRenderTarget(null); rt.dispose(); }
 for(const k in A) A[k]=null;   // free the city building buffers (the meshes keep their own copy)
 clearInterval(progTimer);
@@ -10862,8 +10869,9 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
   if(!/[?&]perf=show/.test(location.search)) el.hidden=true;   // numbers stay available to tests; shown only with ?perf=show
   document.body.appendChild(el); let fr=[], tLast=performance.now();
   const gpu=(()=>{ try{ const gl=renderer.getContext(), e=gl.getExtension('WEBGL_debug_renderer_info'); return e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):''; }catch(e){ return ''; } })();
-  (function tick(t){ fr.push(t-tLast); tLast=t; if(fr.length>=30){ const a=fr.slice().sort((x,y)=>x-y), avg=a.reduce((s,x)=>s+x,0)/a.length, i=renderer.info.render;
-      el.textContent=`${(1000/avg).toFixed(0)} fps  avg ${avg.toFixed(1)} ms  p95 ${a[Math.floor(a.length*.95)].toFixed(1)} ms\ncalls ${i.calls}  tris ${(i.triangles/1000).toFixed(0)}k  px ${renderer.domElement.width}x${renderer.domElement.height} (x${PR.toFixed(2)})\n${qKey} ${gpu.replace(/ANGLE \(|, D3D11\)|Direct3D11 vs_5_0 ps_5_0/g,'').slice(0,60)}`; window.__nsPerf={fps:1000/avg,avg,p95:a[Math.floor(a.length*.95)],calls:i.calls,tris:i.triangles,pr:PR}; fr=[]; }
+  const HT={n:0,worst:0,t0:performance.now()};   // hitches: frames over 100 ms in the last minute, and the worst one
+  (function tick(t){ const d=t-tLast; fr.push(d); tLast=t; if(t-HT.t0>60e3){ HT.n=0; HT.worst=0; HT.t0=t; } if(d>100&&d<5000){ HT.n++; if(d>HT.worst) HT.worst=d; } if(fr.length>=30){ const a=fr.slice().sort((x,y)=>x-y), avg=a.reduce((s,x)=>s+x,0)/a.length, i=renderer.info.render;
+      el.textContent=`${(1000/avg).toFixed(0)} fps  avg ${avg.toFixed(1)} ms  p95 ${a[Math.floor(a.length*.95)].toFixed(1)} ms\ncalls ${i.calls}  tris ${(i.triangles/1000).toFixed(0)}k  px ${renderer.domElement.width}x${renderer.domElement.height} (x${PR.toFixed(2)})\nhitches ${HT.n}/min  worst ${HT.worst.toFixed(0)} ms  ${SAFE?'LIGHT':''}\n${qKey} ${gpu.replace(/ANGLE \(|, D3D11\)|Direct3D11 vs_5_0 ps_5_0/g,'').slice(0,60)}`; window.__nsPerf={fps:1000/avg,avg,p95:a[Math.floor(a.length*.95)],calls:i.calls,tris:i.triangles,pr:PR}; fr=[]; }
     requestAnimationFrame(tick); })(performance.now());
   // test switches for profiling on a real device (only with ?perf=1)
   window.__ns={ renderer, Q, get PR(){ return PR; },
