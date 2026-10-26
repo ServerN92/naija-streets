@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="07ec8fb4bb">
+<meta name="ns-build" content="aec05e9d48">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -802,7 +802,26 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=07ec8fb4bb"></script>
+<script>
+// Which phones can play: below the line (iPhone 6s/7/8/SE 2016 on iOS 16 or older, Android phones with 1 GB or less), the
+// game would only restart over and over. Those phones get told plainly, with a "try anyway", before 40 MB is downloaded.
+(function(){
+  function go(){ var s=document.createElement('script'); s.type='module'; s.src="src/game.js?v=aec05e9d48"; document.body.appendChild(s); }
+  if(window.__nsNoGL) return;
+  var ua=navigator.userAgent, ios=/iP(hone|od)/.test(ua), m=/OS (\d+)_/.exec(ua), iv=m?+m[1]:0, big=Math.max(screen.width,screen.height), dm=+navigator.deviceMemory||0, tried=false;
+  try{ tried=localStorage.getItem('naija-tryweak')==='1'; }catch(e){}
+  var weak=(ios&&big<=667&&iv>0&&iv<=16)||(dm>0&&dm<=1);
+  if(!weak||tried){ go(); return; }
+  window.__nsNoGL=true;
+  var show=function(){ var e=document.getElementById('loadErr'), t=document.getElementById('loadTxt'), lb=document.getElementById('lobby');
+    if(lb) lb.style.display='none'; if(t) t.textContent='This phone is not strong enough for Naija Streets.';
+    if(!e) return; e.hidden=false; e.textContent='Lagos needs more memory than this phone has, so the game would keep restarting. It plays on iPhone SE (2020), iPhone XR and newer, and Android phones with 2 GB of memory or more.';
+    var b=document.createElement('button'); b.type='button'; b.textContent='Try anyway'; b.style.cssText='display:block;margin-top:14px;font:inherit;font-weight:700;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit';
+    b.onclick=function(){ try{ localStorage.setItem('naija-tryweak','1'); }catch(err){} window.__nsNoGL=false; e.hidden=true; if(lb) lb.style.display=''; if(t) t.textContent='Starting the engine\u2026'; go(); };
+    e.appendChild(b); };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',show); else show();
+})();
+</script>
 
 </body>
 </html>

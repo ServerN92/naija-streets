@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=07ec8fb4bb';
-import * as C2 from './char2.js?v=07ec8fb4bb';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=07ec8fb4bb';
-import { createPhone } from './phone.js?v=07ec8fb4bb';
-import { createGuide } from './guide.js?v=07ec8fb4bb';
+import * as CLOCK from './clock.js?v=aec05e9d48';
+import * as C2 from './char2.js?v=aec05e9d48';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=aec05e9d48';
+import { createPhone } from './phone.js?v=aec05e9d48';
+import { createGuide } from './guide.js?v=aec05e9d48';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=07ec8fb4bb';
-import { createHome } from './home.js?v=07ec8fb4bb';
-import { createFarm } from './farm.js?v=07ec8fb4bb';
-import { createBusiness } from './business.js?v=07ec8fb4bb';
-import { createOnline } from './online.js?v=07ec8fb4bb';
-import { createPolice } from './police.js?v=07ec8fb4bb';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=07ec8fb4bb';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=07ec8fb4bb';
+import { createFootball } from './football.js?v=aec05e9d48';
+import { createHome } from './home.js?v=aec05e9d48';
+import { createFarm } from './farm.js?v=aec05e9d48';
+import { createBusiness } from './business.js?v=aec05e9d48';
+import { createOnline } from './online.js?v=aec05e9d48';
+import { createPolice } from './police.js?v=aec05e9d48';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=aec05e9d48';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=aec05e9d48';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='07ec8fb4bb';
+const BUILD='aec05e9d48';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -95,7 +95,7 @@ if(IOS){ Q.px=Math.min(Q.px,0.9e6); Q.tex=Math.min(Q.tex,512); }
 // in Lagos, this start is lighter still (smaller pictures, fewer people and cars, a nearer horizon) instead of dying again.
 const BOOT=(()=>{ try{ const k='naija-boot', v=JSON.parse(localStorage.getItem(k)||'null'), t=Date.now(), n=v&&t-v.t<15*60e3?v.n:0; localStorage.setItem(k,JSON.stringify({t,n:n+1})); return n; }catch(e){ return 0; } })();
 // small, older iPhones (SE, 6s, 7, 8: 1-2 GB of memory) always start light: they cannot hold what a newer phone can
-const LOWMEM=IOS&&Math.max(screen.width,screen.height)<=667;
+const LOWMEM=(IOS&&Math.max(screen.width,screen.height)<=667)||(+navigator.deviceMemory>0&&+navigator.deviceMemory<=2);   // (Chrome on Android tells the memory, in GB: Infinix, Tecno, itel with 2 GB start light)
 const SAFE=isTouch&&(BOOT>=1||LOWMEM);
 if(SAFE) Object.assign(Q,{px:Math.min(Q.px,.6e6),prMin:.5,prTop:Math.min(Q.prTop||Q.pr,1),pr:Math.min(Q.pr,1),tex:256,npc:3,npcR:20,peds:8,cars:8,draw:150,spots:8});
 addEventListener('pagehide',()=>{ try{ localStorage.removeItem('naija-boot'); }catch(e){} });   // leaving on purpose is not a crash   // iPhones: a few less pixels and smaller painted textures, for the heat and the memory   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
