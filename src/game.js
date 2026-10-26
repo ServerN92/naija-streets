@@ -90,7 +90,13 @@ const FARM_BACK=(()=>{ try{ if(localStorage.getItem('naija-start2')) return fals
 const RID=(()=>{ try{ let r=+localStorage.getItem('naija-rid'); if(!(r>0)){ r=1+Math.floor(Math.random()*1e9); localStorage.setItem('naija-rid',String(r)); } return r; }catch(e){ return 1+Math.floor(Math.random()*1e9); } })();
 if(!QUAL[qKey]) qKey=isTouch?(GPU_TIER==='high'?'medium':'low'):GPU_TIER; const Q=QUAL[qKey];   // a phone starts on Low (Medium on the strongest chips): heat and battery come first
 if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }
-if(IOS){ Q.px=Math.min(Q.px,0.9e6); Q.tex=Math.min(Q.tex,512); }   // iPhones: a few less pixels and smaller painted textures, for the heat and the memory   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
+if(IOS){ Q.px=Math.min(Q.px,0.9e6); Q.tex=Math.min(Q.tex,512); }
+// Safari kills a tab that runs out of memory and opens it again. If the last start on this phone never reached two minutes
+// in Lagos, this start is lighter still (smaller pictures, fewer people and cars, a nearer horizon) instead of dying again.
+const BOOT=(()=>{ try{ const k='naija-boot', v=JSON.parse(localStorage.getItem(k)||'null'), t=Date.now(), n=v&&t-v.t<15*60e3?v.n:0; localStorage.setItem(k,JSON.stringify({t,n:n+1})); return n; }catch(e){ return 0; } })();
+const SAFE=isTouch&&BOOT>=1;
+if(SAFE) Object.assign(Q,{px:Math.min(Q.px,.6e6),prMin:.5,prTop:Math.min(Q.prTop||Q.pr,1),pr:Math.min(Q.pr,1),tex:256,npc:3,npcR:20,peds:8,cars:8,draw:150,spots:8});
+addEventListener('pagehide',()=>{ try{ localStorage.removeItem('naija-boot'); }catch(e){} });   // leaving on purpose is not a crash   // iPhones: a few less pixels and smaller painted textures, for the heat and the memory   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
 Q.prTop=Q.pr; const fitPR=()=>Math.max(Q.prMin,Math.min(Q.prTop,Math.sqrt(Q.px/Math.max(1,innerWidth*innerHeight)))); Q.pr=fitPR();
 // most of the city never moves, but three.js rebuilds every object's matrices every frame (thousands of them): skip it when
@@ -106,6 +112,15 @@ let renderer;
 try { renderer = new THREE.WebGLRenderer({ antialias:Q.aa, powerPreference:'high-performance', stencil:false }); }
 catch(e){ window.__nsFail('Your browser could not start 3D graphics (WebGL). Update your browser or try Chrome.'); throw e; }
 let PR=Q.pr; renderer.setPixelRatio(PR);
+// Phones: once a big still shape (a building set, a merged street) is on the graphics chip, the page's own copy of its
+// lighting and texture coordinates is dead weight (~150 MB on an iPhone, where Safari kills the tab past ~1.5 GB).
+// Positions stay (bumping into things and the floor rays need them); anything animated (people) keeps everything.
+let MAIN_R=false, GAME_ON=false;   // (GAME_ON: the player is in Lagos; the lobby's own little renderers are gone)
+if(isTouch){ const G=THREE.BufferGeometry.prototype, sa=G.setAttribute; G.setAttribute=function(n,a){ if(a&&a.isBufferAttribute&&!a._nm) a._nm=n; return sa.call(this,n,a); };
+  const SK=THREE.SkinnedMesh.prototype, bind=SK.bind; SK.bind=function(...a){ const g=this.geometry; if(g){ for(const k in g.attributes) g.attributes[k]._keep=1; for(const k in g.morphAttributes) for(const x of g.morphAttributes[k]) x._keep=1; } return bind.apply(this,a); };
+  const DROP=/^(normal|uv\d?|color|tangent)$/;
+  THREE.BufferAttribute.prototype.onUploadCallback=function(){ if(MAIN_R&&!this._keep&&!this.isInstancedBufferAttribute&&this.usage===THREE.StaticDrawUsage&&this._nm&&DROP.test(this._nm)&&this.array&&this.array.byteLength>=65536) this.array=new this.array.constructor(0); };
+  const rr=renderer.render.bind(renderer); renderer.render=(sc,cam)=>{ MAIN_R=true; try{ rr(sc,cam); }finally{ MAIN_R=false; } }; }
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = .6;
@@ -430,9 +445,21 @@ const DRACO=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three
 // cannot hold that: iPhones kill the page and reload it, every phone runs hot. So every texture a model brings is shrunk
 // as it arrives, to a size the quality level can afford (phones 1024, desktop 2048 on Medium, untouched on High). The
 // shrinking only touches the pictures: the model's parts, names and positions stay exactly as exported.
-const TEXCAP=IOS||Q===QUAL.low?1024:Q===QUAL.medium?2048:0;
+const TEXCAP=SAFE?256:IOS?512:Q===QUAL.low?1024:Q===QUAL.medium?2048:0;   // iPhones: 512 (their tabs are killed past ~1.5 GB, pictures included)
 const TEXKEYS=['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap','alphaMap','specularMap','bumpMap','transmissionMap','thicknessMap','sheenColorMap','clearcoatMap'];
-function capTexture(t){ if(!t||t.isCompressedTexture||t.isCanvasTexture||t._capped) return; t._capped=true; const im=t.image; if(!im) return;
+// once a model's picture is on the graphics chip, the page's own copy is dead weight (Safari keeps every decoded picture
+// in the tab's memory as well): let it go. Model pictures never change after loading, so nothing needs it back.
+const STUB=(()=>{ const c=document.createElement('canvas'); c.width=c.height=1; return c; })();
+function dropCopy(t){ t.onUpdate=null; const im=t.image; if(!im||im===STUB) return; t.source.data=STUB;
+  if(im instanceof HTMLCanvasElement){ im.width=im.height=0; } else if(im.close){ try{ im.close(); }catch(e){} } else if(im instanceof HTMLImageElement){ im.removeAttribute('src'); } }
+// people's packed (KTX2) pictures: the same, but only once the lobby's stand and portrait renderers are gone (they draw
+// the same people from their own copy); pictures the main renderer took during the lobby are let go when you enter
+const MIPS=[]; const EMPTY8=new Uint8Array(0);
+function dropMips(t){ if(!(MAIN_R&&GAME_ON&&!PORTRAIT&&!STAGE.R)) return; t.onUpdate=null; for(const m of t.mipmaps||[]) if(m&&m.data) m.data=EMPTY8; }
+function sweepMips(){ for(const w of MIPS){ const t=w.deref(); if(!t||t.onUpdate!==dropMips) continue; const p=renderer.properties.get(t); if(p&&p.__webglTexture){ t.onUpdate=null; for(const m of t.mipmaps||[]) if(m&&m.data) m.data=EMPTY8; } } MIPS.length=0; }
+function capTexture(t){ if(t&&t.isCompressedTexture&&isTouch&&!t._capped&&typeof WeakRef!=='undefined'){ t._capped=true; t.onUpdate=dropMips; MIPS.push(new WeakRef(t)); return; }
+  if(!t||t.isCompressedTexture||t.isCanvasTexture||t._capped) return; t._capped=true; const im=t.image; if(!im) return;
+  if(isTouch&&!t.onUpdate) t.onUpdate=dropCopy;
   const w=im.naturalWidth||im.width||0, h=im.naturalHeight||im.height||0; if(!(w>TEXCAP||h>TEXCAP)) return;
   try{ const k=TEXCAP/Math.max(w,h), [c,g]=cv(Math.max(1,Math.round(w*k)),Math.max(1,Math.round(h*k))); g.imageSmoothingQuality='high'; g.drawImage(im,0,0,c.width,c.height);
     t.image=c; t.needsUpdate=true; if(im.close) im.close(); }catch(e){ /* a picture that cannot be drawn (CORS, broken): keep it as it is */ } }
@@ -1512,7 +1539,8 @@ function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3,out=null}={}){ const 
   return nb; }
 const SETS=[];
 // a set at (x,z) turned ry: loads when you come within `near` metres; `onLoad(set)` adds the extras (people, doors, planes)
-function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ const S={name,x,z,ry,near,detailDist,lift,onLoad,cut,state:0,root:new THREE.Group(),far:null,near_:null,json:null};
+function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ if(isTouch) near=Math.min(near,Math.max(detailDist+180,Q.draw*1.8));   // phones see ~200 m: a district they cannot see is not held in memory
+  const S={name,x,z,ry,near,detailDist,lift,onLoad,cut,state:0,root:new THREE.Group(),far:null,near_:null,json:null};
   S.root.position.set(x,0,z); S.root.rotation.y=ry; scene.add(S.root); SETS.push(S); return S; }
 function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,player.z-S.z);
     if(S.state===0&&d<S.near){ S.state=1; const u=murl(S.name), ju=`assets/models/${S.name}.json`; DL.exp[u]=MANIFEST[`assets/models/${S.name}.glb`]||4e6;
@@ -4405,7 +4433,7 @@ let MSIMP=null;   // meshoptimizer's simplifier, loaded only for the crowd
 async function simplifier(){ if(MSIMP!==null) return MSIMP; try{ const m=await import('./libs/meshopt_simplifier.js'); await m.MeshoptSimplifier.ready; MSIMP=m.MeshoptSimplifier; }catch(e){ console.warn('simplifier',e); MSIMP=false; } return MSIMP; }
 const CQ=2.5;   // crowd points are stored as 16-bit numbers within ±2.5 m (scaled back by the instance)
 // the cast's texture read back once (a small copy), so the cut-down crowd body can carry its colours on its points
-function crowdTexPix(map){ const W=Math.min(512,(map.image&&map.image.width)||512), H=Math.min(512,(map.image&&map.image.height)||512), rt=new THREE.WebGLRenderTarget(W,H);
+function crowdTexPix(map){ const W=Math.min(512,(map.image&&map.image.width>1&&map.image.width)||512), H=Math.min(512,(map.image&&map.image.height>1&&map.image.height)||512), rt=new THREE.WebGLRenderTarget(W,H);
   const m=new THREE.ShaderMaterial({uniforms:{t:{value:map}},vertexShader:'varying vec2 vu; void main(){ vu=uv; gl_Position=vec4(position.xy,0.,1.); }',
     fragmentShader:'uniform sampler2D t; varying vec2 vu; void main(){ vec4 c=texture2D(t,vu); gl_FragColor=vec4(pow(max(c.rgb,vec3(0.)),vec3(1./2.2)),1.); }',depthTest:false,depthWrite:false});
   const q=new THREE.Mesh(new THREE.PlaneGeometry(2,2),m), sc=new THREE.Scene(), cam=new THREE.Camera(); q.frustumCulled=false; sc.add(q);
@@ -8753,7 +8781,7 @@ function estMats(){ if(ESTM.mat) return ESTM.mat; const sm=o=>new THREE.MeshStan
   return ESTM.mat={solid:sm({roughness:.82,metalness:0}),gloss:sm({roughness:.3,metalness:.05}),metal:sm({roughness:.24,metalness:.85,envMapIntensity:1.3}),
     water:sm({roughness:.04,metalness:.1,transparent:true,opacity:.66,depthWrite:false}),glow:sm({roughness:.5,emissive:0xffe2b8,emissiveIntensity:0})}; }
 const _estPal=new Map();
-function estPal(tex){ if(!tex||!tex.image) return null; if(_estPal.has(tex)) return _estPal.get(tex); let f=null;
+function estPal(tex){ if(!tex||!tex.image||tex.image===STUB) return null; if(_estPal.has(tex)) return _estPal.get(tex); let f=null;
   try{ const im=tex.image, w=im.width, h=im.height, [,g]=cv(w,h); g.drawImage(im,0,0); const d=g.getImageData(0,0,w,h).data, C=new THREE.Color();
     f=(u,v,o)=>{ u-=Math.floor(u); v-=Math.floor(v); const i=(Math.min(h-1,(v*h)|0)*w+Math.min(w-1,(u*w)|0))*4; C.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255,THREE.SRGBColorSpace); o[0]=C.r; o[1]=C.g; o[2]=C.b; }; }
   catch(e){ console.warn('estate palette',e); } _estPal.set(tex,f); return f; }
@@ -11064,7 +11092,7 @@ $('#soloBtn').addEventListener('click',goSolo);
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent='GETTING READY…'; setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 if(!touchUI){ if(PROFILE) $('#onlBtn').focus(); }
 eb.addEventListener('click',()=>{ portraitDone(); stageDone(); makeMe();
-  if(touchUI) goFull(); started=true; lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
+  if(touchUI) goFull(); started=true; GAME_ON=true; setTimeout(()=>{ if(isTouch) sweepMips(); },4000); setTimeout(()=>{ try{ localStorage.removeItem('naija-boot'); }catch(e){} },120e3); if(SAFE) setTimeout(()=>toast('Light mode on this phone, so it runs cool and steady.',4),7000); lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); if(LIFE.job) toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);
   if(!LIFE.job){ const first=eb.fresh===true; if(first) LIFE_SYNC.intro=1; setTimeout(()=>{ if(!jailSaved()) hustleOpen(first); },first?900:2500); } hustleHUD(true);   // the new vehicles come in the background
