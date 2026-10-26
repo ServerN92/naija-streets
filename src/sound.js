@@ -1,3 +1,7 @@
+// phones: a long sound (an ambience loop, an engine) is kept in one channel, not two: half the memory, and the game
+// places sounds in space itself
+const PHONE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+function mono(b) { if (!PHONE || b.numberOfChannels < 2 || b.duration < 4) return b; try { const n = b.length, o = new AudioBuffer({ numberOfChannels: 1, length: n, sampleRate: b.sampleRate }), d = o.getChannelData(0), L = b.getChannelData(0), R = b.getChannelData(1); for (let i = 0; i < n; i++) d[i] = (L[i] + R[i]) * .5; return o; } catch (e) { return b; } }
 // Naija Streets: real sounds. Field recordings of Lagos and West Africa (bus stops with conductors, markets with
 // hawkers, traffic, night crickets, church, call to prayer, generators) and real engines and horns for every kind of
 // vehicle, all from free libraries with licences that allow a commercial game (assets/sounds/CREDITS.md).
@@ -40,7 +44,7 @@ export function createSound({ AC, out, url, files, els = [] }) {
     if (!name || !files[name]) return null;
     const b = BUF.get(name); if (b) return b;
     if (!LOADING.has(name)) LOADING.set(name, fetch(url(name)).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-      .then(a => new Promise((res, rej) => AC.decodeAudioData(a, res, rej))).then(b => { BUF.set(name, b); return b; })
+      .then(a => new Promise((res, rej) => AC.decodeAudioData(a, res, rej))).then(b => { b = mono(b); BUF.set(name, b); return b; })
       .catch(e => { console.warn('sound', name, e); setTimeout(() => LOADING.delete(name), 30000); return null; }));
     return null;
   }

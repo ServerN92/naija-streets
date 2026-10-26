@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=4576c5cbc3';
-import * as C2 from './char2.js?v=4576c5cbc3';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=4576c5cbc3';
-import { createPhone } from './phone.js?v=4576c5cbc3';
-import { createGuide } from './guide.js?v=4576c5cbc3';
+import * as CLOCK from './clock.js?v=1556ba3091';
+import * as C2 from './char2.js?v=1556ba3091';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=1556ba3091';
+import { createPhone } from './phone.js?v=1556ba3091';
+import { createGuide } from './guide.js?v=1556ba3091';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=4576c5cbc3';
-import { createHome } from './home.js?v=4576c5cbc3';
-import { createFarm } from './farm.js?v=4576c5cbc3';
-import { createBusiness } from './business.js?v=4576c5cbc3';
-import { createOnline } from './online.js?v=4576c5cbc3';
-import { createPolice } from './police.js?v=4576c5cbc3';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=4576c5cbc3';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=4576c5cbc3';
+import { createFootball } from './football.js?v=1556ba3091';
+import { createHome } from './home.js?v=1556ba3091';
+import { createFarm } from './farm.js?v=1556ba3091';
+import { createBusiness } from './business.js?v=1556ba3091';
+import { createOnline } from './online.js?v=1556ba3091';
+import { createPolice } from './police.js?v=1556ba3091';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=1556ba3091';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=1556ba3091';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='4576c5cbc3';
+const BUILD='1556ba3091';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -455,8 +455,8 @@ function dropCopy(t){ t.onUpdate=null; const im=t.image; if(!im||im===STUB) retu
 // people's packed (KTX2) pictures: the same, but only once the lobby's stand and portrait renderers are gone (they draw
 // the same people from their own copy); pictures the main renderer took during the lobby are let go when you enter
 const MIPS=[]; const EMPTY8=new Uint8Array(0);
-function dropMips(t){ if(!(MAIN_R&&GAME_ON&&!PORTRAIT&&!STAGE.R)) return; t.onUpdate=null; for(const m of t.mipmaps||[]) if(m&&m.data) m.data=EMPTY8; }
-function sweepMips(){ for(const w of MIPS){ const t=w.deref(); if(!t||t.onUpdate!==dropMips) continue; const p=renderer.properties.get(t); if(p&&p.__webglTexture){ t.onUpdate=null; for(const m of t.mipmaps||[]) if(m&&m.data) m.data=EMPTY8; } } MIPS.length=0; }
+function dropMips(t){ if(!(GAME_ON&&!PORTRAIT&&!STAGE.R)) return; t.onUpdate=null; for(const m of t.mipmaps||[]) if(m&&m.data) m.data=EMPTY8; }
+function sweepMips(){ if(PORTRAIT||STAGE.R) return; let k=0; for(const w of MIPS){ const t=w.deref(); if(!t||t.onUpdate!==dropMips) continue; const p=renderer.properties.get(t); if(p&&p.__webglTexture){ t.onUpdate=null; for(const m of t.mipmaps||[]) if(m&&m.data) m.data=EMPTY8; } else MIPS[k++]=w; } MIPS.length=k; }
 function capTexture(t){ if(t&&t.isCompressedTexture&&isTouch&&!t._capped&&typeof WeakRef!=='undefined'){ t._capped=true; t.onUpdate=dropMips; MIPS.push(new WeakRef(t)); return; }
   if(!t||t.isCompressedTexture||t.isCanvasTexture||t._capped) return; t._capped=true; const im=t.image; if(!im) return;
   if(isTouch&&!t.onUpdate) t.onUpdate=dropCopy;
@@ -464,8 +464,12 @@ function capTexture(t){ if(t&&t.isCompressedTexture&&isTouch&&!t._capped&&typeof
   try{ const k=TEXCAP/Math.max(w,h), [c,g]=cv(Math.max(1,Math.round(w*k)),Math.max(1,Math.round(h*k))); g.imageSmoothingQuality='high'; g.drawImage(im,0,0,c.width,c.height);
     t.image=c; t.needsUpdate=true; if(im.close) im.close(); }catch(e){ /* a picture that cannot be drawn (CORS, broken): keep it as it is */ } }
 function capTextures(root){ if(!TEXCAP||!root) return root; root.traverse(o=>{ if(!o.isMesh) return; for(const m of (Array.isArray(o.material)?o.material:[o.material])){ if(!m) continue; for(const k of TEXKEYS) if(m[k]) capTexture(m[k]); } }); return root; }
-{ const pa=GLL.parseAsync.bind(GLL); GLL.parseAsync=(...a)=>pa(...a).then(g=>{ capTextures(g.scene); for(const sc of g.scenes||[]) if(sc!==g.scene) capTextures(sc); return g; });
-  const ld=GLL.load.bind(GLL); GLL.load=(u,ok,pr,er)=>ld(u,g=>{ capTextures(g.scene); ok&&ok(g); },pr,er); }   // the Blender sets (tools/blender_rooms/ng_game_export.py)
+async function capTexturesA(root){ if(!TEXCAP||!root) return; const ts=[]; root.traverse(o=>{ if(!o.isMesh) return; for(const m of (Array.isArray(o.material)?o.material:[o.material])){ if(!m) continue; for(const k of TEXKEYS) if(m[k]) ts.push(m[k]); } });
+  let t0=performance.now(); for(const t of ts){ capTexture(t); if(performance.now()-t0>6){ await new Promise(f=>setTimeout(f,0)); t0=performance.now(); } } }
+// once a model is built, its loader's caches (every raw buffer of the file, kept for nothing) are let go
+const freeParser=g=>{ const P=g&&g.parser; if(!P) return; try{ if(P.cache&&P.cache.removeAll) P.cache.removeAll(); const B=P.extensions&&P.extensions.KHR_binary_glTF; if(B) B.body=null; }catch(e){} g.parser=null; };
+{ const pa=GLL.parseAsync.bind(GLL); GLL.parseAsync=(...a)=>pa(...a).then(async g=>{ await capTexturesA(g.scene); for(const sc of g.scenes||[]) if(sc!==g.scene) await capTexturesA(sc); freeParser(g); return g; });
+  const ld=GLL.load.bind(GLL); GLL.load=(u,ok,pr,er)=>ld(u,g=>{ capTextures(g.scene); freeParser(g); ok&&ok(g); },pr,er); }   // the Blender sets (tools/blender_rooms/ng_game_export.py)
 const DL={got:{},exp:{}}; let buildP=0, buildTxt='Starting the engine…';
 const dlFrac=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return e?g/e:0; };
 const dlMB=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return [g/1048576,e/1048576]; };
@@ -1508,8 +1512,8 @@ const SET_DETAIL=/^(GD_|CT_L_|AP_Bench|AP_Arm|AP_Plant|AP_Bags|AP_Nooks|AP_Fids|
 // drop the triangles of a (non-indexed) geometry whose middle lies in one of the rectangles (set-local x0,x1,z0,z1): an old building taken out of a set
 function cutGeo(g,rects){ const P=g.attributes.position, n=P.count/3, keep=[]; for(let t=0;t<n;t++){ const x=(P.getX(t*3)+P.getX(t*3+1)+P.getX(t*3+2))/3, z=(P.getZ(t*3)+P.getZ(t*3+1)+P.getZ(t*3+2))/3; if(!rects.some(r=>x>r[0]&&x<r[1]&&z>r[2]&&z<r[3])) keep.push(t); }
   if(keep.length===n) return g; const o=new THREE.BufferGeometry(); for(const k of Object.keys(g.attributes)){ const A=g.attributes[k], sz=A.itemSize, src=A.array, dst=new src.constructor(keep.length*3*sz); keep.forEach((t,i)=>dst.set(src.subarray(t*3*sz,(t*3+3)*sz),i*3*sz)); o.setAttribute(k,new THREE.BufferAttribute(dst,sz,A.normalized)); } return o; }
-function setMerge(root,{detail=SET_DETAIL,lift=null,cut=null}={}){ root.updateMatrixWorld(true); const far=new Map(), near=new Map(), all=[];
-  root.traverse(o=>{ if(!o.isMesh) return; let top=o; while(top.parent&&top.parent!==root) top=top.parent; const nm=top.name||o.name, det=detail&&detail.test(nm), up=lift&&lift.test(nm)?lift.dy||0:0;
+function* setMergeG(root,{detail=SET_DETAIL,lift=null,cut=null}={}){ root.updateMatrixWorld(true); const far=new Map(), near=new Map(), all=[], meshes=[]; root.traverse(o=>{ if(o.isMesh) meshes.push(o); });
+  for(const o of meshes){ let top=o; while(top.parent&&top.parent!==root) top=top.parent; const nm=top.name||o.name, det=detail&&detail.test(nm), up=lift&&lift.test(nm)?lift.dy||0:0;
     const ms=[].concat(o.material).map(m=>m&&/^G_leafy_grass/.test(m.name||'')?MAT.grass:m), g=o.geometry; const groups=g.groups.length?g.groups:[{start:0,count:(g.index?g.index.count:g.attributes.position.count),materialIndex:0}];
     for(const gr of groups){ const m=ms[gr.materialIndex]||ms[0]; let sub=g;
       if(groups.length>1){ sub=g.clone(); sub.clearGroups(); if(g.index) sub.setIndex(Array.from(g.index.array.slice(gr.start,gr.start+gr.count))); }
@@ -1517,12 +1521,15 @@ function setMerge(root,{detail=SET_DETAIL,lift=null,cut=null}={}){ root.updateMa
       for(const k of Object.keys(w.attributes)) if(!['position','normal','uv','color'].includes(k)) w.deleteAttribute(k);
       if(!w.attributes.normal) w.computeVertexNormals(); if(!w.attributes.uv) w.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(w.attributes.position.count*2),2));
       if(w.attributes.color) w.deleteAttribute('color');
-      const M=det?near:far; if(!M.has(m)) M.set(m,[]); M.get(m).push(w); all.push(w); } });
-  const mk=M=>{ const grp=new THREE.Group(); for(const [m,list] of M){ const geo=mergeGeometries(list,false); if(!geo) continue; geo.computeBoundingSphere();
+      const M=det?near:far; if(!M.has(m)) M.set(m,[]); M.get(m).push(w); all.push(w); } yield; }
+  const mk=function*(M){ const grp=new THREE.Group(); for(const [m,list] of M){ yield; const geo=mergeGeometries(list,false); if(!geo) continue; geo.computeBoundingSphere();
       if(m.map){ m.map.anisotropy=Math.min(8,maxAniso); m.map.colorSpace=THREE.SRGBColorSpace; }
       if(m.transparent||m.opacity<1){ m.transparent=true; m.depthWrite=false; m.side=THREE.DoubleSide; m.roughness=.05; m.metalness=.1; m.envMapIntensity=1.4; } else m.side=THREE.FrontSide;
       const mesh=new THREE.Mesh(geo,m); mesh.castShadow=!m.transparent; mesh.receiveShadow=true; mesh.layers.set(1); grp.add(mesh); } return grp; };
-  return {far:mk(far),near:mk(near),geos:all}; }
+  const F=yield* mk(far), N=yield* mk(near); return {far:F,near:N,geos:all}; }
+// the same, all at once (small models) or a few milliseconds a frame (a whole district, so walking into it does not freeze the game)
+function setMerge(root,o){ const it=setMergeG(root,o); let r; while(!(r=it.next()).done); return r.value; }
+async function setMergeA(root,o){ const it=setMergeG(root,o); let r, t0=performance.now(); while(!(r=it.next()).done) if(performance.now()-t0>6){ await new Promise(f=>setTimeout(f,0)); t0=performance.now(); } return r.value; }
 // walls and furniture -> collision boxes (set-local coordinates, placed at x,z turned ry)
 function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3,out=null}={}){ const bb=new THREE.Box3(); for(const g of geos){ g.computeBoundingBox(); bb.union(g.boundingBox); }
   const X0=bb.min.x, Z0=bb.min.z, gw=Math.ceil((bb.max.x-X0)/cs)+1, gd=Math.ceil((bb.max.z-Z0)/cs)+1, grid=new Uint8Array(gw*gd), P=new THREE.Vector3();
@@ -1544,10 +1551,29 @@ function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ if(is
   S.root.position.set(x,0,z); S.root.rotation.y=ry; scene.add(S.root); SETS.push(S); return S; }
 function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,player.z-S.z);
     if(S.state===0&&d<S.near){ S.state=1; const u=murl(S.name), ju=`assets/models/${S.name}.json`; DL.exp[u]=MANIFEST[`assets/models/${S.name}.glb`]||4e6;
-      Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),MANIFEST[ju]?fetch(ju+'?v='+(AV[ju]||MANIFEST[ju])).then(r=>r.json()).catch(()=>null):Promise.resolve(null)]).then(([g,j])=>{
-        const R=setMerge(g.scene,{lift:S.lift,cut:S.cut}); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
+      Promise.all([fetchBuf(u).then(b=>GLL.parseAsync(b,'')),MANIFEST[ju]?fetch(ju+'?v='+(AV[ju]||MANIFEST[ju])).then(r=>r.json()).catch(()=>null):Promise.resolve(null)]).then(async([g,j])=>{
+        const R=await setMergeA(g.scene,{lift:S.lift,cut:S.cut}); S.far=R.far; S.near_=R.near; S.json=j; S.root.add(R.far,R.near); S.cols=setColliders(R.geos,S.x,S.z,S.ry); S.state=2; if(S.onLoad) S.onLoad(S); })
         .catch(e=>{ console.warn('set',S.name,e); S.state=0; S.near=-1; }); }
-    if(S.state===2){ S.near_.visible=d<S.detailDist; if(S.tick) S.tick(dt,d); } } }
+    if(S.state===2){ S.near_.visible=d<S.detailDist; if(S.tick) S.tick(dt,d); if(SET_FREE&&!SET_KEEP.test(S.name)&&d>S.near*SET_FREE) setUnload(S); }
+    else if(S.state===3&&d<S.near&&!(S.retry>performance.now())) setReload(S); } }
+// Phones: a district far behind you gives back its shapes and pictures (an iPhone tab dies past ~1.5 GB, and walking the
+// whole map used to load every district at once). Its shell stays: the meshes, the materials and whatever its extras did
+// to them (signs hidden, race lights), its walls and its people. Coming back, the shapes and pictures go into the same shell.
+const SET_FREE=isTouch?1.5:0, SET_KEEP=/^set_(raceway|stadium|pitch_)/, SET_EMPTY=new THREE.BufferGeometry();
+SET_EMPTY.setAttribute('position',new THREE.BufferAttribute(new Float32Array(0),3));
+const setMeshes=S=>{ const out=[]; for(const g of [S.far,S.near_]) if(g) g.traverse(o=>{ if(o.isMesh) out.push(o); }); return out; };
+function setUnload(S){ S.state=3; S.root.visible=false; const seen=new Set();
+  for(const o of setMeshes(S)){ const g=o.geometry; if(g===SET_EMPTY) continue; o.userData.vc=g.attributes.position?g.attributes.position.count:0; g.dispose(); o.geometry=SET_EMPTY;
+    for(const m of [].concat(o.material)) for(const k of TEXKEYS){ const t=m&&m[k]; if(t&&t._capped&&!t.isCompressedTexture&&!seen.has(t)){ seen.add(t); t.dispose(); const im=t.source.data; if(im instanceof HTMLCanvasElement&&im!==STUB) im.width=im.height=0; t.source.data=STUB; } } } }
+function setReload(S){ S.state=4; const u=murl(S.name);
+  fetchBuf(u).then(b=>GLL.parseAsync(b,'')).then(async g=>{ const R=await setMergeA(g.scene,{lift:S.lift,cut:S.cut}), old=setMeshes(S), nw=[];
+    for(const grp of [R.far,R.near]) grp.traverse(o=>{ if(o.isMesh) nw.push(o); });
+    if(nw.length===old.length&&nw.every((o,i)=>o.geometry.attributes.position.count===old[i].userData.vc)){ const done=new Set();
+      nw.forEach((n,i)=>{ const o=old[i], om=[].concat(o.material), nm=[].concat(n.material); o.geometry=n.geometry;
+        om.forEach((m,j)=>{ const q=nm[j]; if(!m||!q) return; for(const k of TEXKEYS){ const t=m[k], tn=q[k]; if(t&&tn&&t._capped&&t.image===STUB&&!done.has(t)){ done.add(t); t.source=tn.source; t.onUpdate=dropCopy; t.needsUpdate=true; } } }); }); }
+    else { console.warn('set reload: new shapes',S.name); S.root.remove(S.far,S.near_); S.far=R.far; S.near_=R.near; S.root.add(R.far,R.near); }
+    S.root.visible=true; S.state=2; })
+  .catch(e=>{ console.warn('set reload',S.name,e); S.state=3; S.retry=performance.now()+15e3; }); }
 // set-local point -> world
 const setPt=(S,lx,lz)=>{ const c=Math.cos(S.ry), s=Math.sin(S.ry); return {x:S.x+lx*c+lz*s,z:S.z-lx*s+lz*c}; };
 // the palm on the airport road's median (the Sketchfab palm from the user's Naija Ground, tools/blender_airroad.py):
@@ -2475,6 +2501,7 @@ function resumeSpot(){ const P=LIFE.pos, now=Date.now(); if(!P||P.st>0||now-P.t>
   return null; }
 const RESUME=resumeSpot(), LEFT_WANTED=!!(LIFE.pos&&LIFE.pos.st>0&&Date.now()-LIFE.pos.t<RESUME_MS*4); if(LEFT_WANTED){ LIFE.kf=Math.min(9,(LIFE.kf||0)+1); LIFE.pos.st=0; }   // ran away from the police by leaving: your face is known better
 const player={x:RESUME?RESUME.x:HOME0.x,z:RESUME?RESUME.z:HOME0.z,y:SLAB,yaw:RESUME?RESUME.ry:HOME0.ry,speed:0,ph:0};
+if(PERF) window.__nsT={player,SETS,scene};   // ?perf=1 only: a handle for testing memory and speed on phones (see also __ns)
 let mode='walk', started=false, busy=false, T0=0;
 let rig=makeHuman({f:false,skin:skinMat('#5a3825'),top:ankMat(5),bottom:clothMat('#1a1a1c'),shoe:clothMat('#f2f2f2'),hairM:clothMat('#141110')});
 scene.add(rig.root);
@@ -11092,7 +11119,7 @@ $('#soloBtn').addEventListener('click',goSolo);
 if(PROFILE&&WARD.cur!==savedLook()){ eb.dataset.wait=1; eb.disabled=true; eb.dataset.label='ENTER LAGOS'; eb.textContent='GETTING READY…'; setTimeout(()=>{ if(eb.dataset.wait) bodyReady(); },25000); }   // never stuck on a slow connection
 if(!touchUI){ if(PROFILE) $('#onlBtn').focus(); }
 eb.addEventListener('click',()=>{ portraitDone(); stageDone(); makeMe();
-  if(touchUI) goFull(); started=true; GAME_ON=true; setTimeout(()=>{ if(isTouch) sweepMips(); },4000); setTimeout(()=>{ try{ localStorage.removeItem('naija-boot'); }catch(e){} },120e3); if(SAFE) setTimeout(()=>toast('Light mode on this phone, so it runs cool and steady.',4),7000); lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
+  if(touchUI) goFull(); started=true; GAME_ON=true; if(isTouch) setInterval(sweepMips,15000); setTimeout(()=>{ try{ localStorage.removeItem('naija-boot'); }catch(e){} },120e3); if(SAFE) setTimeout(()=>toast('Light mode on this phone, so it runs cool and steady.',4),7000); lastT=performance.now(); camState.yaw=clearYaw(player.x,player.y,player.z,player.yaw+(homeNow()==='tent'&&Math.hypot(player.x-HOME0.x,player.z-HOME0.z)<1?2.5:0)); camState.last=T0; $('#loading').classList.add('gone'); setTimeout(()=>{ $('#loading').hidden=true; },650); $('#hud').hidden=false; initAudio(); checkRotate();
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); if(LIFE.job) toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);
   if(!LIFE.job){ const first=eb.fresh===true; if(first) LIFE_SYNC.intro=1; setTimeout(()=>{ if(!jailSaved()) hustleOpen(first); },first?900:2500); } hustleHUD(true);   // the new vehicles come in the background
