@@ -358,6 +358,14 @@ export function createPark({ db, now = () => Date.now(), rand = Math.random, log
     C.pkNear = false; me(C);
   }
   // the account's name for a player who signs in (a fresh member gets their badge from here)
-  return { handle, tick, flush, hello, badge, pub, pvpKo, get fight() { return F; }, get state() { return P; }, member: uid => M.get(uid), loads: () => [...loads.values()], meetAt,
+  // the owner's hand on the chairman's seat: give it to a player (by id) or take it (null)
+  function admin(uid) {
+    const t = now(); payOwed(); const was = P.chair;
+    if (uid) { const u = db.userById(uid); if (!u) return null; Object.assign(P, { chair: u.id, cname: u.name, crew: Math.max(PARK.minBoys, crewNow(t) | 0), crewUntil: t + 24 * 3600e3, since: t, wins: 0 }); }
+    else Object.assign(P, { chair: null, cname: '', crew: 0, crewUntil: 0 });
+    dirty = true; flush(); if (was) setBadge(was); if (P.chair) setBadge(P.chair); pushPub(true);
+    return { chair: P.chair, cname: P.cname };
+  }
+  return { handle, tick, flush, hello, badge, pub, pvpKo, admin, get fight() { return F; }, get state() { return P; }, member: uid => M.get(uid), loads: () => [...loads.values()], meetAt,
     _test: { settle: () => streetNow(now()), startLoad: t => startLoad(t ?? now()), setRp: (uid, rp) => { const x = M.get(uid); if (x) { x.rp = rp; touchM(uid); } } } };
 }

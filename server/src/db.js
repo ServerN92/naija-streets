@@ -52,6 +52,12 @@ const SCHEMA = [
    CREATE INDEX bank_tx_src ON bank_tx(src, t);
    CREATE INDEX bank_tx_dst ON bank_tx(dst, t);
    CREATE UNIQUE INDEX bank_tx_q ON bank_tx(src, q);`,
+  // v9: the owner's admin: timed blocks with a reason, frozen bank accounts, and a record of every admin action
+  `ALTER TABLE users ADD COLUMN ban_until INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE users ADD COLUMN ban_why TEXT;
+   ALTER TABLE users ADD COLUMN frozen INTEGER NOT NULL DEFAULT 0;
+   CREATE TABLE admin_log(id INTEGER PRIMARY KEY, t INTEGER NOT NULL, a TEXT NOT NULL, uid INTEGER, name TEXT, detail TEXT);
+   CREATE INDEX admin_log_t ON admin_log(t);`,
 ];
 
 export function openDb(file) {
@@ -109,6 +115,16 @@ export function openDb(file) {
   };
   return {
     raw: db,
+    // why this account cannot sign in right now, or null
+    blocked(u, t = Date.now()) {
+      if (!u) return null;
+      if (u.banned) return 'This account is blocked' + (u.ban_why ? ': ' + u.ban_why : '.');
+      if (u.ban_until > t) { const h = Math.ceil((u.ban_until - t) / 3600e3); return `This account is blocked for ${h >= 48 ? Math.ceil(h / 24) + ' more days' : h + ' more hour' + (h === 1 ? '' : 's')}` + (u.ban_why ? ': ' + u.ban_why : '.'); }
+      return null;
+    },
+    setBlock: (id, banned, until, why) => db.prepare('UPDATE users SET banned=?, ban_until=?, ban_why=? WHERE id=?').run(banned ? 1 : 0, Math.round(until || 0), why || null, id),
+    setFrozen: (id, on) => db.prepare('UPDATE users SET frozen=? WHERE id=?').run(on ? 1 : 0, id),
+    adminLog: (t, a, uid, name, detail) => db.prepare('INSERT INTO admin_log(t,a,uid,name,detail) VALUES(?,?,?,?,?)').run(t, a, uid || null, name || null, detail || null),
     user: name => S.byName.get(String(name).toLowerCase()) || null,
     userById: id => S.byId.get(id) || null,
     addUser(u) {

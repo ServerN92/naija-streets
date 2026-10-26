@@ -113,7 +113,7 @@ export function createBank({ db, now, log = () => {}, rand = Math.random, ctx })
   }
   function handle(C, m) {
     if (m.a === 'name') return enquire(C, m);
-    if (m.a === 'send') return send(C, m);
+    if (m.a === 'send') { const u = db.userById(C.user.id); if (u && u.frozen) return ctx.err(C, 'bk', 'Your bank account is frozen. Contact the bank.'); return send(C, m); }
     if (m.a === 'me') return hello(C);
     if (m.a === 'loan') return loanTake(C, m);
     if (m.a === 'repay') { const l = loanOf(C.user.id); if (!l) return ctx.err(C, 'bk', 'You owe nothing.'); const n = m.n === 'all' ? Math.min(l.n, C.cash) : +m.n; if (!(n >= 100)) return ctx.err(C, 'bk', 'At least ₦100.'); if (n > C.cash) return ctx.err(C, 'bk', 'You don\'t have that much on you.'); loanPay(C, n, 'pay'); return ctx.ok(C, 'bk', l.n - n <= 0 ? 'Loan settled. The bank thanks you!' : `Paid ${n.toLocaleString('en-NG')}. You still owe ₦${(l.n - n).toLocaleString('en-NG')}.`); }

@@ -165,7 +165,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     const u = db.user(key);
     const good = u ? await checkPass(String(m.p || '').slice(0, 200), u.salt, u.hash) : (await hashPass('x'), false);   // same time either way
     if (!good) return err(C, 'login', 'Wrong username or password.');
-    if (u.banned) return err(C, 'login', 'This account is blocked.');
+    { const why = db.blocked(u, now()); if (why) return err(C, 'login', why); }
     await signIn(C, u);
   }
   async function hello(C, m) {
@@ -173,7 +173,7 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     if (m.v !== PROTO) return send(C, { t: 'old', m: 'A new version of the game is out. Reload the page.' });
     if (typeof m.tok === 'string' && m.tok.length > 20 && m.tok.length < 100) {
       const th = tokenHash(m.tok), s = db.session(th), t = now();
-      if (s && !s.banned && s.sseen > t - SESSION_DAYS * 864e5) { db.touchSession(th, t); return signIn(C, s, m.tok); }
+      if (s && !db.blocked(s, t) && s.sseen > t - SESSION_DAYS * 864e5) { db.touchSession(th, t); return signIn(C, s, m.tok); }
       if (s) db.dropSession(th);
       return send(C, { t: 'guest', m: 'Please sign in again.' });
     }
@@ -392,6 +392,19 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
     tick, slow,
     get online() { return online.size; },
     isOnline: uid => online.has(uid),
+    conn: uid => online.get(uid) || null,
+    credit, note,
+    // the owner moves money: by a difference (give or seize) or to a set figure; works for players online or not
+    setCash(uid, { delta, set, why }) {
+      const C = online.get(uid), u = db.userById(uid); if (!u) return null;
+      const cur = C && C.user ? C.cash : (u.cash | 0);
+      const next = Math.max(0, Math.min(2e9, set != null ? Math.round(set) : cur + Math.round(delta || 0))), d = next - cur;
+      if (!d) return cur;
+      const t = now();
+      if (C && C.user) { flushCash(C); C.cash = next; db.setCash(uid, next, t); db.log(uid, t, d, 0, next, why); send(C, { t: '$', n: next, s: C.cseq }); send(C, { t: 'note', m: d > 0 ? `₦${d.toLocaleString('en-NG')} came into your pocket.` : `₦${(-d).toLocaleString('en-NG')} was taken from your pocket.` }); }
+      else { db.setCash(uid, next, t); db.log(uid, t, d, 0, next, why); }
+      return next;
+    },
     kick(uid, why) { const C = online.get(uid); if (!C) return false; send(C, { t: 'kick', m: why || 'Signed out by the server.' }); leaveWorld(C); C.tok = C.th = null; C.ws.close(4002, 'blocked'); return true; },
     get conns() { return conns.size; },
   };

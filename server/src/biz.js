@@ -442,5 +442,16 @@ export function createBiz({ db, now = () => Date.now(), rand = Math.random, log 
     const back = db.backTake(C.user.id); if (back.length) ctx.send(C, { t: 'mkback', items: back.map(r => [r.crop, r.qty]) });
     if (mkOf(C.user.id).length) mkMine(C);
   }
-  return { handle, hello, tick, flush, pushAll: () => { pushAll(); mkTick(); }, market: (C, m) => { market(C, m); mkTick(); }, get: id => B.get(id), isOpen, listings: () => [...MK.values()] };
+  // the owner's hand: hand a business to a player (by id) or take it back for sale (null)
+  function admin(id, uid) {
+    const b = B.get(id); if (!b) return null;
+    const old = b.owner;
+    if (uid) { const u = db.userById(uid); if (!u) return null; Object.assign(b, fresh(b.id), { owner: u.id, oname: u.name, name: defName(b.kind, u.name), bought: now() }); }
+    else Object.assign(b, fresh(b.id));
+    b.pub = ''; touch(b); flush(); pushAll();
+    for (const x of [old, uid]) { const C = x && ctx.online.get(x); if (C) { for (const o of owned(x)) ctx.send(C, { t: 'bzd', b: mine(o) }); } }
+    return { id: b.id, kind: b.kind, owner: b.owner, oname: b.oname, name: b.name };
+  }
+  const all = () => [...B.values()].map(b => ({ id: b.id, kind: b.kind, owner: b.owner, oname: b.oname, name: b.name, till: b.till }));
+  return { handle, hello, tick, flush, admin, all, pushAll: () => { pushAll(); mkTick(); }, market: (C, m) => { market(C, m); mkTick(); }, get: id => B.get(id), isOpen, listings: () => [...MK.values()] };
 }

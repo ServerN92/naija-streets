@@ -157,5 +157,15 @@ export function createLaw({ db, now = () => Date.now(), log = () => {}, ctx }) {
   }
   function tick() { for (const C of ctx.online.values()) if (C.user && C.p) refresh(C); pushWanted(); }
   function hello(C) { C.law = null; C.lawRec = recOf(C.user.id); const s = st(C), w = keep.get(C.user.id); if (w) { s.srv = w.srv; s.last = w.last; } refresh(C); me(C); }
-  return { handle, hit, ko, noRob, onDuty, stars, tick, hello, crime };
+  // the owner's hand: cop on/off, arrests (sets the rank), a suspension in hours (0 lifts it)
+  function admin(uid, patch) {
+    const C = ctx.online.get(uid), d = C && C.lawRec ? C.lawRec : recOf(uid), t = now();
+    if (patch.cop != null) { d.cop = patch.cop ? 1 : 0; if (d.cop && !d.joined) d.joined = t; if (!d.cop && C) { st(C).duty = false; ctx.badge(uid); } }
+    if (patch.arrests != null) d.arrests = Math.max(0, Math.min(100000, patch.arrests | 0));
+    if (patch.banHours != null) { d.ban = patch.banHours > 0 ? t + patch.banHours * 3600e3 : 0; if (d.ban && C) { st(C).duty = false; ctx.badge(uid); } }
+    save(uid, d); if (C) { C.lawRec = d; me(C); }
+    return info(uid);
+  }
+  const info = uid => { const C = ctx.online.get(uid), d = C && C.lawRec ? C.lawRec : recOf(uid), t = now(); return { cop: !!d.cop, arrests: d.arrests, rank: rankName(d.arrests), ban: d.ban > t ? d.ban - t : 0, earned: d.earned }; };
+  return { handle, hit, ko, noRob, onDuty, stars, tick, hello, crime, admin, info };
 }
