@@ -61,6 +61,7 @@ const sm = t => { t = clamp(t,0,1); return t*t*(3-2*t); };
 const lerpA = (a,b,t) => { let d = ((b-a+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI; return a + d*t; };
 const isTouch = matchMedia('(pointer: coarse)').matches || matchMedia('(any-pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
 const DPR = Math.min(window.devicePixelRatio||1, 3);
+const IOS=/iP(hone|ad|od)/.test(navigator.platform)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);   // Safari on iPhone/iPad: the tightest memory of all
 
 /* ================= renderer ================= */
 // quality presets. pr = target pixel ratio (dynamic resolution may lower it to keep 60 fps)
@@ -88,7 +89,8 @@ const FARM_BACK=(()=>{ try{ if(localStorage.getItem('naija-start2')) return fals
 // this phone's own number: spreads players over the rooming houses and the farm yards (so new players are not all in one place)
 const RID=(()=>{ try{ let r=+localStorage.getItem('naija-rid'); if(!(r>0)){ r=1+Math.floor(Math.random()*1e9); localStorage.setItem('naija-rid',String(r)); } return r; }catch(e){ return 1+Math.floor(Math.random()*1e9); } })();
 if(!QUAL[qKey]) qKey=isTouch?(GPU_TIER==='high'?'medium':'low'):GPU_TIER; const Q=QUAL[qKey];   // a phone starts on Low (Medium on the strongest chips): heat and battery come first
-if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
+if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }
+if(IOS){ Q.px=Math.min(Q.px,0.9e6); Q.tex=Math.min(Q.tex,512); }   // iPhones: a few less pixels and smaller painted textures, for the heat and the memory   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
 Q.prTop=Q.pr; const fitPR=()=>Math.max(Q.prMin,Math.min(Q.prTop,Math.sqrt(Q.px/Math.max(1,innerWidth*innerHeight)))); Q.pr=fitPR();
 // most of the city never moves, but three.js rebuilds every object's matrices every frame (thousands of them): skip it when
@@ -423,7 +425,20 @@ function inst(geo,mat,list,{shadow=true,layer=1,colors=null}={}){ if(!list.lengt
 const BASIS_PATH='https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/basis/';
 const KTX2=new KTX2Loader().setTranscoderPath(BASIS_PATH).detectSupport(renderer);
 const GLL=new GLTFLoader().setKTX2Loader(KTX2).setMeshoptDecoder(MeshoptDecoder);
-const DRACO=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/gltf/'); GLL.setDRACOLoader(DRACO);   // the Blender sets (tools/blender_rooms/ng_game_export.py)
+const DRACO=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/gltf/'); GLL.setDRACOLoader(DRACO);
+// Model textures come in big (up to 4K: a market set decodes to ~250 MB of GPU memory, one hotel room to ~60 MB). A phone
+// cannot hold that: iPhones kill the page and reload it, every phone runs hot. So every texture a model brings is shrunk
+// as it arrives, to a size the quality level can afford (phones 1024, desktop 2048 on Medium, untouched on High). The
+// shrinking only touches the pictures: the model's parts, names and positions stay exactly as exported.
+const TEXCAP=IOS||Q===QUAL.low?1024:Q===QUAL.medium?2048:0;
+const TEXKEYS=['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap','alphaMap','specularMap','bumpMap','transmissionMap','thicknessMap','sheenColorMap','clearcoatMap'];
+function capTexture(t){ if(!t||t.isCompressedTexture||t.isCanvasTexture||t._capped) return; t._capped=true; const im=t.image; if(!im) return;
+  const w=im.naturalWidth||im.width||0, h=im.naturalHeight||im.height||0; if(!(w>TEXCAP||h>TEXCAP)) return;
+  try{ const k=TEXCAP/Math.max(w,h), [c,g]=cv(Math.max(1,Math.round(w*k)),Math.max(1,Math.round(h*k))); g.imageSmoothingQuality='high'; g.drawImage(im,0,0,c.width,c.height);
+    t.image=c; t.needsUpdate=true; if(im.close) im.close(); }catch(e){ /* a picture that cannot be drawn (CORS, broken): keep it as it is */ } }
+function capTextures(root){ if(!TEXCAP||!root) return root; root.traverse(o=>{ if(!o.isMesh) return; for(const m of (Array.isArray(o.material)?o.material:[o.material])){ if(!m) continue; for(const k of TEXKEYS) if(m[k]) capTexture(m[k]); } }); return root; }
+{ const pa=GLL.parseAsync.bind(GLL); GLL.parseAsync=(...a)=>pa(...a).then(g=>{ capTextures(g.scene); for(const sc of g.scenes||[]) if(sc!==g.scene) capTextures(sc); return g; });
+  const ld=GLL.load.bind(GLL); GLL.load=(u,ok,pr,er)=>ld(u,g=>{ capTextures(g.scene); ok&&ok(g); },pr,er); }   // the Blender sets (tools/blender_rooms/ng_game_export.py)
 const DL={got:{},exp:{}}; let buildP=0, buildTxt='Starting the engine…';
 const dlFrac=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return e?g/e:0; };
 const dlMB=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return [g/1048576,e/1048576]; };
