@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="1556ba3091">
+<meta name="ns-build" content="07ec8fb4bb">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -787,7 +787,12 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
 </div>
 
 <script>
-window.__nsFail=function(m){var e=document.getElementById('loadErr');if(e){e.textContent=m;e.hidden=false}var t=document.getElementById('loadTxt');if(t)t.textContent='Something went wrong.'};
+// phones too old for the 3D engine (WebGL 2: iOS 15+, any recent Chrome) get a clear message instead of a page that reloads
+(function(){var ok=false;try{var c=document.createElement('canvas'),g=window.WebGL2RenderingContext&&c.getContext('webgl2');ok=!!g;if(g){var l=g.getExtension('WEBGL_lose_context');if(l)l.loseContext()}}catch(e){}
+if(ok)return;window.__nsNoGL=true;var show=function(){var e=document.getElementById('loadErr'),t=document.getElementById('loadTxt');if(t)t.textContent='This phone is too old for Naija Streets.';
+if(e){e.textContent='Your browser cannot run the 3D game. It needs an iPhone on iOS 15 or newer (iPhone 6s / SE and newer), or Chrome on Android. Try another phone, or update this one in Settings \u2192 General \u2192 Software Update.';e.hidden=false}
+var lb=document.getElementById('lobby');if(lb)lb.style.display='none'};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show);else show()})();
+window.__nsFail=function(m){if(window.__nsNoGL)return;var e=document.getElementById('loadErr');if(e){e.textContent=m;e.hidden=false}var t=document.getElementById('loadTxt');if(t)t.textContent='Something went wrong.'};
 window.addEventListener('error',function(ev){if(!window.__nsReady&&ev.message)window.__nsFail('Error: '+ev.message)});
 window.addEventListener('unhandledrejection',function(ev){if(!window.__nsReady)window.__nsFail('Error: '+((ev.reason&&ev.reason.message)||ev.reason))});
 setTimeout(function(){if(!window.__nsOK)window.__nsFail('The 3D engine is taking long to download. Check your connection; it will keep trying.')},30000);
@@ -797,7 +802,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}
 </script>
-<script type="module" src="src/game.js?v=1556ba3091"></script>
+<script type="module" src="src/game.js?v=07ec8fb4bb"></script>
 
 </body>
 </html>

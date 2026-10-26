@@ -13,23 +13,23 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=1556ba3091';
-import * as C2 from './char2.js?v=1556ba3091';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=1556ba3091';
-import { createPhone } from './phone.js?v=1556ba3091';
-import { createGuide } from './guide.js?v=1556ba3091';
+import * as CLOCK from './clock.js?v=07ec8fb4bb';
+import * as C2 from './char2.js?v=07ec8fb4bb';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=07ec8fb4bb';
+import { createPhone } from './phone.js?v=07ec8fb4bb';
+import { createGuide } from './guide.js?v=07ec8fb4bb';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=1556ba3091';
-import { createHome } from './home.js?v=1556ba3091';
-import { createFarm } from './farm.js?v=1556ba3091';
-import { createBusiness } from './business.js?v=1556ba3091';
-import { createOnline } from './online.js?v=1556ba3091';
-import { createPolice } from './police.js?v=1556ba3091';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=1556ba3091';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=1556ba3091';
+import { createFootball } from './football.js?v=07ec8fb4bb';
+import { createHome } from './home.js?v=07ec8fb4bb';
+import { createFarm } from './farm.js?v=07ec8fb4bb';
+import { createBusiness } from './business.js?v=07ec8fb4bb';
+import { createOnline } from './online.js?v=07ec8fb4bb';
+import { createPolice } from './police.js?v=07ec8fb4bb';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=07ec8fb4bb';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=07ec8fb4bb';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='1556ba3091';
+const BUILD='07ec8fb4bb';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -94,7 +94,9 @@ if(IOS){ Q.px=Math.min(Q.px,0.9e6); Q.tex=Math.min(Q.tex,512); }
 // Safari kills a tab that runs out of memory and opens it again. If the last start on this phone never reached two minutes
 // in Lagos, this start is lighter still (smaller pictures, fewer people and cars, a nearer horizon) instead of dying again.
 const BOOT=(()=>{ try{ const k='naija-boot', v=JSON.parse(localStorage.getItem(k)||'null'), t=Date.now(), n=v&&t-v.t<15*60e3?v.n:0; localStorage.setItem(k,JSON.stringify({t,n:n+1})); return n; }catch(e){ return 0; } })();
-const SAFE=isTouch&&BOOT>=1;
+// small, older iPhones (SE, 6s, 7, 8: 1-2 GB of memory) always start light: they cannot hold what a newer phone can
+const LOWMEM=IOS&&Math.max(screen.width,screen.height)<=667;
+const SAFE=isTouch&&(BOOT>=1||LOWMEM);
 if(SAFE) Object.assign(Q,{px:Math.min(Q.px,.6e6),prMin:.5,prTop:Math.min(Q.prTop||Q.pr,1),pr:Math.min(Q.pr,1),tex:256,npc:3,npcR:20,peds:8,cars:8,draw:150,spots:8});
 addEventListener('pagehide',()=>{ try{ localStorage.removeItem('naija-boot'); }catch(e){} });   // leaving on purpose is not a crash   // iPhones: a few less pixels and smaller painted textures, for the heat and the memory   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
@@ -1546,7 +1548,7 @@ function setColliders(geos,x,z,ry,{cs=.25,y0=.3,y1=1.7,h=3,out=null}={}){ const 
   return nb; }
 const SETS=[];
 // a set at (x,z) turned ry: loads when you come within `near` metres; `onLoad(set)` adds the extras (people, doors, planes)
-function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ if(isTouch) near=Math.min(near,Math.max(detailDist+180,Q.draw*1.8));   // phones see ~200 m: a district they cannot see is not held in memory
+function addSet(name,x,z,ry,{near=900,detailDist=170,lift,onLoad,cut}={}){ if(isTouch) near=Math.min(near,Math.max(detailDist+180,Q.draw*1.8)); if(SAFE) near=Math.min(near,Math.max(detailDist+100,240));   // phones see ~200 m: a district they cannot see is not held in memory
   const S={name,x,z,ry,near,detailDist,lift,onLoad,cut,state:0,root:new THREE.Group(),far:null,near_:null,json:null};
   S.root.position.set(x,0,z); S.root.rotation.y=ry; scene.add(S.root); SETS.push(S); return S; }
 function setsUpdate(dt){ for(const S of SETS){ const d=Math.hypot(player.x-S.x,player.z-S.z);
@@ -2351,7 +2353,7 @@ const ROLE_W={mama:[['p_nkechi',['iro_buba','gown']],['p_basira',['iro_buba','go
   girl:[['p_chioma',['jeans','joggers','fitness','bodycon']],['p_kemi',['fitness','joggers','jeans']],['p_ada',['jeans','joggers']]],
   police_f:[['p_halima',['police']],['p_bisi',['police']]]};   // the policewoman who comes with the vans: Sgt Halima (or Bisi) in uniform
 const W_IN=(()=>{ let me=null; try{ me=localStorage.getItem('naija-look2'); }catch(e){} if(!(me in WOMEN)) me=PROFILE&&PROFILE.c in WOMEN?PROFILE.c:null; if(!isF()) me=null;
-  const want=qKey==='low'?4:qKey==='high'?6:5, S=new Set(), pick={}, rnd=L=>L[(Math.random()*L.length)|0];
+  const want=SAFE?2:qKey==='low'?4:qKey==='high'?6:5, S=new Set(), pick={}, rnd=L=>L[(Math.random()*L.length)|0];
   for(const r in ROLE_W){ const L=ROLE_W[r].filter(([w])=>w!==me), fresh=L.filter(([w])=>!S.has(w)), here=L.filter(([w])=>S.has(w));
     const c=rnd(fresh.length&&S.size<want?fresh:here.length?here:L); if(c){ S.add(c[0]); pick[r]=c; } }   // a new face for each part while there is room
   const rest=Object.keys(WOMEN).filter(w=>w!==me&&!S.has(w)); while(S.size<want&&rest.length) S.add(rest.splice((Math.random()*rest.length)|0,1)[0]);
@@ -2368,7 +2370,7 @@ const ROLE_M={baba:[['p_sule',['kaftan','senator']],['p_segun',['senator','kafta
   areaboy:[['p_femi',['singlet','jersey','hoodie']],['p_chidi',['singlet','jersey']],['p_tunde',['jersey','tee_jeans','singlet','hoodie']],['p_emeka',['hoodie','tee_jeans','jersey']]],
   police_m:[['p_okon',['police']],['p_chidi',['police']],['p_musa',['police']]]};
 const M_IN=(()=>{ let me=null; try{ me=localStorage.getItem('naija-look2'); }catch(e){} if(!(me in MEN)) me=PROFILE&&PROFILE.c in MEN?PROFILE.c:null; if(isF()) me=null;
-  const want=qKey==='low'?4:qKey==='high'?6:5, S=new Set(), pick={}, rnd=L=>L[(Math.random()*L.length)|0];
+  const want=SAFE?2:qKey==='low'?4:qKey==='high'?6:5, S=new Set(), pick={}, rnd=L=>L[(Math.random()*L.length)|0];
   for(const r in ROLE_M){ const L=ROLE_M[r].filter(([w])=>w!==me), fresh=L.filter(([w])=>!S.has(w)), here=L.filter(([w])=>S.has(w));
     const c=rnd(fresh.length&&S.size<want?fresh:here.length?here:L); if(c){ S.add(c[0]); pick[r]=c; } }
   const rest=Object.keys(MEN).filter(w=>w!==me&&!S.has(w)); while(S.size<want&&rest.length) S.add(rest.splice((Math.random()*rest.length)|0,1)[0]);
