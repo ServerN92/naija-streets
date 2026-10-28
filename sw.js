@@ -2,7 +2,7 @@
 // Models and the 3D engine are cached forever under their versioned address (?v=size, three@0.165.0).
 // The page and the game code always come from the network first (so updates arrive at once) and from
 // the cache only when offline. Bump VERSION only to wipe everything.
-const VERSION = 'ns-2026-10-11a';
+const VERSION = 'ns-2026-10-28a';
 const HEAVY = u => (u.origin === location.origin && /\/assets\/(models|characters|people|maps|sounds)\//.test(u.pathname)) ||
   u.hostname === 'cdn.jsdelivr.net' || u.hostname === 'fonts.gstatic.com';
 
@@ -21,6 +21,8 @@ async function store(cache, key, res) {
   await cache.put(key, res);
 }
 
+// no network and nothing saved: a small page instead of a blank one (a blank page is what the "black screen" complaints were)
+const offline = () => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Naija Streets</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0e13;color:#fff;font:17px/1.5 system-ui,sans-serif;text-align:center;padding:24px"><div><h1 style="font-size:22px;margin:0 0 8px">No network o!</h1><p style="margin:0 0 18px;color:#bcc3cf">Naija Streets could not reach Lagos. Check your data or Wi-Fi.</p><button onclick="location.replace(location.pathname)" style="font:inherit;font-weight:700;padding:12px 22px;border:0;border-radius:12px;background:#2fd17e;color:#06130b">TRY AGAIN</button></div>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const u = new URL(req.url);
@@ -40,9 +42,10 @@ self.addEventListener('fetch', e => {
   if (u.origin === location.origin) { // network first (revalidated), offline fallback
     const nav = req.mode === 'navigate';
     const key = nav ? u.origin + u.pathname : req.url;   // pages are stored without ?fresh= / ?dev= variations
-    e.respondWith(fetch(new Request(req, { cache: 'no-cache' })).then(r => {
+    // (a page request is refetched by address, not by re-wrapping the navigation request: Safari is picky about that)
+    e.respondWith((nav ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(new Request(req, { cache: 'no-cache' }))).then(r => {
       if (r.status === 200) { const cp = r.clone(); e.waitUntil(caches.open(VERSION).then(c => store(c, key, cp))); }
       return r;
-    }).catch(() => caches.match(key, { ignoreSearch: nav }).then(hit => hit || caches.match(req, { ignoreSearch: true }))));
+    }).catch(() => caches.match(key, { ignoreSearch: nav }).then(hit => hit || caches.match(req, { ignoreSearch: true })).then(hit => hit || (nav ? offline() : Response.error()))));
   }
 });

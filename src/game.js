@@ -87,8 +87,13 @@ const LIFE_NEW=(()=>{ try{ if(localStorage.getItem('naija-life')!==null) return 
 const FARM_BACK=(()=>{ try{ if(localStorage.getItem('naija-start2')) return false; localStorage.setItem('naija-start2','1'); const f=JSON.parse(localStorage.getItem('naija-farm')||'null'); localStorage.removeItem('naija-farm'); return !!(f&&f.got); }catch(e){ return false; } })();
 // this phone's own number: spreads players over the rooming houses and the farm yards (so new players are not all in one place)
 const RID=(()=>{ try{ let r=+localStorage.getItem('naija-rid'); if(!(r>0)){ r=1+Math.floor(Math.random()*1e9); localStorage.setItem('naija-rid',String(r)); } return r; }catch(e){ return 1+Math.floor(Math.random()*1e9); } })();
+// a phone that died while loading and came back (Safari reloads a page that eats too much memory, by itself): the second
+// try in the same tab goes Low, the third goes lighter still. The count clears a minute after the game is up.
+const BOOTS=(()=>{ try{ const n=+(sessionStorage.getItem('ns-boots')||0)+1; sessionStorage.setItem('ns-boots',String(n)); return n; }catch(e){ return 1; } })();
+if(BOOTS>=2&&isTouch) qKey='low';
 if(!QUAL[qKey]) qKey=isTouch?(GPU_TIER==='high'?'medium':'low'):GPU_TIER; const Q=QUAL[qKey];   // a phone starts on Low (Medium on the strongest chips): heat and battery come first
-if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
+if(isTouch&&Q===QUAL.low){ Object.assign(Q,{px:1.0e6,npc:6,npcR:26,peds:14,cars:12,draw:190}); }
+const LITE_BOOT=isTouch&&BOOTS>=3; if(LITE_BOOT){ Object.assign(Q,{px:.7e6,pr:Math.min(Q.pr,1),npc:4,npcR:22,peds:10,cars:8,draw:150,tex:384,sky:64}); }   // third try: as light as it goes   // phones on Low: a little fewer pixels, real bodies and cars than a laptop on Low
 // never draw more pixels than the preset's budget: a 1080p laptop or a big tablet gets a slightly lower internal resolution
 Q.prTop=Q.pr; const fitPR=()=>Math.max(Q.prMin,Math.min(Q.prTop,Math.sqrt(Q.px/Math.max(1,innerWidth*innerHeight)))); Q.pr=fitPR();
 // most of the city never moves, but three.js rebuilds every object's matrices every frame (thousands of them): skip it when
@@ -114,7 +119,9 @@ renderer.domElement.tabIndex = 0;
 const maxAniso = Math.min(Q.aniso, renderer.capabilities.getMaxAnisotropy());
 let ctxLost=false;
 renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); ctxLost=true; const o=$('#ctxlost'); if(o) o.hidden=false; });
-renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload());
+// the graphics came back: reload once or twice, lighter each time (next quality down); after that leave the button to the player
+renderer.domElement.addEventListener('webglcontextrestored',()=>{ let n=0; try{ n=+(localStorage.getItem('naija-ctxlost')||0); localStorage.setItem('naija-ctxlost',String(n+1)); if(qKey!=='low') localStorage.setItem('naija-quality',qKey==='high'?'medium':'low'); }catch(e){} if(n<2) location.reload(); });
+setTimeout(()=>{ try{ localStorage.removeItem('naija-ctxlost'); }catch(e){} },90e3);   // a run that lasts a minute and a half clears the count
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xe0a77c, 0.0019);
@@ -423,6 +430,16 @@ function inst(geo,mat,list,{shadow=true,layer=1,colors=null}={}){ if(!list.lengt
 const BASIS_PATH='https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/basis/';
 const KTX2=new KTX2Loader().setTranscoderPath(BASIS_PATH).detectSupport(renderer);
 const GLL=new GLTFLoader().setKTX2Loader(KTX2).setMeshoptDecoder(MeshoptDecoder);
+// Phones: the pictures inside the Blender files (many are 2048 px) are shrunk before they go to the graphics chip. On an
+// iPhone the full-size set came to ~900 MB of texture memory, and Safari kills and reloads a page that big (the "stuck on
+// the loading page, keeps reloading" complaint). Low keeps 512 px, Medium 1024, High everything.
+const TEXCAP=LITE_BOOT?256:Q===QUAL.high?4096:Q===QUAL.medium?1024:512;
+function shrinkTex(t){ const im=t.image; if(!im||t.isCompressedTexture||im.isCompressedTexture||!(im.width>TEXCAP||im.height>TEXCAP)) return;
+  const ok=(typeof HTMLImageElement!=='undefined'&&im instanceof HTMLImageElement)||(typeof HTMLCanvasElement!=='undefined'&&im instanceof HTMLCanvasElement)||(typeof ImageBitmap!=='undefined'&&im instanceof ImageBitmap); if(!ok) return;
+  const k=TEXCAP/Math.max(im.width,im.height), c=document.createElement('canvas'); c.width=Math.max(1,Math.round(im.width*k)); c.height=Math.max(1,Math.round(im.height*k));
+  const g=c.getContext('2d'); g.imageSmoothingQuality='high'; g.drawImage(im,0,0,c.width,c.height); if(im.close) im.close(); t.image=c; t.needsUpdate=true; }
+function capTextures(root){ if(!root||TEXCAP>=4096) return; const seen=new Set(); root.traverse(o=>{ if(!o.material) return; for(const m of [].concat(o.material)) for(const k in m){ const t=m[k]; if(t&&t.isTexture&&!seen.has(t)){ seen.add(t); try{ shrinkTex(t); }catch(e){} } } }); }
+{ const parse=GLL.parse.bind(GLL); GLL.parse=(data,path,onLoad,onError)=>parse(data,path,g=>{ try{ for(const sc of g.scenes||[g.scene]) capTextures(sc); }catch(e){} onLoad(g); },onError); }
 const DRACO=new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/gltf/'); GLL.setDRACOLoader(DRACO);   // the Blender sets (tools/blender_rooms/ng_game_export.py)
 const DL={got:{},exp:{}}; let buildP=0, buildTxt='Starting the engine…';
 const dlFrac=()=>{ let g=0,e=0; for(const k in DL.exp){ e+=DL.exp[k]; g+=Math.min(DL.got[k]||0,DL.exp[k]); } return e?g/e:0; };
@@ -10959,6 +10976,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
     cpu(n=60){ const t=performance.now(); for(let i=0;i<n;i++){ T0+=1/60; simulate(1/60); updateCulls(); } return +((performance.now()-t)/n).toFixed(3); } }; }
 renderer.setAnimationLoop(loop);
 window.__nsReady=true;
+setTimeout(()=>{ try{ sessionStorage.removeItem('ns-boots'); }catch(e){} },60e3); if(LITE_BOOT) setTimeout(()=>toast('Your phone was short of memory, so Lagos is drawn lighter this time.',5),2500);
 setTimeout(loadPeople,200);   // the real people arrive while the title screen shows (the walkers are look-alikes until then)
 loadTxt.textContent='Lagos is ready.'; loadBar.style.width='100%';
 const eb=$('#enterBtn');
