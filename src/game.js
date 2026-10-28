@@ -134,7 +134,9 @@ renderer.domElement.tabIndex = 0;
 const maxAniso = Math.min(Q.aniso, renderer.capabilities.getMaxAnisotropy());
 let ctxLost=false;
 renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); ctxLost=true; const o=$('#ctxlost'); if(o) o.hidden=false; });
-renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload());
+// the graphics came back: reload once or twice, lighter each time (next quality down); after that leave the button to the player
+renderer.domElement.addEventListener('webglcontextrestored',()=>{ let n=0; try{ n=+(localStorage.getItem('naija-ctxlost')||0); localStorage.setItem('naija-ctxlost',String(n+1)); if(qKey!=='low') localStorage.setItem('naija-quality',qKey==='high'?'medium':'low'); }catch(e){} if(n<2) location.reload(); });
+setTimeout(()=>{ try{ localStorage.removeItem('naija-ctxlost'); }catch(e){} },90e3);   // a run that lasts a minute and a half clears the count
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0xe0a77c, 0.0019);
