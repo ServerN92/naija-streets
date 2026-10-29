@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="0a7dc0326c">
+<meta name="ns-build" content="23be3c7038">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -819,7 +819,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 // Which phones can play: below the line (iPhone 6s/7/8/SE 2016 on iOS 16 or older, Android phones with 1 GB or less), the
 // game would only restart over and over. Those phones get told plainly, with a "try anyway", before 40 MB is downloaded.
 (function(){
-  function go(){ var s=document.createElement('script'); s.type='module'; s.src="src/game.js?v=0a7dc0326c"; document.body.appendChild(s); }
+  function go(){ var s=document.createElement('script'); s.type='module'; s.src="src/game.js?v=23be3c7038"; document.body.appendChild(s); }
   if(window.__nsNoGL) return;
   var ua=navigator.userAgent, ios=/iP(hone|od)/.test(ua), m=/OS (\d+)_/.exec(ua), iv=m?+m[1]:0, big=Math.max(screen.width,screen.height), dm=+navigator.deviceMemory||0, tried=false;
   try{ tried=localStorage.getItem('naija-tryweak')==='1'; }catch(e){}
