@@ -89,6 +89,16 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 .lb-stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 .lb-stage canvas:active{cursor:grabbing}
 .lb-stage figcaption{position:relative;color:var(--cream);font-size:13px;font-weight:600;padding:6px 12px;border-radius:12px;background:rgba(14,16,20,.6);margin-top:6px;pointer-events:none}
+/* the clothes strip under the stand: every outfit your person has, swipe through, tap to try it on (shoes come with each) */
+.lb-mid{display:flex;flex-direction:column;min-width:0;min-height:0}.lb-mid .lb-stage{flex:1}
+.lb-fits{position:relative;display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:6px 6px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.lb-fits::-webkit-scrollbar{display:none}
+.fitb{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:8px 12px;border-radius:14px;background:rgba(14,16,20,.68);border:2px solid rgba(255,255,255,.1);color:var(--cream);font:700 13px/1.1 var(--fb);cursor:pointer;scroll-snap-align:center;min-width:92px;text-align:left}
+.fitb i{display:block;width:34px;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--a) 0 50%,var(--b) 50% 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.fitb small{font-weight:600;font-size:11.5px;color:var(--muted)}
+.fitb[aria-pressed="true"]{border-color:var(--danfo);background:rgba(242,183,5,.16)}
+.fitb.lock small{color:#f2b705}
+.fitb.free small{color:#7ee2a0}
 .lb-go{display:flex;flex-direction:column;gap:12px;min-width:0;align-self:center}
 .pname{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:14px;font-weight:600}
 .pname input{font:inherit;font-size:18px;color:var(--cream);background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 14px;min-height:48px;width:100%;box-sizing:border-box}
@@ -116,7 +126,7 @@ button:focus-visible{outline:2px solid var(--danfo);outline-offset:2px}
 @media (max-aspect-ratio:4/5){
   .loading.lob .ld{gap:12px}
   .lobby,.lobby.back{grid-template-columns:1fr;align-items:start}
-  .lb-stage{order:-1;height:36vh;min-height:230px}
+  .lb-mid{order:-1}.lb-stage{height:34vh;min-height:220px}
   .ppl{grid-template-columns:repeat(6,1fr);max-width:none}
 }
 @media (max-height:520px){
@@ -765,12 +775,15 @@ body.touchui .chatlog{top:calc(118px + var(--st))}
         <div class="ppl" id="ppl" role="group" aria-label="Pick your person" hidden></div>
         <div class="pshape" id="pshape" role="group" aria-label="Body shape" hidden></div>
         <div class="pshape pskin" id="pskin" role="group" aria-label="Skin colour" hidden></div>
-        <p class="pnote">Man or woman can’t change later. Clothes, you change at home.</p>
+        <p class="pnote">Man or woman can’t change later. Your first clothes are free: pick them under the stand.</p>
       </section>
+      <div class="lb-mid">
       <figure class="lb-stage" id="stage">
         <canvas id="stageCv" aria-label="The person you picked, standing on a stand"></canvas>
         <figcaption id="stageCap">Pick man or woman to start</figcaption>
       </figure>
+      <div class="lb-fits" id="fits" role="group" aria-label="Clothes" hidden></div>
+      </div>
       <section class="lb-go">
         <label class="pname" id="profNameF" hidden><span>Your name</span><input id="profName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name, e.g. Tunde"></label>
         <div class="pwho" id="pwho" hidden></div>
