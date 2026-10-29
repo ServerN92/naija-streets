@@ -143,14 +143,43 @@ def o_rags(b):
                 ease_map(b, .014, leg=.024), min_ease=.01, exclude=LOWER_EX, name='rag_shorts')
     return [(tank, 'rag_top'), (sh, 'rag_shorts'), (sandals(b), 'rag_slides')]
 
+# ------------------------------------------------------------------ three more (the boutique's second rail)
+def o_agbada(b):           # agbada: a wide flowing robe with open sleeves over a long inner shirt, sokoto trousers, an embroidered chest, a cap
+    nl = neckline(b, .04, .008, v_depth=.04, v_width=.3)
+    inner = shirt(b, b.hip[2] + .02, 1.9, ease=.013, arm=.014, nl=nl, name='agbada_inner')
+    itail = tail(b, b.hip[2] + .04, b.knee + .03, ease=.022, name='agbada_inner_tail')
+    robe = gshell(b, [neckline(b, .06, .02, v_depth=.08, v_width=.35), cut_above(b, b.hip[2] + .02), cut_sleeve(b, 1.75)], ease_map(b, .045, .075), min_ease=.035, exclude=HEADFEET, relax=14, name='agbada')
+    rtail = tube(b, b.hip[2] + .04, b.knee + .03, ['torso', 'legL', 'legR'], ease=.07, min_ease=.05, weights_mix=('Hips', lambda z: .35 + .3 * smoothstep(b.hip[2], b.knee, z)),
+                 folds=(10, lambda z: .006 * smoothstep(b.hip[2], b.knee, z), .5), name='agbada_tail', step=.016)
+    emb = gshell(b, [strip_front(b, .1, .1, b.neck[2] - .035, b.spine1[2] - .05, out_y=.03)], .05, min_ease=.047, exclude=HEADFEET + ARMS, relax=4, name='agbada_emb')
+    return [(inner, 'agbada_in'), (itail, 'agbada_in'), (robe, 'agbada'), (rtail, 'agbada'), (emb, 'agbada_trim'), (trousers(b, b.spine[2] + .02, name='sokoto'), 'agbada_in'), (sandals(b), 'slides')]
+
+def o_nativeset(b):        # Ankara two-piece: a long shirt and matching trousers in one print
+    nl = neckline(b, .05, .006, v_depth=.03, v_width=.3)
+    sh = shirt(b, b.hip[2] - .09, .45, ease=.014, arm=.018, nl=nl, name='native_shirt')
+    return [(sh, 'ankara2'), (collar(b, nl, name='native_collar', ease=.0155), 'ankara2'), (trousers(b, b.spine[2] + .02, name='native_trousers'), 'ankara2'), (sandals(b), 'slides')]
+
+def o_baggy(b):            # baggy jeans and a bomber jacket over a tee
+    tee = shirt(b, b.hip[2], .45, ease=.012, arm=.014, nl=neckline(b, .05, .01), name='btee')
+    bnl = neckline(b, .035, .004, v_depth=.13, v_width=.28)
+    bomber = shirt(b, b.hip[2] - .01, 1.92, ease=.032, arm=.034, nl=bnl, name='bomber')
+    band = gshell(b, [cut_below(b, b.hip[2] + .012), cut_above(b, b.hip[2] - .03)], .035, min_ease=.033, exclude=LOWER_EX + ('neck',), relax=6, name='bomber_band')
+    bcol = collar(b, bnl, width=.025, front=.02, name='bomber_collar', ease=.034)
+    top = b.spine[2] + .005
+    jeans = trousers(b, top, ease=.022, leg=.06, ankle=.055, t=1.97, name='baggy_jeans', straight=1.3)
+    return [(tee, 'tee'), (bomber, 'bomber'), (band, 'bomber_band'), (bcol, 'bomber_band'), (jeans, 'denim'), (waist_band(b, top, ease=.023, name='waistband'), 'denim_band')]
+
 # name: (recipe, MakeHuman shoes or None, head wear)
 OUTFITS = {
     'senator': (o_senator, 'shoes03', None), 'kaftan': (o_kaftan, None, 'kufi'), 'jersey': (o_jersey, 'shoes06', None), 'tee_jeans': (o_tee_jeans, 'shoes05', None),
     'suit': (o_suit, 'shoes03', None), 'singlet': (o_singlet, None, None), 'hoodie': (o_hoodie, 'shoes05', None), 'ankara': (o_ankara, 'shoes01', None),
     'polo': (o_polo, 'shoes01', None), 'police': (o_police, 'shoes04', 'beret'), 'rags': (o_rags, None, None),
+    'agbada': (o_agbada, None, 'kufi'), 'nativeset': (o_nativeset, None, None), 'baggy': (o_baggy, 'shoes05', None),
 }
+NEW_KEYS_M = ['agbada', 'nativeset', 'baggy']
 NAMES = {'senator': 'Senator', 'kaftan': 'Kaftan & cap', 'jersey': 'Super Eagles', 'tee_jeans': 'Tee & jeans', 'suit': 'Office suit', 'singlet': 'Singlet & shorts',
-         'hoodie': 'Hoodie', 'ankara': 'Ankara shirt', 'polo': 'Polo & chinos', 'police': 'Police', 'rags': 'Rags'}
+         'hoodie': 'Hoodie', 'ankara': 'Ankara shirt', 'polo': 'Polo & chinos', 'police': 'Police', 'rags': 'Rags',
+         'agbada': 'Agbada', 'nativeset': 'Ankara two-piece', 'baggy': 'Baggy jeans & bomber'}
 
 # ------------------------------------------------------------------ fabrics
 ROLE = {
@@ -171,6 +200,20 @@ ROLE = {
     'buckle': dict(color='#c8c8c8', rough=.25, metal=1., weave=None), 'beret': dict(color='#0d0e10', rough=.95, weave='fleece'),
     'slides': dict(rough=.6, weave=None), 'rag_slides': dict(color='#4a4038', rough=.95, weave=None),
     'rag_top': dict(img='rag_white.png', tile=.35, rough=.95, weave='plain'), 'rag_shorts': dict(img='rag_khaki.png', tile=.35, rough=.95, weave='twill'),
+    'agbada': dict(rough=.5, weave='twill', sheen=.35), 'agbada_in': dict(rough=.55, weave='plain'), 'agbada_trim': dict(rough=.35, weave=None, sheen=.5, spec=.35, metal=.3),
+    'ankara2': dict(kind='print', tile=.3, rough=.55, weave='plain'), 'bomber': dict(rough=.55, weave='twill', sheen=.2, spec=.2), 'bomber_band': dict(rough=.8, weave='rib'),
+}
+# his colours on the second rail
+PAL2_M = {
+    'Tunde':     dict(agbada='#f3efe6', agbada_in='#f3efe6', agbada_trim='#c9a24a', ankara2='ankara_g', bomber='#0b5d3b', bomber_band='#141414'),
+    'Emeka':     dict(agbada='#7a1830', agbada_in='#f2efe6', agbada_trim='#c9a24a', ankara2='ankara_a', bomber='#141414', bomber_band='#f2f2f2'),
+    'Dayo':      dict(agbada='#1d2d5c', agbada_in='#e9f0f7', agbada_trim='#f2efe6', ankara2='ankara_d', bomber='#7a1830', bomber_band='#141414'),
+    'Chidi':     dict(agbada='#141414', agbada_in='#141414', agbada_trim='#c9a24a', ankara2='ankara_h', bomber='#c9a24a', bomber_band='#141414'),
+    'Musa':      dict(agbada='#c9a24a', agbada_in='#f3efe6', agbada_trim='#3a2a1e', ankara2='ankara_f', bomber='#2b3a55', bomber_band='#e9e3d6'),
+    'Femi':      dict(agbada='#5b1a6e', agbada_in='#e9e3d6', agbada_trim='#f2b705', ankara2='ankara_b', bomber='#f2b705', bomber_band='#141414'),
+    'Segun':     dict(agbada='#0b5d3b', agbada_in='#e9e3d6', agbada_trim='#c9a24a', ankara2='ankara_e', bomber='#3a3a40', bomber_band='#f2f2f2'),
+    'Baba Sule': dict(agbada='#e9e3d6', agbada_in='#e9e3d6', agbada_trim='#3a2a1e', ankara2='ankara_c', bomber='#5a4a3a', bomber_band='#e9e3d6'),
+    'Sgt Okon':  dict(agbada='#1d2d5c', agbada_in='#f3efe6', agbada_trim='#c9a24a', ankara2='ankara_e', bomber='#1d2d5c', bomber_band='#ffffff'),
 }
 PAL = {   # (gele: none for the men; the women's show() looks for it)
     'Tunde':     dict(senator='#1d2d5c', senator_trim='#c9a24a', kaftan='#f3efe6', kufi='#f3efe6', jersey='#0f8a4a', jshorts='#f2f2f2', tee='#f2f2f2', shirt_w='#ffffff', tie='#7a1830',
@@ -201,6 +244,7 @@ PAL = {   # (gele: none for the men; the women's show() looks for it)
                       jacket='#1d1f24', lapel='#1d1f24', singlet='#f2f2f2', cargo='#3d3a30', hoodie='#1d2d5c', jog='#1d2d5c', jog_s='#ffffff', ankara='ankara_c', plain_trousers='#141414',
                       polo='#1d2d5c', chinos='#c8b48a', slides='#141414', gele=None),
 }
+for _n, _d in PAL2_M.items(): PAL[_n].update(_d)
 
 def spec_for(name, role):
     s = dict(ROLE[role]); p = PAL[name]; k = s.pop('kind', None)
@@ -230,8 +274,10 @@ def dress_m(person, keys):
         try:
             for piece, role in fn(b): made.append(build_piece(person, key, piece, role, rig, coll))
             if shoes:
-                s = add_shoes(person, rig, body, shoes)
-                L = set(filter(None, s.get('nw_outfits', '').split(','))); L.add(key); s['nw_outfits'] = ','.join(sorted(L))
+                try:
+                    s = add_shoes(person, rig, body, shoes)
+                    L = set(filter(None, s.get('nw_outfits', '').split(','))); L.add(key); s['nw_outfits'] = ','.join(sorted(L))
+                except Exception: log('no shoes for', person, key, '(MakeHuman add-on not loaded?)')
             if head: made.append(head_wear(person, key, head, coll, rig))
             log('dressed', person, key, round(time.time() - t, 1), 's')
         except Exception: log('outfit failed', person, key, traceback.format_exc())

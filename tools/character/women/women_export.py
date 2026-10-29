@@ -182,9 +182,11 @@ def export(name):
     for i, k in enumerate(keys):
         fn, shoes, head = OUTFITS[k]; p = PAL[name]
         top = {'gown': p['gown'], 'iro_buba': p['buba'], 'bodycon': p['bodycon'], 'jeans': p['crop'], 'joggers': p['tee'], 'office': p['blazer'], 'fitness': p['bra'],
-               'club': p['sequin'], 'night': p['satin'], 'police': '#121419', 'rags': '#b9b09a'}[k]
+               'club': p['sequin'], 'night': p['satin'], 'police': '#121419', 'rags': '#b9b09a',
+               'offsh': p['offsh'], 'twopiece': p['a2'], 'dinner': p['dinner'], 'corset': p['corset'], 'shorts': p['bra2'], 'lace': p['lace2'], 'jumpsuit': p['jump']}[k]
         bot = {'gown': p['gown'], 'iro_buba': p['iro'], 'bodycon': p['bodycon'], 'jeans': '#3d5687', 'joggers': p['jog'], 'office': p['blazer'], 'fitness': p['leggings'],
-               'club': p['sequin'], 'night': p['satin'], 'police': '#121419', 'rags': '#7a6a4e'}[k]
+               'club': p['sequin'], 'night': p['satin'], 'police': '#121419', 'rags': '#7a6a4e',
+               'offsh': p['offsh'], 'twopiece': p['a2'], 'dinner': p['dinner'], 'corset': p['corset_skirt'], 'shorts': '#3d5687', 'lace': p['lace2'], 'jumpsuit': p['jump']}[k]
         outfits.append(dict(id=k, name=NAMES[k], shoes=shoes, sw=[swatch(top, folder), swatch(bot, folder)]))
         for o in bpy.data.objects:
             if o.get('nw') != name or o.get('nw_cloth') != k or o.type != 'MESH': continue

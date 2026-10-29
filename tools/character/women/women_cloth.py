@@ -361,14 +361,70 @@ def o_rags(b):             # rags: a torn, dirty top and a torn skirt, worn slip
     sk['verts'] = G3.reshape(-1, 3)
     return [(top, 'rag_top'), (sk, 'rag_skirt'), (sandals(b), 'rag_slides')]
 
+# ------------------------------------------------------------------ seven more (the boutique's second rail): no MakeHuman shoes here, so they build in a background Blender too
+def o_offsh(b):            # off-the-shoulder mini: a band across the chest and round the upper arms, a short skirt
+    bz, waist = b.bust[2], b.spine[2]
+    top = gshell(b, [top_line(b, bz + .075, bz + .045, sharp=2), cut_above(b, waist - .03), cut_sleeve(b, .8)], ease_map(b, .0045, .008), min_ease=.0036, exclude=HEADFEET, name='offsh_top')
+    return [(top, 'offsh'), (skirt(b, waist, b.crotch_z - .15, name='offsh_skirt'), 'offsh')] + court(b)
+
+def o_ankara2(b):          # two-piece Ankara: a crop top with short sleeves and a high, flared midi skirt
+    waist = b.spine[2]; hem = b.knee - .12
+    crop = gshell(b, [neckline(b, .05, .01), cut_above(b, waist + .04), cut_sleeve(b, .35)], ease_map(b, .005, .007), min_ease=.004, exclude=HEADFEET, name='a2_top')
+    sk = skirt(b, waist + .01, hem, ease=.006, flare=lambda z: 1. + .5 * smoothstep(b.hip[2] - .05, hem, z) ** 1.2, folds=(10, lambda z: .02 * smoothstep(b.hip[2], hem, z), .4),
+               hips=.4, smooth=4, name='a2_skirt')
+    return [(crop, 'a2'), (sk, 'a2'), (sandals(b), 'sandals')]
+
+def o_dinner(b):           # dinner gown: thin straps, fitted to the hip, long and flaring to the floor
+    bz, waist = b.bust[2], b.spine[2]; hem = b.ankle - .01
+    top = gshell(b, [union(top_line(b, bz + .06, bz + .01, v=.03, vw=.5), straps(b, .014, zlow=bz - .03, xoff=XOFF)), cut_above(b, waist - .03)], ease_map(b, .004), min_ease=.0032,
+                 exclude=HEADFEET + ARMS, name='dinner_top')
+    sk = tube(b, waist, hem, ['torso', 'legL', 'legR'], ease=lambda z: .005 if z > b.knee else .005 + .015 * smoothstep(b.knee, hem, z), min_ease=.004,
+              flare=lambda z: 1. + .3 * smoothstep(b.knee, hem, z) ** 1.5, folds=(8, lambda z: .01 * smoothstep(b.knee, hem, z), .5),
+              weights_mix=('Hips', lambda z: .3 + .4 * smoothstep(b.knee, hem, z)), name='dinner_skirt', step=.016)
+    return [(top, 'dinner'), (sk, 'dinner')] + court(b)
+
+def o_corset(b):           # a damask corset and a flared mini skirt
+    bz, waist = b.bust[2], b.spine[2]; hem = b.crotch_z - .14
+    top = gshell(b, [top_line(b, bz + .045, bz + .02, v=.025, vw=.35), cut_above(b, waist - .035)], ease_map(b, .0045), min_ease=.0036, exclude=HEADFEET + ARMS, name='corset')
+    sk = skirt(b, waist - .01, hem, ease=.006, flare=lambda z: 1. + .15 * smoothstep(b.hip[2], hem, z), folds=(10, lambda z: .005 * smoothstep(b.hip[2], hem, z), .6), smooth=4, name='corset_skirt')
+    return [(top, 'corset'), (sk, 'corset_skirt')] + court(b)
+
+def o_shorts(b):           # a bralette and denim shorts
+    bz = b.bust[2]; top = b.spine[2] + .005
+    bra = gshell(b, [union(top_line(b, bz + .06, bz + .02, v=.03, vw=.5), straps(b, .012, zlow=bz - .03, xoff=XOFF)), cut_above(b, bz - .07)], ease_map(b, .003), min_ease=.0025,
+                 exclude=HEADFEET + ARMS, name='bralette')
+    sh = gshell(b, [cut_below(b, top), cut_leg(b, .5)], ease_map(b, .0055, leg=.007), min_ease=.004, exclude=LOWER_EX, name='shorts')
+    wb = gshell(b, [cut_below(b, top + .002), cut_above(b, top - .035)], .0082, min_ease=.0075, exclude=LOWER_EX + ('neck',), relax=6, name='waistband')
+    return [(bra, 'bra2'), (sh, 'denim'), (wb, 'denim_band'), (pockets(b), 'denim_band'), (sandals(b), 'slides')]
+
+def o_lace(b):             # Owambe lace: long sleeves, fitted, to the ankle, with a gele
+    waist = b.spine[2]; hem = b.ankle - .02
+    top = gshell(b, [neckline(b, .07, .02, v_depth=.03, v_width=.5), cut_above(b, waist - .03), cut_sleeve(b, 1.85)], ease_map(b, .005, .008), min_ease=.004, exclude=HEADFEET, name='lace_top')
+    sk = tube(b, waist, hem, ['torso', 'legL', 'legR'], ease=lambda z: .006 if z > b.knee else .006 + .012 * smoothstep(b.knee, hem, z), min_ease=.005,
+              flare=lambda z: 1. + .25 * smoothstep(b.knee, hem, z), folds=(10, lambda z: .015 * smoothstep(b.knee + .05, hem, z), .4),
+              weights_mix=('Hips', lambda z: .3 + .4 * smoothstep(b.knee, hem, z)), name='lace_skirt', step=.016)
+    return [(top, 'lace2'), (sk, 'lace2')] + court(b)
+
+def o_jumpsuit(b):         # a jumpsuit: sleeveless, a V at the neck, belted at the waist, wide legs
+    waist = b.spine[2]
+    body = gshell(b, [neckline(b, .06, .015, v_depth=.06, v_width=.45), armholes(b, XOFF + .015), cut_sleeve(b, -.3), cut_leg(b, 1.88)],
+                  ease_map(b, .006, leg=.02, ankle=.03), min_ease=.0045, exclude=HEADFEET, name='jumpsuit')
+    belt = gshell(b, [cut_below(b, waist + .012), cut_above(b, waist - .02)], .0095, min_ease=.0088, exclude=LOWER_EX + ('neck',), relax=6, name='jbelt')
+    return [(body, 'jump'), (belt, 'pbelt'), (button(b, waist - .004, .0097, r=.012, name='buckle'), 'buckle')] + court(b)
+
 # name: (recipe, MakeHuman shoes or None, head wear)
 OUTFITS = {
     'gown': (o_gown, None, None), 'iro_buba': (o_iro, None, 'gele'), 'bodycon': (o_bodycon, None, None), 'jeans': (o_jeans, 'shoes05', None),
     'joggers': (o_joggers, 'shoes06', None), 'office': (o_office, None, None), 'fitness': (o_fitness, 'shoes05', None), 'club': (o_club, None, None),
     'night': (o_night, None, None), 'police': (o_police, None, 'beret'), 'rags': (o_rags, None, None),
+    'offsh': (o_offsh, None, None), 'twopiece': (o_ankara2, None, None), 'dinner': (o_dinner, None, None), 'corset': (o_corset, None, None),
+    'shorts': (o_shorts, None, None), 'lace': (o_lace, None, 'gele'), 'jumpsuit': (o_jumpsuit, None, None),
 }
+NEW_KEYS = ['offsh', 'twopiece', 'dinner', 'corset', 'shorts', 'lace', 'jumpsuit']   # (the second rail: built after the first nine were saved in the file)
 NAMES = {'gown': 'Ankara gown', 'iro_buba': 'Iro & buba', 'bodycon': 'Bodycon mini', 'jeans': 'Crop top & jeans', 'joggers': 'Joggers',
-         'office': 'Office suit', 'fitness': 'Fitness', 'club': 'Club', 'night': 'Night wear', 'police': 'Police', 'rags': 'Rags'}
+         'office': 'Office suit', 'fitness': 'Fitness', 'club': 'Club', 'night': 'Night wear', 'police': 'Police', 'rags': 'Rags',
+         'offsh': 'Off-shoulder mini', 'twopiece': 'Ankara two-piece', 'dinner': 'Dinner gown', 'corset': 'Corset & skirt', 'shorts': 'Shorts & bralette',
+         'lace': 'Owambe lace', 'jumpsuit': 'Jumpsuit'}
 
 # ------------------------------------------------------------------ fabrics
 def hexc(h, a=1.):
@@ -393,6 +449,21 @@ ROLE = {   # how each kind of cloth looks; the colour / print comes from her pal
     'ppumps': dict(color='#0c0c0d', rough=.16, weave=None, spec=.6, coat=1.),
     'rag_top': dict(img='rag_white.png', tile=.35, rough=.95, weave='plain'), 'rag_skirt': dict(img='rag_khaki.png', tile=.35, rough=.95, weave='twill'),
     'rag_slides': dict(color='#4a4038', rough=.95, weave=None),
+    'offsh': dict(rough=.45, weave='rib', sheen=.3), 'a2': dict(kind='print', tile=.3, rough=.55, weave='plain'), 'dinner': dict(rough=.35, weave=None, sheen=1., spec=.35),
+    'corset': dict(kind='damask', tile=.2, rough=.5, sheen=.4), 'corset_skirt': dict(rough=.55, weave='twill'), 'bra2': dict(rough=.45, weave='rib', spec=.3),
+    'lace2': dict(kind='lace2', tile=.16, rough=.5, sheen=.3), 'jump': dict(rough=.5, weave='twill', sheen=.3),
+}
+# her colours on the second rail (prints: a different Ankara than her gown and wrapper; lace: not the one of her buba)
+PAL2 = {
+    'Amaka':       dict(offsh='#e8457a', a2='ankara_a', dinner='#0f7a5a', corset='damask_gold', corset_skirt='#141414', bra2='#ffffff', lace2='lace_wine', jump='#f2b705'),
+    'Ada':         dict(offsh='#ffffff', a2='ankara_d', dinner='#c0102c', corset='damask_wine', corset_skirt='#111111', bra2='#111111', lace2='lace_gold', jump='#1d2a6b'),
+    'Chioma':      dict(offsh='#f2b705', a2='ankara_c', dinner='#111111', corset='damask_blue', corset_skirt='#f4f0e8', bra2='#e8457a', lace2='lace_green', jump='#c0102c'),
+    'Bisi':        dict(offsh='#26a69a', a2='ankara_b', dinner='#c9a24a', corset='damask_gold', corset_skirt='#5b1a6e', bra2='#f2f2f2', lace2='lace_peach', jump='#ffffff'),
+    'Kemi':        dict(offsh='#c0102c', a2='ankara_e', dinner='#5b1a6e', corset='damask_wine', corset_skirt='#f2f2f2', bra2='#f2b705', lace2='lace_gold', jump='#111111'),
+    'Funmi':       dict(offsh='#1d2a6b', a2='ankara_h', dinner='#e8457a', corset='damask_blue', corset_skirt='#111111', bra2='#26a69a', lace2='lace_white', jump='#0f7a5a'),
+    'Mama Nkechi': dict(offsh='#5b1a6e', a2='ankara_g', dinner='#0b5d3b', corset='damask_gold', corset_skirt='#3a2a1e', bra2='#ffffff', lace2='lace_gold', jump='#7a1830'),
+    'Iya Basira':  dict(offsh='#7a1830', a2='ankara_a', dinner='#1d2a6b', corset='damask_wine', corset_skirt='#111111', bra2='#d6a94a', lace2='lace_white', jump='#0b5d3b'),
+    'Sgt Halima':  dict(offsh='#111111', a2='ankara_g', dinner='#f2b705', corset='damask_blue', corset_skirt='#1d2a6b', bra2='#c0102c', lace2='lace_peach', jump='#e8457a'),
 }
 PAL = {
     'Amaka':       dict(gown='ankara_e', iro='ankara_c', buba='lace_gold', bodycon='#b3122e', crop='#f4f0e8', tee='#141414', jog='#8c8f96', jog_s='#ffffff', blouse='#f3efe6', blazer='#1d2d5c',
@@ -414,12 +485,15 @@ PAL = {
     'Sgt Halima':  dict(gown='ankara_f', iro='ankara_c', buba='lace_green', bodycon='#c0102c', crop='#1d2a6b', tee='#3a3a40', jog='#1d2a6b', jog_s='#ffffff', blouse='#e9f0f7', blazer='#1d2a6b',
                         bra='#c0102c', leggings='#111111', leg_s='#c0102c', sequin='sequin_silver', satin='#e8457a', pumps='#111111', slides='#f2c4cf', gele=((.02, .2, .5), (.95, .75, .25))),
 }
+for _n, _d in PAL2.items(): PAL[_n].update(_d)
 
 def spec_for(name, role):
     s = dict(ROLE[role]); p = PAL[name]; k = s.pop('kind', None)
     if k == 'print': s['img'] = p[role] + '.png'
     elif k == 'lace': s['img'] = p['buba'] + '.png'; s['bump_img'] = p['buba'] + '_h.png'
     elif k == 'sequin': q = p['sequin']; s.update(img=q + '.png', bump_img=q + '_h.png', rough_img=q + '_rough.png')
+    elif k == 'lace2': s['img'] = p['lace2'] + '.png'; s['bump_img'] = p['lace2'] + '_h.png'
+    elif k == 'damask': q = p['corset']; s.update(img=q + '.png', rough_img=q + '_rough.png')
     elif role == 'lapel': s['color'] = p['blazer']
     elif 'img' not in s and 'color' not in s: s['color'] = p[role]
     if role == 'jog': s['stripes'] = p['jog_s']
