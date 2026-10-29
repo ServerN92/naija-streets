@@ -2398,7 +2398,11 @@ APT.step=(()=>{ for(const k of [2.8,2.2,1.6,1.2]){ const x=APT.front.x+APT.nx*k,
    Saved on this phone ('naija-life'); signed in, on your account (the server keeps it, server/src/life.js). */
 const LIFE_V=1, START_CASH=5000, FLAT_PRICE=650000, RENT_OPTS=[[1,3000],[3,8000],[7,17000]], EASE_S=80*60, EAT_S=60*60, SLEEP_S=CLOCK.DAY_MINUTES*60, DAY_S=CLOCK.DAY_MINUTES*60;   // the care bars fill over that much play: toilet, food, sleep   // a game day in seconds of play
 const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:10000,ankara:15000,kaftan:20000,senator:30000,suit:50000,
-  joggers:5000,night:6000,jeans:7000,fitness:7500,bodycon:12000,club:15000,gown:18000,iro_buba:25000,office:40000};
+  joggers:5000,night:6000,jeans:7000,fitness:7500,bodycon:12000,club:15000,gown:18000,iro_buba:25000,office:40000,
+  // the second rail (women): the street pieces are cheap, the Owambe pieces are a grind
+  shorts:9000,offsh:14000,corset:22000,twopiece:28000,jumpsuit:35000,dinner:60000,lace:80000,
+  // the second rail (men)
+  baggy:12000,nativeset:30000,agbada:90000};
 // street cred (the rank you earn by playing): cr points, cd the day it is counting (yyyymmdd), ca active seconds counted that day,
 // cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
 function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
@@ -2442,7 +2446,7 @@ const rankName=i=>(isF()&&RANKS[i][4])||RANKS[i][0];
 const rankAt=cr=>{ let i=0; while(i<RANKS.length-1&&cr>=RANKS[i+1][3]) i++; return i; };
 const myRank=()=>rankAt(LIFE.cr|0);
 const rankTag=i=>`${RANKS[i][1]} ${rankName(i)}`;
-const CLOTH_RANK={hoodie:1,polo:1,ankara:2,kaftan:2,club:2,bodycon:2,senator:3,office:3,gown:3,iro_buba:3,suit:4};
+const CLOTH_RANK={hoodie:1,polo:1,ankara:2,kaftan:2,club:2,bodycon:2,senator:3,office:3,gown:3,iro_buba:3,suit:4,offsh:1,corset:2,twopiece:2,jumpsuit:3,dinner:4,lace:4,baggy:1,nativeset:2,agbada:4};
 const carRank=price=>price<=300000?0:price<=700000?2:price<=2500000?4:price<=5000000?5:price<=15000000?7:price<=18000000?8:9;
 const RANK={act:0,acc:0,cash:0,saveT:0,pend:false,last:0};
 const ymd=d=>d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
@@ -8607,7 +8611,7 @@ function buyNmCar(s){ if(!rankGate(carRank(s.price),'This car')) return; if(CASH
   toast(`Congrats! Your ${s.name.replace(' (brand new)','')} dey wait for you outside. Press E to drive.`,4); }
 
 // ---- Adunni's Fashion House: designer clothes on the rails, the tailor sews native wear to measure
-const NATIVE=new Set(['ankara','kaftan','senator','iro_buba','gown','agbada','buba']);
+const NATIVE=new Set(['ankara','kaftan','senator','iro_buba','gown','agbada','buba','lace','twopiece','nativeset']);   // (the tailor sews these; the boutiques sell the rest)
 async function enterNaijaHome(){ if(busy) return; const R=await intGet('int_naija_home','Opening NAIJA HOME…'); if(!R) return; setupNaijaHome(R); R.label='NAIJA HOME · Ikeja GRA';
   goRoom(R,'door','Welcome to NAIJA HOME! Walk round, check the price tags, buy what you like. E dey reach your house in 5 minutes, no delivery fee.'); }
 function setupNaijaHome(R){ if(R.ready){ fillRoom(R); return; } R.ready=true; const M=R.marks; R.camDist=3.4;

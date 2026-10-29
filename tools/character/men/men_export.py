@@ -12,7 +12,8 @@ def man_id(name): return IDS_M.get(name, 'p_' + name.lower())
 # the wardrobe buttons: the colour of the top and of the bottom of each outfit (a role of his palette, or a colour)
 SW_M = {'senator': ('senator', 'senator'), 'kaftan': ('kaftan', 'kaftan'), 'jersey': ('jersey', 'jshorts'), 'tee_jeans': ('tee', '#3d5687'),
         'suit': ('jacket', 'jacket'), 'singlet': ('singlet', 'cargo'), 'hoodie': ('hoodie', 'jog'), 'ankara': ('ankara', 'plain_trousers'),
-        'polo': ('polo', 'chinos'), 'police': ('#121419', '#121419'), 'rags': ('#b9b09a', '#7a6a4e')}
+        'polo': ('polo', 'chinos'), 'police': ('#121419', '#121419'), 'rags': ('#b9b09a', '#7a6a4e'),
+        'agbada': ('agbada', 'agbada_in'), 'nativeset': ('ankara2', 'ankara2'), 'baggy': ('bomber', '#3d5687')}
 
 def cut_colour(o):
     """the haircut's colour (its material mixes a flat colour with noise)"""

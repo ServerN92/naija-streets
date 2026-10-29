@@ -1,7 +1,7 @@
 """Game files for the nine women, from what women_export.py wrote out of Blender (export/<Name>/parts.npz + parts.json + pictures).
 One GLB per woman (assets/people/p_<id>.glb before gltfpack): her body, face, eyes, brows, liner, scalp cap, hair, all nine
 outfits and shoes, on a Mixamo-named skeleton whose bones are turned like the game's Mixamo moves (as charbuild/build_char.py).
-  * the body is one mesh; its second colour set (COLOR_1: red = bits 0-7, green = bits 8-15) says, per vertex, under which outfits it is covered (bit i = outfit i), so the
+  * the body is one mesh; its second colour set (COLOR_1: red = bits 0-7, green = bits 8-15, blue = 16-23) says, per vertex, under which outfits it is covered (bit i = outfit i), so the
     game draws only the skin each outfit leaves showing (src/char2.js setOutfit)
   * outfit parts are named o<i>~<piece>, shoes shoe<outfits>~<name>, hair hair~<outfits it is hidden under (gele)>
   * the scene's extras: person, outfits [{id, name, shoes, sw}], height, hips
@@ -206,7 +206,7 @@ class Woman:
             attrs = {}
             for i, u in enumerate(d['UV']): attrs[f'TEXCOORD_{i}'] = np.stack([u[:, 0], 1 - u[:, 1]], 1)
             if extra is not None:   # which outfits cover each vertex, as bytes in a second colour set (gltfpack keeps it; the game reads it back)
-                h = d['X'].astype(np.int64); attrs['COLOR_1'] = np.stack([(h & 255) / 255., (h >> 8 & 255) / 255., np.zeros(len(h)), np.ones(len(h))], 1).astype(np.float32)
+                h = d['X'].astype(np.int64); attrs['COLOR_1'] = np.stack([(h & 255) / 255., (h >> 8 & 255) / 255., (h >> 16 & 255) / 255., np.ones(len(h))], 1).astype(np.float32)   # blue: outfits 16-23
             prims.append((d, T, mats[min(mi, len(mats) - 1)], attrs))
         return self.mesh(name, prims)
 

@@ -98,12 +98,12 @@ export function setOutfit(root, i) {
 // how many outfits a person's file has
 export const outfitCount = meta => (meta && meta.outfits && meta.outfits.length) || 4;
 
-// our people's body: per vertex, the outfits that cover it (bits in the second colour set, red = 0-7, green = 8-15). One
+// our people's body: per vertex, the outfits that cover it (bits in the second colour set, red = 0-7, green = 8-15, blue = 16-23). One
 // geometry per outfit shares the body's points and keeps only the triangles that outfit leaves showing.
 function bodyFits(mesh, n) {
   const g = mesh.geometry, A = g.attributes.color_1, I = g.index; if (!A || !I) return false;
-  const v = k => { const x = A.getX(k), y = A.getY(k); return A.normalized || x <= 1 ? Math.round(x * 255) | (Math.round(y * 255) << 8) : x | (y << 8); };
-  const h = new Uint16Array(A.count); for (let k = 0; k < A.count; k++) h[k] = v(k);
+  const v = k => { const x = A.getX(k), y = A.getY(k), z = A.itemSize > 2 ? A.getZ(k) : 0; return A.normalized || x <= 1 ? Math.round(x * 255) | (Math.round(y * 255) << 8) | (Math.round(z * 255) << 16) : x | (y << 8) | (z << 16); };
+  const h = new Uint32Array(A.count); for (let k = 0; k < A.count; k++) h[k] = v(k);
   g.deleteAttribute('color_1');
   if (!g.boundingSphere) g.computeBoundingSphere();
   const fits = { all: g }, ix = I.array;
