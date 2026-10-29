@@ -409,11 +409,9 @@ function rslab(oo,dd,mn,mx){ if(Math.abs(dd)<1e-8) return !(oo<mn||oo>mx); let t
 class Acc{ constructor(){ this.p=[]; this.n=[]; this.u=[]; this.c=[]; }
   quad(A,B,C,D,n,uv,col){ for(const [P,Q] of [[A,uv[0]],[B,uv[1]],[C,uv[2]],[A,uv[0]],[C,uv[2]],[D,uv[3]]]){ this.p.push(P[0],P[1],P[2]); this.n.push(n[0],n[1],n[2]); this.u.push(Q[0],Q[1]); this.c.push(col.r,col.g,col.b); } }
   tri(A,B,C,n,uv,col){ for(const [P,Q] of [[A,uv[0]],[B,uv[1]],[C,uv[2]]]){ this.p.push(P[0],P[1],P[2]); this.n.push(n[0],n[1],n[2]); this.u.push(Q[0],Q[1]); this.c.push(col.r,col.g,col.b); } }
-  mesh(mat,shadow=true,receive=true){ if(!this.p||!this.p.length){ this.p=this.n=this.u=this.c=null; return null; } const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.Float32BufferAttribute(this.p,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(this.n,3));
-    g.setAttribute('uv',new THREE.Float32BufferAttribute(this.u,2)); g.setAttribute('color',new THREE.Float32BufferAttribute(this.c,3));
-    this.p=this.n=this.u=this.c=null;   // the plain arrays are big: let them go
-    g.computeBoundingSphere(); freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; return m; }
+  mesh(mat,shadow=true,receive=true){ if(!this.p||!this.p.length){ this.p=this.n=this.u=this.c=null; return null; }
+    const g=packGeo(this.p,this.n,this.u,this.c); this.p=this.n=this.u=this.c=null;   // the plain arrays are big: let them go
+    freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; return m; }
   // the same, cut into square tiles of the city (by each triangle's middle): only the tiles in front of the camera, and not
   // too far, are drawn, instead of the whole city's walls and roads every frame
   tiles(mat,shadow=true,receive=true,T=384){ if(!this.p||!this.p.length){ this.p=this.n=this.u=this.c=null; return null; } const P=this.p, N=this.n, U=this.u, C=this.c, buckets=new Map();
@@ -421,12 +419,22 @@ class Acc{ constructor(){ this.p=[]; this.n=[]; this.u=[]; this.c=[]; }
     const grp=new THREE.Group();
     for(const list of buckets.values()){ const n=list.length*3, p=new Float32Array(n*3), nn=new Float32Array(n*3), u=new Float32Array(n*2), c=new Float32Array(n*3);
       for(let i=0;i<list.length;i++){ const tri=list[i]; for(let v=0;v<3;v++){ const sv=tri*3+v, d=i*3+v, s3=sv*3, d3=d*3; p[d3]=P[s3]; p[d3+1]=P[s3+1]; p[d3+2]=P[s3+2]; nn[d3]=N[s3]; nn[d3+1]=N[s3+1]; nn[d3+2]=N[s3+2]; u[d*2]=U[sv*2]; u[d*2+1]=U[sv*2+1]; c[d3]=C[s3]; c[d3+1]=C[s3+1]; c[d3+2]=C[s3+2]; } }
-      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(p,3)); g.setAttribute('normal',new THREE.BufferAttribute(nn,3)); g.setAttribute('uv',new THREE.BufferAttribute(u,2)); g.setAttribute('color',new THREE.BufferAttribute(c,3));
-      g.computeBoundingSphere(); freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; grp.add(m); TILES.push(m); }
+      const g=packGeo(p,nn,u,c); freeAfterUpload(g); const m=new THREE.Mesh(g,mat); m.castShadow=shadow; m.receiveShadow=receive; grp.add(m); TILES.push(m); }
     this.p=this.n=this.u=this.c=null; return grp; } }
 const TILES=[];   // (the city's tiles: hidden past the far distance, see updateCulls)
 function stillTiles(acc,mat,shadow=false,receive=true){ const g=acc.tiles(mat,shadow,receive); if(!g) return null; g.traverse(o=>{ o.matrixAutoUpdate=false; o.matrixWorldAutoUpdate=false; o.updateMatrix(); }); g.updateMatrixWorld(true); scene.add(g); return g; }   // a city-wide piece, cut into tiles, that never moves
 // static city geometry is needed only on the graphics card: once uploaded, drop the copy in memory (phones have little)
+// a built piece, packed small: the corners a quad shares are welded (two in six), normals go as bytes, colours as bytes; the
+// walls and roads of the whole city then take about a third of what they did (an iPhone counts every byte against the page)
+function packGeo(P,N,U,C){ const n=P.length/3, map=new Map(), idx=new Uint32Array(n); let m=0;
+  const px=[],py=[],pz=[]; const nn=[], uu=[], cc=[];
+  for(let i=0;i<n;i++){ const i3=i*3, i2=i*2, k=P[i3]+','+P[i3+1]+','+P[i3+2]+'|'+N[i3]+','+N[i3+1]+','+N[i3+2]+'|'+U[i2]+','+U[i2+1]+'|'+C[i3]+','+C[i3+1]+','+C[i3+2];
+    let j=map.get(k); if(j===undefined){ j=m++; map.set(k,j); px.push(P[i3],P[i3+1],P[i3+2]); nn.push(N[i3],N[i3+1],N[i3+2]); uu.push(U[i2],U[i2+1]); cc.push(C[i3],C[i3+1],C[i3+2]); } idx[i]=j; }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(px,3));
+  const nb=new Int8Array(m*3); for(let i=0;i<m*3;i++) nb[i]=Math.round(Math.max(-1,Math.min(1,nn[i]))*127); g.setAttribute('normal',new THREE.BufferAttribute(nb,3,true));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(uu,2));
+  const cb=new Uint8Array(m*3); for(let i=0;i<m*3;i++) cb[i]=Math.round(Math.max(0,Math.min(1,cc[i]))*255); g.setAttribute('color',new THREE.BufferAttribute(cb,3,true));
+  g.setIndex(new THREE.BufferAttribute(m<65536?Uint16Array.from(idx):idx,1)); g.computeBoundingSphere(); return g; }
 function freeAfterUpload(g){ for(const k in g.attributes) g.attributes[k].onUpload(function(){ this.array=new this.array.constructor(1); }); if(g.index) g.index.onUpload(function(){ this.array=new this.array.constructor(1); }); }
 const WHITE=new THREE.Color(1,1,1);
 function wallQ(acc,p0,p1,y0,y1,tw,th,u0,v0,col){ const dx=p1[0]-p0[0], dz=p1[1]-p0[1], L=Math.hypot(dx,dz); if(L<1e-3) return; const n=[-dz/L,0,dx/L];
@@ -8841,7 +8849,7 @@ function estGeo(root){ root.updateMatrixWorld(true); const out={GR:{},GD:{},GT:{
 function estMerge(parts){ const M=estMats(), geos=[], mats=[]; for(const k of EST_KINDS){ const L=parts.flatMap(p=>p[k]||[]); if(!L.length) continue; const g=mergeGeometries(L,false); if(g){ geos.push(g); mats.push(M[k]); } }
   if(!geos.length) return null; let geo; if(geos.length>1) geo=mergeGeometries(geos,true); else { geo=geos[0]; geo.clearGroups(); geo.addGroup(0,geo.attributes.position.count,0); }
   geo.computeBoundingSphere(); return {geo,mat:mats}; }
-function estStyle(k,g0,g1){ const P=estGeo(g0.scene), P1=g1?estGeo(g1.scene):null, L0=estMerge([P.GR,P.GD]), L1=estMerge([P.GR]), L2=P1&&estMerge([P1.GR]), GT=estMerge([P.GT]);
+function estStyle(k,g0,g1){ const lite=isTouch&&Q===QUAL.low, P=estGeo(g0.scene), P1=g1?estGeo(g1.scene):null, L1=estMerge([P.GR]), L0=lite?L1:estMerge([P.GR,P.GD]), L2=P1&&estMerge([P1.GR]), GT=estMerge([P.GT]);   // (a phone on Low: the plain house up close too; the detailed one is 40-115k corners)
   const plots=EST.plots.filter(p=>p.st===k); if(!L0||!plots.length) return; const items=()=>plots.map(p=>({x:p.x,y:0,z:p.z,ry:p.ry,sc:1,plot:p}));
   const lv=[{...L0,dist:Math.min(150,Q.lod0*1.5),shadow:true},{...L1,dist:Q.draw*.8,shadow:false}]; if(L2) lv.push({...L2,dist:Q.draw*1.3,shadow:false});
   new CullSet(lv,items(),{shadowDist:Q.shR,name:'est_'+k});
