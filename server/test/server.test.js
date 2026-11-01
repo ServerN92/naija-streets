@@ -58,7 +58,7 @@ test('make an account, bad names and passwords refused, sign in again with the t
   // the same name in other letters is taken
   const [d, e] = await account('tunde_1'); assert.equal(e.t, 'err'); assert.match(e.m, /taken/); d.close();
   // back with the token
-  const t = client(); await t.open; t.send({ t: 'hi', v: PROTO, tok: me.tok }); const me2 = await t.next('me'); assert.equal(me2.name, 'Tunde_1'); assert.equal(me2.cash, 50000); assert.deepEqual(me2.look, { c: 'p_dayo', f: 2, g: 'm', k: -1 });
+  const t = client(); await t.open; t.send({ t: 'hi', v: PROTO, tok: me.tok }); const me2 = await t.next('me'); assert.equal(me2.name, 'Tunde_1'); assert.equal(me2.cash, 50000); assert.deepEqual(me2.look, { c: 'p_dayo', f: 2, g: 'm', k: -1, h: '' });
   // signing in again elsewhere kicks the first one
   const w = client(); await w.open; w.send({ t: 'login', u: 'TUNDE_1', p: 'wrong-one' }); assert.equal((await w.next('err')).m, 'Wrong username or password.');
   w.send({ t: 'login', u: 'TUNDE_1', p: 'mushin2026' }); const wm = await w.next('me'); assert.equal(wm.name, 'Tunde_1');

@@ -87,12 +87,12 @@ export function footOffset(root, D, clip) {
 // (outfit i is one character in a part's name, 0-9 then a-z: the men have eleven)
 export const outfitChar = i => (i >= 0 && i < 36 ? i.toString(36) : '-');
 export function setOutfit(root, i) {
-  const s = outfitChar(+i);
+  const s = outfitChar(+i); root.userData.outfitChar = s;
   root.traverse(o => { const n = o.name; let m;
     if ((m = /^o([0-9a-z])~/.exec(n))) o.visible = m[1] === s;
     else if ((m = /^shoe([0-9a-z]*)~/.exec(n))) o.visible = m[1].includes(s);
     else if ((m = /^body~([0-9a-z]*)$/.exec(n))) o.visible = !m[1].includes(s);
-    else if ((m = /^hair~([0-9a-z]*)~/.exec(n))) o.visible = !m[1].includes(s);
+    else if ((m = /^hair~([0-9a-z]*)~/.exec(n))) o.visible = !m[1].includes(s) && !o.userData.hairOff;   // (hairOff: a hairstyle from the salon is on instead, src/hair.js)
     if (o.isMesh && o.geometry && o.geometry.userData.fits) { const F = o.geometry.userData.fits; o.geometry = F[String(i)] || F.all; } });
 }
 // how many outfits a person's file has

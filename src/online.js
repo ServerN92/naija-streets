@@ -142,8 +142,8 @@ export function createOnline(api) {
   }
   function joined(j) {
     let R = RS.get(j.i);
-    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, pt: j.pt || '', po: j.po || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb, R.pt, R.po); scene.add(R.tag); }
-    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || '') || R.pt !== (j.pt || '') || R.po !== (j.po || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.pt = j.pt || ''; R.po = j.po || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; if (changed) dropBody(R);
+    if (!R) { R = { id: j.i, n: j.n, c: j.c, f: j.f | 0, k: Number.isInteger(j.k) ? j.k : -1, h: j.h || '', g: j.g, b: j.b || '', w: j.w | 0, rk: j.rk | 0, jb: j.jb || '', sm: j.sm | 0, pt: j.pt || '', po: j.po || '', buf: [], root: null, cast: null, mixer: null, acts: {}, cur: null, cn: '', q: -1, d: 1e9, oy: 0, acc: 0, car: null, ck: '', seat: false, tag: null, bub: null, bubT: 0, slot: RS.size }; RS.set(j.i, R); R.tag = tagSprite(j.n, R.w, R.b, R.rk, R.jb, R.pt, R.po); scene.add(R.tag); }
+    else { const k = Number.isInteger(j.k) ? j.k : -1, changed = R.c !== j.c || R.f !== (j.f | 0) || R.k !== k, retag = R.w !== (j.w | 0) || R.b !== (j.b || '') || R.rk !== (j.rk | 0) || R.jb !== (j.jb || '') || R.pt !== (j.pt || '') || R.po !== (j.po || ''); R.rk = j.rk | 0; R.jb = j.jb || ''; R.pt = j.pt || ''; R.po = j.po || ''; R.sm = j.sm | 0; R.n = j.n; R.c = j.c; R.f = j.f | 0; R.k = k; R.g = j.g; R.b = j.b || ''; R.w = j.w | 0; const nh = j.h || ''; if (changed) dropBody(R); else if (nh !== R.h && R.inner && api.hair) { R.h = nh; api.hair(R.inner, R.c, nh); } R.h = nh;
       if (retag && R.tag) { const vis = R.tag.visible, pos = R.tag.position.clone(); scene.remove(R.tag); R.tag.material.map.dispose(); R.tag.material.dispose(); R.tag = tagSprite(R.n, R.w, R.b, R.rk, R.jb, R.pt, R.po); R.tag.position.copy(pos); R.tag.visible = vis; scene.add(R.tag); } }
     if (!R.root) makeBody(R);
   }
@@ -164,7 +164,7 @@ export function createOnline(api) {
     try { C = await api.loadCast(id); if (C) X = await api.moves(C); } catch (e) { C = null; }
     R.loading = false;
     if (!C || !X || RS.get(R.id) !== R || R.root) return;
-    const inner = api.clone(C.tpl); api.setOutfit(inner, R.f >= 0 ? R.f : 0); if (api.tone) api.tone(inner, id, R.k);   // their skin tone
+    const inner = api.clone(C.tpl); api.setOutfit(inner, R.f >= 0 ? R.f : 0); if (api.tone) api.tone(inner, id, R.k); if (R.h && api.hair) api.hair(inner, id, R.h);   // their skin tone, their hair
     const root = new THREE.Group(); root.rotation.order = 'YXZ'; root.add(inner); root.visible = false; scene.add(root);
     let hips = null; inner.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } if (!hips && o.isBone && /Hips$/.test(o.name)) hips = o; });
     Object.assign(R, { cast: C, X, root, inner, hips, mixer: new THREE.AnimationMixer(inner), acts: {}, cur: null, cn: '', q: -1 });
@@ -496,7 +496,7 @@ export function createOnline(api) {
   ui();
 
   return {
-    frame, cash, openPanel, openChat, send,
+    frame, cash, openPanel, openChat, send, lookNow: lookTick,
     // the other players you could hit: on foot, in sight, not lying down (where they are drawn now)
     targets: () => { const out = []; if (!S.me) return out; for (const R of RS.values()) { const s = R.s; if (!s || s.v || s.a === 'k' || !R.root || !R.root.visible) continue; out.push({ id: R.id, n: R.n, x: s.x, y: s.y, z: s.z }); } return out; },
     hit: (id, k) => send({ t: 'hit', i: id, k }),

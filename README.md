@@ -707,6 +707,31 @@ themselves once `assets/people/<id>.glb` exists: rig the model in Mixamo, downlo
 like a character (above), name it after its id, and run `tools/manifest.py`. `tools/mixamo_prep.py` turns a Tripo/Meshy
 FBX into a Mixamo upload (`name:casual` repaints a revealing outfit as a top and jeans).
 
+## Hairstyles: barbers, salons and wigs
+Sit in a chair at a salon or barber's and pick a style from the menu (each row has a picture and a price). You pay,
+sit while the stylist works (clippers for a cut, scissors otherwise; about 9 s for a cut, 10 s for a style, 14 s for
+braids, 6 s for a wig), and the new hair shows half way through. The style stays with you: it is in your life record
+(`hair: {person: style}`), goes online with your look, and your portrait on the phone shows it. "My own hair back" is
+free. Wigs are bought once and kept (`wigs: [...]`): put one on at any wig bar for nothing after that.
+
+Where: the street salon (women: everything; men: cornrows, braids, locs, natural), Kings Court barbers (men: cuts,
+natural, braids, other styles; women: cuts and natural; prices ×2), Glow Luxe (women and men, ×2.2, plus the wig bar
+and the braids corner). A player's barbing salon gives a low cut, fade, waves or a clean shave.
+
+Styles (25): cuts — low cut, fade, waves, mohawk, clean shave (made on each man's own head, `hair_<cut>_<pid>.glb`);
+natural — afro, puff, short natural, locs; braids — cornrows, box braids, knotless, ponytail; other — bone straight
+(black, blonde, wine), bob (black, brown, red), pixie (black, blue), side part, slick back, curtains, messy; wigs —
+the bone straight and bob and pixie colours. Men's wigs are left out on purpose.
+
+How they are made: `naija_rooms/hair/hair_job.py` runs inside the women's and men's Blender files (MakeHuman hairs
+plus the downloaded cornrows, afro, bun and dreads), fits each style to every playable head, bakes the texture, and
+writes `hair_<style>.glb` with `hair_women.json` / `hair_men.json` (the fit per person: a scale and the anchor at the
+top of the head). `hair_assemble.py` merges them into `assets/models/hair/hair.json` and the thumbnail atlas. In the
+game `src/hair.js` puts a style on as a skinned mesh bound to the person's Head bone (and the shoulders for long
+hair), hiding the person's own hair; a woman's dark scalp cap stays under it, a man's cut stays under a non-cut
+style. The person's body is gltfpack-quantized, so the hair goes into the body's space with the body's inverse
+matrix and binds with an identity bind matrix.
+
 ## Billboards
 `assets/models/billboard.glb` (Poly by Google) stands along the main roads, angled to the traffic, with six Lagos ads
 drawn in the game; they light up at night.

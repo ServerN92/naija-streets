@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Naija Streets: Lagos</title>
 <meta name="description" content="Naija Streets: an open-world Lagos street game in your browser. Ride okada, enter danfo, dodge potholes.">
-<meta name="ns-build" content="95e5a445cb">
+<meta name="ns-build" content="95565b886e">
 <meta name="theme-color" content="#0E1014">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -285,6 +285,7 @@ body.fbon #loc,body.fbon #tHorn,body.fbon #tRadio,body.fbon #tGrab,body.fbon #tJ
 .weap{background:rgba(12,14,18,.6);border:1px solid var(--line);border-radius:999px;color:var(--cream);font-weight:700;font-size:13px;padding:4px 10px;min-height:30px}
 .xhair{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;pointer-events:none;z-index:3;background:radial-gradient(circle,#fff 0 2px,transparent 3px),linear-gradient(#fff,#fff) center/2px 7px no-repeat,linear-gradient(90deg,#fff,#fff) center/7px 2px no-repeat;opacity:.85;filter:drop-shadow(0 0 2px #000)}
 .shop{right:auto;left:calc(18px + var(--sl));width:min(330px,calc(100vw - 36px));z-index:6}
+.sh-row i.sh-ic{flex:none;width:52px;height:52px;border-radius:10px;background-color:#2a2622;order:-1}
 .sh-row{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:52px;padding:6px 10px;margin:8px 0 0;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px}
 .sh-row b{display:block;font-size:15px}.sh-row small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .sh-buy{min-width:96px;min-height:42px;border-radius:10px;border:none;background:var(--danfo);color:var(--ink);font-weight:700;font-size:14px}.sh-buy:disabled{background:rgba(255,255,255,.12);color:var(--muted)}
@@ -820,7 +821,7 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){addEventListener(
 // Which phones can play: below the line (iPhone 6s/7/8/SE 2016 on iOS 16 or older, Android phones with 1 GB or less), the
 // game would only restart over and over. Those phones get told plainly, with a "try anyway", before 40 MB is downloaded.
 (function(){
-  function go(){ var s=document.createElement('script'); s.type='module'; s.src="src/game.js?v=95e5a445cb"; document.body.appendChild(s); }
+  function go(){ var s=document.createElement('script'); s.type='module'; s.src="src/game.js?v=95565b886e"; document.body.appendChild(s); }
   if(window.__nsNoGL) return;
   var ua=navigator.userAgent, ios=/iP(hone|od)/.test(ua), m=/OS (\d+)_/.exec(ua), iv=m?+m[1]:0, big=Math.max(screen.width,screen.height), dm=+navigator.deviceMemory||0, tried=false;
   try{ tried=localStorage.getItem('naija-tryweak')==='1'; }catch(e){}

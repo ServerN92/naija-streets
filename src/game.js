@@ -13,23 +13,24 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import * as CLOCK from './clock.js?v=95e5a445cb';
-import * as C2 from './char2.js?v=95e5a445cb';
-import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=95e5a445cb';
-import { createPhone } from './phone.js?v=95e5a445cb';
-import { createGuide } from './guide.js?v=95e5a445cb';
+import * as CLOCK from './clock.js?v=95565b886e';
+import * as C2 from './char2.js?v=95565b886e';
+import { skBody, skBodyReset, skNew, skMove, skPose as skBodyPose } from './skater.js?v=95565b886e';
+import { createPhone } from './phone.js?v=95565b886e';
+import { createGuide } from './guide.js?v=95565b886e';
 import { createSound } from './sound.js?v=d66ddc5a2a';
-import { createFootball } from './football.js?v=95e5a445cb';
-import { createHome } from './home.js?v=95e5a445cb';
-import { createFarm } from './farm.js?v=95e5a445cb';
-import { createBusiness } from './business.js?v=95e5a445cb';
-import { createOnline } from './online.js?v=95e5a445cb';
-import { createPolice } from './police.js?v=95e5a445cb';
-import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=95e5a445cb';
-import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=95e5a445cb';
+import { createFootball } from './football.js?v=95565b886e';
+import { createHair } from './hair.js?v=d75e665983';
+import { createHome } from './home.js?v=95565b886e';
+import { createFarm } from './farm.js?v=95565b886e';
+import { createBusiness } from './business.js?v=95565b886e';
+import { createOnline } from './online.js?v=95565b886e';
+import { createPolice } from './police.js?v=95565b886e';
+import { createPark as createUnion, wearVest, vestInfo } from './park.js?v=95565b886e';
+import { MapView, GPS_RED, GPS_GREEN, isWork } from './mapview.js?v=95565b886e';
 window.__nsOK = true;
 // the page and the game code must come from the same release; if a cached page meets newer code, fetch a fresh page
-const BUILD='95e5a445cb';
+const BUILD='95565b886e';
 { const m=document.querySelector('meta[name="ns-build"]'), hb=m&&m.content; let n=0; try{ n=+(sessionStorage.getItem('ns-reload')||0); }catch(e){}
   if(hb!==BUILD&&n<2&&!/[?&]fresh=/.test(location.search)){ try{ sessionStorage.setItem('ns-reload',String(n+1)); }catch(e){} location.replace(location.pathname+'?fresh='+Date.now()); await new Promise(()=>{}); }
   try{ sessionStorage.removeItem('ns-reload'); }catch(e){} }
@@ -511,7 +512,7 @@ const MODEL_FILES={ub_base_yellow:['ub_base_yellow','h',0,1],btruck:['bt_technic
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
-  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],efcc:['ns_efcc','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
+  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
   tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],airtoll:['ns_airtoll','h',0,1],airarm:['ns_airtoll_arm','h',0,1],bansign:['ns_bansign','h',0,1],carpark:['ns_carpark','h',0,1],impound:['ns_impound','h',0,1],toilet:['ns_toilet','h',0,1],tdoor:['ns_toilet_door','h',0,1],mytent:['ns_mytent','h',0,1],boutique:['ns_boutique','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
@@ -557,14 +558,13 @@ const NEWV_SEATS={   // as a share of the length (x, forward) and the height (y)
   car:[[.04,.36,-.36,1],[.04,.36,.36,.35],[-.2,.36,-.36,.3],[-.2,.36,.36,.2]], suv:[[.05,.42,-.38,1],[.05,.42,.38,.35],[-.17,.43,-.38,.3],[-.17,.43,.38,.2]],
   pickup:[[.08,.45,-.38,1],[.08,.45,.38,.4],[-.1,.45,-.38,.2]], van:[[.26,.4,-.42,1],[.26,.4,.42,.4]], truck:[[.34,.52,-.5,1],[.34,.52,.5,.3]]};
 for(const N of NEWV) LATE_FILES[N.k]=[N.k,'+x',0,1];   // size 0: they come at their real size from Blender
-LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.efccvan=['v_efccvan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
+LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
 const NEWV_K=Object.fromEntries(NEWV.map(N=>[N.k,N]));
 // run f(model) as soon as a late model is in (now, if it already is)
 var CB={bed:null,act:null,clips:null,job:null,ui:null};   // the carton bed (see 'the carton bed' below)
 let FDET=null;   // the farm detail texture (declared early: the police checkpoint asks for it before the farm code runs)
 const MODEL_WAIT={}; function whenModel(k,f){ if(MODELS[k]) f(MODELS[k]); else (MODEL_WAIT[k]=MODEL_WAIT[k]||[]).push(f); }
-function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker','efccvan'].includes(k))) return;
-  if(k==='efccvan'){ WHEEL.efccvan={r:.35,hw:.13}; SEATS.efccvan=SEATS.police; return; }   // the EFCC's black Hiace (tools/blender_efcc.py)
+function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker'].includes(k))) return;
   if(k==='policevan'){ WHEEL.policevan={r:.35,hw:.13}; SEATS.policevan=SEATS.police; return; }
   if(k==='policehilux'){ WHEEL.policehilux={r:.38,hw:.15}; SEATS.policehilux=SEATS.police; return; }
   if(k==='tanker'){ WHEEL.tanker={r:.5,hw:.2}; SEATS.tanker=[{x:M.W*.36,y:M.H*.5,z:-.5,k:'seat',drv:1},{x:M.W*.36,y:M.H*.5,z:.5,k:'seat',p:.3}]; return; }
@@ -1131,8 +1131,7 @@ if(HOME) HOME.special='home';
   pickSite('hotel3',500,1700,3,22,(b,d)=>-Math.hypot(b.cx-(SITES.hotel2?SITES.hotel2.cx:0),b.cz-(SITES.hotel2?SITES.hotel2.cz:0))*.5-b.w*b.d*.1,400);
   pickSite('club1',200,800,3,17,(b,d)=>Math.abs(d-420)*.5-b.w*b.d*.08);
   pickSite('club2',500,1500,3,17,(b,d)=>-Math.hypot(b.cx-(SITES.club1?SITES.club1.cx:0),b.cz-(SITES.club1?SITES.club1.cz:0))*.4-b.w*b.d*.06,500);
-  pickSite('carstand',250,1100,3,20,(b,d)=>Math.abs(d-600)*.4-b.w*b.d*.1);
-  pickSite('efcc',350,1400,3,22,(b,d)=>Math.abs(d-700)*.4-b.w*b.d*.1,300); }   // the EFCC Lagos office (tools/blender_efcc.py)
+  pickSite('carstand',250,1100,3,20,(b,d)=>Math.abs(d-600)*.4-b.w*b.d*.1); }
 // the university: the College of Medicine of the University of Lagos stands in the LUTH grounds at Idi-Araba,
 // so the biggest hospital-ground building becomes the faculty block
 const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special||distAt(b.cx,b.cz)) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
@@ -1912,13 +1911,6 @@ if(MODELS.club) [SITES.club1,SITES.club2].forEach((b,i)=>{ if(!b) return; const 
 if(MODELS.carstand&&SITES.carstand){ const r=placeVenue(SITES.carstand,'carstand',[[-10,10,2,14,7]],{max:1}); const d=markAt(r,'door');
   signAt(scene,markAt(r,'sign_name'),'OLUWASEUN MOTORS · TOKUNBO & BRAND NEW','#0f3d2a','#ffd54a'); doorRing(d.x,d.z);
   VENUES.carstand={name:'Oluwaseun Motors',x:r.x,z:r.z,door:{x:d.x,z:d.z,ry:r.ry},r,lots:marksOf(r,/^lot_\d/)}; }
-// the EFCC Lagos office: a black and gold block with EFCC on the roof, a detention wing, a guard at the gate, black vans in the yard
-const EFCC_HQ={r:null,x:0,z:0,front:null};
-if(HOUSES&&MODELS.efcc&&MODELS.efcc.marks&&SITES.efcc){ const r=placeVenue(SITES.efcc,'efcc',[[-13,13,-7,7,12],[13,20,-3,7,5],[5.6,7.8,-17.2,-15.2,2.8]],{max:1});
-  if(r){ const d=markAt(r,'door'); Object.assign(EFCC_HQ,{r,x:r.x,z:r.z,front:{x:d.x,z:d.z,ry:r.ry}});
-    signAt(scene,markAt(r,'sign_name'),'ECONOMIC AND FINANCIAL CRIMES COMMISSION','#14161a','#f2c200');
-    signAt(scene,markAt(r,'sign_efcc'),'EFCC','#14161a','#f2c200',{fog:false}); signAt(scene,markAt(r,'sign_det'),'DETENTION','#14161a','#f2f2ee'); doorRing(d.x,d.z);
-    whenModel('efccvan',()=>{ for(const k of ['park_1','park_2']){ const m=markAt(r,k); if(!m) continue; const v=newVehicle('suv','#111318',true,'efccvan'); Object.assign(v,{x:m.x,z:m.z,y:0,h:carYaw(m.yaw),keep:1,parked:true,efVan:1}); } }); } }
 // the township stadium and a football field near the university (tools/blender_sports.py)
 function placeOpen(site,key,solids){ const M=MODELS[key]; if(!site||!M) return null; const r={x:site.cx,z:site.cz,y:0,ry:site.ry,sc:1,M};
   new CullSet(modelLevels(M,Q.lod0*2.2,Q.draw+260),[{x:r.x,y:0,z:r.z,ry:r.ry,sc:1}],{shadowDist:Q.shR,name:key}); solidsAt(r,solids); SCAT_OFF.push({x:r.x,z:r.z,ry:r.ry,hw:M.W/2+1,hd:M.D/2+1}); return r; }
@@ -2400,9 +2392,6 @@ const M_IN=(()=>{ let me=null; try{ me=localStorage.getItem('naija-look2'); }cat
   return {set:S,pick}; })();
 for(const id in MEN){ const on=M_IN.set.has(id); CAST[id]={f:0,h:1.8,w:on?.3:0,idle:['idle_1','idle_2','phone','text'],tw:.2,look:[M_SKIN[id],'#0e8a44','#16161a','#111111','#141110'],v2:1,lazy:!on,fits:M_STREET}; }
 for(const r in M_IN.pick) CAST[r].as=M_IN.pick[r];
-// the EFCC officers: the same people as the police, in their EFCC uniform (black vest, EFCC in yellow, name tag): no more files to load
-CAST.efcc_m={...CAST.police_m,cop:1,as:[(M_IN.pick.police_m||['p_okon'])[0],['efcc']]};
-CAST.efcc_f={...CAST.police_f,cop:1,as:[(W_IN.pick.police_f||['p_halima'])[0],['efcc']]};
 // school runs (07:00–08:30, 13:30–15:30 game time) bring out the schoolboys; late night has fewer hawkers and babas
 function pickCast(hour){ const school=hour!=null&&((hour>=7&&hour<8.5)||(hour>=13.5&&hour<15.5)), night=hour!=null&&(hour>=21||hour<5.5); let tot=0; const w={};
   for(const k in CAST){ let x=CAST[k].w; if(k==='schoolboy') x*=school?5:night?0:.5; if(night&&(k==='baba'||k==='hawker')) x*=.3; if(night&&k==='areaboy') x*=1.6; w[k]=x; tot+=x; }
@@ -2427,7 +2416,7 @@ const CLOTH_PRICE={singlet:2500,tee_jeans:6000,jersey:7500,polo:9000,hoodie:1000
 // cx what each kind of deed has paid that day (each pays less the more you repeat it), cs the days-in-a-row streak, cl the last day you played
 function credClean(d){ const cx={}; if(d&&d.cx&&typeof d.cx==='object') for(const [k,v] of Object.entries(d.cx).slice(0,24)) if(/^[a-z]{2,10}$/.test(k)) cx[k]=clamp(+v||0,0,1e5);
   return {cr:clamp(Math.floor(+(d&&d.cr)||0),0,1e7),cd:clamp((d&&d.cd)|0,0,99991231),ca:clamp(+(d&&d.ca)||0,0,86400),cx,cs:clamp((d&&d.cs)|0,0,3650),cl:clamp((d&&d.cl)|0,0,99991231)}; }
-const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',deco:{},store:{},boxes:[],pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,ffd:0,tips:0,rel:null,relNo:{},relHype:0,yh:null,aso:0,asoS:0,t:Date.now()});
+const freshLife=()=>({v:LIFE_V,cr:0,cd:0,ca:0,cx:{},cs:0,cl:0,home:'tent',rent:0,ntc:0,rented:0,flat:false,own:['rags'],ease:0,eat:0,sleep:0,dirt:0,job:'',tk:0,tkn:0,hk:0,est:[],estAll:[],estHome:'',deco:{},store:{},boxes:[],hair:{},wigs:[],pos:null,jp:{},kf:0,kfd:0,ogd:0,seen:0,ffd:0,tips:0,rel:null,relNo:{},relHype:0,yh:null,aso:0,asoS:0,t:Date.now()});
 // where you were when you left (you carry on there if you come back soon), your points in each hustle (your rank in the job)
 const posClean=p=>p&&typeof p==='object'&&Number.isFinite(+p.x)&&Number.isFinite(+p.z)?{x:clamp(+p.x,-9e3,9e3),z:clamp(+p.z,-9e3,9e3),r:clamp(+p.r||0,-7,7),t:+p.t||0,st:clamp(p.st|0,0,5),car:p.car?1:0}:null;
 const jpClean=j=>{ const o={}; if(j&&typeof j==='object'&&!Array.isArray(j)) for(const [k,v] of Object.entries(j).slice(0,12)) if(/^[a-z_]{2,16}$/.test(k)&&Number.isFinite(+v)) o[k]=clamp(+v,0,1e6); return o; };
@@ -2435,8 +2424,8 @@ function yhClean(y){ if(!y||typeof y!=='object') return null; const n=(v,lo,hi)=
 function lifeClean(d){ if(!d||typeof d!=='object') return null; const own=Array.isArray(d.own)?d.own.filter(k=>typeof k==='string'&&/^[a-z_]{2,12}$/.test(k)):[]; if(!own.includes('rags')) own.unshift('rags');
   const est=Array.isArray(d.est)?[...new Set(d.est.filter(k=>typeof k==='string'&&!!EST.byId[k]))]:[], estAll=Array.isArray(d.estAll)?[...new Set(d.estAll.filter(k=>EST.list.some(E=>E.id===k)))]:[];   // estate houses (ids like A07) and whole estates you own
   const estHome=typeof d.estHome==='string'&&(est.includes(d.estHome)||estAll.includes(d.estHome[0]))?d.estHome:'';
-  const {deco,store,boxes}=homeClean(d);
-  return {v:LIFE_V,deco,store,boxes,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,ffd:clamp(d.ffd|0,0,1e8),tips:clamp(d.tips|0,0,99),rel:relClean(d.rel),relNo:relNoClean(d.relNo),relHype:clamp(d.relHype|0,0,1e8),yh:yhClean(d.yh),aso:clamp(d.aso|0,0,60),asoS:clamp(d.asoS|0,0,1e8),asoW:d.asoW|0,t:+d.t||0,u:d.u}; }
+  const {deco,store,boxes}=homeClean(d); const hair={}, HS_=/^[a-z0-9_]{2,24}$/; if(d.hair&&typeof d.hair==='object') for(const [k,v] of Object.entries(d.hair).slice(0,40)) if(isV2(k)&&typeof v==='string'&&HS_.test(v)) hair[k]=v; const wigs=Array.isArray(d.wigs)?d.wigs.filter(x=>typeof x==='string'&&HS_.test(x)).slice(0,40):[];
+  return {v:LIFE_V,deco,store,boxes,hair,wigs,home:['tent','room','flat'].includes(d.home)?d.home:'tent',rent:Math.max(0,+d.rent||0),rented:Math.max(0,d.rented|0),flat:d.flat===true,own,ease:clamp(+d.ease||0,0,1),eat:clamp(+d.eat||0,0,1),sleep:clamp(+d.sleep||0,0,1),dirt:clamp(+d.dirt||0,0,1),ntc:clamp(+d.ntc||0,0,2*DAY_S),job:typeof d.job==='string'&&/^[a-z_]{2,16}$/.test(d.job)?d.job:'',tk:clamp(d.tk|0,0,20),tkn:clamp(d.tkn|0,0,1e5),hk:clamp(d.hk|0,0,40),est,estAll,estHome,...credClean(d),pos:posClean(d.pos),jp:jpClean(d.jp),kf:clamp(+d.kf||0,0,9),kfd:clamp(d.kfd|0,0,99991231),ogd:clamp(d.ogd|0,0,99991231),seen:d.seen?1:0,ffd:clamp(d.ffd|0,0,1e8),tips:clamp(d.tips|0,0,99),rel:relClean(d.rel),relNo:relNoClean(d.relNo),relHype:clamp(d.relHype|0,0,1e8),yh:yhClean(d.yh),aso:clamp(d.aso|0,0,60),asoS:clamp(d.asoS|0,0,1e8),asoW:d.asoW|0,t:+d.t||0,u:d.u}; }
 // your furniture (src/home.js): placed pieces per house [id, floor, x, z, turn], unboxed pieces kept in your store, boxes on the way
 function homeClean(d){ const FID=/^[a-z0-9_]{2,24}$/, HID=k=>k==='flat'||!!EST.byId[k], deco={}, store={};
   if(d.deco&&typeof d.deco==='object'&&!Array.isArray(d.deco)) for(const [k,L] of Object.entries(d.deco).slice(0,120)){ if(!HID(k)||!Array.isArray(L)) continue;
@@ -2687,7 +2676,7 @@ function makeCar(type,color,empty=false,skin=null){
   return {g,wheels,def:D,type}; }
 const CAR_COLORS=['#111214','#f1f1ee','#8d939a','#1d3557','#7a0f12','#2b4b3a','#c4c8cc','#3a2a1e','#0f4c81','#b0b6bb'];
 const vehicles=[];
-function newVehicle(type,color,empty=false,skinK=null){ const want=!MODELS[type]&&NEWV_K[type]?type:null; const skin=skinK&&MODELS[skinK]?skinK:type==='police'?(()=>{ const r=MR(); return MODELS.policevan&&r<.35?'policevan':MODELS.policehilux&&r<.8?'policehilux':null; })():null; if(!MODELS[type]) type=NEWV_K[type]?(NEWV_K[type].s==='truck'||NEWV_K[type].s==='van'?'suv':'sedan'):({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty,skin); scene.add(c.g); const v={c,type,color,want,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
+function newVehicle(type,color,empty=false){ const want=!MODELS[type]&&NEWV_K[type]?type:null; const skin=type==='police'?(()=>{ const r=MR(); return MODELS.policevan&&r<.35?'policevan':MODELS.policehilux&&r<.8?'policehilux':null; })():null; if(!MODELS[type]) type=NEWV_K[type]?(NEWV_K[type].s==='truck'||NEWV_K[type].s==='van'?'suv':'sedan'):({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty,skin); scene.add(c.g); const v={c,type,color,want,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
 function laneOff(a,b){ const e=edgeOf(a.i,b.i); if(!e) return 1.5; if(e.ow) return e.w>=8?e.w*.2:0; return e.hw>=10?4.6:e.hw*.45; }
 function lineSeg(ia,ib){ const a=nodes[ia],b=nodes[ib],dx=b.x-a.x,dz=b.z-a.z,L=Math.hypot(dx,dz)||.1,fx=dx/L,fz=dz/L,rx=-fz,rz=fx,off=laneOff(a,b),sa=Math.min(a.deg>=3?a.r+1.2:1.2,L*.45),sb=Math.min(b.deg>=3?b.r+1.2:1.2,L*.45);
   const p0={x:a.x+fx*sa+rx*off,z:a.z+fz*sa+rz*off}, p2={x:b.x-fx*sb+rx*off,z:b.z-fz*sb+rz*off}; return {k:0,p0,p2,len:Math.max(.1,Math.hypot(p2.x-p0.x,p2.z-p0.z)),fx,fz,rx,rz,off}; }
@@ -4645,7 +4634,7 @@ function boardPed(p,dt){ const v=p.bv; p.timer-=dt; let done=p.timer<=0||!v||!(v
     const tx=v.x-fz*sg*o-fx*back, tz=v.z+fx*sg*o-fz*back, dx=tx-p.x, dz=tz-p.z, d=Math.hypot(dx,dz);
     if(d<.45) done=true; else { p.speed+=(1.5-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=dx/d*st; p.z+=dz/d*st; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); } }
   if(done){ const s=p.spot; if(s){ s.boarding=Math.max(0,s.boarding-1); s.peds=s.peds.filter(q=>q!==p); } if(p.fare){ p.fare=false; if(!(v===drive.v&&Math.hypot(p.x-v.x,p.z-v.z)<v.c.def.L/2+2.2)){ p.state='walk'; p.bv=null; p.spot=null; replanPed(p); return; } fareIn(p.cast,v); } offPed(p); } }   // you drove off: they walk on
-function offPed(p){ p.bc=false; p.efcc=0; if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
+function offPed(p){ p.bc=false; if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
   Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,agb:null,rob:null,robber:false,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0,crook:null,stolen:0,post:null,aimOn:false,hat:null,side:null,gang:null,meT:0,_dn:false,uvest:null,brawl:null}); }   // back to the pool as nobody in particular
 function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ p.cast=c; p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
 function spotOn(s){ s.on=true; s.peds=[]; s.boarding=0; s.hailV=null; const night=ENV.hour>=21||ENV.hour<5.5;
@@ -4838,7 +4827,7 @@ const MOVE_INFO={
 // the street's blows (area boys)
 const AI_INFO={punch:{ts:1.55,hits:[.33,.53],reach:1.5},kick:{ts:1.6,hits:[.47],reach:1.95}};
 const ONCE=new Set(['jump3','jump_run','punch','punch_b','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump','threaten','gp','gp_b','rise']);
-const HP0=c=>c==='areaboy'?110:c==='police_f'||c==='police_m'||c==='efcc_m'||c==='efcc_f'?140:70;
+const HP0=c=>c==='areaboy'?110:c==='police_f'||c==='police_m'?140:70;
 const durOf=(p,n)=>{ const C=PEOPLE.casts[p.cast], k=C&&C.clips[n]; return k?k.duration:1.2; };
 const fightReady=()=>!!(hero&&hero.act.punch);
 function whoosh(){ burst(.16,1500,.16,1.4); }
@@ -5401,13 +5390,13 @@ function provoke(p){ const now=T0;
   if(joined&&sayT<=0){ sayT=6; toast(mpick(['"You wan try us?!"','"Na who send you come here?"','"Boys, enter am!"']),2.2); } }
 function afterHurt(p){ if(p.brawl){ p.state=p.brawl.out?'down':'brawl'; p.atk=null; return; }
   if(p.crook&&p.gang){ p.state='crook'; p.atk=null; return; }   // gang people get straight back to it
-  if(p.cop){ p.state=p.cast==='police_m'||p.efcc?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=mrr(.2,.6); return; }
+  if(p.cop){ p.state=p.cast==='police_m'?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=mrr(.2,.6); return; }
   if(p.after==='fight'&&!p.beaten&&p.cast==='areaboy'){ p.state='fight'; p.atk=null; p.atkT=mrr(.3,.9); return; }
   if(p.spot&&MR()<.3){ react(p,'argue',player.x,player.z,mrr(3,4)); return; }
   if(MR()<.35&&(p.cast==='mama'||p.cast==='baba')){ react(p,'argue',player.x,player.z,mrr(3,5)); if(sayT<=0){ sayT=5; toast(mpick(['"You dey mad?!"','"Na me you go beat?!"','"Shameless boy!"']),2.2); } p.fleeAfter=true; return; }
   p.state='flee'; p.timer=mrr(4,7); p.yaw=Math.atan2(p.x-player.x,p.z-player.z)+mrr(-.4,.4); }
 function afterDown(p){ if(p.brawl){ crewLeave(p); return; }
-  p.hp=Math.max(p.hp||0,35); if(p.cop){ p.state=p.cast==='police_m'||p.efcc?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=.4; return; }
+  p.hp=Math.max(p.hp||0,35); if(p.cop){ p.state=p.cast==='police_m'?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=.4; return; }
   if(p.carjacked){ p.carjacked=false; if(p.cast==='areaboy'&&MR()<.65&&mode==='walk'){ p.state='fight'; p.atk=null; p.atkT=.6; toast('"You don thief my motor?! Come here!"',2.4); return; } }
   if(p.spot&&!p.beaten){ react(p,MR()<.7?'argue':'no',p.kx??player.x,p.kz??player.z,mrr(4,6)); return; }
   if(p.beaten){ p.state='flee'; p.timer=mrr(5,8); p.yaw=Math.atan2(p.x-player.x,p.z-player.z); if(p.cast==='areaboy'&&sayT<=0&&MR()<.5){ sayT=5; toast('"Oga, we don hear! No vex!"',2.2); } return; }
@@ -5764,7 +5753,7 @@ function homeMeasure(clip,t){ const r=hero.root, p=r.position.clone(), ry=r.rota
   a.stop(); m.stopAllAction(); m.uncacheRoot(hero.cObj); r.position.copy(p); r.rotation.y=ry; hero.mixer.update(0); r.updateMatrixWorld(true); return {head,hips,feet,lo,pts}; }
 
 // ---- things you see: the TV picture, fire and steam, shower water, a plate of jollof, the broom, dirt, the speaker lights
-function homeFx(){ const R=INT.home; if(HL.fx&&HL.fx.scene===INT.scene) return HL.fx; const S=INT.scene, fx={scene:S};
+function homeFx(){ const R=INT.home||{}; if(HL.fx&&HL.fx.scene===INT.scene) return HL.fx; const S=INT.scene, fx={scene:S};   // (R is empty at a salon chair: no home fittings)
   const soft=(()=>{ const [c,g]=cv(64,64), gr=g.createRadialGradient(32,32,2,32,32,30); gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.fillRect(0,0,64,64); return tx(c,false,false); })();
   if(R.tv){ const [c,g]=cv(320,180), t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; const m=new THREE.Mesh(new THREE.PlaneGeometry(R.tv.sz.x>R.tv.sz.z?R.tv.sz.x*.97:R.tv.sz.z*.97,R.tv.sz.y*.95),new THREE.MeshBasicMaterial({map:t,toneMapped:false}));
     m.position.copy(R.tv.c).addScaledVector(R.tv.n,.006); m.lookAt(m.position.clone().add(R.tv.n)); m.visible=false; m.layers.enableAll(); S.add(m); fx.tv={m,c,g,t,last:-1,ch:0,glow:new THREE.PointLight(0x88aaff,0,4,2)}; fx.tv.glow.position.copy(R.tv.c).addScaledVector(R.tv.n,.6); S.add(fx.tv.glow); }
@@ -5865,7 +5854,7 @@ function homeNear(){ const R=INT.home; if(!R||ROOM!==INT||mode!=='interior'||!he
   if(!best&&HL.music&&!HL.broom) best={s:{kind:'dance'},label:'Dance'};   // music on: dance anywhere
   return best; }
 function homePrompt(){ const A=HL.act; if(A) return A.prompt?A.prompt():A.kind==='dance'?'Stop dancing':A.kind==='bed'?'Get up':'Stand up'; const n=homeNear(); return n?n.label:''; }
-function homeAction(){ if(HL.act){ if(HL.act.stop!==false) homeStop(); return true; } const n=homeNear(); if(!n) return false; homeStart(n.s); return true; }
+function homeAction(){ if(HL.act){ if(HL.act.hold) return true; if(HL.act.stop!==false) homeStop(); return true; } const n=homeNear(); if(!n) return false; homeStart(n.s); return true; }
 
 // ---- the bath: clothes come off. Our own people (Amaka, Ada) just take their outfit off. A Mixamo person is hollow under
 // the clothes, so for the bath they get a body made from ours (Tunde for men, Amaka for women) in their own skin colour, with
@@ -5909,7 +5898,7 @@ async function portrait(id,k){ let C=null; try{ C=await loadV2(id); }catch(e){} 
       const sc=new THREE.Scene(); sc.background=new THREE.Color(0x77797f); const hemi=new THREE.HemisphereLight(0xfff4ea,0x3a3028,1.5), key=new THREE.DirectionalLight(0xffffff,2.4), rim=new THREE.DirectionalLight(0xbfd4ff,.8);
       key.position.set(-.6,.5,1); rim.position.set(.8,.3,-.6); sc.add(hemi,key,rim); const cam=new THREE.PerspectiveCamera(20,240/300,.05,20); cam.layers.enableAll(); PORTRAIT={R,sc,cam,cv,body:null}; }
     const P=PORTRAIT; if(P.body){ P.sc.remove(P.body); P.body=null; }
-    const inner=SkeletonUtils.clone(C.tpl); C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,k); P.sc.add(inner); P.body=inner;
+    const inner=SkeletonUtils.clone(C.tpl); C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,k); if(HAIRX&&LIFE.hair&&LIFE.hair[id]) HAIRX.apply(inner,id,LIFE.hair[id]); P.sc.add(inner); P.body=inner;
     const cl=C.clips&&C.clips[C.idle0]; if(cl){ const mx=new THREE.AnimationMixer(inner); mx.clipAction(cl).play(); mx.update(.4); }
     inner.updateMatrixWorld(true); let head=null; inner.traverse(o=>{ if(!head&&o.isBone&&/Head$/.test(o.name)) head=o; }); if(!head) return null;
     const hp=head.getWorldPosition(new THREE.Vector3()), q=head.getWorldQuaternion(new THREE.Quaternion()), fwd=new THREE.Vector3(0,0,1).applyQuaternion(q); fwd.y=0; if(fwd.lengthSq()<1e-4) fwd.set(0,0,1); fwd.normalize();
@@ -6028,8 +6017,8 @@ function seatLegs(A){ const D=HL.clips&&HL.clips.info, N=n=>D&&D.nodes.get(n), h
   for(const L of legs){ twoBone(L.a,L.b,L.c,L.t); L.a.updateMatrixWorld(true); L.c.quaternion.copy(L.b.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(L.fq)); L.c.updateMatrixWorld(true); } }
 // ---- every frame while doing something
 function updateHomeAct(dt){ const A=HL.act, F=HL.fx; if(A.fade&&!A.faded&&!A.leaving){ hero.act.idle.setEffectiveWeight(1); hero.mixer.update(dt); return; }   // waiting to go in (the bath gets its body ready)
-  A.t+=dt; const [f,s]=inputVec();
-  if(!A.leaving&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)){ if(A.kind==='cook'&&A.cookT<14) toast('You left the pot. The jollof never ready.',3); homeStop(); }   // walk off and you stand up (the pot needs you to the end)
+  A.t+=dt; const [f,s]=inputVec(); if(A.tick&&!A.leaving) A.tick(dt);
+  if(!A.leaving&&!A.hold&&A.t>.8&&(Math.abs(f)>.4||Math.abs(s)>.4)){ if(A.kind==='cook'&&A.cookT<14) toast('You left the pot. The jollof never ready.',3); homeStop(); }   // walk off and you stand up (the pot needs you to the end)
   const k=Math.min(1,A.t/.4), e=k*k*(3-2*k); let wa=Math.min(1,A.t/.35); if(A.leaving){ A.lt+=dt; wa=Math.max(0,1-A.lt/.3); }
   if(A.seq&&!A.leaving){ const end=A.action.time>=A.clip.duration-.04;
     if(A.seq==='in'&&end) seqTo(A,A.loopClip,'loop');
@@ -6244,7 +6233,7 @@ async function wearLook(id,save=true){ if(!hero||WARD.busy) return false; const 
   if(!C){ const B=WARD.base; hero.root.add(B.body); Object.assign(hero,{cObj:B.body,mixer:B.mixer,act:B.act,hips:B.hips,hipsRest:B.hipsRest,rest:B.rest,look:null}); }
   else { const inner=SkeletonUtils.clone(C.tpl), wrap=new THREE.Group(); wrap.scale.setScalar(C.sc); inner.position.y=C.y0; wrap.add(inner); hero.root.add(wrap); WARD.body=wrap;
     let hips=null; const names=new Set(); inner.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; o.frustumCulled=false; } if(o.isBone){ names.add(o.name); if(!hips&&/Hips$/.test(o.name)) hips=o; } });
-    if(v2){ C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,toneOf()); }   // the outfit you chose last time, in your skin tone
+    if(v2){ C2.setOutfit(inner,fitOf(id)); toneBody(inner,id,toneOf()); if(HAIRX&&LIFE.hair&&LIFE.hair[id]) HAIRX.apply(inner,id,LIFE.hair[id]); }   // the outfit you chose last time, in your skin tone, your hair from the salon
     else if(id!==baseLook()){ const sm=skinnedOf(inner); if(sm) sm.geometry=headless(C,L); hero.root.updateMatrixWorld(true); putHead(inner); }   // their clothes, your face
     const mixer=new THREE.AnimationMixer(inner), cl=C.clips, act={idle:mixer.clipAction(cl[C.idle0]),walk:mixer.clipAction(cl.walk),run:mixer.clipAction(cl.run||cl.walk.clone())}; if(cl.walk2) act.walk2=mixer.clipAction(cl.walk2);
     act.car=mixer.clipAction(HERO_CAR?fitClip(HERO_CAR,names,hips.position):cl[C.idle0].clone()); act.car.setLoop(THREE.LoopOnce,1); act.car.clampWhenFinished=true;
@@ -7035,7 +7024,7 @@ function copPed(p,dt){ const S=starCount(), v=p.van, inCar=mode==='drive'&&drive
   if(!resist) return;
   if((p.atkT-=dt)<=0&&!(hero&&hero.ov&&hero.ov.name==='takedown_a')){ p.atk=MR()<.75?'punch':'kick'; p.atkTime=0; p.fired=[]; p.seq=(p.seq||0)+1; p.close=0; } }
 // officers at a raid: one walks to the scene and watches, the driver stands at his door
-function copGuard(p,dt){ const v=p.van; if(p.efcc) return;   // the EFCC officers: updateEFC moves them
+function copGuard(p,dt){ const v=p.van;
   if(v&&v===drive.v){ p.van=null; if(p.cast==='police_f'){ p.state='cop'; p.mad=1; } else { p.state='walk'; replanPed(p); } return; }
   if(!v||!RAID.v||v!==RAID.v||RAID.phase==='board'){ if(v&&v!==drive.v&&!v.ai){ const door=vanDoor(v,p.cast==='police_m'?-1:1), ex=door.x-p.x, ez=door.z-p.z, e=Math.hypot(ex,ez);
       if(e<1.1||(p.stuckN||0)>6){ offPed(p); return; } copMove(p,ex,ez,1.5,dt); p.yaw=lerpA(p.yaw,Math.atan2(ex,ez),Math.min(1,dt*8)); return; }
@@ -7707,7 +7696,7 @@ function gangTick(q,dt){ const K=q.crook; K.t+=dt; q.aimOn=false; q.recoil=(q.re
     case 'bcfree': { const G=campAt(0,-60), gx=G.x-q.x, gz=G.z-q.z; copMove(q,gx,gz,4.4,dt); turn(Math.atan2(gx,gz),6); if(K.t>18||Math.hypot(gx,gz)<3) gangOut(q); break; } } }
 function updateGangs(dt){ GANG.list=GANG.list.filter(q=>q.crook&&q.state!=='off'&&q.state!=='dead');
   for(const q of GANG.list){ if(q.state==='crook') gangTick(q,dt); else if(q.state==='walk'||q.state==='idle'||q.state==='flee'||q.state==='react'){ q.state='crook'; q.crook.st=q.wid&&q.gang!=='vic'?'hunt':'leave'; q.crook.t=0; } }
-  if(GANG.list.length>40){ const old=GANG.list.filter(q=>!q.bc); for(const q of old.slice(0,Math.max(0,GANG.list.length-40))) gangOut(q); }   // (never the bandit convoy's men)
+  if(GANG.list.length>40) for(const q of GANG.list.slice(0,GANG.list.length-40)) gangOut(q);
   watchTick(); }
 
 // ---- the bases, the share, the clashes
@@ -7913,7 +7902,7 @@ function bcStart(){ if(!bcCan()) return false;
   const B=newVehicle(tB,'#4d5638',true); let ok=false;
   if(BTY[B.type]&&A.ai&&A.ai.s>10){ const seg=A.ai.seg, sp=A.ai.s-9.5; segPos(seg,sp,_sp); B.ai={...A.ai,s:sp,goal:null,wait:0,ghost:0,stuck:0}; B.parked=false; B.x=_sp.x; B.z=_sp.z; B.h=A.h; B.speed=A.speed; B.y=groundY(B.x,B.z); B.fh=0; ok=true; }
   if(!ok&&BTY[B.type]) ok=!!vanPlace(B,g); if(!ok){ bcDrop(A); bcDrop(B); return false; }
-  const grp=BC.grp=GRP('the bandit convoy'); grp.paid=true;   // (the reward is the million, not the group bonus) BC.tr=[];
+  const grp=BC.grp=GRP('the bandit convoy'); BC.tr=[];
   for(const v of [A,B]){ btGun(v); v.band=true; v.taxi=true; v.bc=true; v.ai.goal=Object.assign({},g,{near:false,D:null}); v.ai.maxV=15.5; v.ocT=T0; bcSign(v,true);
     const T={v,men:[],angry:false,stop:false,tail:0,dmg0:v.dmg||0}; BC.tr.push(T);
     for(let k=0;k<4;k++){ const P=bcAt(v,...btSlot(v,k)), q=gangWake('band',P.x,P.z,{hat:'mask',gun:true,st:'ride',hp:300,yaw:v.h,K:{T,slot:k}}); if(!q) continue; q.bc=true; q.y=P.y; grpAdd(grp,q); T.men.push(q); } }
@@ -7930,18 +7919,14 @@ function bcDown(T,why){ if(T.stop) return; T.stop=true; T.angry=true; const v=T.
 function bcEnd(){ for(const T of BC.tr){ for(const q of T.men) if(q.crook&&upright(q)){ if(q.crook.st==='ride'){ gangOut(q); continue; } q.crook.st='leave'; q.crook.t=0; } bcSign(T.v,false);
     const v=T.v; v.bc=false; if(vehicles.includes(v)&&!v.fire&&!v.wreck&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>90) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=goalAt(CAMP.road.x,CAMP.road.z); v.ai.wait=0; } else { backOnRoad(v); if(v.ai) v.ai.goal=goalAt(CAMP.road.x,CAMP.road.z); } v.bcGone=T0; } } }
   if(BC.vic) BC.vic.bc=false; BC.tr=[]; BC.vic=null; BC.vq=null; BC.st='off'; BC.t=ENV.night?mrr(420,700):mrr(600,950); }
-const BC_PAY=1000000;   // the state's reward for a convoy wiped out (online, the server pays it: see 'bnd' in server/src/world.js)
-function bcFamily(){ if(ON&&ON.signedIn) ON.send({t:'bnd'}); else addCash(BC_PAY); credAdd('hero',60,false); const f=CAST[BC.cast]?.f;
-  bigMsg('HERO OF LAGOS 🏆','rankup',`${naira(BC_PAY)} reward`);
-  toast(`You stopped the bandits! ${f?'She':'He'} is safe. The government pays you ${naira(BC_PAY)}. But plenty money don land for your account… EFCC go hear.`,5.5);
-  efcAfter();
+function bcFamily(){ const r=Math.round(mrr(60000,120000)/1000)*1000; addCash(r); credAdd('hero',40,false); const f=CAST[BC.cast]?.f;
+  toast(`You stopped the bandits! ${f?'She':'He'} is safe. The family sends you ${naira(r)}: "God go bless you, our hero!"`,4.2);
   if(PH) PH.event('sms',{id:'watch',n:'Neighbourhood Watch',c:'#7a1a12',e:'⚠️',x:`You stopped the bandit convoy! Eight armed men, two trucks. ${f?'The woman':'The man'} is home safe. Thank you!`}); }
 function updateBC(dt){ if(BC.fT>0) BC.fT-=dt;
   // the old trucks drive off and go
   for(const v of vehicles) if(v.bcGone&&!v.bc&&(T0-v.bcGone>80||Math.hypot(v.x-player.x,v.z-player.z)>160)&&drive.v!==v){ v.bcGone=0; bcDrop(v); break; }
   if(BC.st==='off'){ if(!bcCan()){ BC.t=Math.max(BC.t,60); return; } if((BC.t-=dt*(ENV.night?1.6:1))<=0){ BC.t=bcStart()?0:45; } return; }
   BC.t+=dt; const [A,B]=BC.tr; if(!A||!B){ bcEnd(); return; }
-  for(const T of BC.tr) T.men=T.men.filter(q=>q.state==='dead'||q.state==='down'||q.state==='getup'||(q.crook&&q.bc));   // (a man taken back by the town is no longer theirs)
   // a truck that is hit, burning, its men hit, or a car riding on its tail: they stop and come down
   for(const T of BC.tr){ const v=T.v; if(!vehicles.includes(v)){ T.stop=true; T.gone=true; continue; } if(T.stop) continue; const near=Math.hypot(v.x-player.x,v.z-player.z)<90;   // (a scrape with traffic far from you is not you)
     if(near&&(T0-(v.bumpT||-99)<.6||v.byMe&&(v.fire||v.wreck||(v.dmg||0)>T.dmg0+4))) bcDown(T,'"Dem dey follow us! Oya come down, waste am!" The bandits jump down from the truck!');
@@ -7960,7 +7945,7 @@ function updateBC(dt){ if(BC.fT>0) BC.fT-=dt;
     if((d<11&&Math.abs(A.v.speed)<2.5)||(d<15&&BC.t>25)||(A.v.ai&&A.v.ai.goal&&A.v.ai.goal.near)){ for(const T of BC.tr){ const v=T.v; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } }
       BC.st='grab'; BC.t=0; V.state='crook'; V.crook={k:'vic',st:'grabbed',t:0}; V.gang='vic'; V.speed=0; GANG.list.push(V);
       // two from the first truck jump down to grab, the rest watch from the back
-      for(const q of A.men.filter(q=>q.crook&&upright(q)).slice(0,2)){ const P=bcAt(A.v,btSlot(A.v,q.crook.slot)[0]-.3,(q.crook.slot%2?1:-1)*(A.v.c.def.W/2+.9)); q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='bcgrab'; q.crook.t=0; }
+      for(const q of A.men.slice(0,2)){ const P=bcAt(A.v,btSlot(A.v,q.crook.slot)[0]-.3,(q.crook.slot%2?1:-1)*(A.v.c.def.W/2+.9)); q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='bcgrab'; q.crook.t=0; }
       toast(CAST[V.cast]?.f?'"Help! Help me o! Dem dey carry me!" The bandits are dragging a woman to their truck!':'"Help! Help!" The bandits are dragging a man to their truck!',3.4); }
     else if(BC.t>110) bcEnd(); return; }
   if(BC.st==='grab'){ const V=BC.vic, men=A.men.filter(q=>upright(q)&&q.crook&&q.crook.st==='bcgrab');
@@ -7991,49 +7976,6 @@ function mgTick(dt){ const v=MG.v; if(!v||!vehicles.includes(v)||v.fire||v.wreck
   rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false);
   if(ARMS.trig&&(MG.ft-=dt)<=0){ MG.ft=.085; const o=btMuzzle(v,new THREE.Vector3()); if(o){ const d=AIM.pt.clone().sub(o); if(d.lengthSq()<.05) camFwd(d); d.normalize();
       shoot(o,d,player,{dmg:40,range:190,spread:.022,muzzle:o}); flash(o); gunshot(1.25); shotsFired(player.x,player.z,true); camState.shake=Math.min(1,camState.shake+.09); } } else if(!ARMS.trig) MG.ft=Math.min(MG.ft,0); }
-// ---- the EFCC after a big reward: a minute or two later their black van comes looking for you. Get caught and they "process"
-// your money: ₦200,000 gone. Get away (or keep away for four minutes) and they give up. "Na so this economy be."
-const EFC={st:'off',t:0,v:null,take:200000,sayT:0,near:0,men:[],hold:25};
-function efcAfter(){ if(EFC.st!=='off') return; EFC.st='wait'; EFC.t=mrr(50,100); efcLoad(); }
-function efcSign(v,on){ if(v.efSp){ v.efSp.parent&&v.efSp.parent.remove(v.efSp); v.efSp.material.map.dispose(); v.efSp.material.dispose(); v.efSp=null; }
-  if(on&&!v.efVan){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('EFCC','#111318','#f2c12e'),fog:false,depthTest:false,toneMapped:false})); sp.scale.set(1.8,.42,1); sp.position.set(0,2.6,0); sp.layers.set(1); v.c.g.add(sp); v.efSp=sp; } }   // (the real EFCC van has it painted on)
-function efcMenOff(){ for(const q of EFC.men) if(q.efcc&&q.state==='copguard') offPed(q); EFC.men=[]; }
-function efcEnd(msg){ const v=EFC.v; efcMenOff(); if(v){ efcSign(v,false); if(vehicles.includes(v)&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>80) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=null; v.ai.wait=0; } } } } EFC.v=null; EFC.st='off'; if(msg) toast(msg,3.4); }
-// the van stops by you: two officers in EFCC vests jump out and come for you on foot
-function efcOut(v){ const out=[]; for(const [c,sd] of [['efcc_m',-1],['efcc_f',1]]){ const d=vanDoor(v,sd), cast=PEOPLE.casts[c]?c:c==='efcc_m'?'police_m':'police_f', q=makeCop(v,cast,d.x,d.z,'copguard'); if(q){ q.wid='ak'; q.efcc=1; out.push(q); } }
-  if(!out.length){ efcCaught(); return; }
-  v.speed=0; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } EFC.men=out; EFC.st='out'; EFC.t=0;
-  toast(mpick(['EFCC: "Stop there! EFCC! No move!"','EFCC: "Oga, stand there. We wan ask you small question."','EFCC: "You! Yes, you with the million. Come here!"']),2.6); }
-// they lost you on foot: back in the van, and the van carries on looking
-function efcBoard(){ efcMenOff(); const v=EFC.v; EFC.st='hunt'; EFC.sayT=0; if(v&&v.ai){ v.ai.wait=0; } toast('The EFCC officers run back to their van…',2.2); }
-function efcCaught(){ const v=EFC.v; if(v){ v.speed=0; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } } if(mode==='drive'&&drive.v&&!drive.ride){ drive.v.speed=0; drive.speed=0; }
-  for(const q of EFC.men){ q.speed=0; q.yaw=Math.atan2(player.x-q.x,player.z-q.z); }
-  EFC.st='caught'; busy=true; bigMsg('EFCC! 🚨','jam','Source of income?');
-  setTimeout(()=>{ const n=Math.min(CASH.n,EFC.take); if(n>0){ addCash(-n); cashHUD(); }   // (taken when they catch you: closing the menu does not save it)
-    if(PH&&n>0) PH.event('sms',{id:'bank',n:'Bank',c:'#0b5d3b',e:'🏦',x:`Debit: ${naira(n)} · EFCC PROCESSING FEE.`}); efcEnd(null);
-    const say=()=>openMenu('EFCC',`Officer: "One million naira, one day? Where you get am? Bandits?! Hmm… we don process am." They took ${naira(n)}.`,[
-      {name:'"Na so the economy be"',sub:`${naira(n)} gone "for processing".${cell?' Small time for their cell, then you dey free.':' You dey free.'}`,btn:'OK',act:()=>{ closeMenu(); }}]);
-    let cell=false;   // their van carries you to their office for "processing" (the office inside: wait for it a few seconds on a slow phone)
-    Promise.race([efcLoad(),new Promise(r=>setTimeout(r,6000))]).then(()=>{ busy=false; cell=!!(EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room&&!FIGHT.dead&&mode!=='interior');
-      if(cell){ JAIL.efcc=true; fadeSwap(()=>{ enterJail(0,EFC.hold); setTimeout(say,900); }); } else say(); }); },1300); }
-function updateEFC(dt){ if(EFC.st==='off'||!started) return;
-  if(EFC.st==='wait'){ if(mode==='interior'||busy||FIGHT.dead) return; if((EFC.t-=dt)>0) return;
-    const real=!!MODELS.efccvan, v=newVehicle('suv','#111318',true,real?'efccvan':null); if(real) v.efVan=1; if(!placeCar(v,90,170,true)){ bcDrop(v); EFC.t=20; return; }
-    v.taxi=true; v.efcc=true; v.ocT=T0; if(v.ai){ v.ai.maxV=Math.max(v.ai.maxV||14,17); } efcSign(v,true); EFC.v=v; EFC.st='hunt'; EFC.t=0; efcLoad();
-    toast('🚨 EFCC don hear about your million. Their black van dey come for you! Run, or dem go "process" your money.',4.5); return; }
-  if(EFC.st==='hunt'||EFC.st==='out'){ const v=EFC.v; EFC.t+=dt; if(!v||!vehicles.includes(v)||v.fire||v.wreck){ efcEnd('The EFCC van is out. They go come back another day.'); return; }
-    if(mode==='interior'){ if(EFC.st==='out') efcBoard(); if(EFC.t>240) efcEnd('EFCC waited and waited, then left.'); return; }
-    if(EFC.st==='out'){ EFC.men=EFC.men.filter(q=>q.efcc&&q.state==='copguard'&&!(q.hp<=0)); if(!EFC.men.length){ efcEnd('The EFCC officers are down. Their van zooms off… dem go come back with more people.'); addHeat&&addHeat(.6); return; }
-      const inCar=mode==='drive'&&drive.v, T=inCar?drive.v:player; let near=1e9;
-      for(const q of EFC.men){ const dx=T.x-q.x, dz=T.z-q.z, d=Math.hypot(dx,dz); near=Math.min(near,d); q.yaw=lerpA(q.yaw,Math.atan2(dx,dz),Math.min(1,dt*8));
-        if(d>1.2) copMove(q,dx,dz,4.8,dt); else q.speed=Math.max(0,q.speed-dt*8); q.y=groundY(q.x,q.z); q.near=d<2.5; }
-      if(near<1.5&&(!inCar||Math.abs(drive.speed)<2)){ efcCaught(); return; }
-      if((inCar&&Math.abs(drive.speed)>9&&near>10)||near>55||EFC.t>35) efcBoard(); return; }
-    const d=Math.hypot(v.x-player.x,v.z-player.z);
-    if((EFC.sayT-=dt)<=0){ EFC.sayT=3; if(v.ai){ v.ai.goal=Object.assign(goalAt(player.x,player.z),{near:false,D:null}); v.ai.wait=0; } }
-    if(d<12&&(mode==='walk'||Math.abs(drive.speed)<3)){ EFC.t=Math.min(EFC.t,200); efcOut(v); return; }
-    if(d<30&&mode==='walk'&&Math.abs(v.speed)<1.2){ EFC.near=(EFC.near||0)+dt; if(EFC.near>2.5){ EFC.near=0; efcOut(v); return; } } else EFC.near=0;   // (the van stops on the road by you: they come on foot)
-    if(EFC.t>240||d>420) efcEnd(d>420?'You lost the EFCC van. They give up for now.':'EFCC give up. You dey lucky today.'); } }
 // the person they took, tied at the camp: free them when the guards are down (or just cut the rope while nobody sees)
 function updateBCHostage(dt){ if(!BC.hostage||!CAMP) return; const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z);
   if(d<110&&!(BC.hq&&isAlive(BC.hq))){ const po=CAMP.post, P={x:po.x-(CAMP.x-po.x)*.25,z:po.z-(CAMP.z-po.z)*.25}; const q=gangWake('vic',P.x,P.z,{cast:BC.hostage.cast,st:'held',hp:60,yaw:Math.atan2(CAMP.x-P.x,CAMP.z-P.z)}); if(q){ q.act=null; BC.hq=q; } }
@@ -8049,7 +7991,7 @@ function updateUB3(dt){ if(!UB) return; NOMOVE=KID.tied>0||BT.st==='carry'||BT.s
   if(CAMP&&!BTG.job&&T0>20) btGunLib(); if(BT.v&&!BT.v.gunM) btGun(BT.v);
   if(hero&&mode==='walk'){ if(BT.st==='carry'&&BT.carrier) heroHold('v4_carried'); else heroRelease('v4_carried'); if(KID.tied>0&&KID.held) heroHold('v4_tied'); else heroRelease('v4_tied'); }
   if(lawless()&&FIGHT.heat>0){ if(T0-UB3.lawSaid>120&&starCount()>0){ UB3.lawSaid=T0; toast('Police no dey enter Under Bridge. Your stars dey fade.',2.6); } FIGHT.heat=Math.max(0,FIGHT.heat-dt*.45); if(FIGHT.heat<.1) CASE.on=false; }
-  updateBT(dt); updateBC(dt); updateBCHostage(dt); updateEFC(dt);
+  updateBT(dt); updateBC(dt); updateBCHostage(dt);
   if(CAMP){ const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z); if(d<110||KID.site==='camp'&&KID.held){ if(!CAMPP.vis){ CAMPP.vis=true; campPeople(); } if(ENV.night||d<60){ if(MR()<dt*12) flame(CAMP.fire.x+mrr(-.15,.15),.35,CAMP.fire.z+mrr(-.15,.15),.6); } }
     else if(d>170&&CAMPP.vis){ CAMPP.vis=false; for(const q of CAMPP.men) gangOut(q); CAMPP.men=[]; } } }
 
@@ -8537,7 +8479,7 @@ function openMenu(title,note,rows){ MENU.open=true; closePhone(); if(document.po
 function closeMenu(){ if(!MENU.open) return; MENU.open=false; $('#menu').hidden=true; lastPrompt=null; }
 function menuUI(){ const b=$('#menuBody'); b.textContent=''; $('#menuTitle').textContent=MENU.title; $('#menuNote').textContent=(MENU.note?MENU.note+' · ':'')+'You have '+naira(CASH.n);
   const el=(t,c,x)=>{ const e=document.createElement(t); if(c) e.className=c; if(x!=null) e.textContent=x; return e; };
-  for(const r of (typeof MENU.rows==='function'?MENU.rows():MENU.rows)){ const row=el('div','sh-row'), t=el('span'); t.append(el('b',null,r.name),el('small',null,r.sub||'')); const lk=r.rank>0&&myRank()<r.rank, btn=el('button','sh-buy'+(lk?' locked':''),lk?`🔒 ${rankName(r.rank)}`:(r.btn||naira(r.price))); btn.type='button';
+  for(const r of (typeof MENU.rows==='function'?MENU.rows():MENU.rows)){ const row=el('div','sh-row'), t=el('span'); t.append(el('b',null,r.name),el('small',null,r.sub||'')); if(r.css){ const ic=el('i','sh-ic'); ic.style.cssText=r.css; row.append(ic); } const lk=r.rank>0&&myRank()<r.rank, btn=el('button','sh-buy'+(lk?' locked':''),lk?`🔒 ${rankName(r.rank)}`:(r.btn||naira(r.price))); btn.type='button';
     btn.disabled=!lk&&(!!r.off||(r.price>0&&CASH.n<r.price)); btn.addEventListener('click',()=>{ if(lk){ rankGate(r.rank,r.name); return; } if(btn.disabled) return; if(r.price>0){ if(CASH.n<r.price) return; addCash(-r.price); cashHUD(); } r.act(); if(MENU.open) menuUI(); }); row.append(t,btn); b.append(row); } }
 
 /* ---- hotels: the lobby with the receptionist, the lift, the corridor upstairs with numbered doors, and the rooms.
@@ -8671,25 +8613,11 @@ function setupCabin(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R
     if(M.crew) folk(R.scene,'suit_lady',M.crew,['idle_suit','f_talk'],R.folk); };
   fillRoom(R);
   R.spot(M.exit,'Leave the plane',()=>leaveRoom(PLANE_GATE?{x:PLANE_GATE.x,z:PLANE_GATE.z+1.5,ry:0}:STATION.front),1.6); }
-/* ---- the EFCC office (tools/blender_efcc.py): reception, the interview room, the exhibits table (seized cash, laptops,
-   phones) and their own cells. Caught by the EFCC, this is where you wait. */
-const efcLoad=()=>EFCC_HQ.r?intLoad('int_efcc').catch(()=>null):Promise.resolve(null);
-async function enterEFCC(){ if(busy) return; const R=await intGet('int_efcc','Opening the EFCC office…'); if(!R) return; setupEfcc(R); R.label='EFCC · Lagos office';
-  goRoom(R,'spawn',mpick(['EFCC office. "Good afternoon. Who you come see?"','EFCC office. Everybody dey look you like suspect.'])); }
-function setupEfcc(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
-  R.fill=R=>{ folk(R.scene,'efcc_m',M.officer,['idle_1','phone'],R.folk); if(M.officer) folk(R.scene,'efcc_f',{...M.officer,x:M.officer.x+2.4},['idle_2','idle_1'],R.folk);
-    const cast=['areaboy','p_tunde','p_emeka','areaboy','p_femi','baba'];   // the yahoo boys in the cells
-    ['a1','a2','a3','b1','b2','b3'].forEach((k,i)=>{ const m=M['inmate_'+k]; if(!m||(k==='a1'&&JAIL.left>0)) return; const id=PEOPLE.casts[cast[i]]?cast[i]:'areaboy', pose=m.pose; folk(R.scene,id,pose==='lie'?{...m,yaw:(m.yaw||0)+LIE_YAW}:{...m,y:0},pose==='stand'?['argue','talk','idle_1']:pose==='lie'?['lie']:['idle_2','idle_1','talk'],R.folk); }); };
-  fillRoom(R);
-  R.spot(M.exit,'Go back outside',()=>leaveRoom(EFCC_HQ.front),1.8);
-  R.spot(M.counter,'Talk to the officer',()=>toast(mpick(['Officer: "Wetin you come do for EFCC? You wan report somebody?"','Officer: "Source of income? Joke. Na joke. Or no be joke?"','Officer: "If you get information about yahoo boys, write am here."','Officer: "Bail? Na for Bank app you go pay am."']),3.4),1.6);
-  for(const [k,t,bg,fg] of [['sign_counter','EFCC · LAGOS','#16181b','#f2c200'],['sign_poster','SAY NO TO\nCORRUPTION','#f4f2ea','#0b5d3b'],['sign_exhibit','EXHIBITS','#f2c200','#111111'],['sign_cells','DETENTION','#16181b','#f2f2ee']])
-    if(R.signs&&R.signs[k]) setSign(R.signs[k],t,bg,fg); }
 // the cell when you are caught: the left cell of the station, with the other cell across the corridor
-function policeCell(R,ef=false){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x1:Math.max(a.x0,a.x1),z0:Math.min(-a.y0,-a.y1),z1:Math.max(-a.y0,-a.y1)};
+function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x1:Math.max(a.x0,a.x1),z0:Math.min(-a.y0,-a.y1),z1:Math.max(-a.y0,-a.y1)};
   // the cell bounds are in Blender numbers (x, y): turn them into game x, z
-  return {scene:R.scene,marks:M,free:R.free,label:ef?'EFCC detention · Lagos':'Cell · Mushin police station',camDist:2.6,exit:{x:1e9,z:1e9},cols:[],spots:[],cam:R.cam,camHit:R.camHit,nearFree:R.nearFree,
-    bounds:{x0:b.x0+.35,x1:b.x1-.35,z0:b.z0+.35,z1:b.z1-.35},out:()=>ef&&EFCC_HQ.front?EFCC_HQ.front:STATION.front,
+  return {scene:R.scene,marks:M,free:R.free,label:'Cell · Mushin police station',camDist:2.6,exit:{x:1e9,z:1e9},cols:[],spots:[],cam:R.cam,camHit:R.camHit,nearFree:R.nearFree,
+    bounds:{x0:b.x0+.35,x1:b.x1-.35,z0:b.z0+.35,z1:b.z1-.35},out:()=>STATION.front,
     move(nx,nz){ nx=clamp(nx,b.x0+.35,b.x1-.35); nz=clamp(nz,b.z0+.35,b.z1-.35); R.move(nx,nz); },
     update(dt){ R.update(dt); jailTick(dt); } }; }
 
@@ -8866,14 +8794,14 @@ function luxSetup(k,R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R
     fillRoom(R);
     const H=[['Silk press','Wash, blow-dry and flat iron, bone straight',25000,'Hair don shine like mirror. Everybody go dey look you!'],['Frontal wig install','Glue-less, melted lace, styled your way',45000,'The lace don melt finish. Nobody fit know say na wig!'],
       ['Knotless braids','Mid-back, feed-in, 8 hours of patience',60000,'Knotless don land! Light on your head, heavy on the eye.'],['Colour and treatment','Honey blonde or burgundy, deep conditioning',38000,'The colour enter well well. You don glow!']];
-    for(const n of ['chair_1','chair_2','chair_3','chair_4']) R.spot(at(n),'Make your hair',()=>luxServe('GLOW LUXE · HAIR','"Sit down, darling. Wetin we dey do today?"',H,()=>{ LUX.glam=T0; }),1.4);
+    for(const n of ['chair_1','chair_2','chair_3','chair_4']) R.spot(at(n),'Make your hair',()=>hairMenu('GLOW LUXE · HAIR','"Sit down, darling. Wetin we dey do today?"',isF()?'f':'m',['cut','natural','braids','euro'],2.2,at(n),()=>{ LUX.glam=T0; }),1.4);
     R.spot(at('wash'),'Wash and deep condition',()=>luxServe('GLOW LUXE · WASH BAY','Warm water, scalp massage',[['Wash & deep condition','Steam, scalp massage, hot towel',12000,'Your head don light like feather. Scalp massage na correct thing!']]),1.4);
     R.spot(at('dryer'),'Sit under the dryer',()=>luxSay('Warm air, gist with the ladies, small chin chin. 30 minutes don pass like 5!'),1.5);
     R.spot(at('nails'),'Do your nails',()=>luxServe('GLOW LUXE · NAIL BAR','"Pick your colour, any one you like."',[['Gel manicure','Shape, cuticle care, gel colour',18000,'Ten fingers, ten jewels. Your nails dey sparkle!'],['Acrylic set','Long coffin, ombre or chrome',28000,'Long nails, soft life. Mind how you press phone!']]),1.5);
     R.spot(at('pedicure'),'Pedicure spa',()=>luxServe('GLOW LUXE · PEDICURE','Throne chair, warm foot spa',[['Spa pedicure','Soak, scrub, massage, polish',20000,'Your feet don soft like baby own. You go fit wear any sandals!']]),1.6);
     R.spot(at('makeup'),'Make-up and lashes',()=>luxServe('GLOW LUXE · MAKE-UP','"Owambe, wedding or photoshoot?"',[['Lash extensions','Classic or volume',15000,'Your lashes dey long like fan. Blink, blink!'],['Full glam make-up','Owambe beat, setting spray included',35000,'Face don beat! Na you go be the star of the party.'],['Gele tying','Any style, any fabric',8000,'The gele stand gidigba. Mama go proud of you!']]),1.5);
-    R.spot(at('wigs'),'Buy a wig',()=>luxServe('GLOW LUXE · WIG BAR','100% human hair, ready to wear',[['Bob wig, 12 inch','Double drawn, natural black',85000,'New wig, new you. Rock am!'],['Bone straight, 24 inch','Raw hair, frontal',220000,'This one na serious hair. You don arrive!'],['Body wave, burgundy','26 inch, glue-less',180000,'Burgundy body wave! E dey move as you dey waka.']]),1.5);
-    R.spot(at('braids'),'Braids corner',()=>luxServe('GLOW LUXE · BRAIDS','"Which style we dey do?"',[['Cornrows','Straight back or Ghana weaving',15000,'The lines dey straight like ruler. Clean!'],['Fulani braids','With beads and cuffs',42000,'Fulani braids with the beads. You fine pass!']]),1.5);
+    R.spot(at('wigs'),'Wig bar',()=>hairMenu('GLOW LUXE · WIG BAR','100% human hair, ready to wear. Buy one and it is yours: put it on here any time.',isF()?'f':'m',['wig'],1.0,at('wigs')),1.5);
+    R.spot(at('braids'),'Braids corner',()=>hairMenu('GLOW LUXE · BRAIDS','"Which style we dey do?"',isF()?'f':'m',['braids'],2.2,at('braids')),1.5);
     R.spot(at('desk'),'Talk to the receptionist',()=>luxSay(mpick(['"Welcome to GLOW LUXE! You get appointment? No wahala, we fit fit you in."','"Our stylists na the best for Lagos. Make yourself comfortable."','"Champagne or zobo while you wait?"'])),1.5);
     R.spot(at('lounge'),'Relax in the lounge',()=>luxSay('Velvet sofa, cold zobo, Afrobeats on low. Soft life!'),1.6);
     R.spot(at('selfie'),'Take a selfie at the flower wall',()=>luxSay(mpick(['Click! The flower wall + the glow queen sign. This one go blow for Instagram.','Selfie don land. 500 likes before you reach home!'])),1.5); }
@@ -8883,7 +8811,7 @@ function luxSetup(k,R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R
     fillRoom(R);
     const H=[['Washing and setting','Wash, roller set, dryer',3000,'Your hair don fresh. Fine girl!'],['Ghana weaving','Neat lines, small attachment',8000,'The Ghana weaving straight well. Correct!'],['Knotless braids','Medium size, waist length',25000,'Knotless don land. Your neck go rest small o!'],
       ['Wig install','Glue-less, we go style am',10000,'Wig don sit gidigba. Nobody go know!'],['Relaxer','Retouch, no burn',5000,'Relaxer don take. Your hair soft like silk!']];
-    for(const n of ['chair_1','chair_2','chair_3']) R.spot(at(n),'Make your hair',()=>luxServe(LUX.cur?LUX.cur.name:'SALON','"Sit down, my sister. Wetin we dey do?"',H),1.3);
+    for(const n of ['chair_1','chair_2','chair_3']) R.spot(at(n),'Make your hair',()=>hairMenu(LUX.cur?LUX.cur.name:'SALON',isF()?'"Sit down, my sister. Wetin we dey do?"':'"Oga, sit down. Cornrows or twist?"',isF()?'f':'m',isF()?['cut','natural','braids','euro','wig']:['braids','natural'],1.0,at(n)),1.3);
     R.spot(at('wash'),'Wash your hair',()=>luxServe(LUX.cur?LUX.cur.name:'SALON','Bucket water, small shampoo',[['Wash and condition','Cold water today, NEPA take light',2000,'Na cold water but e clean well. Your head don fresh!']]),1.3);
     R.spot(at('dryer'),'Sit under the dryer',()=>luxSay(mpick(['The dryer dey hum. Gen dey shout outside. You dey hear all the gist of the street.','Generator dey run. Small heat, plenty gist.'])),1.3);
     R.spot(at('nails'),'Do your nails',()=>luxServe(LUX.cur?LUX.cur.name:'SALON','"Fix nails or polish?"',[['Manicure','Polish any colour',4000,'Your nails dey shine. You fit go!'],['Pedicure','Bowl of warm water, scrub, polish',6000,'Your legs don clean. Shine shine!'],['Fix nails','Stick-on, any length',3500,'The nails don stick. No open soda with am o!']]),1.3);
@@ -8896,7 +8824,7 @@ function luxSetup(k,R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R
     fillRoom(R);
     const C=[['Low cut','Clean low cut with the machine',8000,'Low cut don clean. You dey like oga at the top!'],['Skin fade + beard','Fade, line-up, hot towel, beard oil',15000,'The fade dey blend like Photoshop. Beard sharp!'],
       ['Waves and dye','360 waves, jet black dye',20000,'The waves dey move like ocean. You fit make person sea-sick!'],['Dreadlocks retwist','Retwist and style',25000,'Your locs don fresh. Rasta for life!']];
-    for(let i=1;i<=8;i++) R.spot(at('cut_'+i),'Get a cut',()=>luxServe('KINGS COURT · BARBERS','"Boss, siddon. Wetin we dey do today?"',C),1.4);
+    for(let i=1;i<=8;i++) R.spot(at('cut_'+i),'Get a cut',()=>hairMenu('KINGS COURT · BARBERS','"Boss, siddon. Wetin we dey do today?"',isF()?'f':'m',isF()?['cut','natural']:['cut','natural','braids','euro'],2.0,at('cut_'+i)),1.4);
     R.spot(at('wash'),'Wash and hot towel',()=>luxServe('KINGS COURT','Shampoo, scalp massage, hot towel',[['Wash & hot towel','Ten minutes of peace',6000,'Hot towel for face. Stress don comot!']]),1.4);
     R.spot(at('shine'),'Shine your shoes',()=>luxServe('KINGS COURT · SHOE SHINE','Baba Shine',[['Shoe shine','Polish, buff, the works',2000,'Your shoe dey shine like mirror. You fit see your face!']]),1.4);
     R.spot(at('pool'),'Play pool (₦5,000 bet)',()=>{ if(CASH.n<5000){ luxSay('"No money, no game. Pool na for those wey get change."'); return; } addCash(-5000); cashHUD(); setTimeout(()=>{ if(Math.random()<.48){ addCash(10000); cashHUD(); luxSay(mpick(['You pot the black ball clean! +₦10,000. "This guy na pro!"','Bank shot! You win the money. The boys dey hail you.']),3.6); } else luxSay(mpick(['You miss the black ball. Money don go. "Better luck next time, boss!"','Scratch on the 8 ball! The man laugh, collect him money.']),3.6); },600); },1.6);
@@ -8966,9 +8894,6 @@ for(const h of HOTELS) if(h.i) DOORS.push({x:h.door.x,z:h.door.z,r:2.2,label:'En
 for(const c of VENUES.clubs){ DOORS.push({x:c.door.x,z:c.door.z,r:2.2,label:()=>CLUB.paid===c.i?'Enter '+c.name:`Enter ${c.name} (gate fee ${naira(CLUB.fee)})`,act:()=>enterClub(c)});
   PLACES.push({name:c.name,sub:'Night club · DJ, bar and dance floor',kind:'club',x:c.x,z:c.z}); }
 if(STATION.r&&STATION.r.M.marks) DOORS.push({x:STATION.front.x,z:STATION.front.z,r:2.2,label:'Enter the police station',act:enterPolice});
-if(EFCC_HQ.r){ DOORS.push({x:EFCC_HQ.front.x,z:EFCC_HQ.front.z,r:2.2,label:'Enter the EFCC office',act:enterEFCC});
-  PLACES.push({name:'EFCC Lagos office',sub:'Economic and Financial Crimes Commission · detention',kind:'police',x:EFCC_HQ.x,z:EFCC_HQ.z});
-  worldGroup(EFCC_HQ.x,EFCC_HQ.z,G=>{ folk(scene,'efcc_m',markAt(EFCC_HQ.r,'guard'),['idle_1','phone'],G.list); const d=EFCC_HQ.front; folk(scene,'efcc_f',{x:d.x+Math.cos(d.ry)*2.4,y:0,z:d.z-Math.sin(d.ry)*2.4,yaw:d.ry},['idle_2','idle_1'],G.list); }); }
 if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x,z:V.door.z,r:2.2,label:'Enter the car showroom',act:enterShowroom});
   PLACES.push({name:'Oluwaseun Motors',sub:'Car stand · tokunbo and brand new cars',kind:'cars',x:V.x,z:V.z}); }
 // ---- the car catalogue at the car stand: every new car class by class, delivered to the kerb outside
@@ -9140,6 +9065,18 @@ for(const E of EST.list){ E.marks=[]; for(const s of [-1,1]){ const o=EST.at(E,s
     folk(scene,'suit_lady',P(27,EST.VG+11.2,E.ry),['idle_suit','f_talk'],G.list); });
   estBoards(E); }
 estOwned();
+// ---- hairstyles (src/hair.js): the barbers' and the salons' styles go on your own head, and stay
+let HAIRX=null;
+// a chair's menu: the styles this place does for you, the picture and the price of each; pay, sit, and it is on you
+function hairMenu(title,note,sex,kinds,mult,mark,done){ if(!HAIRX) return; HAIRX.menu(title,note,sex,kinds,mult,{at:mark?{x:mark.x,z:mark.z}:null,yaw:mark&&mark.yaw!=null?mark.yaw:player.yaw,done}); }
+function myHairId(){ return isV2(WARD.cur)?WARD.cur:myPerson(); }
+// sit in the chair while the barber or stylist works: the Mixamo sit, the camera on your face, the clippers or scissors, the new hair at half time
+function hairSit(o){ if(!hero||mode!=='interior'||HL.act) { if(o.done) o.done(); return; }
+  const at=o.at||{x:player.x,z:player.z}, s={kind:'sit',x:at.x,z:at.z,y:.47,yaw:o.yaw!=null?o.yaw:player.yaw,at:{x:player.x,z:player.z},soft:false}; homeStart(s); const A=HL.act; if(!A||A.kind!=='sit'){ if(o.done) o.done(); return; }
+  A.hold=true; A.hd=o.dur||10; A.ht=0; A.mid=false; A.snd=0; A.prompt=()=>`${o.label||'Working… '}${Math.min(100,Math.round(A.ht/A.hd*100))}%`;
+  A.tick=dt=>{ A.ht+=dt; A.snd-=dt; if(A.snd<=0){ A.snd=o.sound==='clipper'?.55:.8; if(o.sound==='clipper') burst(.5,110,.045,1.2); else burst(.07,2600,.05,4); }
+    if(!A.mid&&A.ht>=A.hd*.5){ A.mid=true; if(o.mid) o.mid(); }
+    if(A.ht>=A.hd){ A.tick=null; A.hold=false; A.prompt=null; homeStop(); setTimeout(()=>{ if(o.done) o.done(); },700); } }; }
 // ---- Naija Home (src/home.js): the furniture you buy and arranging it in your house (estate mansions and your flat)
 HOMEX=createHome({ THREE, scene, camera, canvas:cvs, touch:()=>touchUI,
   glb:n=>{ const u=murl(n); DL.exp[u]=MANIFEST[`assets/models/${n}.glb`]||8000; return fetchBuf(u).then(b=>GLL.parseAsync(b,'')); },
@@ -9153,6 +9090,11 @@ HOMEX=createHome({ THREE, scene, camera, canvas:cvs, touch:()=>touchUI,
   doorOut:id=>{ if(id==='flat') return {x:APT.door.x+APT.nx*1.3,z:APT.door.z+APT.nz*1.3,ry:APT.ry}; const p=EST.byId[id]; if(!p) return null; const S=ESTM.J&&ESTM.J.styles[p.st], d=S&&S.door||[0,-13];
     const w=EST.pt(p,d[0],d[1]+1.9); return {x:w.x,z:w.z,ry:p.ry}; },
   estOut:p=>{ const S=ESTM.J&&ESTM.J.styles[p.st], d=S&&S.door||[0,-13], w=EST.pt(p,d[0],d[1]+2.3); return {x:w.x,z:w.z,ry:p.ry}; } });
+HAIRX=createHair({ THREE, glb:n=>{ const u=murl(n); DL.exp[u]=MANIFEST[`assets/models/${n}.glb`]||60000; return fetchBuf(u).then(b=>GLL.parseAsync(b,'')); },
+  json:p=>{ const k=AV[p]||MANIFEST[p]; return fetch(k?p+'?v='+k:p).then(r=>{ if(!r.ok) throw new Error(p+' '+r.status); return r.json(); }); },
+  assetUrl:f=>{ const p='assets/models/'+f, k=AV[p]||MANIFEST[p]; return k?p+'?v='+k:p; },
+  naira, toast, cash:()=>CASH.n, pay:n=>{ if(CASH.n<n) return false; addCash(-n); cashHUD(); return true; }, openMenu, closeMenu, life:()=>LIFE, save:now=>lifeSave(now), myId:myHairId, sit:hairSit,
+  onMine:(pid,id,quiet)=>{ if(hero&&hero.cObj&&isV2(WARD.cur)&&WARD.cur===pid) HAIRX.apply(hero.cObj,pid,id); if(!quiet) credAdd('buy',10,false); if(ON&&ON.lookNow) ON.lookNow(); } });
 function estTick(dt){ if((EST.tk=(EST.tk||0)-dt)>0) return; EST.tk=.4; const px=mode==='drive'&&drive.v?drive.v.x:player.x, pz=mode==='drive'&&drive.v?drive.v.z:player.z;
   if(ESTM.mat) ESTM.mat.glow.emissiveIntensity=ENV.lamp*1.3;
   for(const E of EST.list){ const d=Math.hypot(px-E.cx,pz-E.cz); if(!ESTM.st&&d<1300) estLoad(); if(ESTM.st===2&&!E.cols&&d<600) estSolid(E); if(E.board) E.board.visible=d<520&&mode!=='interior'; } }
@@ -10205,7 +10147,7 @@ function buildJail(){ const S=new THREE.Scene(); S.background=new THREE.Color(0x
     update(dt){ for(const q of JAIL.people) q.mixer.update(dt); jailTick(dt); } };
   return room; }
 function jailTick(dt){ { JAIL.left-=dt; if((JAIL.saveT-=dt)<=0){ JAIL.saveT=1; jailSave(); } const s2=Math.max(0,Math.ceil(JAIL.left)); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`;
-      if((JAIL.talkT-=dt)<=0&&(JAIL.people.length||ROOM===JAIL.cell||ROOM===JAIL.ecell)){ JAIL.talkT=mrr(16,26); toast(mpick(['"Wetin you do wey dem carry you?"','"Na wrong place dem carry me o!"','"Officer, I no do anything!"','"Who get credit? Make I call my mama."','"This cell hot like oven."','"Dem go release us soon. Calm down."']),3); }
+      if((JAIL.talkT-=dt)<=0&&(JAIL.people.length||ROOM===JAIL.cell)){ JAIL.talkT=mrr(16,26); toast(mpick(['"Wetin you do wey dem carry you?"','"Na wrong place dem carry me o!"','"Officer, I no do anything!"','"Who get credit? Make I call my mama."','"This cell hot like oven."','"Dem go release us soon. Calm down."']),3); }
       if(JAIL.left<=0&&!busy) leaveJail(); } }
 // the people inside: whoever was picked up with you, then a few others (men with men, women with women)
 function jailInmates(){ const R=JAIL.room, S=R.scene; for(const q of JAIL.people) S.remove(q.root); JAIL.people.length=0;
@@ -10222,21 +10164,20 @@ function jailInmates(){ const R=JAIL.room, S=R.scene; for(const q of JAIL.people
 // The time left is saved, so closing or reloading the game puts you back in the cell with the same time left.
 const JAIL_TIMES=[20,40,60,70,120,180];
 const jailWords=t=>{ const m=Math.floor(t/60), s=Math.round(t%60); return [m?`${m} minute${m>1?'s':''}`:'',s?`${s} seconds`:''].filter(Boolean).join(' '); };
-function jailSave(){ try{ if(JAIL.left>0){ localStorage.setItem('naija-jail',String(Math.ceil(JAIL.left))); if(JAIL.efcc) localStorage.setItem('naija-jail-efcc','1'); else localStorage.removeItem('naija-jail-efcc'); } else { localStorage.removeItem('naija-jail'); localStorage.removeItem('naija-jail-efcc'); } }catch(e){} }
+function jailSave(){ try{ if(JAIL.left>0) localStorage.setItem('naija-jail',String(Math.ceil(JAIL.left))); else localStorage.removeItem('naija-jail'); }catch(e){} }
 function jailSaved(){ let v=0; try{ v=+localStorage.getItem('naija-jail')||0; }catch(e){} return v>0&&v<=600?v:0; }
-function enterJail(resume=0,hold=0){ if(mode==='enter'&&drive.v) finishEnter(); if(mode==='drive'&&drive.v&&drive.ride&&RIDE.v===drive.v) rideExit(true); if(mode==='drive'&&drive.v){ drive.ride=false; exitCar(); }   // (caught getting into a car, in it or riding: out first)
-  const EF=JAIL.efcc&&EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room, PR=EF||INTS.int_police&&INTS.int_police.room; let R;   // hold: a short EFCC "processing" (no arrest counted)
-  if(PR&&PR.marks.cell_a&&PR.marks.cell_a_in){ if(EF){ setupEfcc(PR); if(!JAIL.ecell) JAIL.ecell=policeCell(PR,true); R=JAIL.ecell; } else { setupPolice(PR); if(!JAIL.cell) JAIL.cell=policeCell(PR); R=JAIL.cell; } const m=PR.marks.cell_a_in, q=PR.nearFree(m.x,m.z);   // the real station: your cell faces the other one
+function enterJail(resume=0){ const PR=INTS.int_police&&INTS.int_police.room; let R;
+  if(PR&&PR.marks.cell_a&&PR.marks.cell_a_in){ setupPolice(PR); if(!JAIL.cell) JAIL.cell=policeCell(PR); R=JAIL.cell; const m=PR.marks.cell_a_in, q=PR.nearFree(m.x,m.z);   // the real station: your cell faces the other one
     ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root); Object.assign(player,{x:q.x,z:q.z,y:0,yaw:m.yaw,speed:0}); Object.assign(camState,{yaw:m.yaw,pitch:.22,dist:2.6}); setScene(R.scene); }
   else { if(!JAIL.room) JAIL.room=buildJail(); jailInmates(); R=JAIL.room; ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
   Object.assign(player,{x:0,z:1.6,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.24,dist:2.8}); setScene(R.scene); }
-  let left=resume||hold, fresh=false; try{ fresh=localStorage.getItem('naija-jail-new')==='1'; localStorage.removeItem('naija-jail-new'); }catch(e){}
+  let left=resume, fresh=false; try{ fresh=localStorage.getItem('naija-jail-new')==='1'; localStorage.removeItem('naija-jail-new'); }catch(e){}
   if(resume&&fresh){ try{ localStorage.setItem('naija-arrests',String((+localStorage.getItem('naija-arrests')||0)+1)); }catch(e){} }   // caught, then reloaded before the cell: it still counts
   if(!left){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; localStorage.setItem('naija-arrests',String(n)); }catch(e){} left=Math.min(600,JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]+(JAIL.extra||0)); JAIL.extra=0; JAIL.n=n; }
-  JAIL.left=left; JAIL.saveT=1; JAIL.talkT=6; jailSave(); $('#jailBox').hidden=false; { const t=$('#jailBox b'); if(t) t.textContent=EF?'EFCC DETENTION':'MUSHIN POLICE CELL'; } { const s2=Math.ceil(left); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`; }
-  toast(hold?`EFCC carry you go their office for "processing". ${jailWords(left)} for their cell.`:resume?`You never finish your time o! Back to cell: ${jailWords(left)} left.`:JAIL.efcc?`EFCC don lock you for their cell. Wait ${jailWords(left)}.`:`Police don lock you for cell. Wait ${jailWords(left)} and they go release you.`+(JAIL.n>1?` (Arrest number ${JAIL.n}: the time dey increase.)`:''),5); }
-function leaveJail(){ JAIL.left=0; const ef=JAIL.efcc; JAIL.efcc=false; jailSave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:0,yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3});
-  setScene(scene); $('#jailBox').hidden=true; JAIL.taken.length=0; toast(ef?'EFCC release you. "Go, but we dey watch you o."':'Your time don finish. Police release you. Behave yourself o!',4.5); }); }
+  JAIL.left=left; JAIL.saveT=1; JAIL.talkT=6; jailSave(); $('#jailBox').hidden=false; { const s2=Math.ceil(left); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`; }
+  toast(resume?`You never finish your time o! Back to cell: ${jailWords(left)} left.`:`Police don lock you for cell. Wait ${jailWords(left)} and they go release you.`+(JAIL.n>1?` (Arrest number ${JAIL.n}: the time dey increase.)`:''),5); }
+function leaveJail(){ JAIL.left=0; jailSave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:0,yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3});
+  setScene(scene); $('#jailBox').hidden=true; JAIL.taken.length=0; toast('Your time don finish. Police release you. Behave yourself o!',4.5); }); }
 
 /* ================= your hustle: the job you picked =================
    After man or woman, who you are and your skin, you pick a hustle. Every job is open to everybody, but everybody starts
@@ -10779,8 +10720,8 @@ function yhSeized(cash){ const cars=OWNED.length, houses=LIFE.est.length+(LIFE.e
   bigMsg('SEIZED 🚨','jam','EFCC: cash, cars, houses'); toast(`EFCC seize everything: ${naira(cash)} cash${cars?`, ${cars} car${cars>1?'s':''}`:''}${houses?`, ${houses} house${houses>1?'s':''}`:''}. Sold off. You dey custody: ${YH_C.jailS/60} minutes, unless a friend pays ₦500,000 bail (Bank app · EFCC bail).`,9);
   if(LIFE.rel){ const L=myLove(); if(L) setTimeout(()=>breakfast(L,`${L.n}: "EFCC?! So na yahoo you dey do? I no fit. Bye." 💔`),3000); }
   if(PH) PH.event('sms',{id:'mama',n:'Mama',c:'#7a4b2a',e:'👩🏾',x:'I see am for news. EFCC. My son. I don tell you. God go help you.'});
-  if(mode==='drive'&&drive.v) exitCar(); const ld=efcLoad(); setTimeout(()=>{ JAIL.extra=YH_C.jailS; JAIL.efcc=true; ld.then(()=>fadeSwap(()=>enterJail())); },1200); }
-function yhCustody(){ const left=Math.max(5,Math.min(YH_C.jailS,Math.ceil((YHS.jail-Date.now())/1000))); JAIL.efcc=true; efcLoad().then(()=>fadeSwap(()=>enterJail(left))); }
+  if(mode==='drive'&&drive.v) exitCar(); setTimeout(()=>{ JAIL.extra=YH_C.jailS; JAIL.efcc=true; fadeSwap(()=>enterJail()); },1200); }
+function yhCustody(){ const left=Math.max(5,Math.min(YH_C.jailS,Math.ceil((YHS.jail-Date.now())/1000))); JAIL.efcc=true; fadeSwap(()=>enterJail(left)); }
 // bail a friend (the Bank app): ₦500,000 to the EFCC
 function yhBail(name){ if(!yhOn()){ toast('Bail is paid online (sign in).',3); return; } yhDo('bail',{n:name}); }
 // the Laptop app on the phone
@@ -11053,7 +10994,7 @@ function onlineMe(){ if(mode==='interior') return {h:1};
   return {x:player.x,y:player.y+(hero?CR.yo:0),z:player.z,r:player.yaw,a,s:sp,v:'',q:ONME.q}; }
 try{ ON=createOnline({ THREE, scene, camera,
   started:()=>started, inside:()=>mode==='interior', me:onlineMe, profile:()=>PROFILE,
-  look:()=>{ if(!PROFILE) return null; const id=isV2(WARD.cur)?WARD.cur:myPerson(); return {c:id,f:fitOf(id),g:PROFILE.g==='f'?'f':'m',k:toneOf()}; }, tone:(o,id,k)=>toneBody(o,id,k),
+  look:()=>{ if(!PROFILE) return null; const id=isV2(WARD.cur)?WARD.cur:myPerson(); return {c:id,f:fitOf(id),g:PROFILE.g==='f'?'f':'m',k:toneOf(),h:(LIFE.hair&&LIFE.hair[id])||''}; }, hair:(o,id,h)=>{ if(HAIRX) HAIRX.apply(o,id,h||null); }, tone:(o,id,k)=>toneBody(o,id,k),
   loadCast:id=>loadV2(isV2(id)&&v2Of(id)?id:'p_dayo'), moves:onlineMoves, clone:o=>SkeletonUtils.clone(o), setOutfit:(o,i)=>C2.setOutfit(o,i),
   makeCar:(type,color)=>{ if(!MODELS[type]) type=({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; try{ return makeCar(type,color,true); }catch(e){ return null; } },
   seats:t=>SEATS[t], ride:t=>HERO_RIDE[t], maxBodies:()=>Q===QUAL.low?6:Q===QUAL.medium?10:16,
@@ -11065,7 +11006,7 @@ try{ ON=createOnline({ THREE, scene, camera,
   wear:R=>dutyWear(R.wst||(R.wst={}),R.inner,R.b||'',R.c,R.f),
   toast });
 // the bukas players own (src/business.js): the model from Blender (tools/blender_buka.py) with the farm's photo detail
-BIZ=createBusiness({ ev:(k,n)=>JOBEV(k,n), bizRank:()=>2, THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGlb,
+BIZ=createBusiness({ hairCut:k=>{ const id=(isF()?{lowcut:'lowcut',botako:'bald'}:{lowcut:'lowcut',botako:'bald',fade:'fade',wash:'waves'})[k]; if(id&&HAIRX) fadeSwap(()=>HAIRX.put(id)); }, ev:(k,n)=>JOBEV(k,n), bizRank:()=>2, THREE, scene, Q, CullSet, addOB, groundY, naira, glb:farmGlb,
   mapPlace:p=>{ if(!PLACES.some(q=>q.id&&q.id===p.id)) PLACES.push(p); },
   player:()=>({x:player.x,z:player.z}), mode:()=>mode, toast, openMenu, menuOpen:()=>MENU.open, cash:()=>CASH.n,
   heal:n=>{ FIGHT.hp=Math.min(100,FIGHT.hp+n); }, eat:k=>{ careEat(k); belly(.12); }, glow:()=>ENV.sign||0,
@@ -11254,7 +11195,7 @@ if(PERF){ renderer.info.autoReset=false; const el=document.createElement('div');
       return {st:ESTM.st,styles:Object.keys(ESTM.styles),cols:EST.list.map(E=>!!E.cols),palms:EST.list.map(E=>(E.palms||[]).length),boxes:Object.fromEntries(Object.entries(ESTM.styles).map(([k,S])=>[k,[S.boxes.length,S.gboxes.length]])),
         own:{est:LIFE.est,all:LIFE.estAll,home:LIFE.estHome},cash:CASH.n,pos:[Math.round(player.x),Math.round(player.z)],tent:LIFEC&&[Math.round(LIFEC.tent.x),Math.round(LIFEC.tent.z)],mem:performance.memory&&Math.round(performance.memory.usedJSHeapSize/1e6),menu:MENU.open?MENU.title:null,boards:EST.list.map(E=>E.board&&E.board.visible),gateOff:EST.plots.filter(p=>p.gateIt&&p.gateIt.off).map(p=>p.id)}; },
     estPt:(id,u,v)=>EST.at(EST.list.find(q=>q.id===id),u,v), plotPt:(id,lx,lz)=>{ const p=EST.byId[id]; return {...EST.pt(p,lx,lz),ry:p.ry}; },
-    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), enterRoom:()=>enterFaceRoom(), doorsAll:()=>DOORS.map(d=>({l:typeof d.label==='function'?d.label():d.label,x:+d.x.toFixed(2),z:+d.z.toFixed(2)})), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
+    sets:()=>SETS.map(S=>({n:S.name,st:S.state,cols:S.cols,folk:S.folk?S.folk.length:0,seats:S.seats?S.seats.length:0,near:S.near_&&S.near_.visible,started,mode})), cbn:()=>CBN,cbnFake:on=>{ CBNO.fake=on; },cbnScan,enterCBN,cbnLift,cbnOn,cbw:()=>CBW,cbWorkStart,openPhoneTo:k=>{ loadPhone(); PHONE.open=true; PH.openTo(k); },cbnDoor:()=>DOORS.filter(d=>/Central/.test(d.label)),home:w=>HOMEX?HOMEX.test(w):-1, hairX:()=>HAIRX, faceCam:(on=true,d=1.1,side=.35)=>{ if(!on){ DEVCAM=null; return 0; } let head=null; hero.cObj.traverse(o=>{ if(!head&&o.isBone&&/Head$/.test(o.name)) head=o; }); hero.cObj.updateMatrixWorld(true); const hp=head.getWorldPosition(new THREE.Vector3()); hp.y+=.04; const f=new THREE.Vector3(Math.sin(player.yaw),0,Math.cos(player.yaw)), r=new THREE.Vector3(f.z,0,-f.x); DEVCAM={p:hp.clone().addScaledVector(f,d).addScaledVector(r,side).add(new THREE.Vector3(0,.15,0)),t:hp.clone()}; return 1; }, hairPut:id=>HAIRX.put(id), hairMenu:(k)=>hairMenu('TEST','',isF()?'f':'m',k||['cut','natural','braids','euro','wig'],1,null), heroInfo:()=>{ const out=[]; hero.cObj.traverse(o=>{ if(/hair|scalp/.test(o.name)) out.push([o.name,o.visible,o.isSkinnedMesh?o.geometry.attributes.position.count:0,!!o.userData.hairx]); }); return {ward:WARD.cur,out,h:LIFE.hair}; }, pressDoor:()=>{ const d=doorNear(); if(!d) return null; const l=typeof d.label==='function'?d.label():d.label; d.act(); return l; }, tp:(x,z,yaw)=>{ player.x=x; player.z=z; if(yaw!=null){ player.yaw=yaw; camState.yaw=yaw; } camState.last=-10; return [x,z]; }, get mode(){ return mode; }, estP:id=>EST.byId[id], enterEst:(id,fl)=>HOMEX.enterEst(EST.byId[id],fl||0), homeOrder:(id,h,via)=>HOMEX.order(id,h,via||'app'), enterNH:()=>enterNaijaHome(), enterApt:()=>enterApt(), enterRoom:()=>enterFaceRoom(), doorsAll:()=>DOORS.map(d=>({l:typeof d.label==='function'?d.label():d.label,x:+d.x.toFixed(2),z:+d.z.toFixed(2)})), life:()=>LIFE, giveCash:n=>{ addCash(n); cashHUD(); return CASH.n; }, buyEst:id=>{ if(!LIFE.est.includes(id)) LIFE.est.push(id); estOwned(); if(HOMEX) HOMEX.lifeChanged(); return LIFE.est; }, roomSpots:()=>mode==='interior'&&ROOM.spots?ROOM.spots.map(s=>[typeof s.label==='function'?s.label():s.label,+s.x.toFixed(2),+s.z.toFixed(2)]):[], press:()=>{ const s=roomSpot(); if(s){ s.act(); return typeof s.label==='function'?s.label():s.label; } return null; },doors:()=>DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:'')).map(d=>[Math.round(d.x),Math.round(d.z)]), boardPl:i=>{ const d=DOORS.filter(d=>/Board/.test(typeof d.label==='string'?d.label:''))[i||0]; if(!d) return null; d.act(); return true; }, roomInfo:()=>({mode,room:ROOM&&ROOM.name,folk:ROOM&&ROOM.folk?ROOM.folk.length:0,marks:ROOM&&ROOM.marks?Object.keys(ROOM.marks).length:0}),
     cam(px,py,pz,tx,ty,tz){ if(px===undefined){ DEVCAM=null; return null; } DEVCAM={p:new THREE.Vector3(px,py,pz),t:new THREE.Vector3(tx,ty,tz)}; player.x=tx; player.z=tz; return {tmb:TMB?{z:TMB.z,xs:TMB.xs,xb:TMB.xBlock,shore:SHORE_X}:null,air:AIRPORT?{TX:AIRPORT.TX,TZ:AIRPORT.TZ,RZ:AIRPORT.RZ}:null}; },
     look(q,back=60,h=30,yaw=null){ if(!q){ DEVCAM=null; return; } const pl=PLACES.find(p=>p.name&&p.name.toLowerCase().includes(q.toLowerCase())); if(!pl) return null; const a=yaw??Math.atan2(player.x-pl.x,player.z-pl.z);
       DEVCAM={p:new THREE.Vector3(pl.x+Math.sin(a)*back,h,pl.z+Math.cos(a)*back),t:new THREE.Vector3(pl.x,h*.15,pl.z)}; player.x=pl.x+Math.sin(a)*back*.6; player.z=pl.z+Math.cos(a)*back*.6; return pl.name; },
@@ -11382,5 +11323,5 @@ eb.addEventListener('click',()=>{ portraitDone(); stageDone(); makeMe(); if(hero
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); if(LIFE.job) toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);
   if(!LIFE.job){ const first=eb.fresh===true; if(first) LIFE_SYNC.intro=1; setTimeout(()=>{ if(!jailSaved()) hustleOpen(first); },first?900:2500); } hustleHUD(true);   // the new vehicles come in the background
-  { const left=jailSaved(); if(left){ busy=true; let ef=false; try{ ef=localStorage.getItem('naija-jail-efcc')==='1'; }catch(e){} JAIL.efcc=ef; const go=()=>setTimeout(()=>{ fadeSwap(()=>{ enterJail(left); }); },300); if(ef) efcLoad().then(go); else go(); } } });   // you left the game in the cell: straight back in
+  { const left=jailSaved(); if(left){ busy=true; setTimeout(()=>{ fadeSwap(()=>{ enterJail(left); }); },300); } } });   // you left the game in the cell: straight back in
 document.addEventListener('pointerlockchange',()=>{ if(!document.pointerLockElement&&started&&!touchUI&&!mapView.isOpen) $('#lookhint').hidden=false; else $('#lookhint').hidden=true; });

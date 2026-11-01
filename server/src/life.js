@@ -33,6 +33,7 @@ export function lifeOk(d, now = Date.now()) {
     estAll,                                               // whole estates bought
     estHome,                                              // the estate house you live in ('' = none)
     ...homeOk(d, now),                                    // your furniture: placed per house, kept in your store, boxes on the way
+    ...hairOk(d),                                         // your hair from the salon (per person you play) and the wigs you own
     t: Math.round(num(d.t, 0, now + DAY_MS)),
     // street cred (the rank): points, the day being counted (yyyymmdd), active seconds counted that day, what each deed paid that day, the streak
     cr: Math.floor(num(d.cr, 0, 1e7)), cd: num(d.cd, 0, 99991231) | 0, ca: Math.round(num(d.ca, 0, 86400)),
@@ -50,6 +51,12 @@ export function lifeOk(d, now = Date.now()) {
 }
 function yhOk(y) { if (!y || typeof y !== 'object') return null; const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo); return { st: ['learn', 'free', 'dropped', 'caught'].includes(y.st) ? y.st : '', days: (Array.isArray(y.days) ? y.days : []).map(v => v | 0).filter(v => v > 0).slice(0, 8), t0: num(y.t0, 0, 2e13), grad: num(y.grad, 0, 2e13), last: num(y.last, 0, 2e13), n: num(y.n, 0, 9999) | 0, dirty: num(y.dirty, 0, 1e12), jail: num(y.jail, 0, 2e13), caught: num(y.caught, 0, 2e13), heat: num(y.heat, 0, 100), legit: num(y.legit, 0, 1e12), desk: y.desk ? 1 : 0, hd: num(y.hd, 0, 1e8) | 0 }; }
 const FUR = /^[a-z0-9_]{2,24}$/, HOUSEID = k => k === 'flat' || HOUSE.test(k);
+function hairOk(d) {
+  const ID = /^[a-z0-9_]{2,24}$/, PID = /^p_[a-z]{2,12}$/, hair = {};
+  if (d.hair && typeof d.hair === 'object' && !Array.isArray(d.hair)) for (const [k, v] of Object.entries(d.hair).slice(0, 40)) if (PID.test(k) && typeof v === 'string' && ID.test(v)) hair[k] = v;
+  const wigs = Array.isArray(d.wigs) ? [...new Set(d.wigs.filter(x => typeof x === 'string' && ID.test(x)))].slice(0, 40) : [];
+  return { hair, wigs };
+}
 function homeOk(d, now) {
   const fin = v => typeof v === 'number' && Number.isFinite(v), c = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const deco = {}, store = {};

@@ -138,7 +138,7 @@ export function createBusiness(api) {
     else if (m.t === 'mkback') { const got = []; for (const [k, n] of m.items || []) { api.farmPut(k, n); got.push(`${n} ${k}`); } if (got.length) api.toast(`Back in your farm store from the market: ${got.join(', ')}.`, 3.5); }
     else if (m.t === 'mkerr') { if (m.n > 0 && m.crop) api.farmPut(m.crop, m.n); api.toast(m.m, 3); }
     else if (m.t === 'bzsent') api.toast(`Sent ${naira(m.n)} to ${m.to}${m.fee ? ` (fee ${naira(m.fee)})` : ''}.`, 3.5);
-    else if (m.t === 'bzcut') { const D = RK.barber && RK.barber.items[m.k]; api.heal(10); api.toast(`Fresh ${D ? D.n.toLowerCase() : 'cut'}! You look clean. +10 health`, 3); }
+    else if (m.t === 'bzcut') { const D = RK.barber && RK.barber.items[m.k]; api.heal(10); api.toast(`Fresh ${D ? D.n.toLowerCase() : 'cut'}! You look clean. +10 health`, 3); if (api.hairCut) api.hairCut(m.k); }
     else if ((m.t === 'err' || m.t === 'ok') && m.w === 'bz') { api.toast(m.m, 3); if (api.menuOpen() && CUR) setTimeout(refresh, 50); }
   }
   function signedOut() { for (const b of Object.values(B)) { b.mine = null; } }
