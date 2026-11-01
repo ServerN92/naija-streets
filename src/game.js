@@ -4083,7 +4083,7 @@ function stareAt(p,dt,d){ p.stare=(p.stare||0)+dt*(d<2.5?1.3:1);
 function updatePeds(dt){ NPCF++; CROWD.list.length=0; if(NPCF%30===0){ NWALK=0; for(const p of peds) if(p.state==='walk'&&!p.spot) NWALK++; }
   for(const p of peds){ if(p.state==='off') continue;
     const dxp=p.x-player.x, dzp=p.z-player.z, d2=dxp*dxp+dzp*dzp;
-    if(d2>230*230&&!p.spot&&p.state!=='xbr'&&p.state!=='tsell'&&p.state!=='shop'&&!p.carried){ if(p.cop||p.toll||p.crook||p.brawl){ offPed(p); continue; } if(p.body) freeBody(p);
+    if(d2>230*230&&!p.spot&&p.state!=='xbr'&&p.state!=='tsell'&&p.state!=='shop'&&!p.carried&&!p.bc){   // (the bandit convoy keeps its men, however far it goes) if(p.cop||p.toll||p.crook||p.brawl){ offPed(p); continue; } if(p.body) freeBody(p);
       if(NWALK>Q.peds){ offPed(p); NWALK--; continue; }   // people who ran off after a fight go back to the pool
       p.far=false; recast(p); placePed(p,70,170); continue; }
     if(p.cool>0) p.cool-=dt;
@@ -4455,7 +4455,7 @@ const _cd=new THREE.Vector3();
 function assignBodies(){ if(!PEOPLE.n) return; const R=Q.npcR, cx=camera.position.x, cz=camera.position.z; camera.getWorldDirection(_cd); const list=[];
   for(const p of peds){ if(p.state==='off'){ if(p.body) freeBody(p); continue; } const dx=p.x-cx, dz=p.z-cz; p.dc=Math.hypot(dx,dz);
     if(!PEOPLE.casts[p.cast]||p.dc>(p.body?R+5:R)+(p.state==='fight'||p.state==='takedown'||p.cop?12:0)){ if(p.body) freeBody(p); continue; }
-    const busyNow=p.state==='fight'||p.state==='hurt'||p.state==='down'||p.state==='dead'||p.state==='getup'||p.state==='takedown'||p.carried||p.cop&&p.state!=='walk';
+    const busyNow=p.state==='fight'||p.state==='hurt'||p.state==='down'||p.state==='dead'||p.state==='getup'||p.state==='takedown'||p.carried||p.cop&&p.state!=='walk'||!!p.bc;
     list.push([p.dc*(dx*_cd.x+dz*_cd.z<-2?2.5:1)-(p.body?4:0)-(busyNow?60:0),p]); }   // people in view first, fighters before all
   list.sort((a,b)=>a[0]-b[0]); let made=0;
   for(let i=0;i<list.length;i++){ const p=list[i][1]; if(i>=Q.npc){ if(p.body) freeBody(p); continue; } if(p.body) continue;
@@ -4631,7 +4631,7 @@ function boardPed(p,dt){ const v=p.bv; p.timer-=dt; let done=p.timer<=0||!v||!(v
     const tx=v.x-fz*sg*o-fx*back, tz=v.z+fx*sg*o-fz*back, dx=tx-p.x, dz=tz-p.z, d=Math.hypot(dx,dz);
     if(d<.45) done=true; else { p.speed+=(1.5-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=dx/d*st; p.z+=dz/d*st; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); } }
   if(done){ const s=p.spot; if(s){ s.boarding=Math.max(0,s.boarding-1); s.peds=s.peds.filter(q=>q!==p); } if(p.fare){ p.fare=false; if(!(v===drive.v&&Math.hypot(p.x-v.x,p.z-v.z)<v.c.def.L/2+2.2)){ p.state='walk'; p.bv=null; p.spot=null; replanPed(p); return; } fareIn(p.cast,v); } offPed(p); } }   // you drove off: they walk on
-function offPed(p){ if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
+function offPed(p){ p.bc=false; if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
   Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,agb:null,rob:null,robber:false,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0,crook:null,stolen:0,post:null,aimOn:false,hat:null,side:null,gang:null,meT:0,_dn:false,uvest:null,brawl:null}); }   // back to the pool as nobody in particular
 function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ p.cast=c; p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
 function spotOn(s){ s.on=true; s.peds=[]; s.boarding=0; s.hailV=null; const night=ENV.hour>=21||ENV.hour<5.5;
@@ -7644,6 +7644,7 @@ function updateBand(dt){ const R=BAND.raid;
 
 // ---- every gang member, every frame
 function gangTick(q,dt){ const K=q.crook; K.t+=dt; q.aimOn=false; q.recoil=(q.recoil||0)*Math.exp(-12*dt);
+  if(K.drop>0){ K.drop-=dt; q.y=K.drop>0?q.y*Math.max(0,1-dt/.35*1.4):0; } else if(K.st!=='ride'&&K.st!=='bcheld'&&q.y>0&&q.bc) q.y=0;
   const T=pTarget(), dx=T.x-q.x, dz=T.z-q.z, d=Math.hypot(dx,dz)||.01, face=Math.atan2(dx,dz), turn=(a,k=6)=>{ q.yaw=lerpA(q.yaw,a,Math.min(1,dt*k)); };
   const hunt=()=>{ if(!q.wid){ q.state='fight'; q.atk=null; q.atkT=mrr(.3,.9); return; } K.st='hunt'; K.t=0; };
   switch(K.st){
@@ -7680,7 +7681,15 @@ function gangTick(q,dt){ const K=q.crook; K.t+=dt; q.aimOn=false; q.recoil=(q.re
       if((K.airT-=dt)<=0){ K.airT=mrr(2.5,5.5); gangAir(q); } q.aimOn=false; turn(d<25?face:q.yaw,4);
       if(mode!=='interior'&&((d<22&&(ARMS.cur!=='fists'||T0-FIGHT.lastAtk<2))||d<9||T0-(q.meT||-99)<3||(B&&B.men.some(m=>m!==q&&(T0-(m.meT||-99)<3||!upright(m)))))){ K.st='hunt'; K.t=0; K.back='raid'; } break; }
     case 'mount': { const bv=K.bike&&K.bike.v; if(!bv){ K.st='leave'; break; } const ex=bv.x-q.x, ez=bv.z-q.z, e=Math.hypot(ex,ez); if(e>1.4) copMove(q,ex,ez,4,dt); else { K.st='on'; q.speed=0; } turn(Math.atan2(ex,ez),8); break; }
-    case 'on': q.speed=0; break; } }
+    case 'on': q.speed=0; break;
+    // the bandit convoy (see BC): standing in the back of a truck, shooting at whoever chases them
+    case 'ride': { const Tk=K.T, v=Tk&&Tk.v; if(!v||!vehicles.includes(v)){ K.st='hunt'; K.t=0; break; } const P=bcAt(v,...BC_SLOT[K.slot]); q.x=P.x; q.z=P.z; q.y=P.y; q.speed=0; q.act=null;
+      const chase=mode==='drive'&&BC.st==='flee'&&d<32; turn(chase||d<14?face:v.h+(K.slot%2?-1:1)*Math.PI/2,5); if(chase) gangFire(q,T,dt); break; }
+    case 'bcheld': { const Tk=K.T, v=Tk&&Tk.v; if(!v||!vehicles.includes(v)){ K.st='free'; K.t=0; break; } const P=bcAt(v,...BC_VIC); q.x=P.x; q.z=P.z; q.y=P.y; q.speed=0; q.yaw=v.h+Math.PI;
+      if(v4For(q.cast)) q.act='g_tied'; else q.act='idle_2'; break; }
+    case 'bcgrab': { const V=BC.vic; if(!V){ K.st='bcback'; break; } const vx=V.x-q.x, vz=V.z-q.z; copMove(q,vx,vz,Math.hypot(vx,vz)>1?4.2:0,dt); turn(Math.atan2(vx,vz),9); if(T0-(q.meT||-99)<3){ K.st='hunt'; K.t=0; } break; }
+    case 'bcback': { const v=K.T&&K.T.v; if(!v){ K.st='hunt'; break; } const R=bcAt(v,-3.3,(K.slot%2?1:-1)*.5), ex=R.x-q.x, ez=R.z-q.z, e=Math.hypot(ex,ez); if(e>.8) copMove(q,ex,ez,4.2,dt); else { K.st='ride'; q.speed=0; } turn(Math.atan2(ex,ez),8); break; }
+    case 'bcfree': { const G=campAt(0,-60), gx=G.x-q.x, gz=G.z-q.z; copMove(q,gx,gz,4.4,dt); turn(Math.atan2(gx,gz),6); if(K.t>18||Math.hypot(gx,gz)<3) gangOut(q); break; } } }
 function updateGangs(dt){ GANG.list=GANG.list.filter(q=>q.crook&&q.state!=='off'&&q.state!=='dead');
   for(const q of GANG.list){ if(q.state==='crook') gangTick(q,dt); else if(q.state==='walk'||q.state==='idle'||q.state==='flee'||q.state==='react'){ q.state='crook'; q.crook.st=q.wid&&q.gang!=='vic'?'hunt':'leave'; q.crook.t=0; } }
   if(GANG.list.length>40) for(const q of GANG.list.slice(0,GANG.list.length-40)) gangOut(q);
@@ -7713,7 +7722,7 @@ const UB3={lawSaid:-99};
 const GRP=(name,big=false)=>({name,men:[],me:false,paid:false,big});
 function grpAdd(g,q){ if(g&&q){ g.men.push(q); q.grp=g; } return q; }
 function gangFall(q){ if(q._paidM) return; q._paidM=true;
-  const amt=q.gang==='band'?Math.round(mrr(150000,250000)/5000)*5000:q.wid?Math.round(mrr(100000,200000)/5000)*5000:Math.round(mrr(25000,60000)/1000)*1000;
+  const amt=q.bc?Math.round(mrr(20000,40000)/1000)*1000:q.gang==='band'?Math.round(mrr(150000,250000)/5000)*5000:q.wid?Math.round(mrr(100000,200000)/5000)*5000:Math.round(mrr(25000,60000)/1000)*1000;
   if(q.gang!=='vic') dropCash(q.x+mrr(-.4,.4),q.z+mrr(-.4,.4),q.crook&&q.crook.capo?300000:amt);
   const g=q.grp; if(!g||g.paid) return; if(T0-(q.meT||-99)<2.5) g.me=true;
   if(g.me&&g.men.every(m=>m.state==='dead'||m.state==='down'||m.state==='off'||m._dn)){ g.paid=true; const b=Math.round(mrr(g.big?350000:200000,g.big?500000:350000)/10000)*10000; addCash(b);
@@ -7853,11 +7862,100 @@ function updateBT(dt){ btMake(); const v=BT.v; if(!v) return; BT.t+=dt;
   if(BT.st==='ride'){ NOMOVE=true; if(mode!=='drive'||drive.v!==v){ BT.st='back'; return; } player.x=v.x; player.z=v.z;
     if(BT.t>14||(BT.G&&(BT.G.near||Math.hypot(v.x-BT.G.x,v.z-BT.G.z)<16))) btArrive(); } }
 
+/* ================= the bandit convoy: two trucks come into town for someone =================
+   Now and then two olive bandit pickups tear into the city, four masked men with rifles standing in the back of each
+   (eight in all). They stop by someone on the street, jump down, drag him or her into the first truck and drive for their
+   camp in the forest. Stop them: ram or shoot a truck, hit one of the men, or ride right behind a truck, and they stop
+   and come down to fight. Kill them all and the person goes home (the family pays). Let them go and the person is tied
+   to the post in the bandits' camp, waiting for you. All made up. */
+const BC={st:'off',t:mrr(240,420),tr:[],vic:null,vq:null,cast:null,grp:null,hostage:null,hq:null,fT:0};
+const BC_SLOT=[[-1.0,-.45],[-1.0,.45],[-1.95,-.45],[-1.95,.45]], BC_BED=1.02, BC_VIC=[-1.5,0];   // the men in the back (along, across), the bed floor
+function bcAt(v,lx,lz){ const hx=Math.cos(v.h), hz=-Math.sin(v.h); return {x:v.x+hx*lx+hz*lz,z:v.z+hz*lx-hx*lz,y:(v.y||0)+BC_BED}; }
+function bcSign(v,on){ if(v.bcSp){ v.bcSp.parent&&v.bcSp.parent.remove(v.bcSp); v.bcSp.material.map.dispose(); v.bcSp.material.dispose(); v.bcSp=null; }
+  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('⚠ BANDITS','#b3221c','#ffffff'),fog:false,depthTest:false,toneMapped:false})); sp.scale.set(2.2,.42,1); sp.position.set(0,2.9,0); sp.layers.set(1); v.c.g.add(sp); v.bcSp=sp; } }
+function bcDrop(v){ bcSign(v,false); const i=vehicles.indexOf(v); if(i>=0) vehicles.splice(i,1); if(v.c&&v.c.g) scene.remove(v.c.g); if(drive.v===v&&mode==='drive') exitCar(); }
+function bcCan(){ return started&&CAMP&&MODELS.btruck&&!busy&&(mode==='walk'||mode==='drive'&&!drive.ride)&&!KID.held&&!KID.ev&&BT.st==='home'&&!BAND.raid&&!FIGHT.dead&&!inForest(player.x,player.z)&&!jailSaved()&&T0>90; }
+function bcStart(){ if(!bcCan()) return false;
+  // someone walking by a road 40-110 m away, not in view yet is fine (they come to them)
+  let vic=null; for(const p of peds){ if(p.state!=='walk'||p.spot||p.cop||p.dealer||p.crook||p.carried||p.bc||p.cast==='schoolboy'||CAST[p.cast]?.cop||!PEOPLE.casts[p.cast]) continue;
+    const d=Math.hypot(p.x-player.x,p.z-player.z); if(d<35||d>110||inForest(p.x,p.z)) continue; const [e,de]=nearestRoad(p.x,p.z,q=>q.drive&&!FLYE.has(q.i)); if(!e||de>8) continue; vic=p; break; }
+  if(!vic) return false; const g=goalAt(vic.x,vic.z), A=newVehicle('btruck','#56603f',true); if(A.type!=='btruck'||!vanPlace(A,g)){ bcDrop(A); return false; }
+  const B=newVehicle('btruck','#4d5638',true); let ok=false;
+  if(B.type==='btruck'&&A.ai&&A.ai.s>10){ const seg=A.ai.seg, sp=A.ai.s-9.5; segPos(seg,sp,_sp); B.ai={...A.ai,s:sp,goal:null,wait:0,ghost:0,stuck:0}; B.parked=false; B.x=_sp.x; B.z=_sp.z; B.h=A.h; B.speed=A.speed; B.y=groundY(B.x,B.z); B.fh=0; ok=true; }
+  if(!ok&&B.type==='btruck') ok=!!vanPlace(B,g); if(!ok){ bcDrop(A); bcDrop(B); return false; }
+  const grp=BC.grp=GRP('the bandit convoy'); BC.tr=[];
+  for(const v of [A,B]){ v.band=true; v.taxi=true; v.bc=true; v.ai.goal=Object.assign({},g,{near:false,D:null}); v.ai.maxV=15.5; v.ocT=T0; bcSign(v,true);
+    const T={v,men:[],angry:false,stop:false,tail:0,dmg0:v.dmg||0}; BC.tr.push(T);
+    for(let k=0;k<4;k++){ const P=bcAt(v,...BC_SLOT[k]), q=gangWake('band',P.x,P.z,{hat:'mask',gun:true,st:'ride',hp:300,yaw:v.h,K:{T,slot:k}}); if(!q) continue; q.bc=true; q.y=P.y; grpAdd(grp,q); T.men.push(q); } }
+  BC.vic=vic; BC.vq=null; BC.cast=vic.cast; BC.g=g; BC.st='come'; BC.t=0; vic.bc=true;
+  const f=CAST[vic.cast]?.f, w=(locationName()||'').split(' · ')[0]; toast(`Two bandit trucks are tearing into ${w||'the area'}, masked men with rifles in the back! They are after somebody...`,3.6);
+  if(PH) PH.event('sms',{id:'watch',n:'Neighbourhood Watch',c:'#7a1a12',e:'⚠️',x:`BANDITS in town now! Two olive pickups, about 8 men with guns. Stay indoors.`});
+  return true; }
+// the men of a truck jump down and fight (the truck stops)
+function bcDown(T,why){ if(T.stop) return; T.stop=true; T.angry=true; const v=T.v; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } v.speed*=.3;
+  for(const q of T.men){ if(!q.crook||!upright(q)||q.crook.st!=='ride') continue; const side=q.crook.slot%2?1:-1, hx=Math.cos(v.h), hz=-Math.sin(v.h), P=bcAt(v,BC_SLOT[q.crook.slot][0]-.3,side*(v.c.def.W/2+.9));
+    q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='hunt'; q.crook.t=0; q.yaw=Math.atan2(player.x-q.x,player.z-q.z); }
+  if(BC.vq&&BC.vq.crook&&BC.vq.crook.st==='bcheld'&&BC.tr[0]===T){ const q=BC.vq, P=bcAt(v,-3.6,0); q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='free'; q.crook.t=0; }
+  if(why&&BC.fT<=0){ BC.fT=6; toast(why,3); } }
+function bcEnd(){ for(const T of BC.tr){ for(const q of T.men) if(q.crook&&upright(q)){ if(q.crook.st==='ride'){ gangOut(q); continue; } q.crook.st='leave'; q.crook.t=0; } bcSign(T.v,false);
+    const v=T.v; v.bc=false; if(vehicles.includes(v)&&!v.fire&&!v.wreck&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>90) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=goalAt(CAMP.road.x,CAMP.road.z); v.ai.wait=0; } else { backOnRoad(v); if(v.ai) v.ai.goal=goalAt(CAMP.road.x,CAMP.road.z); } v.bcGone=T0; } } }
+  if(BC.vic) BC.vic.bc=false; BC.tr=[]; BC.vic=null; BC.vq=null; BC.st='off'; BC.t=ENV.night?mrr(420,700):mrr(600,950); }
+function bcFamily(){ const r=Math.round(mrr(60000,120000)/1000)*1000; addCash(r); credAdd('hero',40,false); const f=CAST[BC.cast]?.f;
+  toast(`You stopped the bandits! ${f?'She':'He'} is safe. The family sends you ${naira(r)}: "God go bless you, our hero!"`,4.2);
+  if(PH) PH.event('sms',{id:'watch',n:'Neighbourhood Watch',c:'#7a1a12',e:'⚠️',x:`You stopped the bandit convoy! Eight armed men, two trucks. ${f?'The woman':'The man'} is home safe. Thank you!`}); }
+function updateBC(dt){ if(BC.fT>0) BC.fT-=dt;
+  // the old trucks drive off and go
+  for(const v of vehicles) if(v.bcGone&&!v.bc&&(T0-v.bcGone>80||Math.hypot(v.x-player.x,v.z-player.z)>160)&&drive.v!==v){ v.bcGone=0; bcDrop(v); break; }
+  if(BC.st==='off'){ if(!bcCan()){ BC.t=Math.max(BC.t,60); return; } if((BC.t-=dt*(ENV.night?1.6:1))<=0){ BC.t=bcStart()?0:45; } return; }
+  BC.t+=dt; const [A,B]=BC.tr; if(!A||!B){ bcEnd(); return; }
+  // a truck that is hit, burning, its men hit, or a car riding on its tail: they stop and come down
+  for(const T of BC.tr){ const v=T.v; if(!vehicles.includes(v)){ T.stop=true; T.gone=true; continue; } if(T.stop) continue; const near=Math.hypot(v.x-player.x,v.z-player.z)<90;   // (a scrape with traffic far from you is not you)
+    if(near&&(T0-(v.bumpT||-99)<.6||v.byMe&&(v.fire||v.wreck||(v.dmg||0)>T.dmg0+4))) bcDown(T,'"Dem dey follow us! Oya come down, waste am!" The bandits jump down from the truck!');
+    else if(near&&T.men.some(q=>T0-(q.meT||-99)<2.5||!upright(q))) bcDown(T,'"Who dey shoot?!" The bandits jump down from the back of the truck to fight!');
+    else if(mode==='drive'&&drive.v&&!drive.ride){ const hx=Math.cos(v.h), hz=-Math.sin(v.h), rx=drive.v.x-v.x, rz=drive.v.z-v.z, along=rx*hx+rz*hz, side=Math.abs(rx*hz-rz*hx);
+      if(along<-2&&along>-14&&side<3.5&&Math.abs(v.speed)>2) T.tail+=dt; else T.tail=Math.max(0,T.tail-dt*.5);
+      if(T.tail>3) bcDown(T,'The truck brakes hard in front of you! The bandits jump down from the back with their guns!'); } }
+  if(BC.tr.some(T=>T.angry)) for(const T of BC.tr) if(!T.stop&&Math.hypot(T.v.x-player.x,T.v.z-player.z)<70) bcDown(T,null);
+  const allDown=BC.tr.every(T=>T.men.every(q=>!upright(q)));
+  if(allDown&&BC.tr.some(T=>T.stop&&!T.gone)){ const V=BC.vq||BC.vic; if(V&&isAlive(V)) bcFamily(); else toast('All the bandits are down.',2.4); bcEnd(); return; }
+  if(BC.tr.some(T=>T.stop&&!T.gone)){ // the fight: it ends when they are down, you go, or it lasts too long
+    if(FIGHT.dead||BC.t>240||BC.tr.every(T=>Math.hypot(T.v.x-player.x,T.v.z-player.z)>180)){ if(BC.vq&&BC.vq.crook&&BC.vq.crook.st==='bcheld'){ BC.hostage={cast:BC.cast,t:T0}; gangOut(BC.vq); toast('The bandits got away with their hostage. They took them to their camp in the forest.',3.4); } bcEnd(); } return; }
+  if(BC.st==='come'){ const V=BC.vic; if(!V||V.state!=='walk'&&!(V.crook&&V.gang==='vic')){ bcEnd(); return; }
+    if(Math.hypot(V.x-BC.g.x,V.z-BC.g.z)>14){ Object.assign(BC.g,goalAt(V.x,V.z),{D:null}); for(const T of BC.tr) if(T.v.ai) T.v.ai.goal=Object.assign({},BC.g,{near:false,D:null}); }
+    const d=Math.hypot(A.v.x-V.x,A.v.z-V.z); if(V.state==='walk'&&d<25){ V.speed=0; }   // she freezes when she sees them
+    if((d<11&&Math.abs(A.v.speed)<2.5)||(d<15&&BC.t>25)||(A.v.ai&&A.v.ai.goal&&A.v.ai.goal.near)){ for(const T of BC.tr){ const v=T.v; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } }
+      BC.st='grab'; BC.t=0; V.state='crook'; V.crook={k:'vic',st:'grabbed',t:0}; V.gang='vic'; V.speed=0; GANG.list.push(V);
+      // two from the first truck jump down to grab, the rest watch from the back
+      for(const q of A.men.slice(0,2)){ const P=bcAt(A.v,BC_SLOT[q.crook.slot][0]-.3,(q.crook.slot%2?1:-1)*(A.v.c.def.W/2+.9)); q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='bcgrab'; q.crook.t=0; }
+      toast(CAST[V.cast]?.f?'"Help! Help me o! Dem dey carry me!" The bandits are dragging a woman to their truck!':'"Help! Help!" The bandits are dragging a man to their truck!',3.4); }
+    else if(BC.t>110) bcEnd(); return; }
+  if(BC.st==='grab'){ const V=BC.vic, men=A.men.filter(q=>upright(q)&&q.crook&&q.crook.st==='bcgrab');
+    if(!isAlive(V)||!V.crook){ bcEnd(); return; } if(!men.length){ V.crook.st='free'; V.crook.t=0; bcDown(A,null); return; }
+    const m0=men[0], R=bcAt(A.v,-3.4,0); if(Math.hypot(m0.x-V.x,m0.z-V.z)<1.3){ const k=Math.min(1,dt*1.1); V.x+=(R.x-V.x)*k; V.z+=(R.z-V.z)*k; m0.x=V.x+.45; m0.z=V.z+.3; }
+    if(Math.hypot(V.x-R.x,V.z-R.z)<1.6||BC.t>11){ // into the back of the first truck
+      V.bc=false; offPed(V); BC.vic=null; const P=bcAt(A.v,...BC_VIC), q=gangWake('vic',P.x,P.z,{cast:BC.cast,st:'bcheld',hp:80,yaw:A.v.h,K:{T:A}}); if(q){ q.bc=true; q.y=P.y; BC.vq=q; }
+      for(const q of men) q.crook.st='bcback'; BC.st='load'; BC.t=0; } return; }
+  if(BC.st==='load'){ const back=A.men.filter(q=>upright(q)&&q.crook&&q.crook.st==='bcback'); if(!back.length||BC.t>7){ for(const q of back){ q.crook.st='ride'; } BC.st='flee'; BC.t=0;
+      const G=goalAt(CAMP.road.x,CAMP.road.z); BC.G=G; for(const T of BC.tr){ const v=T.v; if(!v.ai) backOnRoad(v); if(v.ai){ v.ai.goal=Object.assign({},G,{near:false,D:null}); v.ai.wait=0; v.ai.maxV=16; } }
+      toast('The bandit trucks speed off towards the forest! Chase them!',3); } return; }
+  if(BC.st==='flee'){ const far=Math.hypot(A.v.x-player.x,A.v.z-player.z)>420, home=Math.hypot(A.v.x-CAMP.road.x,A.v.z-CAMP.road.z)<22||(A.v.ai&&A.v.ai.goal&&A.v.ai.goal.near);
+    if(far||home||BC.t>200){ BC.hostage={cast:BC.cast,t:T0}; if(BC.vq) gangOut(BC.vq); BC.vq=null; const f=CAST[BC.cast]?.f; toast(`The bandits got away. ${f?'She':'He'} is tied to a post in their camp in the forest (on your map). Go and free ${f?'her':'him'}.`,4.2);
+      for(const T of BC.tr){ for(const q of T.men) gangOut(q); T.men=[]; bcDrop(T.v); } BC.tr=[]; BC.st='off'; BC.t=ENV.night?mrr(420,700):mrr(600,950); } } }
+// the person they took, tied at the camp: free them when the guards are down (or just cut the rope while nobody sees)
+function updateBCHostage(dt){ if(!BC.hostage||!CAMP) return; const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z);
+  if(d<110&&!(BC.hq&&isAlive(BC.hq))){ const po=CAMP.post, P={x:po.x-(CAMP.x-po.x)*.25,z:po.z-(CAMP.z-po.z)*.25}; const q=gangWake('vic',P.x,P.z,{cast:BC.hostage.cast,st:'held',hp:60,yaw:Math.atan2(CAMP.x-P.x,CAMP.z-P.z)}); if(q){ q.act=null; BC.hq=q; } }
+  else if(d>170&&BC.hq){ if(BC.hq.crook&&BC.hq.crook.st==='held') gangOut(BC.hq); BC.hq=null; }
+  const q=BC.hq; if(!q) return; if(!isAlive(q)){ if(q.state==='dead'){ toast('The hostage is dead.',2.4); BC.hostage=null; } BC.hq=null; return; }
+  if(q.crook&&q.crook.st==='held'&&mode==='walk'&&Math.hypot(player.x-q.x,player.z-q.z)<1.8){ const guards=CAMPP.men.filter(m=>upright(m)&&Math.hypot(m.x-q.x,m.z-q.z)<25).length;
+    if(!guards||T0-(UB3.cutT||-99)>1.5){ UB3.cutT=T0; q.crook.st='bcfree'; q.crook.t=0; const r=Math.round(mrr(90000,160000)/1000)*1000; addCash(r); const f=CAST[q.cast]?.f;
+      toast(`You cut the rope! ${f?'She':'He'} runs for home. The family sends you ${naira(r)}.`,3.6); BC.hostage=null; BC.hq=null;
+      if(guards) for(const g of CAMPP.men) if(g.crook&&(g.crook.st==='guard'||g.crook.st==='idle')){ if(g.wid){ g.crook.st='hunt'; g.crook.t=0; } else { g.state='fight'; g.atk=null; g.atkT=mrr(.3,.9); } } } } }
+
 // ---- once a frame
 function updateUB3(dt){ if(!UB) return; NOMOVE=KID.tied>0||BT.st==='carry'||BT.st==='ride'||BT.st==='load';
   if(hero&&mode==='walk'){ if(BT.st==='carry'&&BT.carrier) heroHold('v4_carried'); else heroRelease('v4_carried'); if(KID.tied>0&&KID.held) heroHold('v4_tied'); else heroRelease('v4_tied'); }
   if(lawless()&&FIGHT.heat>0){ if(T0-UB3.lawSaid>120&&starCount()>0){ UB3.lawSaid=T0; toast('Police no dey enter Under Bridge. Your stars dey fade.',2.6); } FIGHT.heat=Math.max(0,FIGHT.heat-dt*.45); if(FIGHT.heat<.1) CASE.on=false; }
-  updateBT(dt);
+  updateBT(dt); updateBC(dt); updateBCHostage(dt);
   if(CAMP){ const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z); if(d<110||KID.site==='camp'&&KID.held){ if(!CAMPP.vis){ CAMPP.vis=true; campPeople(); } if(ENV.night||d<60){ if(MR()<dt*12) flame(CAMP.fire.x+mrr(-.15,.15),.35,CAMP.fire.z+mrr(-.15,.15),.6); } }
     else if(d>170&&CAMPP.vis){ CAMPP.vis=false; for(const q of CAMPP.men) gangOut(q); CAMPP.men=[]; } } }
 
@@ -9731,7 +9829,8 @@ function careHelp(){ const c=$('#careCard'); if(CARE_CARD.open){ careClose(); re
     <p>✨ <b>All four green</b>: you're FRESH, +10% on your work pay.</p>
     <p>💸 <b>No money?</b> Church and mosque share free food once a day, or beg at a bus stop.</p>
     <small>Tap anywhere to close</small>`;
-  c.hidden=false; c.classList.remove('out','show'); void c.offsetWidth; c.classList.add('show'); CARE_CARD.open=true; CARE_CARD.at=performance.now(); }
+  c.hidden=false; c.classList.remove('out','show'); void c.offsetWidth; c.classList.add('show'); CARE_CARD.open=true; CARE_CARD.at=performance.now();
+  const at=CARE_CARD.at; setTimeout(()=>{ if(CARE_CARD.open&&CARE_CARD.at===at) careClose(); },12000); }   // (it goes by itself: it covers the news at the top)
 function careClose(){ const c=$('#careCard'); if(!CARE_CARD.open) return; CARE_CARD.open=false; c.classList.remove('show'); c.classList.add('out'); setTimeout(()=>{ if(!CARE_CARD.open) c.hidden=true; },380); }
 addEventListener('pointerdown',e=>{ if(CARE_CARD.open&&performance.now()-CARE_CARD.at>250&&!(e.target.closest&&e.target.closest('#care'))) careClose(); },true);   // tap anywhere (but the bars, which toggle it) to close
 function careEat(k){ LIFE.eat=Math.max(0,LIFE.eat-k); if(LIFE.eat<.75) LIFE_SYNC.warnEat=false; lifeSave(); }
