@@ -8009,16 +8009,17 @@ function efcBoard(){ efcMenOff(); const v=EFC.v; EFC.st='hunt'; EFC.sayT=0; if(v
 function efcCaught(){ const v=EFC.v; if(v){ v.speed=0; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } } if(mode==='drive'&&drive.v&&!drive.ride){ drive.v.speed=0; drive.speed=0; }
   for(const q of EFC.men){ q.speed=0; q.yaw=Math.atan2(player.x-q.x,player.z-q.z); }
   EFC.st='caught'; busy=true; bigMsg('EFCC! 🚨','jam','Source of income?');
-  setTimeout(()=>{ busy=false; const n=Math.min(CASH.n,EFC.take); if(n>0){ addCash(-n); cashHUD(); }   // (taken when they catch you: closing the menu does not save it)
+  setTimeout(()=>{ const n=Math.min(CASH.n,EFC.take); if(n>0){ addCash(-n); cashHUD(); }   // (taken when they catch you: closing the menu does not save it)
     if(PH&&n>0) PH.event('sms',{id:'bank',n:'Bank',c:'#0b5d3b',e:'🏦',x:`Debit: ${naira(n)} · EFCC PROCESSING FEE.`}); efcEnd(null);
     const say=()=>openMenu('EFCC',`Officer: "One million naira, one day? Where you get am? Bandits?! Hmm… we don process am." They took ${naira(n)}.`,[
       {name:'"Na so the economy be"',sub:`${naira(n)} gone "for processing".${cell?' Small time for their cell, then you dey free.':' You dey free.'}`,btn:'OK',act:()=>{ closeMenu(); }}]);
-    const cell=!!(EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room&&!FIGHT.dead);   // their van carries you to their office for "processing"
-    if(cell){ if(mode==='drive'&&drive.v) exitCar(); JAIL.efcc=true; fadeSwap(()=>{ enterJail(0,EFC.hold); setTimeout(say,900); }); } else say(); },1300); }
+    let cell=false;   // their van carries you to their office for "processing" (the office inside: wait for it a few seconds on a slow phone)
+    Promise.race([efcLoad(),new Promise(r=>setTimeout(r,6000))]).then(()=>{ busy=false; cell=!!(EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room&&!FIGHT.dead&&mode!=='interior');
+      if(cell){ JAIL.efcc=true; fadeSwap(()=>{ enterJail(0,EFC.hold); setTimeout(say,900); }); } else say(); }); },1300); }
 function updateEFC(dt){ if(EFC.st==='off'||!started) return;
   if(EFC.st==='wait'){ if(mode==='interior'||busy||FIGHT.dead) return; if((EFC.t-=dt)>0) return;
     const real=!!MODELS.efccvan, v=newVehicle('suv','#111318',true,real?'efccvan':null); if(real) v.efVan=1; if(!placeCar(v,90,170,true)){ bcDrop(v); EFC.t=20; return; }
-    v.taxi=true; v.efcc=true; v.ocT=T0; if(v.ai){ v.ai.maxV=Math.max(v.ai.maxV||14,17); } efcSign(v,true); EFC.v=v; EFC.st='hunt'; EFC.t=0;
+    v.taxi=true; v.efcc=true; v.ocT=T0; if(v.ai){ v.ai.maxV=Math.max(v.ai.maxV||14,17); } efcSign(v,true); EFC.v=v; EFC.st='hunt'; EFC.t=0; efcLoad();
     toast('🚨 EFCC don hear about your million. Their black van dey come for you! Run, or dem go "process" your money.',4.5); return; }
   if(EFC.st==='hunt'||EFC.st==='out'){ const v=EFC.v; EFC.t+=dt; if(!v||!vehicles.includes(v)||v.fire||v.wreck){ efcEnd('The EFCC van is out. They go come back another day.'); return; }
     if(mode==='interior'){ if(EFC.st==='out') efcBoard(); if(EFC.t>240) efcEnd('EFCC waited and waited, then left.'); return; }
@@ -10223,7 +10224,8 @@ const JAIL_TIMES=[20,40,60,70,120,180];
 const jailWords=t=>{ const m=Math.floor(t/60), s=Math.round(t%60); return [m?`${m} minute${m>1?'s':''}`:'',s?`${s} seconds`:''].filter(Boolean).join(' '); };
 function jailSave(){ try{ if(JAIL.left>0){ localStorage.setItem('naija-jail',String(Math.ceil(JAIL.left))); if(JAIL.efcc) localStorage.setItem('naija-jail-efcc','1'); else localStorage.removeItem('naija-jail-efcc'); } else { localStorage.removeItem('naija-jail'); localStorage.removeItem('naija-jail-efcc'); } }catch(e){} }
 function jailSaved(){ let v=0; try{ v=+localStorage.getItem('naija-jail')||0; }catch(e){} return v>0&&v<=600?v:0; }
-function enterJail(resume=0,hold=0){ const EF=JAIL.efcc&&EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room, PR=EF||INTS.int_police&&INTS.int_police.room; let R;   // hold: a short EFCC "processing" (no arrest counted)
+function enterJail(resume=0,hold=0){ if(mode==='enter'&&drive.v) finishEnter(); if(mode==='drive'&&drive.v&&drive.ride&&RIDE.v===drive.v) rideExit(true); if(mode==='drive'&&drive.v){ drive.ride=false; exitCar(); }   // (caught getting into a car, in it or riding: out first)
+  const EF=JAIL.efcc&&EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room, PR=EF||INTS.int_police&&INTS.int_police.room; let R;   // hold: a short EFCC "processing" (no arrest counted)
   if(PR&&PR.marks.cell_a&&PR.marks.cell_a_in){ if(EF){ setupEfcc(PR); if(!JAIL.ecell) JAIL.ecell=policeCell(PR,true); R=JAIL.ecell; } else { setupPolice(PR); if(!JAIL.cell) JAIL.cell=policeCell(PR); R=JAIL.cell; } const m=PR.marks.cell_a_in, q=PR.nearFree(m.x,m.z);   // the real station: your cell faces the other one
     ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root); Object.assign(player,{x:q.x,z:q.z,y:0,yaw:m.yaw,speed:0}); Object.assign(camState,{yaw:m.yaw,pitch:.22,dist:2.6}); setScene(R.scene); }
   else { if(!JAIL.room) JAIL.room=buildJail(); jailInmates(); R=JAIL.room; ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
