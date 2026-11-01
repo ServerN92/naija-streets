@@ -7695,7 +7695,7 @@ function gangTick(q,dt){ const K=q.crook; K.t+=dt; q.aimOn=false; q.recoil=(q.re
     case 'bcfree': { const G=campAt(0,-60), gx=G.x-q.x, gz=G.z-q.z; copMove(q,gx,gz,4.4,dt); turn(Math.atan2(gx,gz),6); if(K.t>18||Math.hypot(gx,gz)<3) gangOut(q); break; } } }
 function updateGangs(dt){ GANG.list=GANG.list.filter(q=>q.crook&&q.state!=='off'&&q.state!=='dead');
   for(const q of GANG.list){ if(q.state==='crook') gangTick(q,dt); else if(q.state==='walk'||q.state==='idle'||q.state==='flee'||q.state==='react'){ q.state='crook'; q.crook.st=q.wid&&q.gang!=='vic'?'hunt':'leave'; q.crook.t=0; } }
-  if(GANG.list.length>40) for(const q of GANG.list.slice(0,GANG.list.length-40)) gangOut(q);
+  if(GANG.list.length>40){ const old=GANG.list.filter(q=>!q.bc); for(const q of old.slice(0,Math.max(0,GANG.list.length-40))) gangOut(q); }   // (never the bandit convoy's men)
   watchTick(); }
 
 // ---- the bases, the share, the clashes
@@ -7901,7 +7901,7 @@ function bcStart(){ if(!bcCan()) return false;
   const B=newVehicle(tB,'#4d5638',true); let ok=false;
   if(BTY[B.type]&&A.ai&&A.ai.s>10){ const seg=A.ai.seg, sp=A.ai.s-9.5; segPos(seg,sp,_sp); B.ai={...A.ai,s:sp,goal:null,wait:0,ghost:0,stuck:0}; B.parked=false; B.x=_sp.x; B.z=_sp.z; B.h=A.h; B.speed=A.speed; B.y=groundY(B.x,B.z); B.fh=0; ok=true; }
   if(!ok&&BTY[B.type]) ok=!!vanPlace(B,g); if(!ok){ bcDrop(A); bcDrop(B); return false; }
-  const grp=BC.grp=GRP('the bandit convoy'); BC.tr=[];
+  const grp=BC.grp=GRP('the bandit convoy'); grp.paid=true;   // (the reward is the million, not the group bonus) BC.tr=[];
   for(const v of [A,B]){ btGun(v); v.band=true; v.taxi=true; v.bc=true; v.ai.goal=Object.assign({},g,{near:false,D:null}); v.ai.maxV=15.5; v.ocT=T0; bcSign(v,true);
     const T={v,men:[],angry:false,stop:false,tail:0,dmg0:v.dmg||0}; BC.tr.push(T);
     for(let k=0;k<4;k++){ const P=bcAt(v,...btSlot(v,k)), q=gangWake('band',P.x,P.z,{hat:'mask',gun:true,st:'ride',hp:300,yaw:v.h,K:{T,slot:k}}); if(!q) continue; q.bc=true; q.y=P.y; grpAdd(grp,q); T.men.push(q); } }
@@ -7918,14 +7918,18 @@ function bcDown(T,why){ if(T.stop) return; T.stop=true; T.angry=true; const v=T.
 function bcEnd(){ for(const T of BC.tr){ for(const q of T.men) if(q.crook&&upright(q)){ if(q.crook.st==='ride'){ gangOut(q); continue; } q.crook.st='leave'; q.crook.t=0; } bcSign(T.v,false);
     const v=T.v; v.bc=false; if(vehicles.includes(v)&&!v.fire&&!v.wreck&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>90) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=goalAt(CAMP.road.x,CAMP.road.z); v.ai.wait=0; } else { backOnRoad(v); if(v.ai) v.ai.goal=goalAt(CAMP.road.x,CAMP.road.z); } v.bcGone=T0; } } }
   if(BC.vic) BC.vic.bc=false; BC.tr=[]; BC.vic=null; BC.vq=null; BC.st='off'; BC.t=ENV.night?mrr(420,700):mrr(600,950); }
-function bcFamily(){ const r=Math.round(mrr(60000,120000)/1000)*1000; addCash(r); credAdd('hero',40,false); const f=CAST[BC.cast]?.f;
-  toast(`You stopped the bandits! ${f?'She':'He'} is safe. The family sends you ${naira(r)}: "God go bless you, our hero!"`,4.2);
+const BC_PAY=1000000;   // the state's reward for a convoy wiped out (online, the server pays it: see 'bnd' in server/src/world.js)
+function bcFamily(){ if(ON&&ON.signedIn) ON.send({t:'bnd'}); else addCash(BC_PAY); credAdd('hero',60,false); const f=CAST[BC.cast]?.f;
+  bigMsg('HERO OF LAGOS 🏆','rankup',`${naira(BC_PAY)} reward`);
+  toast(`You stopped the bandits! ${f?'She':'He'} is safe. The government pays you ${naira(BC_PAY)}. But plenty money don land for your account… EFCC go hear.`,5.5);
+  efcAfter();
   if(PH) PH.event('sms',{id:'watch',n:'Neighbourhood Watch',c:'#7a1a12',e:'⚠️',x:`You stopped the bandit convoy! Eight armed men, two trucks. ${f?'The woman':'The man'} is home safe. Thank you!`}); }
 function updateBC(dt){ if(BC.fT>0) BC.fT-=dt;
   // the old trucks drive off and go
   for(const v of vehicles) if(v.bcGone&&!v.bc&&(T0-v.bcGone>80||Math.hypot(v.x-player.x,v.z-player.z)>160)&&drive.v!==v){ v.bcGone=0; bcDrop(v); break; }
   if(BC.st==='off'){ if(!bcCan()){ BC.t=Math.max(BC.t,60); return; } if((BC.t-=dt*(ENV.night?1.6:1))<=0){ BC.t=bcStart()?0:45; } return; }
   BC.t+=dt; const [A,B]=BC.tr; if(!A||!B){ bcEnd(); return; }
+  for(const T of BC.tr) T.men=T.men.filter(q=>q.state==='dead'||q.state==='down'||q.state==='getup'||(q.crook&&q.bc));   // (a man taken back by the town is no longer theirs)
   // a truck that is hit, burning, its men hit, or a car riding on its tail: they stop and come down
   for(const T of BC.tr){ const v=T.v; if(!vehicles.includes(v)){ T.stop=true; T.gone=true; continue; } if(T.stop) continue; const near=Math.hypot(v.x-player.x,v.z-player.z)<90;   // (a scrape with traffic far from you is not you)
     if(near&&(T0-(v.bumpT||-99)<.6||v.byMe&&(v.fire||v.wreck||(v.dmg||0)>T.dmg0+4))) bcDown(T,'"Dem dey follow us! Oya come down, waste am!" The bandits jump down from the truck!');
@@ -7944,7 +7948,7 @@ function updateBC(dt){ if(BC.fT>0) BC.fT-=dt;
     if((d<11&&Math.abs(A.v.speed)<2.5)||(d<15&&BC.t>25)||(A.v.ai&&A.v.ai.goal&&A.v.ai.goal.near)){ for(const T of BC.tr){ const v=T.v; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } }
       BC.st='grab'; BC.t=0; V.state='crook'; V.crook={k:'vic',st:'grabbed',t:0}; V.gang='vic'; V.speed=0; GANG.list.push(V);
       // two from the first truck jump down to grab, the rest watch from the back
-      for(const q of A.men.slice(0,2)){ const P=bcAt(A.v,btSlot(A.v,q.crook.slot)[0]-.3,(q.crook.slot%2?1:-1)*(A.v.c.def.W/2+.9)); q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='bcgrab'; q.crook.t=0; }
+      for(const q of A.men.filter(q=>q.crook&&upright(q)).slice(0,2)){ const P=bcAt(A.v,btSlot(A.v,q.crook.slot)[0]-.3,(q.crook.slot%2?1:-1)*(A.v.c.def.W/2+.9)); q.x=P.x; q.z=P.z; q.crook.drop=.35; q.crook.st='bcgrab'; q.crook.t=0; }
       toast(CAST[V.cast]?.f?'"Help! Help me o! Dem dey carry me!" The bandits are dragging a woman to their truck!':'"Help! Help!" The bandits are dragging a man to their truck!',3.4); }
     else if(BC.t>110) bcEnd(); return; }
   if(BC.st==='grab'){ const V=BC.vic, men=A.men.filter(q=>upright(q)&&q.crook&&q.crook.st==='bcgrab');
@@ -7975,6 +7979,31 @@ function mgTick(dt){ const v=MG.v; if(!v||!vehicles.includes(v)||v.fire||v.wreck
   rig.root.position.set(player.x,player.y,player.z); if(hero) heroAnim(dt,0); else animHuman(rig,0,0,T0,false);
   if(ARMS.trig&&(MG.ft-=dt)<=0){ MG.ft=.085; const o=btMuzzle(v,new THREE.Vector3()); if(o){ const d=AIM.pt.clone().sub(o); if(d.lengthSq()<.05) camFwd(d); d.normalize();
       shoot(o,d,player,{dmg:40,range:190,spread:.022,muzzle:o}); flash(o); gunshot(1.25); shotsFired(player.x,player.z,true); camState.shake=Math.min(1,camState.shake+.09); } } else if(!ARMS.trig) MG.ft=Math.min(MG.ft,0); }
+// ---- the EFCC after a big reward: a minute or two later their black van comes looking for you. Get caught and they "process"
+// your money: ₦200,000 gone. Get away (or keep away for four minutes) and they give up. "Na so this economy be."
+const EFC={st:'off',t:0,v:null,take:200000,sayT:0,near:0};
+function efcAfter(){ if(EFC.st!=='off') return; EFC.st='wait'; EFC.t=mrr(50,100); }
+function efcSign(v,on){ if(v.efSp){ v.efSp.parent&&v.efSp.parent.remove(v.efSp); v.efSp.material.map.dispose(); v.efSp.material.dispose(); v.efSp=null; }
+  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('EFCC','#111318','#f2c12e'),fog:false,depthTest:false,toneMapped:false})); sp.scale.set(1.8,.42,1); sp.position.set(0,2.6,0); sp.layers.set(1); v.c.g.add(sp); v.efSp=sp; } }
+function efcEnd(msg){ const v=EFC.v; if(v){ efcSign(v,false); if(vehicles.includes(v)&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>80) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=null; v.ai.wait=0; } } } } EFC.v=null; EFC.st='off'; if(msg) toast(msg,3.4); }
+function efcCaught(){ const v=EFC.v; if(v){ v.speed=0; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } } if(mode==='drive'&&drive.v&&!drive.ride){ drive.v.speed=0; drive.speed=0; }
+  EFC.st='caught'; busy=true; bigMsg('EFCC! 🚨','jam','Source of income?');
+  setTimeout(()=>{ busy=false; const n=Math.min(CASH.n,EFC.take); if(n>0){ addCash(-n); cashHUD(); }   // (taken when they catch you: closing the menu does not save it)
+    if(PH&&n>0) PH.event('sms',{id:'bank',n:'Bank',c:'#0b5d3b',e:'🏦',x:`Debit: ${naira(n)} · EFCC PROCESSING FEE.`}); efcEnd(null);
+    openMenu('EFCC',`Officer: "One million naira, one day? Where you get am? Bandits?! Hmm… we don process am." They took ${naira(n)}.`,[
+      {name:'"Na so the economy be"',sub:`${naira(n)} gone "for processing". You dey free.`,btn:'OK',act:()=>{ closeMenu(); }}]); },1300); }
+function updateEFC(dt){ if(EFC.st==='off'||!started) return;
+  if(EFC.st==='wait'){ if(mode==='interior'||busy||FIGHT.dead) return; if((EFC.t-=dt)>0) return;
+    const v=newVehicle('suv','#111318',true); if(!placeCar(v,90,170,true)){ bcDrop(v); EFC.t=20; return; }
+    v.taxi=true; v.efcc=true; v.ocT=T0; if(v.ai){ v.ai.maxV=Math.max(v.ai.maxV||14,17); } efcSign(v,true); EFC.v=v; EFC.st='hunt'; EFC.t=0;
+    toast('🚨 EFCC don hear about your million. Their black van dey come for you! Run, or dem go "process" your money.',4.5); return; }
+  if(EFC.st==='hunt'){ const v=EFC.v; EFC.t+=dt; if(!v||!vehicles.includes(v)||v.fire||v.wreck){ efcEnd('The EFCC van is out. They go come back another day.'); return; }
+    if(mode==='interior'){ if(EFC.t>240) efcEnd('EFCC waited and waited, then left.'); return; }
+    const d=Math.hypot(v.x-player.x,v.z-player.z);
+    if((EFC.sayT-=dt)<=0){ EFC.sayT=3; if(v.ai){ v.ai.goal=Object.assign(goalAt(player.x,player.z),{near:false,D:null}); v.ai.wait=0; } }
+    if(d<9&&(mode==='walk'||Math.abs(drive.speed)<3)){ efcCaught(); return; }
+    if(d<30&&mode==='walk'&&Math.abs(v.speed)<1.2){ EFC.near=(EFC.near||0)+dt; if(EFC.near>2.5){ toast('EFCC officers jump out of the van and run at you!',2.2); efcCaught(); return; } } else EFC.near=0;   // (the van stops on the road by you: they come on foot)
+    if(EFC.t>240||d>420) efcEnd(d>420?'You lost the EFCC van. They give up for now.':'EFCC give up. You dey lucky today.'); } }
 // the person they took, tied at the camp: free them when the guards are down (or just cut the rope while nobody sees)
 function updateBCHostage(dt){ if(!BC.hostage||!CAMP) return; const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z);
   if(d<110&&!(BC.hq&&isAlive(BC.hq))){ const po=CAMP.post, P={x:po.x-(CAMP.x-po.x)*.25,z:po.z-(CAMP.z-po.z)*.25}; const q=gangWake('vic',P.x,P.z,{cast:BC.hostage.cast,st:'held',hp:60,yaw:Math.atan2(CAMP.x-P.x,CAMP.z-P.z)}); if(q){ q.act=null; BC.hq=q; } }
@@ -7990,7 +8019,7 @@ function updateUB3(dt){ if(!UB) return; NOMOVE=KID.tied>0||BT.st==='carry'||BT.s
   if(CAMP&&!BTG.job&&T0>20) btGunLib(); if(BT.v&&!BT.v.gunM) btGun(BT.v);
   if(hero&&mode==='walk'){ if(BT.st==='carry'&&BT.carrier) heroHold('v4_carried'); else heroRelease('v4_carried'); if(KID.tied>0&&KID.held) heroHold('v4_tied'); else heroRelease('v4_tied'); }
   if(lawless()&&FIGHT.heat>0){ if(T0-UB3.lawSaid>120&&starCount()>0){ UB3.lawSaid=T0; toast('Police no dey enter Under Bridge. Your stars dey fade.',2.6); } FIGHT.heat=Math.max(0,FIGHT.heat-dt*.45); if(FIGHT.heat<.1) CASE.on=false; }
-  updateBT(dt); updateBC(dt); updateBCHostage(dt);
+  updateBT(dt); updateBC(dt); updateBCHostage(dt); updateEFC(dt);
   if(CAMP){ const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z); if(d<110||KID.site==='camp'&&KID.held){ if(!CAMPP.vis){ CAMPP.vis=true; campPeople(); } if(ENV.night||d<60){ if(MR()<dt*12) flame(CAMP.fire.x+mrr(-.15,.15),.35,CAMP.fire.z+mrr(-.15,.15),.6); } }
     else if(d>170&&CAMPP.vis){ CAMPP.vis=false; for(const q of CAMPP.men) gangOut(q); CAMPP.men=[]; } } }
 

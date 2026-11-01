@@ -20,7 +20,9 @@ const MAX_SEEN = 30;              // the nearest 30 at most
 const NEAR_CHAT = 60;             // "near" chat reaches this far (m)
 const START_MAX = 50000;          // money you can bring from playing as a guest, when you make an account
 const START_CASH = 5000;          // what a new life starts with (under the bridge)
-const EARN_CAP = 250000, EARN_RATE = 150;   // money from the game itself: ₦250k at once, then ₦150 a second (₦540k an hour)
+const EARN_CAP = 250000, EARN_RATE = 150;
+export const BND_PAY = 1000000; let BND_GAP = 8 * 60e3;   // the bandit-convoy reward and how often one player can get it
+export function tuneBnd(gapMs) { if (gapMs >= 0) BND_GAP = gapMs; }   // money from the game itself: ₦250k at once, then ₦150 a second (₦540k an hour)
 const SESSION_DAYS = 90;
 const LOOK_IDS = /^p_[a-z]{2,10}$/;
 const r2 = n => Math.round(n * 100) / 100, r3 = n => Math.round(n * 1000) / 1000;
@@ -316,12 +318,16 @@ export function createWorld({ db, mail, now = () => Date.now(), log = () => {}, 
   function pk(C, m) { C.pkLim = C.pkLim || new Bucket(10, 2); if (!C.pkLim.take()) return; if (typeof m.a === 'string') park.handle(C, m); }
   function hit(C, m) { C.hitLim = C.hitLim || new Bucket(8, 4); if (!C.hitLim.take()) return; pvp.hit(C, m); }
   function lawMsg(C, m) { C.lawLim = C.lawLim || new Bucket(10, 2); if (!C.lawLim.take()) return; if (typeof m.a === 'string') law.handle(C, m); }
+  // the bandit convoy stopped (all eight down): ₦1,000,000 from the state, at most once in BND_GAP for a player
+  const bndLast = new Map();
+  function bnd(C) { const t = now(), L = bndLast.get(C.user.id) || 0; if (t - L < BND_GAP) return send(C, { t: 'note', m: 'The reward for the bandits is still being processed.' });
+    bndLast.set(C.user.id, t); give(C, BND_PAY, 'bandits'); log('bandits', C.user.name, BND_PAY); }
   function pol(C, m) { C.polLim = C.polLim || new Bucket(30, 2); if (!C.polLim.take()) return; if (typeof m.a === 'string') politics.handle(C, m); }
   function yh(C, m) { C.yhLim = C.yhLim || new Bucket(6, .5); if (!C.yhLim.take()) return; if (typeof m.a === 'string') yahoo.handle(C, m); }
   function rom(C, m) { C.romLim = C.romLim || new Bucket(8, 1); if (!C.romLim.take()) return; if (typeof m.a === 'string') love.handle(C, m); }
   function cb(C, m) { C.cbLim = C.cbLim || new Bucket(8, 1); if (!C.cbLim.take()) return; if (typeof m.a === 'string') cbn.handle(C, m); }
   function bk(C, m) { C.bkLim = C.bkLim || new Bucket(10, 2); if (!C.bkLim.take()) return; if (typeof m.a === 'string') bank.handle(C, m); }
-  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, del: deleteAccount, out: logout, bz, mk, pk, hit, law: lawMsg, bk, cbn: cb, rom, yh, pol };
+  const IN = { p: move, say, $: cash, life: setLife, look: setLook, email: setEmail, pw: changePass, del: deleteAccount, out: logout, bz, mk, pk, hit, law: lawMsg, bk, cbn: cb, rom, yh, pol, bnd };
   const SLOW = new Set(['hi', 'reg', 'login', 'forgot', 'reset', 'pw', 'del']);   // these wait on password hashing: one at a time
   function join(ws, ip) {
     const C = { ws, ip, user: null, p: null, seen: null, msgs: new Bucket(60, 30), bad: 0, t0: now(), busy: false };

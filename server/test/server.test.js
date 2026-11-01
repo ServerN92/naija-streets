@@ -403,3 +403,11 @@ test('politics: the tax purse, declaring for a seat, voting on the day, the coun
   const tag = await b.next(m => m.t === 'w' && m.j && m.j.some(j => j.n === 'pol_a' && j.po === 'Hon.'), 5000); assert.ok(tag);
   for (const x of [a, b, c]) x.close();
 });
+
+test('bandit convoy reward: ₦1,000,000 once, then not again so soon', async () => {
+  const [a] = await account('bnd_a', 'secret77', { look: { c: 'p_dayo', g: 'm' } });
+  a.send({ t: '$', d: -1000000000, s: 1 }); await a.next(m => m.t === '$' && m.n === 0);
+  a.send({ t: 'bnd' }); assert.equal((await a.next(m => m.t === '$' && m.n > 0)).n, 1000000);
+  a.send({ t: 'bnd' }); assert.match((await a.next('note')).m, /processed/);
+  a.close();
+});
