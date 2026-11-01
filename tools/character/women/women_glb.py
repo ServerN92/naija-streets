@@ -17,7 +17,7 @@ import garments as G
 
 MOVES = os.path.join(HERE, '..', '..', '..', 'assets', 'people', 'moves.glb')
 TUBES = {'gown_skirt', 'buba_tail', 'iro', 'bodycon_skirt', 'club_skirt', 'slip_skirt', 'pencil', 'senator_tail', 'kaftan_tail', 'pskirt', 'rag_skirt'}
-NO_HIDE = {'gele', 'button', 'lapels', 'pockets', 'tie', 'placket', 'buckle', 'pouch', 'beret', 'kufi'}
+NO_HIDE = {'gele', 'button', 'lapels', 'pockets', 'tie', 'placket', 'buckle', 'pouch', 'beret', 'kufi', 'efcc_print', 'efcc_tag', 'efcc_name'}
 B36 = '0123456789abcdefghijklmnopqrstuvwxyz'   # outfit i in a part's name (the men have eleven outfits)
 
 def gl(P): return np.stack([P[:, 0], P[:, 2], -P[:, 1]], 1).astype(np.float32)        # Blender -> glTF axes
