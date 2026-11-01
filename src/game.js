@@ -511,7 +511,7 @@ const MODEL_FILES={ub_base_yellow:['ub_base_yellow','h',0,1],btruck:['bt_technic
   school2:['ns_school2','h',33.3,1],school1:['ns_school1','h',31.3,1],sgate:['ns_schoolgate','h',7.9,1],hospital:['ns_hospital','h',42.7,1],clinic:['ns_clinic','h',21.3,1],uni:['ns_uni','h',46.7,1],
   hotel:['ns_hotel','h',32.1,1],flats3:['ns_flats3','h',18.7,1],flats4:['ns_flats4','h',19.1,1],shops1:['ns_shops1','h',20.7,1],shops2:['ns_shops2','h',20.5,1],warehouse:['ns_warehouse','h',29.1,1],
   church:['ns_church','h',15.3,1],mosque:['ns_mosque','h',24.5,1],bank:['ns_bank','h',18.9,1],
-  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
+  jet:['ns_jet','h',34.4,1],tower:['ns_tower','h',18,1],hangar:['ns_hangar','h',70,1],station:['ns_police','h',0,1],efcc:['ns_efcc','h',0,1],club:['ns_club','h',0,1],carstand:['ns_carstand','h',0,1],pitch:['ns_pitch','h',0,1],flyover:['ns_flyover','h',0,1],
   tent_dome:['ns_tent_dome','h',0,1],tent_shack:['ns_tent_shack','h',0,1],camp_kitchen:['ns_camp_kitchen','h',0,1],camp_bed:['ns_camp_bed','h',0,1],camp_line:['ns_camp_line','h',0,1],airtoll:['ns_airtoll','h',0,1],airarm:['ns_airtoll_arm','h',0,1],bansign:['ns_bansign','h',0,1],carpark:['ns_carpark','h',0,1],impound:['ns_impound','h',0,1],toilet:['ns_toilet','h',0,1],tdoor:['ns_toilet_door','h',0,1],mytent:['ns_mytent','h',0,1],boutique:['ns_boutique','h',0,1],mk_zinc:['mk_stall_zinc','h',0,1],mk_umb:['mk_stall_umbrella','h',0,1],mk_tarp:['mk_stall_tarp','h',0,1],mk_wood:['mk_stall_wood','h',0,1],mk_table:['mk_stall_table','h',0,1],mk_bola:['mk_bola','h',0,1],office:['modernoffice','h',21,1],tlight:['traffic_light','tl',0,0]};
 const AV=MANIFEST._v||{}; const murl=f=>{ const u=`assets/models/${f}.glb`, k=AV[u]||MANIFEST[u]; return k?u+'?v='+k:u; };
 // the map: real Mushin (roads, buildings, markets, schools...) from OpenStreetMap
@@ -557,13 +557,14 @@ const NEWV_SEATS={   // as a share of the length (x, forward) and the height (y)
   car:[[.04,.36,-.36,1],[.04,.36,.36,.35],[-.2,.36,-.36,.3],[-.2,.36,.36,.2]], suv:[[.05,.42,-.38,1],[.05,.42,.38,.35],[-.17,.43,-.38,.3],[-.17,.43,.38,.2]],
   pickup:[[.08,.45,-.38,1],[.08,.45,.38,.4],[-.1,.45,-.38,.2]], van:[[.26,.4,-.42,1],[.26,.4,.42,.4]], truck:[[.34,.52,-.5,1],[.34,.52,.5,.3]]};
 for(const N of NEWV) LATE_FILES[N.k]=[N.k,'+x',0,1];   // size 0: they come at their real size from Blender
-LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
+LATE_FILES.policevan=['v_policevan','+x',0,1]; LATE_FILES.efccvan=['v_efccvan','+x',0,1]; LATE_FILES.policehilux=['v_policehilux','+x',0,1]; LATE_FILES.tanker=['v_tanker','+x',0,1];
 const NEWV_K=Object.fromEntries(NEWV.map(N=>[N.k,N]));
 // run f(model) as soon as a late model is in (now, if it already is)
 var CB={bed:null,act:null,clips:null,job:null,ui:null};   // the carton bed (see 'the carton bed' below)
 let FDET=null;   // the farm detail texture (declared early: the police checkpoint asks for it before the farm code runs)
 const MODEL_WAIT={}; function whenModel(k,f){ if(MODELS[k]) f(MODELS[k]); else (MODEL_WAIT[k]=MODEL_WAIT[k]||[]).push(f); }
-function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker'].includes(k))) return;
+function newvReady(k){ const N=NEWV_K[k], M=MODELS[k]; if(!M||(!N&&!['policevan','policehilux','tanker','efccvan'].includes(k))) return;
+  if(k==='efccvan'){ WHEEL.efccvan={r:.35,hw:.13}; SEATS.efccvan=SEATS.police; return; }   // the EFCC's black Hiace (tools/blender_efcc.py)
   if(k==='policevan'){ WHEEL.policevan={r:.35,hw:.13}; SEATS.policevan=SEATS.police; return; }
   if(k==='policehilux'){ WHEEL.policehilux={r:.38,hw:.15}; SEATS.policehilux=SEATS.police; return; }
   if(k==='tanker'){ WHEEL.tanker={r:.5,hw:.2}; SEATS.tanker=[{x:M.W*.36,y:M.H*.5,z:-.5,k:'seat',drv:1},{x:M.W*.36,y:M.H*.5,z:.5,k:'seat',p:.3}]; return; }
@@ -1130,7 +1131,8 @@ if(HOME) HOME.special='home';
   pickSite('hotel3',500,1700,3,22,(b,d)=>-Math.hypot(b.cx-(SITES.hotel2?SITES.hotel2.cx:0),b.cz-(SITES.hotel2?SITES.hotel2.cz:0))*.5-b.w*b.d*.1,400);
   pickSite('club1',200,800,3,17,(b,d)=>Math.abs(d-420)*.5-b.w*b.d*.08);
   pickSite('club2',500,1500,3,17,(b,d)=>-Math.hypot(b.cx-(SITES.club1?SITES.club1.cx:0),b.cz-(SITES.club1?SITES.club1.cz:0))*.4-b.w*b.d*.06,500);
-  pickSite('carstand',250,1100,3,20,(b,d)=>Math.abs(d-600)*.4-b.w*b.d*.1); }
+  pickSite('carstand',250,1100,3,20,(b,d)=>Math.abs(d-600)*.4-b.w*b.d*.1);
+  pickSite('efcc',350,1400,3,22,(b,d)=>Math.abs(d-700)*.4-b.w*b.d*.1,300); }   // the EFCC Lagos office (tools/blender_efcc.py)
 // the university: the College of Medicine of the University of Lagos stands in the LUTH grounds at Idi-Araba,
 // so the biggest hospital-ground building becomes the faculty block
 const UNI_SITE=(()=>{ let best=null; for(const b of BLD){ if(b.kind!=='hospital'||b.skip||b.special||distAt(b.cx,b.cz)) continue; if(!best||b.w*b.d>best.w*best.d) best=b; } return best; })();
@@ -1910,6 +1912,13 @@ if(MODELS.club) [SITES.club1,SITES.club2].forEach((b,i)=>{ if(!b) return; const 
 if(MODELS.carstand&&SITES.carstand){ const r=placeVenue(SITES.carstand,'carstand',[[-10,10,2,14,7]],{max:1}); const d=markAt(r,'door');
   signAt(scene,markAt(r,'sign_name'),'OLUWASEUN MOTORS · TOKUNBO & BRAND NEW','#0f3d2a','#ffd54a'); doorRing(d.x,d.z);
   VENUES.carstand={name:'Oluwaseun Motors',x:r.x,z:r.z,door:{x:d.x,z:d.z,ry:r.ry},r,lots:marksOf(r,/^lot_\d/)}; }
+// the EFCC Lagos office: a black and gold block with EFCC on the roof, a detention wing, a guard at the gate, black vans in the yard
+const EFCC_HQ={r:null,x:0,z:0,front:null};
+if(HOUSES&&MODELS.efcc&&MODELS.efcc.marks&&SITES.efcc){ const r=placeVenue(SITES.efcc,'efcc',[[-13,13,-7,7,12],[13,20,-3,7,5],[5.6,7.8,-17.2,-15.2,2.8]],{max:1});
+  if(r){ const d=markAt(r,'door'); Object.assign(EFCC_HQ,{r,x:r.x,z:r.z,front:{x:d.x,z:d.z,ry:r.ry}});
+    signAt(scene,markAt(r,'sign_name'),'ECONOMIC AND FINANCIAL CRIMES COMMISSION','#14161a','#f2c200');
+    signAt(scene,markAt(r,'sign_efcc'),'EFCC','#14161a','#f2c200',{fog:false}); signAt(scene,markAt(r,'sign_det'),'DETENTION','#14161a','#f2f2ee'); doorRing(d.x,d.z);
+    whenModel('efccvan',()=>{ for(const k of ['park_1','park_2']){ const m=markAt(r,k); if(!m) continue; const v=newVehicle('suv','#111318',true,'efccvan'); Object.assign(v,{x:m.x,z:m.z,y:0,h:carYaw(m.yaw),keep:1,parked:true,efVan:1}); } }); } }
 // the township stadium and a football field near the university (tools/blender_sports.py)
 function placeOpen(site,key,solids){ const M=MODELS[key]; if(!site||!M) return null; const r={x:site.cx,z:site.cz,y:0,ry:site.ry,sc:1,M};
   new CullSet(modelLevels(M,Q.lod0*2.2,Q.draw+260),[{x:r.x,y:0,z:r.z,ry:r.ry,sc:1}],{shadowDist:Q.shR,name:key}); solidsAt(r,solids); SCAT_OFF.push({x:r.x,z:r.z,ry:r.ry,hw:M.W/2+1,hd:M.D/2+1}); return r; }
@@ -2391,6 +2400,9 @@ const M_IN=(()=>{ let me=null; try{ me=localStorage.getItem('naija-look2'); }cat
   return {set:S,pick}; })();
 for(const id in MEN){ const on=M_IN.set.has(id); CAST[id]={f:0,h:1.8,w:on?.3:0,idle:['idle_1','idle_2','phone','text'],tw:.2,look:[M_SKIN[id],'#0e8a44','#16161a','#111111','#141110'],v2:1,lazy:!on,fits:M_STREET}; }
 for(const r in M_IN.pick) CAST[r].as=M_IN.pick[r];
+// the EFCC officers: the same people as the police, in their EFCC uniform (black vest, EFCC in yellow, name tag): no more files to load
+CAST.efcc_m={...CAST.police_m,cop:1,as:[(M_IN.pick.police_m||['p_okon'])[0],['efcc']]};
+CAST.efcc_f={...CAST.police_f,cop:1,as:[(W_IN.pick.police_f||['p_halima'])[0],['efcc']]};
 // school runs (07:00–08:30, 13:30–15:30 game time) bring out the schoolboys; late night has fewer hawkers and babas
 function pickCast(hour){ const school=hour!=null&&((hour>=7&&hour<8.5)||(hour>=13.5&&hour<15.5)), night=hour!=null&&(hour>=21||hour<5.5); let tot=0; const w={};
   for(const k in CAST){ let x=CAST[k].w; if(k==='schoolboy') x*=school?5:night?0:.5; if(night&&(k==='baba'||k==='hawker')) x*=.3; if(night&&k==='areaboy') x*=1.6; w[k]=x; tot+=x; }
@@ -2675,7 +2687,7 @@ function makeCar(type,color,empty=false,skin=null){
   return {g,wheels,def:D,type}; }
 const CAR_COLORS=['#111214','#f1f1ee','#8d939a','#1d3557','#7a0f12','#2b4b3a','#c4c8cc','#3a2a1e','#0f4c81','#b0b6bb'];
 const vehicles=[];
-function newVehicle(type,color,empty=false){ const want=!MODELS[type]&&NEWV_K[type]?type:null; const skin=type==='police'?(()=>{ const r=MR(); return MODELS.policevan&&r<.35?'policevan':MODELS.policehilux&&r<.8?'policehilux':null; })():null; if(!MODELS[type]) type=NEWV_K[type]?(NEWV_K[type].s==='truck'||NEWV_K[type].s==='van'?'suv':'sedan'):({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty,skin); scene.add(c.g); const v={c,type,color,want,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
+function newVehicle(type,color,empty=false,skinK=null){ const want=!MODELS[type]&&NEWV_K[type]?type:null; const skin=skinK&&MODELS[skinK]?skinK:type==='police'?(()=>{ const r=MR(); return MODELS.policevan&&r<.35?'policevan':MODELS.policehilux&&r<.8?'policehilux':null; })():null; if(!MODELS[type]) type=NEWV_K[type]?(NEWV_K[type].s==='truck'||NEWV_K[type].s==='van'?'suv':'sedan'):({keke:'sedan',okada:'sedan',bus:'suv',police:'suv',sedan:'sedan',car2:'sedan',benz:'sedan',tanker:'suv',bike2:'okada',sbike:'okada'})[type]||type; if(!MODELS[type]&&!CAR_T[type]) type='sedan'; const c=makeCar(type,color,empty,skin); scene.add(c.g); const v={c,type,color,want,x:0,z:0,y:0,h:0,speed:0,ai:null,parked:true,bob:0,bobV:0,pitch:0,steerVis:0,lastH:0,lean:0,phCool:0}; vehicles.push(v); return v; }
 function laneOff(a,b){ const e=edgeOf(a.i,b.i); if(!e) return 1.5; if(e.ow) return e.w>=8?e.w*.2:0; return e.hw>=10?4.6:e.hw*.45; }
 function lineSeg(ia,ib){ const a=nodes[ia],b=nodes[ib],dx=b.x-a.x,dz=b.z-a.z,L=Math.hypot(dx,dz)||.1,fx=dx/L,fz=dz/L,rx=-fz,rz=fx,off=laneOff(a,b),sa=Math.min(a.deg>=3?a.r+1.2:1.2,L*.45),sb=Math.min(b.deg>=3?b.r+1.2:1.2,L*.45);
   const p0={x:a.x+fx*sa+rx*off,z:a.z+fz*sa+rz*off}, p2={x:b.x-fx*sb+rx*off,z:b.z-fz*sb+rz*off}; return {k:0,p0,p2,len:Math.max(.1,Math.hypot(p2.x-p0.x,p2.z-p0.z)),fx,fz,rx,rz,off}; }
@@ -4633,7 +4645,7 @@ function boardPed(p,dt){ const v=p.bv; p.timer-=dt; let done=p.timer<=0||!v||!(v
     const tx=v.x-fz*sg*o-fx*back, tz=v.z+fx*sg*o-fz*back, dx=tx-p.x, dz=tz-p.z, d=Math.hypot(dx,dz);
     if(d<.45) done=true; else { p.speed+=(1.5-p.speed)*Math.min(1,dt*3); const st=Math.min(d,p.speed*dt); p.x+=dx/d*st; p.z+=dz/d*st; p.yaw=lerpA(p.yaw,Math.atan2(dx,dz),Math.min(1,dt*8)); } }
   if(done){ const s=p.spot; if(s){ s.boarding=Math.max(0,s.boarding-1); s.peds=s.peds.filter(q=>q!==p); } if(p.fare){ p.fare=false; if(!(v===drive.v&&Math.hypot(p.x-v.x,p.z-v.z)<v.c.def.L/2+2.2)){ p.state='walk'; p.bv=null; p.spot=null; replanPed(p); return; } fareIn(p.cast,v); } offPed(p); } }   // you drove off: they walk on
-function offPed(p){ p.bc=false; if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
+function offPed(p){ p.bc=false; p.efcc=0; if(p.cig){ if(p.cig.parent) p.cig.parent.remove(p.cig); CIG.pool.push(p.cig); p.cig=null; } if(p.body) freeBody(p); dropPedWeapon(p); p.far=false; p.state='off'; p.spot=null; p.home=null; p.bv=null; p.hv=null; p.fare=false; p.fareHail=null; p.staring=false; p.stare=0; p.hot=undefined; p.bumps=0;
   Object.assign(p,{hp:null,beaten:false,looted:false,kos:0,cop:0,block:0,toll:null,agb:null,rob:null,robber:false,burnT:0,van:null,wid:null,mad:0,after:null,fleeAfter:false,fightAfter:false,carjacked:false,copHit:0,atk:null,stuckT:0,stuckN:0,detT:0,crook:null,stolen:0,post:null,aimOn:false,hat:null,side:null,gang:null,meT:0,_dn:false,uvest:null,brawl:null}); }   // back to the pool as nobody in particular
 function recast(p){ p.hot=undefined; if(MR()<.35){ const c=pickCast(ENV.hour); if(c!==p.cast){ p.cast=c; p.lod=-1; } } p.tw=MR()<CAST[p.cast].tw; p.startT=0; p.cool=0; }
 function spotOn(s){ s.on=true; s.peds=[]; s.boarding=0; s.hailV=null; const night=ENV.hour>=21||ENV.hour<5.5;
@@ -4826,7 +4838,7 @@ const MOVE_INFO={
 // the street's blows (area boys)
 const AI_INFO={punch:{ts:1.55,hits:[.33,.53],reach:1.5},kick:{ts:1.6,hits:[.47],reach:1.95}};
 const ONCE=new Set(['jump3','jump_run','punch','punch_b','kick','drop_kick','hit_head','hit_body','hit_side','hit_side_m','uppercut','stand_up','kip_up','takedown_a','takedown_v','jump','threaten','gp','gp_b','rise']);
-const HP0=c=>c==='areaboy'?110:c==='police_f'||c==='police_m'?140:70;
+const HP0=c=>c==='areaboy'?110:c==='police_f'||c==='police_m'||c==='efcc_m'||c==='efcc_f'?140:70;
 const durOf=(p,n)=>{ const C=PEOPLE.casts[p.cast], k=C&&C.clips[n]; return k?k.duration:1.2; };
 const fightReady=()=>!!(hero&&hero.act.punch);
 function whoosh(){ burst(.16,1500,.16,1.4); }
@@ -5389,13 +5401,13 @@ function provoke(p){ const now=T0;
   if(joined&&sayT<=0){ sayT=6; toast(mpick(['"You wan try us?!"','"Na who send you come here?"','"Boys, enter am!"']),2.2); } }
 function afterHurt(p){ if(p.brawl){ p.state=p.brawl.out?'down':'brawl'; p.atk=null; return; }
   if(p.crook&&p.gang){ p.state='crook'; p.atk=null; return; }   // gang people get straight back to it
-  if(p.cop){ p.state=p.cast==='police_m'?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=mrr(.2,.6); return; }
+  if(p.cop){ p.state=p.cast==='police_m'||p.efcc?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=mrr(.2,.6); return; }
   if(p.after==='fight'&&!p.beaten&&p.cast==='areaboy'){ p.state='fight'; p.atk=null; p.atkT=mrr(.3,.9); return; }
   if(p.spot&&MR()<.3){ react(p,'argue',player.x,player.z,mrr(3,4)); return; }
   if(MR()<.35&&(p.cast==='mama'||p.cast==='baba')){ react(p,'argue',player.x,player.z,mrr(3,5)); if(sayT<=0){ sayT=5; toast(mpick(['"You dey mad?!"','"Na me you go beat?!"','"Shameless boy!"']),2.2); } p.fleeAfter=true; return; }
   p.state='flee'; p.timer=mrr(4,7); p.yaw=Math.atan2(p.x-player.x,p.z-player.z)+mrr(-.4,.4); }
 function afterDown(p){ if(p.brawl){ crewLeave(p); return; }
-  p.hp=Math.max(p.hp||0,35); if(p.cop){ p.state=p.cast==='police_m'?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=.4; return; }
+  p.hp=Math.max(p.hp||0,35); if(p.cop){ p.state=p.cast==='police_m'||p.efcc?'copguard':'cop'; p.mad=1; p.atk=null; p.atkT=.4; return; }
   if(p.carjacked){ p.carjacked=false; if(p.cast==='areaboy'&&MR()<.65&&mode==='walk'){ p.state='fight'; p.atk=null; p.atkT=.6; toast('"You don thief my motor?! Come here!"',2.4); return; } }
   if(p.spot&&!p.beaten){ react(p,MR()<.7?'argue':'no',p.kx??player.x,p.kz??player.z,mrr(4,6)); return; }
   if(p.beaten){ p.state='flee'; p.timer=mrr(5,8); p.yaw=Math.atan2(p.x-player.x,p.z-player.z); if(p.cast==='areaboy'&&sayT<=0&&MR()<.5){ sayT=5; toast('"Oga, we don hear! No vex!"',2.2); } return; }
@@ -7023,7 +7035,7 @@ function copPed(p,dt){ const S=starCount(), v=p.van, inCar=mode==='drive'&&drive
   if(!resist) return;
   if((p.atkT-=dt)<=0&&!(hero&&hero.ov&&hero.ov.name==='takedown_a')){ p.atk=MR()<.75?'punch':'kick'; p.atkTime=0; p.fired=[]; p.seq=(p.seq||0)+1; p.close=0; } }
 // officers at a raid: one walks to the scene and watches, the driver stands at his door
-function copGuard(p,dt){ const v=p.van;
+function copGuard(p,dt){ const v=p.van; if(p.efcc) return;   // the EFCC officers: updateEFC moves them
   if(v&&v===drive.v){ p.van=null; if(p.cast==='police_f'){ p.state='cop'; p.mad=1; } else { p.state='walk'; replanPed(p); } return; }
   if(!v||!RAID.v||v!==RAID.v||RAID.phase==='board'){ if(v&&v!==drive.v&&!v.ai){ const door=vanDoor(v,p.cast==='police_m'?-1:1), ex=door.x-p.x, ez=door.z-p.z, e=Math.hypot(ex,ez);
       if(e<1.1||(p.stuckN||0)>6){ offPed(p); return; } copMove(p,ex,ez,1.5,dt); p.yaw=lerpA(p.yaw,Math.atan2(ex,ez),Math.min(1,dt*8)); return; }
@@ -7981,28 +7993,45 @@ function mgTick(dt){ const v=MG.v; if(!v||!vehicles.includes(v)||v.fire||v.wreck
       shoot(o,d,player,{dmg:40,range:190,spread:.022,muzzle:o}); flash(o); gunshot(1.25); shotsFired(player.x,player.z,true); camState.shake=Math.min(1,camState.shake+.09); } } else if(!ARMS.trig) MG.ft=Math.min(MG.ft,0); }
 // ---- the EFCC after a big reward: a minute or two later their black van comes looking for you. Get caught and they "process"
 // your money: ₦200,000 gone. Get away (or keep away for four minutes) and they give up. "Na so this economy be."
-const EFC={st:'off',t:0,v:null,take:200000,sayT:0,near:0};
-function efcAfter(){ if(EFC.st!=='off') return; EFC.st='wait'; EFC.t=mrr(50,100); }
+const EFC={st:'off',t:0,v:null,take:200000,sayT:0,near:0,men:[],hold:25};
+function efcAfter(){ if(EFC.st!=='off') return; EFC.st='wait'; EFC.t=mrr(50,100); efcLoad(); }
 function efcSign(v,on){ if(v.efSp){ v.efSp.parent&&v.efSp.parent.remove(v.efSp); v.efSp.material.map.dispose(); v.efSp.material.dispose(); v.efSp=null; }
-  if(on){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('EFCC','#111318','#f2c12e'),fog:false,depthTest:false,toneMapped:false})); sp.scale.set(1.8,.42,1); sp.position.set(0,2.6,0); sp.layers.set(1); v.c.g.add(sp); v.efSp=sp; } }
-function efcEnd(msg){ const v=EFC.v; if(v){ efcSign(v,false); if(vehicles.includes(v)&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>80) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=null; v.ai.wait=0; } } } } EFC.v=null; EFC.st='off'; if(msg) toast(msg,3.4); }
+  if(on&&!v.efVan){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:texLabel('EFCC','#111318','#f2c12e'),fog:false,depthTest:false,toneMapped:false})); sp.scale.set(1.8,.42,1); sp.position.set(0,2.6,0); sp.layers.set(1); v.c.g.add(sp); v.efSp=sp; } }   // (the real EFCC van has it painted on)
+function efcMenOff(){ for(const q of EFC.men) if(q.efcc&&q.state==='copguard') offPed(q); EFC.men=[]; }
+function efcEnd(msg){ const v=EFC.v; efcMenOff(); if(v){ efcSign(v,false); if(vehicles.includes(v)&&drive.v!==v){ if(Math.hypot(v.x-player.x,v.z-player.z)>80) bcDrop(v); else { v.taxi=false; if(v.ai){ v.ai.goal=null; v.ai.wait=0; } } } } EFC.v=null; EFC.st='off'; if(msg) toast(msg,3.4); }
+// the van stops by you: two officers in EFCC vests jump out and come for you on foot
+function efcOut(v){ const out=[]; for(const [c,sd] of [['efcc_m',-1],['efcc_f',1]]){ const d=vanDoor(v,sd), cast=PEOPLE.casts[c]?c:c==='efcc_m'?'police_m':'police_f', q=makeCop(v,cast,d.x,d.z,'copguard'); if(q){ q.wid='ak'; q.efcc=1; out.push(q); } }
+  if(!out.length){ efcCaught(); return; }
+  v.speed=0; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } EFC.men=out; EFC.st='out'; EFC.t=0;
+  toast(mpick(['EFCC: "Stop there! EFCC! No move!"','EFCC: "Oga, stand there. We wan ask you small question."','EFCC: "You! Yes, you with the million. Come here!"']),2.6); }
+// they lost you on foot: back in the van, and the van carries on looking
+function efcBoard(){ efcMenOff(); const v=EFC.v; EFC.st='hunt'; EFC.sayT=0; if(v&&v.ai){ v.ai.wait=0; } toast('The EFCC officers run back to their van…',2.2); }
 function efcCaught(){ const v=EFC.v; if(v){ v.speed=0; if(v.ai){ v.ai.goal=null; v.ai.wait=99; } } if(mode==='drive'&&drive.v&&!drive.ride){ drive.v.speed=0; drive.speed=0; }
+  for(const q of EFC.men){ q.speed=0; q.yaw=Math.atan2(player.x-q.x,player.z-q.z); }
   EFC.st='caught'; busy=true; bigMsg('EFCC! 🚨','jam','Source of income?');
   setTimeout(()=>{ busy=false; const n=Math.min(CASH.n,EFC.take); if(n>0){ addCash(-n); cashHUD(); }   // (taken when they catch you: closing the menu does not save it)
     if(PH&&n>0) PH.event('sms',{id:'bank',n:'Bank',c:'#0b5d3b',e:'🏦',x:`Debit: ${naira(n)} · EFCC PROCESSING FEE.`}); efcEnd(null);
-    openMenu('EFCC',`Officer: "One million naira, one day? Where you get am? Bandits?! Hmm… we don process am." They took ${naira(n)}.`,[
-      {name:'"Na so the economy be"',sub:`${naira(n)} gone "for processing". You dey free.`,btn:'OK',act:()=>{ closeMenu(); }}]); },1300); }
+    const say=()=>openMenu('EFCC',`Officer: "One million naira, one day? Where you get am? Bandits?! Hmm… we don process am." They took ${naira(n)}.`,[
+      {name:'"Na so the economy be"',sub:`${naira(n)} gone "for processing".${cell?' Small time for their cell, then you dey free.':' You dey free.'}`,btn:'OK',act:()=>{ closeMenu(); }}]);
+    const cell=!!(EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room&&!FIGHT.dead);   // their van carries you to their office for "processing"
+    if(cell){ if(mode==='drive'&&drive.v) exitCar(); JAIL.efcc=true; fadeSwap(()=>{ enterJail(0,EFC.hold); setTimeout(say,900); }); } else say(); },1300); }
 function updateEFC(dt){ if(EFC.st==='off'||!started) return;
   if(EFC.st==='wait'){ if(mode==='interior'||busy||FIGHT.dead) return; if((EFC.t-=dt)>0) return;
-    const v=newVehicle('suv','#111318',true); if(!placeCar(v,90,170,true)){ bcDrop(v); EFC.t=20; return; }
+    const real=!!MODELS.efccvan, v=newVehicle('suv','#111318',true,real?'efccvan':null); if(real) v.efVan=1; if(!placeCar(v,90,170,true)){ bcDrop(v); EFC.t=20; return; }
     v.taxi=true; v.efcc=true; v.ocT=T0; if(v.ai){ v.ai.maxV=Math.max(v.ai.maxV||14,17); } efcSign(v,true); EFC.v=v; EFC.st='hunt'; EFC.t=0;
     toast('🚨 EFCC don hear about your million. Their black van dey come for you! Run, or dem go "process" your money.',4.5); return; }
-  if(EFC.st==='hunt'){ const v=EFC.v; EFC.t+=dt; if(!v||!vehicles.includes(v)||v.fire||v.wreck){ efcEnd('The EFCC van is out. They go come back another day.'); return; }
-    if(mode==='interior'){ if(EFC.t>240) efcEnd('EFCC waited and waited, then left.'); return; }
+  if(EFC.st==='hunt'||EFC.st==='out'){ const v=EFC.v; EFC.t+=dt; if(!v||!vehicles.includes(v)||v.fire||v.wreck){ efcEnd('The EFCC van is out. They go come back another day.'); return; }
+    if(mode==='interior'){ if(EFC.st==='out') efcBoard(); if(EFC.t>240) efcEnd('EFCC waited and waited, then left.'); return; }
+    if(EFC.st==='out'){ EFC.men=EFC.men.filter(q=>q.efcc&&q.state==='copguard'&&!(q.hp<=0)); if(!EFC.men.length){ efcEnd('The EFCC officers are down. Their van zooms off… dem go come back with more people.'); addHeat&&addHeat(.6); return; }
+      const inCar=mode==='drive'&&drive.v, T=inCar?drive.v:player; let near=1e9;
+      for(const q of EFC.men){ const dx=T.x-q.x, dz=T.z-q.z, d=Math.hypot(dx,dz); near=Math.min(near,d); q.yaw=lerpA(q.yaw,Math.atan2(dx,dz),Math.min(1,dt*8));
+        if(d>1.2) copMove(q,dx,dz,4.8,dt); else q.speed=Math.max(0,q.speed-dt*8); q.y=groundY(q.x,q.z); q.near=d<2.5; }
+      if(near<1.5&&(!inCar||Math.abs(drive.speed)<2)){ efcCaught(); return; }
+      if((inCar&&Math.abs(drive.speed)>9&&near>10)||near>55||EFC.t>35) efcBoard(); return; }
     const d=Math.hypot(v.x-player.x,v.z-player.z);
     if((EFC.sayT-=dt)<=0){ EFC.sayT=3; if(v.ai){ v.ai.goal=Object.assign(goalAt(player.x,player.z),{near:false,D:null}); v.ai.wait=0; } }
-    if(d<9&&(mode==='walk'||Math.abs(drive.speed)<3)){ efcCaught(); return; }
-    if(d<30&&mode==='walk'&&Math.abs(v.speed)<1.2){ EFC.near=(EFC.near||0)+dt; if(EFC.near>2.5){ toast('EFCC officers jump out of the van and run at you!',2.2); efcCaught(); return; } } else EFC.near=0;   // (the van stops on the road by you: they come on foot)
+    if(d<12&&(mode==='walk'||Math.abs(drive.speed)<3)){ EFC.t=Math.min(EFC.t,200); efcOut(v); return; }
+    if(d<30&&mode==='walk'&&Math.abs(v.speed)<1.2){ EFC.near=(EFC.near||0)+dt; if(EFC.near>2.5){ EFC.near=0; efcOut(v); return; } } else EFC.near=0;   // (the van stops on the road by you: they come on foot)
     if(EFC.t>240||d>420) efcEnd(d>420?'You lost the EFCC van. They give up for now.':'EFCC give up. You dey lucky today.'); } }
 // the person they took, tied at the camp: free them when the guards are down (or just cut the rope while nobody sees)
 function updateBCHostage(dt){ if(!BC.hostage||!CAMP) return; const d=Math.hypot(player.x-CAMP.x,player.z-CAMP.z);
@@ -8641,11 +8670,25 @@ function setupCabin(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R
     if(M.crew) folk(R.scene,'suit_lady',M.crew,['idle_suit','f_talk'],R.folk); };
   fillRoom(R);
   R.spot(M.exit,'Leave the plane',()=>leaveRoom(PLANE_GATE?{x:PLANE_GATE.x,z:PLANE_GATE.z+1.5,ry:0}:STATION.front),1.6); }
+/* ---- the EFCC office (tools/blender_efcc.py): reception, the interview room, the exhibits table (seized cash, laptops,
+   phones) and their own cells. Caught by the EFCC, this is where you wait. */
+const efcLoad=()=>EFCC_HQ.r?intLoad('int_efcc').catch(()=>null):Promise.resolve(null);
+async function enterEFCC(){ if(busy) return; const R=await intGet('int_efcc','Opening the EFCC office…'); if(!R) return; setupEfcc(R); R.label='EFCC · Lagos office';
+  goRoom(R,'spawn',mpick(['EFCC office. "Good afternoon. Who you come see?"','EFCC office. Everybody dey look you like suspect.'])); }
+function setupEfcc(R){ fillRoom(R); if(R.ready) return; R.ready=true; const M=R.marks;
+  R.fill=R=>{ folk(R.scene,'efcc_m',M.officer,['idle_1','phone'],R.folk); if(M.officer) folk(R.scene,'efcc_f',{...M.officer,x:M.officer.x+2.4},['idle_2','idle_1'],R.folk);
+    const cast=['areaboy','p_tunde','p_emeka','areaboy','p_femi','baba'];   // the yahoo boys in the cells
+    ['a1','a2','a3','b1','b2','b3'].forEach((k,i)=>{ const m=M['inmate_'+k]; if(!m||(k==='a1'&&JAIL.left>0)) return; const id=PEOPLE.casts[cast[i]]?cast[i]:'areaboy', pose=m.pose; folk(R.scene,id,pose==='lie'?{...m,yaw:(m.yaw||0)+LIE_YAW}:{...m,y:0},pose==='stand'?['argue','talk','idle_1']:pose==='lie'?['lie']:['idle_2','idle_1','talk'],R.folk); }); };
+  fillRoom(R);
+  R.spot(M.exit,'Go back outside',()=>leaveRoom(EFCC_HQ.front),1.8);
+  R.spot(M.counter,'Talk to the officer',()=>toast(mpick(['Officer: "Wetin you come do for EFCC? You wan report somebody?"','Officer: "Source of income? Joke. Na joke. Or no be joke?"','Officer: "If you get information about yahoo boys, write am here."','Officer: "Bail? Na for Bank app you go pay am."']),3.4),1.6);
+  for(const [k,t,bg,fg] of [['sign_counter','EFCC · LAGOS','#16181b','#f2c200'],['sign_poster','SAY NO TO\nCORRUPTION','#f4f2ea','#0b5d3b'],['sign_exhibit','EXHIBITS','#f2c200','#111111'],['sign_cells','DETENTION','#16181b','#f2f2ee']])
+    if(R.signs&&R.signs[k]) setSign(R.signs[k],t,bg,fg); }
 // the cell when you are caught: the left cell of the station, with the other cell across the corridor
-function policeCell(R){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x1:Math.max(a.x0,a.x1),z0:Math.min(-a.y0,-a.y1),z1:Math.max(-a.y0,-a.y1)};
+function policeCell(R,ef=false){ const M=R.marks, a=M.cell_a, b={x0:Math.min(a.x0,a.x1),x1:Math.max(a.x0,a.x1),z0:Math.min(-a.y0,-a.y1),z1:Math.max(-a.y0,-a.y1)};
   // the cell bounds are in Blender numbers (x, y): turn them into game x, z
-  return {scene:R.scene,marks:M,free:R.free,label:'Cell · Mushin police station',camDist:2.6,exit:{x:1e9,z:1e9},cols:[],spots:[],cam:R.cam,camHit:R.camHit,nearFree:R.nearFree,
-    bounds:{x0:b.x0+.35,x1:b.x1-.35,z0:b.z0+.35,z1:b.z1-.35},out:()=>STATION.front,
+  return {scene:R.scene,marks:M,free:R.free,label:ef?'EFCC detention · Lagos':'Cell · Mushin police station',camDist:2.6,exit:{x:1e9,z:1e9},cols:[],spots:[],cam:R.cam,camHit:R.camHit,nearFree:R.nearFree,
+    bounds:{x0:b.x0+.35,x1:b.x1-.35,z0:b.z0+.35,z1:b.z1-.35},out:()=>ef&&EFCC_HQ.front?EFCC_HQ.front:STATION.front,
     move(nx,nz){ nx=clamp(nx,b.x0+.35,b.x1-.35); nz=clamp(nz,b.z0+.35,b.z1-.35); R.move(nx,nz); },
     update(dt){ R.update(dt); jailTick(dt); } }; }
 
@@ -8922,6 +8965,9 @@ for(const h of HOTELS) if(h.i) DOORS.push({x:h.door.x,z:h.door.z,r:2.2,label:'En
 for(const c of VENUES.clubs){ DOORS.push({x:c.door.x,z:c.door.z,r:2.2,label:()=>CLUB.paid===c.i?'Enter '+c.name:`Enter ${c.name} (gate fee ${naira(CLUB.fee)})`,act:()=>enterClub(c)});
   PLACES.push({name:c.name,sub:'Night club · DJ, bar and dance floor',kind:'club',x:c.x,z:c.z}); }
 if(STATION.r&&STATION.r.M.marks) DOORS.push({x:STATION.front.x,z:STATION.front.z,r:2.2,label:'Enter the police station',act:enterPolice});
+if(EFCC_HQ.r){ DOORS.push({x:EFCC_HQ.front.x,z:EFCC_HQ.front.z,r:2.2,label:'Enter the EFCC office',act:enterEFCC});
+  PLACES.push({name:'EFCC Lagos office',sub:'Economic and Financial Crimes Commission · detention',kind:'police',x:EFCC_HQ.x,z:EFCC_HQ.z});
+  worldGroup(EFCC_HQ.x,EFCC_HQ.z,G=>{ folk(scene,'efcc_m',markAt(EFCC_HQ.r,'guard'),['idle_1','phone'],G.list); const d=EFCC_HQ.front; folk(scene,'efcc_f',{x:d.x+Math.cos(d.ry)*2.4,y:0,z:d.z-Math.sin(d.ry)*2.4,yaw:d.ry},['idle_2','idle_1'],G.list); }); }
 if(VENUES.carstand){ const V=VENUES.carstand; DOORS.push({x:V.door.x,z:V.door.z,r:2.2,label:'Enter the car showroom',act:enterShowroom});
   PLACES.push({name:'Oluwaseun Motors',sub:'Car stand · tokunbo and brand new cars',kind:'cars',x:V.x,z:V.z}); }
 // ---- the car catalogue at the car stand: every new car class by class, delivered to the kerb outside
@@ -10158,7 +10204,7 @@ function buildJail(){ const S=new THREE.Scene(); S.background=new THREE.Color(0x
     update(dt){ for(const q of JAIL.people) q.mixer.update(dt); jailTick(dt); } };
   return room; }
 function jailTick(dt){ { JAIL.left-=dt; if((JAIL.saveT-=dt)<=0){ JAIL.saveT=1; jailSave(); } const s2=Math.max(0,Math.ceil(JAIL.left)); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`;
-      if((JAIL.talkT-=dt)<=0&&(JAIL.people.length||ROOM===JAIL.cell)){ JAIL.talkT=mrr(16,26); toast(mpick(['"Wetin you do wey dem carry you?"','"Na wrong place dem carry me o!"','"Officer, I no do anything!"','"Who get credit? Make I call my mama."','"This cell hot like oven."','"Dem go release us soon. Calm down."']),3); }
+      if((JAIL.talkT-=dt)<=0&&(JAIL.people.length||ROOM===JAIL.cell||ROOM===JAIL.ecell)){ JAIL.talkT=mrr(16,26); toast(mpick(['"Wetin you do wey dem carry you?"','"Na wrong place dem carry me o!"','"Officer, I no do anything!"','"Who get credit? Make I call my mama."','"This cell hot like oven."','"Dem go release us soon. Calm down."']),3); }
       if(JAIL.left<=0&&!busy) leaveJail(); } }
 // the people inside: whoever was picked up with you, then a few others (men with men, women with women)
 function jailInmates(){ const R=JAIL.room, S=R.scene; for(const q of JAIL.people) S.remove(q.root); JAIL.people.length=0;
@@ -10175,20 +10221,20 @@ function jailInmates(){ const R=JAIL.room, S=R.scene; for(const q of JAIL.people
 // The time left is saved, so closing or reloading the game puts you back in the cell with the same time left.
 const JAIL_TIMES=[20,40,60,70,120,180];
 const jailWords=t=>{ const m=Math.floor(t/60), s=Math.round(t%60); return [m?`${m} minute${m>1?'s':''}`:'',s?`${s} seconds`:''].filter(Boolean).join(' '); };
-function jailSave(){ try{ if(JAIL.left>0) localStorage.setItem('naija-jail',String(Math.ceil(JAIL.left))); else localStorage.removeItem('naija-jail'); }catch(e){} }
+function jailSave(){ try{ if(JAIL.left>0){ localStorage.setItem('naija-jail',String(Math.ceil(JAIL.left))); if(JAIL.efcc) localStorage.setItem('naija-jail-efcc','1'); else localStorage.removeItem('naija-jail-efcc'); } else { localStorage.removeItem('naija-jail'); localStorage.removeItem('naija-jail-efcc'); } }catch(e){} }
 function jailSaved(){ let v=0; try{ v=+localStorage.getItem('naija-jail')||0; }catch(e){} return v>0&&v<=600?v:0; }
-function enterJail(resume=0){ const PR=INTS.int_police&&INTS.int_police.room; let R;
-  if(PR&&PR.marks.cell_a&&PR.marks.cell_a_in){ setupPolice(PR); if(!JAIL.cell) JAIL.cell=policeCell(PR); R=JAIL.cell; const m=PR.marks.cell_a_in, q=PR.nearFree(m.x,m.z);   // the real station: your cell faces the other one
+function enterJail(resume=0,hold=0){ const EF=JAIL.efcc&&EFCC_HQ.r&&INTS.int_efcc&&INTS.int_efcc.room, PR=EF||INTS.int_police&&INTS.int_police.room; let R;   // hold: a short EFCC "processing" (no arrest counted)
+  if(PR&&PR.marks.cell_a&&PR.marks.cell_a_in){ if(EF){ setupEfcc(PR); if(!JAIL.ecell) JAIL.ecell=policeCell(PR,true); R=JAIL.ecell; } else { setupPolice(PR); if(!JAIL.cell) JAIL.cell=policeCell(PR); R=JAIL.cell; } const m=PR.marks.cell_a_in, q=PR.nearFree(m.x,m.z);   // the real station: your cell faces the other one
     ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root); Object.assign(player,{x:q.x,z:q.z,y:0,yaw:m.yaw,speed:0}); Object.assign(camState,{yaw:m.yaw,pitch:.22,dist:2.6}); setScene(R.scene); }
   else { if(!JAIL.room) JAIL.room=buildJail(); jailInmates(); R=JAIL.room; ROOM=R; mode='interior'; enteredAt=T0; R.scene.add(rig.root);
   Object.assign(player,{x:0,z:1.6,y:0,yaw:Math.PI,speed:0}); Object.assign(camState,{yaw:Math.PI,pitch:.24,dist:2.8}); setScene(R.scene); }
-  let left=resume, fresh=false; try{ fresh=localStorage.getItem('naija-jail-new')==='1'; localStorage.removeItem('naija-jail-new'); }catch(e){}
+  let left=resume||hold, fresh=false; try{ fresh=localStorage.getItem('naija-jail-new')==='1'; localStorage.removeItem('naija-jail-new'); }catch(e){}
   if(resume&&fresh){ try{ localStorage.setItem('naija-arrests',String((+localStorage.getItem('naija-arrests')||0)+1)); }catch(e){} }   // caught, then reloaded before the cell: it still counts
   if(!left){ let n=1; try{ n=(+localStorage.getItem('naija-arrests')||0)+1; localStorage.setItem('naija-arrests',String(n)); }catch(e){} left=Math.min(600,JAIL_TIMES[Math.min(n,JAIL_TIMES.length)-1]+(JAIL.extra||0)); JAIL.extra=0; JAIL.n=n; }
-  JAIL.left=left; JAIL.saveT=1; JAIL.talkT=6; jailSave(); $('#jailBox').hidden=false; { const s2=Math.ceil(left); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`; }
-  toast(resume?`You never finish your time o! Back to cell: ${jailWords(left)} left.`:`Police don lock you for cell. Wait ${jailWords(left)} and they go release you.`+(JAIL.n>1?` (Arrest number ${JAIL.n}: the time dey increase.)`:''),5); }
-function leaveJail(){ JAIL.left=0; jailSave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:0,yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3});
-  setScene(scene); $('#jailBox').hidden=true; JAIL.taken.length=0; toast('Your time don finish. Police release you. Behave yourself o!',4.5); }); }
+  JAIL.left=left; JAIL.saveT=1; JAIL.talkT=6; jailSave(); $('#jailBox').hidden=false; { const t=$('#jailBox b'); if(t) t.textContent=EF?'EFCC DETENTION':'MUSHIN POLICE CELL'; } { const s2=Math.ceil(left); $('#jailT').textContent=`${Math.floor(s2/60)}:${String(s2%60).padStart(2,'0')}`; }
+  toast(hold?`EFCC carry you go their office for "processing". ${jailWords(left)} for their cell.`:resume?`You never finish your time o! Back to cell: ${jailWords(left)} left.`:JAIL.efcc?`EFCC don lock you for their cell. Wait ${jailWords(left)}.`:`Police don lock you for cell. Wait ${jailWords(left)} and they go release you.`+(JAIL.n>1?` (Arrest number ${JAIL.n}: the time dey increase.)`:''),5); }
+function leaveJail(){ JAIL.left=0; const ef=JAIL.efcc; JAIL.efcc=false; jailSave(); fadeSwap(()=>{ const o=ROOM.out(); mode='walk'; ROOM=INT; scene.add(rig.root); Object.assign(player,{x:o.x,z:o.z,y:0,yaw:o.ry,speed:0}); Object.assign(camState,{yaw:o.ry,pitch:.26,dist:4.3});
+  setScene(scene); $('#jailBox').hidden=true; JAIL.taken.length=0; toast(ef?'EFCC release you. "Go, but we dey watch you o."':'Your time don finish. Police release you. Behave yourself o!',4.5); }); }
 
 /* ================= your hustle: the job you picked =================
    After man or woman, who you are and your skin, you pick a hustle. Every job is open to everybody, but everybody starts
@@ -10731,8 +10777,8 @@ function yhSeized(cash){ const cars=OWNED.length, houses=LIFE.est.length+(LIFE.e
   bigMsg('SEIZED 🚨','jam','EFCC: cash, cars, houses'); toast(`EFCC seize everything: ${naira(cash)} cash${cars?`, ${cars} car${cars>1?'s':''}`:''}${houses?`, ${houses} house${houses>1?'s':''}`:''}. Sold off. You dey custody: ${YH_C.jailS/60} minutes, unless a friend pays ₦500,000 bail (Bank app · EFCC bail).`,9);
   if(LIFE.rel){ const L=myLove(); if(L) setTimeout(()=>breakfast(L,`${L.n}: "EFCC?! So na yahoo you dey do? I no fit. Bye." 💔`),3000); }
   if(PH) PH.event('sms',{id:'mama',n:'Mama',c:'#7a4b2a',e:'👩🏾',x:'I see am for news. EFCC. My son. I don tell you. God go help you.'});
-  if(mode==='drive'&&drive.v) exitCar(); setTimeout(()=>{ JAIL.extra=YH_C.jailS; JAIL.efcc=true; fadeSwap(()=>enterJail()); },1200); }
-function yhCustody(){ const left=Math.max(5,Math.min(YH_C.jailS,Math.ceil((YHS.jail-Date.now())/1000))); JAIL.efcc=true; fadeSwap(()=>enterJail(left)); }
+  if(mode==='drive'&&drive.v) exitCar(); const ld=efcLoad(); setTimeout(()=>{ JAIL.extra=YH_C.jailS; JAIL.efcc=true; ld.then(()=>fadeSwap(()=>enterJail())); },1200); }
+function yhCustody(){ const left=Math.max(5,Math.min(YH_C.jailS,Math.ceil((YHS.jail-Date.now())/1000))); JAIL.efcc=true; efcLoad().then(()=>fadeSwap(()=>enterJail(left))); }
 // bail a friend (the Bank app): ₦500,000 to the EFCC
 function yhBail(name){ if(!yhOn()){ toast('Bail is paid online (sign in).',3); return; } yhDo('bail',{n:name}); }
 // the Laptop app on the phone
@@ -11334,5 +11380,5 @@ eb.addEventListener('click',()=>{ portraitDone(); stageDone(); makeMe(); if(hero
   if(!touchUI){ try{ const p=cvs.requestPointerLock(); if(p&&p.catch) p.catch(()=>{ $('#lookhint').hidden=false; }); }catch(_){ $('#lookhint').hidden=false; } }
   updateClockHUD(); if(LIFE.job) toast(`${CLOCK.fmtHour(ENV.hour)} in Lagos · ${wLabel()}. Your okada is parked by the road.`,4.5); setTimeout(loadLate,3500);
   if(!LIFE.job){ const first=eb.fresh===true; if(first) LIFE_SYNC.intro=1; setTimeout(()=>{ if(!jailSaved()) hustleOpen(first); },first?900:2500); } hustleHUD(true);   // the new vehicles come in the background
-  { const left=jailSaved(); if(left){ busy=true; setTimeout(()=>{ fadeSwap(()=>{ enterJail(left); }); },300); } } });   // you left the game in the cell: straight back in
+  { const left=jailSaved(); if(left){ busy=true; let ef=false; try{ ef=localStorage.getItem('naija-jail-efcc')==='1'; }catch(e){} JAIL.efcc=ef; const go=()=>setTimeout(()=>{ fadeSwap(()=>{ enterJail(left); }); },300); if(ef) efcLoad().then(go); else go(); } } });   // you left the game in the cell: straight back in
 document.addEventListener('pointerlockchange',()=>{ if(!document.pointerLockElement&&started&&!touchUI&&!mapView.isOpen) $('#lookhint').hidden=false; else $('#lookhint').hidden=true; });
